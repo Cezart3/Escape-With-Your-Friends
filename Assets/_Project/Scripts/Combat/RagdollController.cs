@@ -43,6 +43,12 @@ namespace EscapeWithYourFriends.Combat
         public bool IsRagdolled => _isRagdolled;
         public Transform HipBone => _hipBone;
 
+        /// <summary>
+        /// The physics skeleton. Exposed so effects that push individual limbs — the taser jitter,
+        /// later explosions — can pick a bone without every one of them re-walking the hierarchy.
+        /// </summary>
+        public IReadOnlyList<Rigidbody> Bones => _bones;
+
         /// <summary>The hip rigidbody, which is what carrying and throwing act on.</summary>
         public Rigidbody HipBody { get; private set; }
 

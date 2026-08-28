@@ -81,9 +81,24 @@ decision rather than a free action.
 
 ### Taser
 
-Extended stun, plus random per-frame impulses on limbs while active, plus heavy camera shake on the
-victim. Limited battery with recharge. Mechanically it is a longer punch; the jitter and the shake are
-what make it worth carrying.
+Mechanically a ranged punch with a very long stun. What makes it worth carrying is the jitter: while
+shocked, a random bone takes a small impulse ten times a second, and the victim's camera shakes.
+
+**The jitter is not networked.** Ten impulses a second per victim is not worth the bandwidth, and it
+does not need to be. The impulse step is derived from the network tick, and the random numbers come
+from an integer hash of (object id, step), so every machine rolls identical values at the same moment
+without a single extra packet. `ShockState` carries one SyncVar holding the whole shock — end tick,
+jitter force, interval, shake — because those four values are one fact and separate SyncVars could
+land out of order and briefly describe a shock nobody configured.
+
+**Battery is the balance lever.** A taser with no ammunition cost would be strictly better than every
+melee weapon, so the decision that matters is whether this target is worth a third of the charge. The
+charge itself is also not streamed: a shot writes two values — the charge left at that moment, and the
+tick recharging begins — and every peer recomputes the current level from the same formula the server
+uses, so there is nothing to drift.
+
+Both patterns are the same idea as the bleed-out timer: replicate the *rule* and the *deadline*, then
+let every machine derive the continuously-changing number itself.
 
 ### Downed, abducted, dead
 

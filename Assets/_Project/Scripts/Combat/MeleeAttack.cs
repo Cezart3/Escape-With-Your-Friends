@@ -103,16 +103,9 @@ namespace EscapeWithYourFriends.Combat
             if (Time.time < _serverNextAttackAt) return;
 
             if (aimDirection.sqrMagnitude < 0.001f) return;
+            if (!AimValidation.IsFacing(transform, aimDirection, _maxAimDeviation)) return;
+
             Vector3 direction = aimDirection.normalized;
-
-            // Reject aim that points somewhere the character is not facing. Pitch is free — looking
-            // down to punch a body on the floor is normal — so only the horizontal angle is checked.
-            Vector3 flatAim = Vector3.ProjectOnPlane(direction, Vector3.up);
-            Vector3 flatForward = Vector3.ProjectOnPlane(transform.forward, Vector3.up);
-            if (flatAim.sqrMagnitude > 0.001f && flatForward.sqrMagnitude > 0.001f
-                && Vector3.Angle(flatAim, flatForward) > _maxAimDeviation)
-                return;
-
             _serverNextAttackAt = Time.time + weapon.Cooldown;
             ObserversSwing();
 
