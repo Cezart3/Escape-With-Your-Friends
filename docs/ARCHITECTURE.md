@@ -34,6 +34,26 @@ The rule: a client may *predict* anything about itself and may *animate* anythin
 
 ## The signature mechanics
 
+### What one hit does
+
+Every weapon — fists included — embeds a `HitProfile`: damage, damage type, knockback, upward bias,
+stun duration. Nothing about how a weapon feels is written in weapon code, so "a shotgun launches
+you across the beach and a pistol does not" is a number in an asset that can be retuned without a
+recompile.
+
+| | damage | knockback | stun |
+|---|---|---|---|
+| Fists | low | ~4 | short |
+| Bat | medium | ~10 | medium |
+| Pistol | medium | ~0 | none |
+| Shotgun | high | ~30 | long |
+| Sniper | very high | ~45 | long |
+
+Knockback and stun are separate numbers, but a hit meant to launch someone needs both: an upright
+character is driven by its controller, not by physics, so the impulse only reads if the victim is
+ragdolled. The one exception is a body already on the ground, which takes the impulse with no stun
+duration at all — shooting a downed friend still sends them tumbling, which is most of the appeal.
+
 ### Stun and ragdoll
 
 **v1 — kinematic switch (build this first).**
@@ -65,16 +85,32 @@ Extended stun, plus random per-frame impulses on limbs while active, plus heavy 
 victim. Limited battery with recharge. Mechanically it is a longer punch; the jitter and the shake are
 what make it worth carrying.
 
-### Death and revive
+### Downed, abducted, dead
 
-At 0 HP the player object hands off to a networked `CorpseNetworkObject` that is carryable,
-throwable, and loadable into vehicles, and which retains the dead player's inventory. Meanwhile the
-player becomes a ghost that can spectate and lightly push physics objects — dead players stay
-engaged, and stay able to interfere.
+Running out of health does not kill you. `Health` has three states — `Alive`, `Downed`, `Dead` — and
+the interesting one is the middle.
 
-Revival means physically hauling the corpse to the Revive Machine at base and paying a cost that
-scales with deaths this run. The whole loop is deliberately inconvenient: the inconvenience is the
-content.
+**Downed.** At 0 HP the character ragdolls, becomes carryable, and starts a bleed-out timer every
+player can see. The deadline is stored as a FishNet network tick rather than a local timestamp, so
+all four clients count down to the same moment and the HUD number is one everyone agrees with.
+Getting picked up in time is cheap and free.
+
+**Abducted.** Nothing stops a hostile native from picking up a downed body, because `Carryable` does
+not care who is carrying — it only needs the carrier to have a `CarrySystem`. So natives haul downed
+players back to their village and string them up while the timer keeps running. Rescue means
+assaulting the village, which turns a teammate going down from a nuisance into an objective, and
+gives the natives a reason to exist beyond wandering around. Killing them drops food, ammo and
+materials, so the rescue pays for itself.
+
+**Dead.** The timer expires and now it costs. The body has to be physically hauled to the Revive
+Machine at base and paid for, at a price that scales with deaths this run. The whole loop is
+deliberately inconvenient: the inconvenience is the content.
+
+Dead players are not idle — they become ghosts that spectate and lightly push physics objects, so
+they stay engaged and stay able to interfere.
+
+The escalation is the point. Going down is recoverable, being carried off is a fight, and staying
+dead is a bill.
 
 ---
 
