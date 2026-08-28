@@ -132,7 +132,34 @@ Then from Unity Hub: sign in, install **Unity 6 LTS (6000.x)** with the
 ### Build headless
 
 ```
-Unity.exe -quit -batchmode -projectPath . -executeMethod BuildTool.PerformBuild
+Unity.exe -quit -batchmode -nographics -projectPath . \
+  -executeMethod EscapeWithYourFriends.EditorTools.BuildTool.PerformBuild
+```
+
+Optional flags: `-buildOutput <dir>`, `-development`, `-scriptingBackend <il2cpp|mono>`.
+Defaults to IL2CPP into `BuildOutput/`. The build fails with exit code 1 if no scenes are
+enabled in Build Settings, rather than shipping a player that opens to nothing.
+
+**IL2CPP needs a C++ toolchain.** Unity detects it through `vswhere.exe` plus the registry key
+`HKLM\SOFTWARE\Wow6432Node\Microsoft\Microsoft SDKs\Windows\v10.0`, so a bare compiler on PATH is
+not enough — it has to be a registered Visual Studio installation:
+
+```powershell
+winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override `
+  "--quiet --wait --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+```
+
+`-scriptingBackend mono` builds without it, which is the faster loop for iterating. Use IL2CPP for
+anything you ship.
+
+### One-time project configuration
+
+These are idempotent and already applied; re-run them after a clean clone.
+
+```
+-executeMethod EscapeWithYourFriends.EditorTools.PackageBootstrap.Install       # packages
+-executeMethod EscapeWithYourFriends.EditorTools.ProjectSetup.Run               # URP, layers, tags
+-executeMethod EscapeWithYourFriends.EditorTools.SceneBootstrap.CreateBootstrapScene
 ```
 
 ---
