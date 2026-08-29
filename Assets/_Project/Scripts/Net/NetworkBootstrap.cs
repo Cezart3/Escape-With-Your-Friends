@@ -106,6 +106,11 @@ namespace EscapeWithYourFriends.Net
 
         void Start()
         {
+            // The arena's own acceptance criterion (#27) is a load time, and the only honest place to
+            // measure it is the first frame of the scene that had to load. Engine start to here.
+            Debug.Log($"[NetworkBootstrap] Bootstrap scene live {Time.realtimeSinceStartup:0.00}s "
+                      + "after process start.");
+
             bool host = CommandLine.HasFlag("-host");
             bool server = CommandLine.HasFlag("-server");
             bool client = CommandLine.HasFlag("-client");

@@ -783,6 +783,49 @@ seen catch anything is not a net you can claim works.
 
 ## World generation
 
+### The greybox arena
+
+M1 does not have an island yet, and it should not wait for one. What it needs is a room with enough
+shapes in it to answer one question: *is throwing your friends off things funny?* That room is
+`ArenaBuilder`, an editor script, and like everything else in this project it is **built from
+constants rather than sculpted** — `ArenaBuilder.BuildArena` opens `Bootstrap.unity`, deletes the old
+`Arena` root outright, rebuilds all 29 boxes from numbers, rewires the spawn points and saves. The
+whole map is one terminal command, so changing the pit depth is a diff, not an editor session.
+
+The layout is chosen entirely around the shove:
+
+- A **60m plate**, built as *four* slabs rather than one, because the pit needs a hole in it and you
+  cannot cut a hole in a Unity primitive. `Floor.South`, `Floor.North`, `Floor.West` and `Floor.East`
+  bound an 8m opening.
+- An **8m pit, 4m deep**, walled on all four sides so you land in a box, with **a ramp back out**.
+  The ramp is not politeness. An inescapable pit is a longer removal from the game than dying is —
+  death at least ends at the Revive Machine — and a mechanic that punishes the victim harder than
+  killing them would is a mechanic nobody uses twice.
+- A **catwalk at 6m** running across the arena and overhanging the pit. This is the arena's best
+  shove spot and the reason the pit exists at all: somewhere to carry a stunned friend *to*.
+- A **two-stage tower** (platforms at 3m and 6m, ramps between) so the height is reachable on foot,
+  and four **blocks** between 1m and 2.5m for cover and for tripping over.
+- A **perimeter wall**, 3m, on three sides — so wandering off the edge stops being the joke and
+  starts being an accident — with one deliberate **6m gap in the south wall and a plank** running out
+  past it. Intentional defenestration stays available, and `FallGuard` stays under test.
+
+Ramps meet what they serve *by overlapping into it*: the tower's ramps end half a metre inside the
+platform above them, so the surfaces are coplanar at the seam and there is no step to climb. The pit
+ramp is the exception — a hole has no geometry to overlap into — so its top lands exactly on the lip.
+Half a metre short, which is what it was first built as, is not a step a `CharacterController` walks
+up; it is a half-metre gap straight back into the pit.
+
+Spawn points are four empties on a 6m ring at **y = 1.2**, matching `PlayerSpawner`'s own generated
+fallback height rather than inventing a new one, and facing the middle along a **flattened** vector —
+the 1.2m of clearance is part of the position, not part of where the player is looking, and folding
+it into the facing would pitch the first camera frame into the floor. `ArenaBuilder.WireSpawnPoints`
+writes the four transforms into `PlayerSpawner._spawnPoints` through a `SerializedObject`, which is
+what makes them real for `FallGuard` too: a rescue reads the same array.
+
+Load time is the arena's acceptance criterion, so `NetworkBootstrap.Start` logs
+`Time.realtimeSinceStartup` on its first frame — engine start to scene live. Four headless processes
+measure **0.28–0.36s** against a 3-second budget.
+
 The island is **generated from a seed, never hand-sculpted.** An editor script produces the heightmap
 from domain-warped noise with an island falloff mask, then derives the splatmap from height and slope
 rules (sand near sea level, grass inland, rock on steep slopes). Vegetation is placed by biome mask
