@@ -19,19 +19,25 @@ namespace EscapeWithYourFriends.Player
     /// This is a *second* CinemachineCamera at a higher priority than <see cref="PlayerCameraRig"/>'s,
     /// exactly as that class's note says it should be. Nothing in the rig knows this exists: the rig
     /// keeps tracking the head bone at priority 10, this sits at 20 while it lives, and the Brain
-    /// blends between them. Reviving destroys this one and the view blends back on its own. That is
-    /// also why the ghost (#26) needs nothing new — it is a call to <see cref="Follow"/> with somebody
-    /// else's bones, and the same blend carries the player there.
+    /// blends between them. Reviving destroys this one and the view blends back on its own. The ghost
+    /// (#26) turned out to need exactly what this file predicted: one call to <see cref="Follow"/>
+    /// with somebody else's transform, and the same blend carries the player there.
     ///
-    /// The camera tracks the hip bone rather than the body root, because once the ragdoll takes over
-    /// the root stops moving and the corpse slides away from it. Position damping is deliberately
-    /// heavy: a hip that is being punted down a hill is not something to follow tightly.
+    /// What it follows depends on whether the dead player can move. With no <see cref="GhostController"/>
+    /// it tracks the hip bone rather than the body root, because once the ragdoll takes over the root
+    /// stops moving and the corpse slides away from it, and damping is deliberately heavy — a hip
+    /// being punted down a hill is not something to follow tightly. With a ghost it tracks the ghost
+    /// instead, lightly damped and bound to its rotation, which is the difference between watching a
+    /// corpse and flying a camera.
     /// </summary>
     public class DeathCamera : NetworkBehaviour
     {
         [Header("References")]
         [SerializeField] Health _health;
         [SerializeField] RagdollController _ragdoll;
+
+        [Tooltip("Optional. When the dead player can fly, the view rides the ghost instead of the hip.")]
+        [SerializeField] GhostController _ghost;
 
         [Header("Framing")]
         [Tooltip("Metres behind the body. World space, so a tumbling ragdoll does not spin the camera.")]
@@ -47,6 +53,9 @@ namespace EscapeWithYourFriends.Player
 
         [Tooltip("How lazily the camera re-centres the body on screen.")]
         [SerializeField] float _aimDamping = 0.6f;
+
+        [Tooltip("Chasing a ghost is a free camera; heavy damping there just feels like lag.")]
+        [SerializeField] float _ghostDamping = 0.25f;
 
         [Header("Priority")]
         [Tooltip("Must beat PlayerCameraRig's 10, and lose to anything that should override death.")]
@@ -78,7 +87,7 @@ namespace EscapeWithYourFriends.Player
 
             // Late joiners to their own corpse: a body can be spawned already dead by the time the
             // client sees it, and then no state change is ever raised.
-            if (_health != null && _health.IsDead) Follow(DefaultTarget());
+            if (_health != null && _health.IsDead) FollowDefault();
         }
 
         public override void OnStopClient()
@@ -97,7 +106,7 @@ namespace EscapeWithYourFriends.Player
         /// tears it down. This is the seam the ghost (#26) drives: spectating a friend is this call
         /// with their hip bone, and the Brain blends the player across.
         /// </summary>
-        public void Follow(Transform target)
+        public void Follow(Transform target, bool chase = false)
         {
             if (target == null)
             {
@@ -110,17 +119,38 @@ namespace EscapeWithYourFriends.Player
             _followed = target;
             _camera.Target.TrackingTarget = target;
             _camera.Target.CustomLookAtTarget = false; // Aim at whatever we are following.
+
+            // Two different things are being followed and they want opposite bindings. A corpse hip
+            // rotates freely, so its offset has to be world space or the camera cartwheels with it.
+            // A ghost only ever rotates the way the player is looking, so locking the offset to it
+            // is exactly what a free camera should do: the view sits behind where you are aiming.
+            _follow.TrackerSettings.BindingMode =
+                chase ? BindingMode.LockToTargetWithWorldUp : BindingMode.WorldSpace;
+            _follow.TrackerSettings.PositionDamping =
+                Vector3.one * (chase ? _ghostDamping : _positionDamping);
         }
 
         void OnLifeStateChanged(LifeState previous, LifeState next)
         {
-            if (next == LifeState.Dead) Follow(DefaultTarget());
+            if (next == LifeState.Dead) FollowDefault();
             else Teardown();
         }
 
-        /// <summary>The hip bone if there is one; the body root is a usable fallback, if a dull one.</summary>
-        Transform DefaultTarget()
-            => _ragdoll != null && _ragdoll.HipBone != null ? _ragdoll.HipBone : transform;
+        /// <summary>
+        /// The ghost when there is one to fly, because a player who can move should be watching where
+        /// they are going rather than where they died. Otherwise the hip bone, and the body root as a
+        /// dull last resort.
+        /// </summary>
+        void FollowDefault()
+        {
+            if (_ghost != null && _ghost.Root != null)
+            {
+                Follow(_ghost.Root, chase: true);
+                return;
+            }
+
+            Follow(_ragdoll != null && _ragdoll.HipBone != null ? _ragdoll.HipBone : transform);
+        }
 
         void Build()
         {
@@ -131,8 +161,8 @@ namespace EscapeWithYourFriends.Player
 
             _follow = go.AddComponent<CinemachineFollow>();
 
-            // World space rather than locked to the target: a ragdoll's hip rotates freely, and an
-            // offset expressed in its local space would send the camera cartwheeling with it.
+            // Both settings are overwritten by Follow the moment a target arrives; these are only
+            // what the camera looks like for the one frame between construction and being aimed.
             _follow.TrackerSettings.BindingMode = BindingMode.WorldSpace;
             _follow.TrackerSettings.PositionDamping = Vector3.one * _positionDamping;
             _follow.FollowOffset = new Vector3(0f, _height, -_distance);

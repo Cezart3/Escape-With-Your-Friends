@@ -25,6 +25,7 @@ namespace EscapeWithYourFriends.Player
         [SerializeField] TaserWeapon _taser;
         [SerializeField] CarrySystem _carry;
         [SerializeField] PlayerInteractor _interactor;
+        [SerializeField] GhostController _ghost;
 
         // Diagnostics only, behind -cameraLog: a headless run cannot see a punch land, so the count of
         // verbs actually issued is the difference between "combat is wired" and "combat is silent".
@@ -56,7 +57,16 @@ namespace EscapeWithYourFriends.Player
             bool interact = _input.ConsumeInteract();
             bool drop = _input.ConsumeDrop();
 
-            if (attack && _melee != null) _melee.RequestAttack();
+            // Attack means two different verbs depending on whether you have a body. The dead get the
+            // shove; routing it through here rather than letting GhostController poll input itself is
+            // the same rule as everything else in this file — two pollers would race for the same
+            // buffered press and one of them would silently lose it.
+            if (attack)
+            {
+                if (_ghost != null && _ghost.IsActive) _ghost.RequestNudge();
+                else if (_melee != null) _melee.RequestAttack();
+            }
+
             if (altAttack && _taser != null) _taser.RequestFire();
 
             // The priority list this file always said it would need. Machines win over bodies: the

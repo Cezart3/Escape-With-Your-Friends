@@ -592,6 +592,85 @@ regression, on the same principle as `-fallTest`: the test lives inside the comp
 because the alternative is a build flavour that only exists for tests and is therefore not the build
 anyone ships.
 
+### The ghost
+
+A dead player waits. The wait is deliberate — somebody has to walk over, pick the body up, carry it to
+the machine and pay — but a player who can only watch a fixed shot of their own corpse has nothing to
+do for a minute or more, and the fastest way to lose a friend from a lobby is to bore them. So the
+dead get a ghost: a free-flying camera that goes where it likes, follows the argument about whether
+hauling them back is worth 250, and can shove ragdolls and loose physics props hard enough to be
+annoying. Trolling is the retention mechanic.
+
+**The ghost is not a NetworkObject.** It is a bare transform living on the player's own prefab,
+spawned nowhere and replicated to nobody. Nothing about a ghost needs to exist on another machine:
+nobody can see it, it has no collider, and the one thing it does that other players can observe — the
+shove — travels as an RPC that names the target and the impulse, not as a position anyone integrates.
+Making it a spawned object would have bought a despawn ordering problem against `BodyPersistence` and
+a second identity per player, for nothing.
+
+**Glued to the body while alive.** `GhostController` keeps its root pinned to the character controller
+until death, then unpins it. This is the detail that removes a whole class of ordering bug from
+`DeathCamera`: the death camera asks for the ghost's transform the instant the state changes, and if
+the ghost were only positioned once it started flying, the camera would blend from wherever the
+transform happened to be — usually the world origin — to the body. Pinned, the ghost is already
+standing exactly where the player died, so the first frame of the death view is the correct frame.
+
+**The server knows where the ghost is, roughly.** Position goes up as a SyncVar at 10Hz. Nobody
+renders from it, so smoothness is irrelevant; what the server needs it for is validation. A shove is a
+`ServerRpc` naming a target, and the server checks that the target is within reach of the *reported*
+ghost position before it does anything. 10Hz is enough to catch a client claiming to shove a corpse on
+the other side of the island, and cheap enough that four ghosts cost less than one moving body. There
+is also a 60 m tether back to the corpse — not an anti-cheat measure, just a rule that a spectator who
+flies to the far side of the map stops being a participant.
+
+**The shove is an `ObserversRpc`, not a server-side `AddForce`.** Ragdoll bones are not replicated;
+each machine simulates the corpse it can see, from the same initial conditions. A force applied only
+on the server is therefore invisible everywhere else — the host would watch a leg kick and the client
+would watch nothing. Every impulse in this game that has to look the same on four screens takes the
+same route (`Health.ObserversIncapacitated`, `Carryable.ObserversThrow`,
+`StunState.ObserversApplyImpulse`), and `GhostController.ObserversNudge` joins them. The server owns
+the magnitude — the RPC carries a direction and a hit point, and the impulse is scaled server-side —
+so a modified client can shove in a stupid direction but not with a stupid force.
+
+**Living players cannot be shoved for free.** Not because anything checks: a standing player's bones
+are `isKinematic`, so an impulse into one is discarded by the physics engine. The ghost's cast hits the
+same colliders either way, which means the rule needs no code and cannot drift out of sync with the
+ragdoll's own kinematic bookkeeping.
+
+**Why 25 Ns.** The skeleton weighs about 56 kg — a 14 kg pelvis and 4 kg limbs — and the shove lands
+on whichever bone the cast touched, unlike `Carryable`'s throw, which is 12 Ns and always lands on the
+pelvis. One number cannot serve both: a throw-sized impulse into a shin is nothing, and a shin-sized
+impulse into a whole body is less. 25 Ns is a fast kick on a limb and about half a metre per second on
+the corpse as a whole — enough to start a body rolling on any slope, and on flat ground stopped by
+friction inside a couple of centimetres, which is exactly what the word *nudge* should mean. The
+"cannot deal damage" rule is not enforced by the magnitude anyway: the shove has no damage path at
+all, at any strength.
+
+**Attack means two verbs.** Routing lives in `PlayerCombatInput`, which already owns the mapping from
+buttons to combat verbs: with a body, Attack punches; as a ghost, Attack shoves. Letting
+`GhostController` poll the input reader itself would have put two consumers on the same buffered
+press, and one of them would silently lose it.
+
+`-ghostTest <seconds>` proves both halves in one pass, and the negative half matters more. A dead
+client asks the server for a punch, a pickup and an interact — all three must be refused, and they are
+refused inside each ServerRpc rather than by hiding the buttons, so an owner-side bypass changes
+nothing. Then it shoves its own corpse. Displacement is a bad witness on a flat floor, since friction
+stops 56 kg at half a metre per second inside two centimetres, so the test measures imparted *speed*,
+peaked across the whole shove window rather than sampled at a fixed offset — the shove is a round trip
+and lands one to three frames later:
+
+```
+[GhostController] -ghostTest: owner 1 is dead and asked for a punch, a pickup and an interact. interact=False (expected False).
+[GhostController] -ghostTest: server verdict carrying=False (expected False), state=Dead. Ghost at (2.25, 0.15, 2.55), nudged=True (expected True). Settling drift over the control window was 0.00m, fastest bone 0.01m/s.
+[GhostController] Ghost of owner 1 nudged Player(Clone) with 25.0 Ns at (2.48, 0.07, 3.16) via ragdoll on LowerLeg.L (4kg, kinematic=False, sleeping=False, v=0.00).
+[GhostController] -ghostTest: fastest bone peaked at 2.28m/s over the shove window against 0.01m/s at rest, and the skeleton moved 0.01m against a corpse that was already at rest.
+```
+
+The control window is the part that makes it evidence: a just-dropped ragdoll is still settling, so
+"the body moved after the shove" proves nothing on its own. The test measures an identical window with
+no shove in it first, and only then shoves. The nudge line appears in *both* the host and the client
+log, which is what proves the RPC round trip rather than a local-only force.
+
 ### The Revive Machine
 
 Being downed costs your friends a walk. Being dead costs them money — money that was going to buy the

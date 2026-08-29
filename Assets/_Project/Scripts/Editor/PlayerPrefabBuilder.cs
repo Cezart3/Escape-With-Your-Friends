@@ -239,6 +239,20 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_actions").objectReferenceValue = controls;
             });
 
+            // What the dead do instead of nothing. Added before the death camera so its ghost root
+            // exists by the time that camera looks for something to follow, and before the input
+            // component because that one has to route Attack through it while the body is a corpse.
+            var ghost = root.AddComponent<GhostController>();
+            SetFields(ghost, so =>
+            {
+                so.FindProperty("_health").objectReferenceValue = health;
+                so.FindProperty("_ragdoll").objectReferenceValue = ragdoll;
+                so.FindProperty("_input").objectReferenceValue = inputReader;
+                so.FindProperty("_melee").objectReferenceValue = melee;
+                so.FindProperty("_carry").objectReferenceValue = carrySystem;
+                so.FindProperty("_interactor").objectReferenceValue = interactor;
+            });
+
             // Nothing else calls the combat systems: they all expose an owner-side Request method and
             // none of them poll input themselves, so without this component punching, tasing, carrying
             // and throwing are unreachable from a keyboard.
@@ -250,6 +264,7 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_taser").objectReferenceValue = taserWeapon;
                 so.FindProperty("_carry").objectReferenceValue = carrySystem;
                 so.FindProperty("_interactor").objectReferenceValue = interactor;
+                so.FindProperty("_ghost").objectReferenceValue = ghost;
             });
 
             var motor = root.AddComponent<PlayerMotor>();
@@ -283,6 +298,7 @@ namespace EscapeWithYourFriends.EditorTools
             {
                 so.FindProperty("_health").objectReferenceValue = health;
                 so.FindProperty("_ragdoll").objectReferenceValue = ragdoll;
+                so.FindProperty("_ghost").objectReferenceValue = ghost;
             });
 
             // Now that the motor exists it can be switched off while the body is limp. The reader is
