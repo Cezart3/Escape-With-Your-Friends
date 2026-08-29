@@ -8,6 +8,7 @@ using FishNet.Managing.Object;
 using FishNet.Object;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace EscapeWithYourFriends.EditorTools
 {
@@ -37,6 +38,8 @@ namespace EscapeWithYourFriends.EditorTools
         const string TaserPath = DataDir + "/Taser.asset";
 
         const string PrefabObjectsPath = "Assets/DefaultPrefabObjects.asset";
+
+        const string InputAssetPath = "Assets/_Project/Input/PlayerControls.inputactions";
 
         /// <summary>Roughly a person: 1.75m to the top of the head.</summary>
         const float ControllerHeight = 1.75f;
@@ -117,7 +120,12 @@ namespace EscapeWithYourFriends.EditorTools
             MeleeWeaponDef fists = EnsureAsset<MeleeWeaponDef>(FistsPath);
             TaserDef taser = EnsureAsset<TaserDef>(TaserPath);
 
-            GameObject root = BuildHierarchy(fists, taser);
+            var controls = AssetDatabase.LoadAssetAtPath<InputActionAsset>(InputAssetPath);
+            if (controls == null)
+                Debug.LogWarning($"[PlayerPrefabBuilder] missing {InputAssetPath}; "
+                                 + "run InputAssetBuilder.BuildInputAsset first or nobody will move.");
+
+            GameObject root = BuildHierarchy(fists, taser, controls);
 
             // Overwrite rather than merge. This prefab is generated output; anything edited into it by
             // hand would be lost on the next run anyway, so losing it loudly is better.
@@ -142,7 +150,7 @@ namespace EscapeWithYourFriends.EditorTools
             if (Application.isBatchMode) EditorApplication.Exit(0);
         }
 
-        static GameObject BuildHierarchy(MeleeWeaponDef fists, TaserDef taser)
+        static GameObject BuildHierarchy(MeleeWeaponDef fists, TaserDef taser, InputActionAsset controls)
         {
             var root = new GameObject("Player");
 
@@ -167,11 +175,12 @@ namespace EscapeWithYourFriends.EditorTools
             controller.radius = ControllerRadius;
             controller.center = new Vector3(0f, ControllerHeight * 0.5f, 0f);
 
-            root.AddComponent<NetworkObject>();
+            var networkObject = root.AddComponent<NetworkObject>();
 
-            // Movement is not written yet (#16), but without this nobody sees anybody move, and the
-            // point of this prefab is to prove four players can see each other.
-            root.AddComponent<NetworkTransform>();
+            // Spectators see this body through the NetworkTransform; the owner never does.
+            var networkTransform = root.AddComponent<NetworkTransform>();
+
+            ConfigurePrediction(networkObject, networkTransform);
 
             // RagdollController first: StunState, ShockState and Carryable all require it, and adding
             // them before it would make Unity add a second, unconfigured one.
@@ -209,10 +218,54 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_taser").objectReferenceValue = taser;
             });
 
+            var inputReader = root.AddComponent<PlayerInputReader>();
+            SetFields(inputReader, so =>
+            {
+                so.FindProperty("_actions").objectReferenceValue = controls;
+            });
+
+            var motor = root.AddComponent<PlayerMotor>();
+            SetFields(motor, so =>
+            {
+                so.FindProperty("_input").objectReferenceValue = inputReader;
+                so.FindProperty("_standHeight").floatValue = ControllerHeight;
+            });
+
+            // Now that the motor exists it can be switched off while the body is limp. The reader is
+            // deliberately not in this list: disabling it releases the cursor and tears down its
+            // action instance, and nothing would bind it again after standing up.
+            SetFields(ragdoll, so =>
+            {
+                SerializedProperty disabled = so.FindProperty("_disableWhileRagdolled");
+                disabled.arraySize = 1;
+                disabled.GetArrayElementAtIndex(0).objectReferenceValue = motor;
+            });
+
             // Last, so its Awake sweep for renderers finds every body part.
             root.AddComponent<PlayerIdentity>();
 
             return root;
+        }
+
+        /// <summary>
+        /// Turns on client prediction for this body.
+        ///
+        /// State forwarding is switched off. With it on, FishNet would replicate the owner's predicted
+        /// states to spectators, which needs the graphical mesh detached under a smoothed child object
+        /// — and the mesh here is the ragdoll rig, which cannot be moved out from under the joints it
+        /// is wired to. With it off, FishNet reconfigures the NetworkTransform to server-authoritative
+        /// and stops sending it to the owner, so the owner is driven by prediction alone and everyone
+        /// else by ordinary interpolation. See NetworkObject.Prediction.cs, line 298.
+        /// </summary>
+        static void ConfigurePrediction(NetworkObject networkObject, NetworkTransform networkTransform)
+        {
+            SetFields(networkObject, so =>
+            {
+                so.FindProperty("_enablePrediction").boolValue = true;
+                // _predictionType stays Other: this is a CharacterController, not a rigidbody.
+                so.FindProperty("_enableStateForwarding").boolValue = false;
+                so.FindProperty("_networkTransform").objectReferenceValue = networkTransform;
+            });
         }
 
         static Transform BuildBone(Bone bone, Transform root, Dictionary<string, Transform> built)

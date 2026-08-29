@@ -1,4 +1,5 @@
 using System;
+using EscapeWithYourFriends.Core;
 using FishNet.Managing;
 using FishNet.Transporting;
 using UnityEngine;
@@ -20,6 +21,7 @@ namespace EscapeWithYourFriends.Net
     ///   -address 192.168.1.5   who to connect to (client only, default 127.0.0.1)
     ///   -port 7770             port to bind or connect to
     ///   -quitAfter 30          exit after this many seconds, for automated smoke tests
+    ///   -latency 50            simulate this many milliseconds each way (development builds)
     ///
     /// With no arguments it does nothing and waits for the lobby to start the connection, which is
     /// what a shipped build does.
@@ -98,17 +100,17 @@ namespace EscapeWithYourFriends.Net
 
         void Start()
         {
-            string[] args = Environment.GetCommandLineArgs();
+            bool host = CommandLine.HasFlag("-host");
+            bool server = CommandLine.HasFlag("-server");
+            bool client = CommandLine.HasFlag("-client");
 
-            bool host = HasFlag(args, "-host");
-            bool server = HasFlag(args, "-server");
-            bool client = HasFlag(args, "-client");
+            string address = CommandLine.GetString("-address", _defaultAddress);
+            var port = (ushort)CommandLine.GetInt("-port", _defaultPort);
 
-            string address = GetValue(args, "-address", _defaultAddress);
-            ushort port = (ushort)GetInt(args, "-port", _defaultPort);
-
-            int quitAfter = GetInt(args, "-quitAfter", 0);
+            int quitAfter = CommandLine.GetInt("-quitAfter", 0);
             if (quitAfter > 0) _quitAt = Time.time + quitAfter;
+
+            ConfigureLatencySimulation(CommandLine.GetInt("-latency", 0));
 
             if (!host && !server && !client)
             {
@@ -182,25 +184,25 @@ namespace EscapeWithYourFriends.Net
             NetworkPlayerRegistry.Clear();
         }
 
-        static bool HasFlag(string[] args, string flag)
+        /// <summary>
+        /// Turns on FishNet's latency simulator.
+        ///
+        /// Prediction is only worth anything under latency, and on one machine there is none: without
+        /// this a four-instance test on localhost proves that the code runs, not that it holds up.
+        /// The value is one-way, so 50 here is the 100ms round trip #16 asks for.
+        ///
+        /// The simulator is compiled out of release builds by FishNet, so this is a no-op there.
+        /// </summary>
+        void ConfigureLatencySimulation(int oneWayMilliseconds)
         {
-            foreach (string arg in args)
-                if (string.Equals(arg, flag, StringComparison.OrdinalIgnoreCase)) return true;
-            return false;
-        }
+            if (oneWayMilliseconds <= 0) return;
 
-        static string GetValue(string[] args, string key, string fallback)
-        {
-            for (int i = 0; i < args.Length - 1; i++)
-                if (string.Equals(args[i], key, StringComparison.OrdinalIgnoreCase))
-                    return args[i + 1];
-            return fallback;
-        }
+            var simulator = _manager.TransportManager.LatencySimulator;
+            simulator.SetLatency(oneWayMilliseconds);
+            simulator.SetEnabled(true);
 
-        static int GetInt(string[] args, string key, int fallback)
-        {
-            string raw = GetValue(args, key, null);
-            return raw != null && int.TryParse(raw, out int value) ? value : fallback;
+            Debug.Log($"[NetworkBootstrap] Simulating {oneWayMilliseconds}ms each way "
+                      + $"({oneWayMilliseconds * 2}ms round trip).");
         }
     }
 }

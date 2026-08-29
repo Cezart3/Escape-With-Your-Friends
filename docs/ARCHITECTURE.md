@@ -53,13 +53,17 @@ one is loaded.
 
 **Why a command-line bootstrap.** The whole development loop for this project is a terminal, and a
 build that can only be started by clicking a button cannot be tested from one. `NetworkBootstrap`
-reads `-host` / `-server` / `-client`, plus `-address`, `-port` and `-quitAfter`:
+reads `-host` / `-server` / `-client`, plus `-address`, `-port`, `-quitAfter`, and the test flags
+`-latency`, `-botMove` and `-motorLog` described under movement below:
 
 ```
 Unity.exe -quit -batchmode -nographics -projectPath .   -executeMethod EscapeWithYourFriends.EditorTools.BuildTool.PerformBuild   -buildOutput D:/Builds/EWYF-dev -development -scriptingBackend mono
 
 EscapeWithYourFriends.exe -batchmode -nographics -host   -port 7770 -quitAfter 18 -logfile host.log
 EscapeWithYourFriends.exe -batchmode -nographics -client -address 127.0.0.1 -port 7770 -logfile c1.log
+
+# the movement test: four bots walking a lap through a simulated 100ms round trip
+EscapeWithYourFriends.exe -batchmode -nographics -host -port 7770     -latency 50 -botMove -motorLog -quitAfter 45 -logfile host.log
 ```
 
 With no arguments it does nothing and waits for the lobby, which is what a shipped build does. In the
@@ -118,6 +122,103 @@ builder also registers the prefab in `DefaultPrefabObjects`, because FishNet's a
 import and that does not reliably happen inside a single batchmode invocation.
 
 ---
+
+### Movement: predicted by the owner, reconciled by the host
+
+`PlayerMotor` is a `TickNetworkBehaviour`, not a `MonoBehaviour`. It runs on the network tick (30Hz),
+never on the frame, because everything below depends on the owner and the host feeding the *same*
+inputs to the *same* code in the *same* order.
+
+The owner simulates its own movement the instant a key goes down and keeps a history of what it did.
+The host re-runs those inputs authoritatively and sends the resulting state back. If the state
+differs from what the owner had predicted, the owner snaps to the host's version and replays every
+input since; when the prediction was right — nearly always — the replay reproduces the same position
+and nothing visible happens. That is what makes movement feel local on a 100ms connection without
+letting a client simply declare where it is standing.
+
+Two structs carry it:
+
+- **`MoveData`** (`IReplicateData`) — what was pressed on one tick: a `Vector2` move axis, a yaw, and
+  a `MoveFlags` byte for sprint/crouch/jump. Three fields on purpose. This goes over the wire every
+  tick, from every player, forever.
+- **`MotorState`** (`IReconcileData`) — everything the replicate reads that is *not* in `MoveData`:
+  position, velocity, `TicksSinceGrounded`, `TicksSinceJump`, `Crouching`. **The counters matter as
+  much as the position.** If a value influences the next tick and is missing from the reconcile, the
+  owner and the host drift apart every time it differs, and the player rubber-bands.
+
+`Tick` builds and replicates the input; `PostTick` calls `CreateReconcile`. Anything sampled in
+`Update` would be a frame out of step with the simulation.
+
+**Spectators do not get this treatment.** The player `NetworkObject` has prediction on, state
+forwarding **off**, and its `NetworkTransform` assigned. That combination makes FishNet call
+`NetworkTransform.ConfigureForPrediction`, which switches the transform to server-authoritative and
+stops sending it to the owner. So the owner is driven purely by prediction, everyone else purely by
+interpolation, and the two never fight over the same transform. Non-owners pay for nothing but a
+transform stream.
+
+Jump is a **buffered one-shot**, consumed in `BuildMoveData` rather than read. At 30Hz a third of a
+second of taps would otherwise land between two ticks and vanish. Sprint and crouch are held, so they
+are just bits.
+
+Stun, downed, carried and ragdolled bodies still fall — they just do not steer. Those states are
+SyncVars rather than part of the reconcile, so a replay uses their *current* value and a mispredicted
+tick is cleaned up by the next reconcile. A ragdolled body switches the `CharacterController` off
+entirely, and the replicate exits early rather than fighting the physics engine for the transform.
+
+The feel is deliberately loose: acceleration and friction rather than instant velocity, a floaty
+`_gravityScale` of 2.2, a jump tuned as a height in metres (`v = sqrt(2gh)`, so the knob is a number
+a playtester can reason about) and coyote ticks. Sliding past the ledge you meant to stop at is the
+joke, not a bug.
+
+### Input: polled, not evented
+
+`PlayerInputReader` is deliberately **not** Unity's `PlayerInput` component. That component pushes
+input through UnityEvents and `SendMessage` on the frame the device changed; prediction needs input
+sampled *by the tick*. So this polls, and buffers the one-shot presses that happen between two ticks.
+
+The action asset itself is generated: `InputAssetBuilder` (editor, batchmode) writes
+`Assets/_Project/Input/PlayerControls.inputactions` through the Input System API rather than by hand,
+because binding strings are the part that fails silently — a typo in `<Gamepad>/leftStick` imports
+cleanly and simply never fires. One `Player` map, nine actions, keyboard/mouse and gamepad on each.
+
+Only the owner ever calls `Bind`, and it binds a **clone** of the asset. Action assets carry their own
+enabled state, so four bodies in one process sharing one instance would fight over it. Non-owned
+bodies keep the component sitting inert.
+
+### Proving it works without a keyboard
+
+A headless smoke test has no devices at all, so a run that only checks for silence would pass on a
+motor that never moved. Two flags close that hole:
+
+- **`-botMove`** puts the reader into a fixed lap: forward, a steady 60°/s turn, sprint for half of
+  every 8-second cycle, a crouch slice, and a jump every 4 seconds. Every branch in the motor is
+  exercised, and because the body keeps turning it also covers moving in a direction it is not
+  facing — where a yaw that failed to replicate would show up. The turn rate is what keeps the lap on
+  the platform: radius is speed over turn rate, so 7.5 m/s at 60°/s is about 7 metres and four bots on
+  the spawn ring stay well inside the 50-metre greybox floor. At 25°/s they walked off the edge and
+  fell for the rest of the run, which reads as a movement bug and is not one.
+- **`-latency 50`** turns on FishNet's `LatencySimulator` for 50ms each way — the 100ms round trip the
+  milestone is specified against. It lives behind `DEVELOPMENT_BUILD`, so it is compiled out of a
+  release build.
+- **`-motorLog`** prints one owner-only line every 60 ticks with the prediction error.
+
+**That error has to be measured against our own history, not against where we happen to stand now.**
+An incoming state is always a round trip old; comparing it to the present measures the latency and
+nothing else. The first version of this did exactly that and reported a steady 2.7m "correction" on a
+perfectly healthy motor. The motor now keeps a 128-tick ring of what it predicted for each tick and
+compares the arriving state against the entry for *its* tick.
+
+Measured on 1 host + 3 clients, Mono development build, `-latency 50 -botMove`:
+
+```
+[PlayerMotor] owner 1 over 60 ticks: 60 reconcile(s), 60 measured, average error 0.0000m, worst 0.0000m
+[PlayerMotor] owner 2 over 60 ticks: 60 reconcile(s), 60 measured, average error 0.0044m, worst 0.2634m
+[PlayerMotor] owner 3 over 60 ticks: 60 reconcile(s), 60 measured, average error 0.0052m, worst 0.3148m
+```
+
+Most windows are exactly zero. The spikes are jump and crouch transitions, where grounding can resolve
+one tick apart on the two machines; they are corrected on the next tick and are far below anything
+visible. Zero exceptions across four processes.
 
 ---
 
