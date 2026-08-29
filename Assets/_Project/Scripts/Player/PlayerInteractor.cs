@@ -91,6 +91,12 @@ namespace EscapeWithYourFriends.Player
             var interactable = hit.collider.GetComponentInParent<IInteractable>();
             if (interactable == null) return null;
 
+            // An empty prompt means the component is present but has nothing to offer — a Rescuable
+            // on a player who is upright, or on a corpse, which is the Revive Machine's job. Skipping
+            // those here is what lets Interact fall through to carrying: without it the interactable
+            // would swallow the key on every body in the game and a corpse could never be picked up.
+            if (string.IsNullOrEmpty(interactable.Prompt)) return null;
+
             networkObject = hit.collider.GetComponentInParent<NetworkObject>();
             return networkObject != null ? interactable : null;
         }

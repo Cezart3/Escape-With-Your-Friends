@@ -592,6 +592,82 @@ regression, on the same principle as `-fallTest`: the test lives inside the comp
 because the alternative is a build flavour that only exists for tests and is therefore not the build
 anyone ships.
 
+### Getting back up
+
+The downed state only means something if there is a way out of it that is not the Revive Machine.
+That way is a teammate holding Interact on you for three and a half seconds, and almost every design
+decision in it is about who owns that timer.
+
+**Thing and doer, the same split as carrying.** `Rescuable` sits on every player and is what a
+teammate aims at; `RescueSystem` sits on every player and is the hold they run when they are the one
+helping. Everybody is both, because everybody ends up on the floor eventually. The split is worth the
+two files because the two halves answer different questions: the victim knows whether it is a target
+and who has it covered, the rescuer knows whether it is still allowed to be helping.
+
+**Progress is replicated on the victim, not the rescuer.** `Rescuable._progress` is a SyncVar at 10Hz
+— a bar that fills in three and a half seconds looks identical at ten updates a second and at thirty.
+It lives there because the HUD (#106) is already drawing a marker over the downed body, and putting
+the bar on the rescuer would mean the HUD has to go hunting for whoever happens to be kneeling
+nearby. `_rescuer` is replicated alongside it for the same reason: a third player can see the rescue
+is handled and go do something more useful.
+
+**The server times the hold.** A client-side countdown ending in one "I rescued them" message is a
+single number a modified build sets to zero, and unlike a mistimed punch this one undoes a death. So
+the client sends exactly two things: the press, which goes through `PlayerInteractor` like every other
+interaction and gets the same range validation, and the release, sent on the key-up edge only. A
+stream of "still holding" packets would tell the server nothing it does not already assume.
+
+Every frame the hold is running, the server re-checks four things, and each one is a rule the mechanic
+is actually about:
+
+- the rescuer is alive and unstunned — punch the helper and the help stops;
+- the rescuer has taken no damage since the hold began — this is the interrupt the whole mechanic
+  exists for, and it is why a firefight is a bad place to pick someone up;
+- the target is still `Downed` — bled out, helped up by someone else, or carried off by a native all
+  end it;
+- the two are within five metres — walking away cancels, and no message from the client is needed.
+
+The damage check compares against `_healthAtStart`, banked in `ServerBegin`, rather than subscribing
+to `Health.Changed`. One number read per frame is cheaper than the subscribe/unsubscribe bookkeeping,
+and it also catches damage that landed in the same frame as the press. One point of damage is enough:
+the interrupt is not about how hard you were hit, it is about whether anyone is shooting at you at
+all.
+
+**An empty prompt means "not a target".** Making every player an `IInteractable` broke the Revive
+Machine. `PlayerInteractor.RequestInteract` returns true whenever it finds an interactable, and
+`PlayerCombatInput` uses that return value to decide whether to fall through to carrying — so a
+`Rescuable` on every body in the game swallowed the Interact key on every body in the game, and a
+corpse could never be picked up again (#25). The fix is a convention on `IInteractable.Prompt`: empty
+or null means the component is present but offering nothing, and `FindTarget` skips it. That does not
+contradict the interface's rule that a prompt is not a permission check — the distinction is what a
+client can answer for free. Life state is a SyncVar sitting in memory, so "is this even a rescue
+target" costs nothing and is never stale in a way that matters. "Can this actor afford it" still needs
+the server, and still lives in `ServerCanInteract`.
+
+Interact is also the first verb in the game that is a hold rather than a tap, which the buffered
+press in `PlayerInputReader` cannot express — by the time the buffer is read the key may already be
+back up. Hence `InteractHeld`, a live read alongside `Sprint` and `Crouch`. Scripted bots report it
+permanently held, so an unrelated bot test never fails on a released key.
+
+**Two tuning calls, both provisional until the #29 playtest.** Bleed-out came down from 90 seconds to
+45: 90 was chosen before there was any way off the floor, and now that there is one, lying there for a
+minute and a half is just a player not playing. Rescue health stays at 35% — enough to stand up, not
+enough to stay in the fight, which is what makes the second knockdown feel earned.
+
+**Downed players cannot crawl, and that is a decision, not a gap.** Crawling means un-ragdolling into
+a whole second locomotion mode, and a downed player who can drag themselves out of danger deflates the
+rescue into a formality. Shorter bleed-out is the answer to the boredom instead. Revisit if the
+playtest says otherwise.
+
+`-rescueTest <seconds>` drives the regression. The sphere cast is the one part that cannot run
+headlessly — it needs a camera pointed at a body — so the test starts where `Rescuable.ServerInteract`
+starts, after the aim has already resolved; everything the mechanic actually guards is downstream of
+that. It downs a teammate, drags it to the rescuer's feet, holds halfway, punches the rescuer for one
+point, and passes only if that cancels — then holds again uninterrupted and requires the victim back
+on `Alive`. The claim is static: every player body on the server carries a `RescueSystem`, so without
+one the flag arms a test per player and they all knock each other down at once, leaving nobody upright
+to do any helping.
+
 ### The ghost
 
 A dead player waits. The wait is deliberate — somebody has to walk over, pick the body up, carry it to

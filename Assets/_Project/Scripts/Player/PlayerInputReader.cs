@@ -62,6 +62,14 @@ namespace EscapeWithYourFriends.Player
 
         public bool Crouch { get; private set; }
 
+        /// <summary>
+        /// Interact held down right now, as opposed to the buffered press. Rescuing a downed
+        /// teammate (#105) is the first verb in the game that is a hold rather than a tap, and a
+        /// buffered press cannot express "still holding" — by the time the buffer is read the key
+        /// may already be back up.
+        /// </summary>
+        public bool InteractHeld { get; private set; }
+
         /// <summary>True while this reader is driving a body, i.e. we own it.</summary>
         public bool IsBound => _bound;
 
@@ -142,6 +150,7 @@ namespace EscapeWithYourFriends.Player
             Move = Vector2.ClampMagnitude(_move.ReadValue<Vector2>(), 1f);
             Sprint = _sprint.IsPressed();
             Crouch = _crouch.IsPressed();
+            InteractHeld = _interact.IsPressed();
 
             Vector2 look = _look.ReadValue<Vector2>();
             Yaw = Mathf.Repeat(Yaw + look.x * _lookSensitivity, 360f);
@@ -183,6 +192,12 @@ namespace EscapeWithYourFriends.Player
             Yaw = Mathf.Repeat(t * 60f, 360f);
             Sprint = phase < 0.5f;
             Crouch = phase > 0.75f && phase < 0.9f;
+
+            // Bots never let go. A scripted lap has no way to aim at a downed friend, so the hold
+            // is worth nothing on its own — but leaving it false would mean a bot that somehow did
+            // start a rescue cancelled it on the very next frame, which is a confusing way for an
+            // unrelated test to fail.
+            InteractHeld = true;
 
             _jumpQueued |= Mathf.Repeat(t, 4f) < Time.deltaTime;
             _attackQueued |= Mathf.Repeat(t, 1.5f) < Time.deltaTime;

@@ -24,7 +24,20 @@ namespace EscapeWithYourFriends.Core
     /// </summary>
     public interface IInteractable
     {
-        /// <summary>What the crosshair shows when this is aimed at. Read on clients.</summary>
+        /// <summary>
+        /// What the crosshair shows when this is aimed at. Read on clients.
+        ///
+        /// **Empty or null means "not offering anything right now", and the interactor skips it.**
+        /// That is not the same as a permission check: it covers only what a client can answer for
+        /// free out of replicated state, such as a <see cref="Combat.Rescuable"/> on a player who is
+        /// standing up. Anything that needs the server — can this actor afford it, is the machine
+        /// busy — still belongs in <see cref="ServerCanInteract"/>, and the prompt is still allowed
+        /// to lie about it.
+        ///
+        /// The skip matters because Interact is a shared key. Without it, a component that is always
+        /// present on every body would swallow the press even when it has nothing to do, and the
+        /// gestures behind it — picking a corpse up, most of all — would become unreachable.
+        /// </summary>
         string Prompt { get; }
 
         /// <summary>

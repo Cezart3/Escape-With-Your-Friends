@@ -196,7 +196,7 @@ namespace EscapeWithYourFriends.EditorTools
             });
 
             var health = root.AddComponent<Health>();
-            root.AddComponent<StunState>();
+            var stun = root.AddComponent<StunState>();
             var shock = root.AddComponent<ShockState>();
             root.AddComponent<Carryable>();
 
@@ -209,6 +209,22 @@ namespace EscapeWithYourFriends.EditorTools
 
             // Same cast as carrying, aimed at machines instead of bodies. Built before the input
             // component because that one has to prefer it.
+            // Both halves of the rescue (#105). Rescuable is what a teammate aims at; RescueSystem
+            // is the hold this player runs when they are the one doing the helping. Every player is
+            // both, because everybody ends up on the floor eventually.
+            var rescuable = root.AddComponent<Rescuable>();
+            SetFields(rescuable, so =>
+            {
+                so.FindProperty("_health").objectReferenceValue = health;
+            });
+
+            var rescueSystem = root.AddComponent<RescueSystem>();
+            SetFields(rescueSystem, so =>
+            {
+                so.FindProperty("_health").objectReferenceValue = health;
+                so.FindProperty("_stun").objectReferenceValue = stun;
+            });
+
             var interactor = root.AddComponent<PlayerInteractor>();
             SetFields(interactor, so =>
             {
@@ -265,6 +281,7 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_carry").objectReferenceValue = carrySystem;
                 so.FindProperty("_interactor").objectReferenceValue = interactor;
                 so.FindProperty("_ghost").objectReferenceValue = ghost;
+                so.FindProperty("_rescue").objectReferenceValue = rescueSystem;
             });
 
             var motor = root.AddComponent<PlayerMotor>();

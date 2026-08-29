@@ -26,12 +26,15 @@ namespace EscapeWithYourFriends.Player
         [SerializeField] CarrySystem _carry;
         [SerializeField] PlayerInteractor _interactor;
         [SerializeField] GhostController _ghost;
+        [SerializeField] RescueSystem _rescue;
 
         // Diagnostics only, behind -cameraLog: a headless run cannot see a punch land, so the count of
         // verbs actually issued is the difference between "combat is wired" and "combat is silent".
         bool _log;
         float _nextLogAt;
         int _attacks, _altAttacks, _interacts, _drops;
+
+        bool _interactHeld;
 
         public override void OnStartClient()
         {
@@ -80,6 +83,14 @@ namespace EscapeWithYourFriends.Player
                 if (!used && _carry != null) _carry.RequestPickupOrDrop();
             }
             if (drop && _carry != null) _carry.RequestThrow();
+
+            // Interact is the only verb in the game that is a hold. The press above starts it, going
+            // through the interactor like everything else so the range is validated once; this is the
+            // release, and it is the only other thing the server needs from the client. Sent on the
+            // edge rather than every frame — the server times the hold itself, so a stream of "still
+            // holding" packets would tell it nothing it does not already assume.
+            if (_rescue != null && _interactHeld && !_input.InteractHeld) _rescue.NotifyReleased();
+            _interactHeld = _input.InteractHeld;
 
             if (attack) _attacks++;
             if (altAttack) _altAttacks++;

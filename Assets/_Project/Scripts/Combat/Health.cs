@@ -25,7 +25,7 @@ namespace EscapeWithYourFriends.Combat
         [SerializeField] float _maxHealth = 100f;
 
         [Tooltip("Seconds spent downed before actually dying. The rescue window.")]
-        [SerializeField] float _bleedOutSeconds = 90f;
+        [SerializeField] float _bleedOutSeconds = 45f;
 
         [Tooltip("Health restored when picked up off the ground while downed.")]
         [Range(0.05f, 1f)]
