@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using EscapeWithYourFriends.Combat;
 using EscapeWithYourFriends.Data;
+using EscapeWithYourFriends.Economy;
 using EscapeWithYourFriends.Net;
 using EscapeWithYourFriends.Player;
 using EscapeWithYourFriends.World;
@@ -206,6 +207,18 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_aimOrigin").objectReferenceValue = aimOrigin;
             });
 
+            // Same cast as carrying, aimed at machines instead of bodies. Built before the input
+            // component because that one has to prefer it.
+            var interactor = root.AddComponent<PlayerInteractor>();
+            SetFields(interactor, so =>
+            {
+                so.FindProperty("_aimOrigin").objectReferenceValue = aimOrigin;
+            });
+
+            // What this player can spend. The Revive Machine bills it; the shop and the casino
+            // (#47, #77) will too.
+            root.AddComponent<Wallet>();
+
             var melee = root.AddComponent<MeleeAttack>();
             SetFields(melee, so =>
             {
@@ -236,6 +249,7 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_melee").objectReferenceValue = melee;
                 so.FindProperty("_taser").objectReferenceValue = taserWeapon;
                 so.FindProperty("_carry").objectReferenceValue = carrySystem;
+                so.FindProperty("_interactor").objectReferenceValue = interactor;
             });
 
             var motor = root.AddComponent<PlayerMotor>();

@@ -592,6 +592,72 @@ regression, on the same principle as `-fallTest`: the test lives inside the comp
 because the alternative is a build flavour that only exists for tests and is therefore not the build
 anyone ships.
 
+### The Revive Machine
+
+Being downed costs your friends a walk. Being dead costs them money — money that was going to buy the
+boat. That is the whole design: letting a bleed-out timer expire produces a bill, and the person who
+pays it is standing next to the person who let it happen.
+
+**Only the dead are customers.** `Health.ServerRevive` refuses anything but `LifeState.Dead`, and the
+machine works around none of it. A downed player carried here is picked up off the floor for free,
+wherever they are, so hauling someone to the machine can never be the *cheaper* option and the machine
+can never become the fast path.
+
+**The price is the content.** `_baseCost + _costPerDeath * max(0, Deaths - 1)` — 250 plus 200 for every
+previous death this run, read from `Health.Deaths` on the body itself. The friend who keeps dying gets
+more expensive, which is precisely the argument the game wants people to have. `Deaths` is a SyncVar
+incremented in `Health.SetState` *before* the state is published, so anything reacting to the death
+already sees the count that includes it, and the HUD can quote a price without asking the server.
+
+Charging goes through `Wallet.ServerTrySpend`, which is both the check and the charge in one call and
+therefore cannot half-bill anyone. `ServerCanInteract` deliberately does *not* consult the wallet: a
+broke player gets a refusal with a number in it rather than a button that silently does nothing.
+
+**Swallowing reuses carrying.** The machine implements `ICarryHolder`, so eating a body is literally
+`Carryable.ServerAttach(machine)` — the same SyncVar-driven `AttachVisual` that parents the hips to a
+carrier's socket and freezes the bones on *every* peer. No second attach path, no replicated animation,
+and no reliance on server-side `TeleportSkeleton`, which clients never see. The intake socket then
+drags the body into the housing over the cycle, and that motion costs zero bandwidth: it is
+`_intakeRest + _intakeTravel * Progress`, where `Progress` is derived from the replicated
+`_cycleEndTick` and `_cycleTicks`. Every peer computes the same number from a tick both sides already
+agree on.
+
+Detaching goes through the *carrier*, not straight to the `Carryable`: `CarrySystem` tracks what it
+holds in its own SyncVar and would otherwise stay convinced it still has a corpse on its shoulder.
+
+**An abandoned body is refused, unpaid.** A corpse whose owner disconnected has nobody to walk out of
+the machine, and charging for that would be taking money for nothing. It stays refused until reconnect
+adoption lands (#111). Cancellation refunds for the same reason: a body despawning mid-cycle, or the
+server stopping, returns the full price to whoever paid it.
+
+**Interact prefers machines over bodies.** `PlayerCombatInput` now holds the short priority list it
+always said it would need. The gesture the machine wants is walking up to it holding a corpse and
+pressing Interact; if carrying won that key, the press would put the body on the floor instead.
+Dropping keeps its own button and the machine takes the body off your shoulder itself, so nothing
+becomes unreachable.
+
+**World props are spawned, not placed in the scene.** The machine is the first object that is part of
+the *map* rather than part of a player, and it raised a question this project had not answered: FishNet
+identifies scene objects by a scene id baked at save time, and every scene here is written by an editor
+script running in batchmode — a path where that baking is unproven. Spawning from a registered prefab
+is the path a player body already proves works on every connect, so props take it too. `WorldSpawner`
+does that on `OnServerConnectionState → Started`, ownerless, from a serialized list of prefab +
+position + rotation.
+
+`-machineTest <seconds>` runs the refusal and the sale in one pass, because neither half is convincing
+without the other: at T the payer's wallet is emptied and the machine is asked to work (must fail),
+three seconds later `-startingMoney`'s balance is restored and it is asked again (must succeed). A
+two-process headless run prints the whole loop:
+
+```
+[WorldSpawner] Spawned ReviveMachine at (0.00, 0.00, 14.00).
+[BodyPersistence] -deathTest: owner 1 killed, state Dead.
+[ReviveMachine] Refused: owner 0 has 0 and the cycle costs 250. Death 1 is not free.
+[ReviveMachine] -machineTest: broke attempt busy=False (expected False), body state Dead.
+[ReviveMachine] Owner 0 paid 250 to revive owner 1 (death 1). 250 left. Cycle runs 4s.
+[ReviveMachine] Cycle finished: owner 1 revived=True state=Alive at (0.00, 0.00, 10.60). Paid by owner 0.
+```
+
 ### Falling out of the world
 
 A game whose central joke is throwing your friends around will drop one out of the world. Three
@@ -649,7 +715,9 @@ is a single terminal command. No manual editor work sits between an idea and a t
 Island 1 is 1024×1024 world units (~1 km²). Island 2 is 512×512 — smaller, denser, meaner.
 
 Points of interest are placed by a `POISpawner` reading a config list. Adding a landmark is a data
-edit, not an editor session.
+edit, not an editor session. `WorldSpawner` is that spawner's honest first draft: the shop, the
+casino, the native village and the wreck are all "a prefab at a position", and the only thing that
+changes on the way to M2 is where the list comes from.
 
 ---
 

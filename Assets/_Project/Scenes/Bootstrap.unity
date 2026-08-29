@@ -361,6 +361,7 @@ GameObject:
   - component: {fileID: 1894776715}
   - component: {fileID: 1894776714}
   - component: {fileID: 1894776713}
+  - component: {fileID: 1894776719}
   m_Layer: 0
   m_Name: NetworkManager
   m_TagString: Untagged
@@ -568,6 +569,22 @@ MonoBehaviour:
   _port: 7770
   _maximumClients: 8
   _clientAddress: localhost
+--- !u!114 &1894776719
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1894776703}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8303e74eb518e294f9cc632ee9a773e9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.WorldSpawner
+  _placements:
+  - Prefab: {fileID: 1273783363121690521, guid: 33ab89d3c6fc9ce4984f59d2b10e0176, type: 3}
+    Position: {x: 0, y: 0, z: 14}
+    Euler: {x: 0, y: 180, z: 0}
 --- !u!1 &2094268924
 GameObject:
   m_ObjectHideFlags: 0

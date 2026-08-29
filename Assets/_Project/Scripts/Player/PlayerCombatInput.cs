@@ -24,6 +24,7 @@ namespace EscapeWithYourFriends.Player
         [SerializeField] MeleeAttack _melee;
         [SerializeField] TaserWeapon _taser;
         [SerializeField] CarrySystem _carry;
+        [SerializeField] PlayerInteractor _interactor;
 
         // Diagnostics only, behind -cameraLog: a headless run cannot see a punch land, so the count of
         // verbs actually issued is the difference between "combat is wired" and "combat is silent".
@@ -58,10 +59,16 @@ namespace EscapeWithYourFriends.Player
             if (attack && _melee != null) _melee.RequestAttack();
             if (altAttack && _taser != null) _taser.RequestFire();
 
-            // Interact is carry for now. Once there are shop counters, the revive machine and the
-            // roulette table (#25, #105), this becomes a short priority list: whatever is aimed at
-            // first, a carryable body last.
-            if (interact && _carry != null) _carry.RequestPickupOrDrop();
+            // The priority list this file always said it would need. Machines win over bodies: the
+            // gesture the Revive Machine wants is walking up to it holding a corpse and pressing
+            // Interact, and if carrying won that key the press would put the body on the floor
+            // instead. Dropping still has its own button, and the machine takes the body off your
+            // shoulder itself, so nothing is unreachable.
+            if (interact)
+            {
+                bool used = _interactor != null && _interactor.RequestInteract();
+                if (!used && _carry != null) _carry.RequestPickupOrDrop();
+            }
             if (drop && _carry != null) _carry.RequestThrow();
 
             if (attack) _attacks++;

@@ -40,6 +40,13 @@ namespace EscapeWithYourFriends.Combat
         /// <summary>Network tick at which a downed player dies. Meaningless unless downed.</summary>
         readonly SyncVar<uint> _bleedOutEndTick = new();
 
+        /// <summary>
+        /// How many times this character has died this run. Drives the Revive Machine's price (#25):
+        /// the friend who keeps dying gets more expensive, which is the argument the game wants
+        /// people to have. Counts deaths, not downs — being helped off the floor is free.
+        /// </summary>
+        readonly SyncVar<int> _deaths = new();
+
         float _invulnerableUntil;
 
         /// <summary>Server-side memory of the blow that put this character down, for kill attribution.</summary>
@@ -53,6 +60,9 @@ namespace EscapeWithYourFriends.Combat
         public bool IsAlive => _state.Value == LifeState.Alive;
         public bool IsDowned => _state.Value == LifeState.Downed;
         public bool IsDead => _state.Value == LifeState.Dead;
+
+        /// <summary>Deaths this run. Replicated, so the HUD and the shop can both quote a price.</summary>
+        public int Deaths => _deaths.Value;
 
         /// <summary>Downed or dead — on the ground either way, so carry and stun treat them alike.</summary>
         public bool IsIncapacitated => _state.Value != LifeState.Alive;
@@ -223,6 +233,10 @@ namespace EscapeWithYourFriends.Combat
         {
             LifeState previous = _state.Value;
             if (previous == next) return;
+
+            // Before the state is published, so anything reading Deaths off the state change sees
+            // the count that includes this death.
+            if (next == LifeState.Dead) _deaths.Value++;
 
             ServerStateChanged?.Invoke(previous, next);
             _state.Value = next;
