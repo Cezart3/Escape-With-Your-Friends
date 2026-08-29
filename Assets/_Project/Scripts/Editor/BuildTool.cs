@@ -42,6 +42,12 @@ namespace EscapeWithYourFriends.EditorTools
                 return;
             }
 
+            // Mono builds in about a minute and IL2CPP in ten, so smoke tests ask for Mono. That is a
+            // per-build choice, not a project decision: the backend is a serialized project setting,
+            // so leaving it flipped would quietly change what a release build ships with.
+            ScriptingImplementation previousBackend =
+                PlayerSettings.GetScriptingBackend(NamedBuildTarget.Standalone);
+
             PlayerSettings.SetScriptingBackend(
                 NamedBuildTarget.Standalone,
                 backend.Equals("mono", StringComparison.OrdinalIgnoreCase)
@@ -62,8 +68,16 @@ namespace EscapeWithYourFriends.EditorTools
             Debug.Log($"[BuildTool] {scenes.Length} scene(s), backend={backend}, " +
                       $"development={development}, output={outputDir}");
 
-            BuildReport report = BuildPipeline.BuildPlayer(options);
-            BuildSummary summary = report.summary;
+            BuildSummary summary;
+            try
+            {
+                summary = BuildPipeline.BuildPlayer(options).summary;
+            }
+            finally
+            {
+                PlayerSettings.SetScriptingBackend(NamedBuildTarget.Standalone, previousBackend);
+                AssetDatabase.SaveAssets();
+            }
 
             if (summary.result == BuildResult.Succeeded)
             {

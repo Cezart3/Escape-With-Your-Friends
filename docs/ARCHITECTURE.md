@@ -30,6 +30,46 @@ ragdolls reads as comedy rather than as a defect.
 The rule: a client may *predict* anything about itself and may *animate* anything, but may never
 *decide* anything that another player can observe or that touches the economy.
 
+### Scene flow and startup
+
+`Assets/_Project/Scenes/Bootstrap.unity` is build index 0 and holds nothing gameplay-specific: a
+camera, a light, a placeholder floor, and the `NetworkManager`. Gameplay scenes load and unload around
+it, so the connection survives travelling between the island, the boat and the second island.
+
+The `NetworkManager` object carries four components. FishNet creates the rest of its sub-managers
+itself in `Awake`, so only these are worth pinning down in the scene:
+
+| Component | Why it is set explicitly |
+|---|---|
+| `NetworkManager` | Holds `DefaultPrefabObjects`. FishNet can find it by scanning the project, but assigning it writes the reference into the scene where a diff can see it |
+| `TimeManager` | Tick rate 30. FishNet already defaults to 30; leaving it implicit means a package update could quietly change how fast the whole game simulates |
+| `Tugboat` | Plain UDP on port 7770, 8 clients. Placeholder — shipping runs on the Steam transport (#13) |
+| `NetworkBootstrap` | Starts the connection from command-line arguments |
+
+**Why Tugboat when shipping is Steam.** The Steam transport needs a running Steam client and an app
+id, which makes it useless headless. Tugboat needs neither, so four instances can be launched from one
+script. Both are FishNet transports behind the same interface, so nothing above this layer knows which
+one is loaded.
+
+**Why a command-line bootstrap.** The whole development loop for this project is a terminal, and a
+build that can only be started by clicking a button cannot be tested from one. `NetworkBootstrap`
+reads `-host` / `-server` / `-client`, plus `-address`, `-port` and `-quitAfter`:
+
+```
+Unity.exe -quit -batchmode -nographics -projectPath .   -executeMethod EscapeWithYourFriends.EditorTools.BuildTool.PerformBuild   -buildOutput D:/Builds/EWYF-dev -development -scriptingBackend mono
+
+EscapeWithYourFriends.exe -batchmode -nographics -host   -port 7770 -quitAfter 18 -logfile host.log
+EscapeWithYourFriends.exe -batchmode -nographics -client -address 127.0.0.1 -port 7770 -logfile c1.log
+```
+
+With no arguments it does nothing and waits for the lobby, which is what a shipped build does. In the
+editor it auto-hosts, so pressing play is a one-player session rather than a disconnected one.
+
+`-scriptingBackend mono` builds in about a minute against roughly ten for IL2CPP, which is the
+difference between a smoke test that gets run and one that does not. The backend is a serialized
+project setting, so `BuildTool` restores whatever was there before — a fast test build must not
+quietly change what a release ships with.
+
 ---
 
 ## The signature mechanics
