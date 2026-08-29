@@ -50,6 +50,7 @@ itself in `Awake`, so only these are worth pinning down in the scene:
 | `SteamRuntime` | Owns `SteamClient.Init` / `Shutdown` for the process, and survives Steam being absent |
 | `TransportSelector` | Picks which link the *client* half dials out on |
 | `NetworkBootstrap` | Starts the connection from command-line arguments |
+| `SteamLobby` | Creates and joins Steam lobbies, and tells `NetworkBootstrap` who to dial |
 
 ### The transport stack
 
@@ -123,6 +124,61 @@ editor it auto-hosts, so pressing play is a one-player session rather than a dis
 difference between a smoke test that gets run and one that does not. The backend is a serialized
 project setting, so `BuildTool` restores whatever was there before — a fast test build must not
 quietly change what a release ships with.
+
+### The Steam lobby
+
+A lobby is a Steam-side room, not a game connection. It exists so the overlay has something to invite
+people into, and so a joiner can be told which SteamID to dial. `SteamLobby` owns it; the traffic
+still runs over the transports above.
+
+**Host.** `CreateLobbyAsync(4)` -> friends only, joinable -> write the lobby data -> start the
+server -> start the local client **over Steam**. That last part is deliberate: FishyFacepunch routes
+a client whose own server is running in the same process through its `ClientHostSocket`, which needs
+no socket, no port and no loopback, so hosting cannot fail because something else holds the UDP port.
+Tugboat keeps listening the whole time, so a friend on the LAN still joins by IP.
+
+**Joiner.** An overlay invite, or a friend clicking Join Game, raises `OnGameLobbyJoinRequested` ->
+`JoinLobbyAsync` -> `OnLobbyEntered` -> read the host out of the lobby data -> connect over Steam.
+Cold starts take the same road from the other end: Steam appends `+connect_lobby <id>` to the command
+line when an invite is accepted while the game is closed, and `SteamLobby` reads it from our own argv
+and from `SteamApps.CommandLine`.
+
+**Join in progress is not a special case.** The lobby stays joinable while the server runs, so a
+friend arriving twenty minutes in walks the same code as one who was there at the start. There is no
+late-join branch to get wrong.
+
+Three lobby-data keys, all written by the host:
+
+| Key | Holds | Why |
+|---|---|---|
+| `ewyf_host` | Host SteamID | Steam hands lobby ownership to another member when the owner leaves, so `lobby.Owner` is not the host — it is whoever is left. The owner field is only the fallback |
+| `ewyf_version` | `Application.version` | Builds get handed around as zips long before there is a Steam depot, so version mismatch is the normal case. A joiner on the wrong build is told so and bounced, instead of desyncing |
+| `ewyf_name` | Host display name | For a lobby list later |
+
+`NetworkBootstrap` gained `StartHost`, `Connect` and `Disconnect` so the lobby reuses its logging and
+its connection rules rather than duplicating them, and it stands down entirely when `-lobbyHost` or
+`-lobbyJoin` is on the command line: two things racing to start the same client is a coin flip.
+
+Testing without an overlay:
+
+```bash
+EscapeWithYourFriends.exe -batchmode -nographics -lobbyHost -quitAfter 40 -logfile host.log
+EscapeWithYourFriends.exe -batchmode -nographics +connect_lobby 109775243737167556 -logfile join.log
+EscapeWithYourFriends.exe -batchmode -nographics -lobbyJoin  109775243737167556 -logfile join.log
+```
+
+**What one machine cannot prove.** Both processes on this machine are the same Steam user, so a
+self-join is seen by Steam as the lobby owner rejoining: the guest branch never runs, and Steam will
+not relay a P2P connection from a process to itself. The cross-account leg — invite from the overlay,
+a second machine connects over Steam — is a playtest, not something this project can verify against
+itself. Same limit as the Steam transport in #13. What is verified here is everything up to it: the
+lobby is created with its data, the server comes up on both transports, the local client attaches
+over the Steam client-host socket, and a LAN joiner drops into the running session.
+
+There is no lobby UI yet — no `UI/` folder exists. The player list ships as data (`Members`,
+`MemberCount`) plus `Entered`, `Left`, `MembersChanged` and `Failed` events, so the HUD that arrives
+with #106 draws it without touching this class. Without Steam the component disables itself and the
+game hosts over Tugboat, which is what every headless test does.
 
 ### SyncVar callbacks fire once, even on a host
 

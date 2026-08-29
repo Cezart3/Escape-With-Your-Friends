@@ -27,7 +27,8 @@ namespace EscapeWithYourFriends.Net
     ///   -fallTest 20           read by FallGuard: drop every body out of the world at this time
     ///
     /// With no arguments it does nothing and waits for the lobby to start the connection, which is
-    /// what a shipped build does.
+    /// what a shipped build does. SteamLobby drives it through StartHost, Connect and Disconnect,
+    /// and -lobbyHost or -lobbyJoin keep this class out of the way entirely.
     /// </summary>
     public class NetworkBootstrap : MonoBehaviour
     {
@@ -117,6 +118,15 @@ namespace EscapeWithYourFriends.Net
 
             ConfigureLatencySimulation(CommandLine.GetInt("-latency", 0));
 
+            if (SteamLobby.RequestedFromCommandLine)
+            {
+                // The lobby decides who connects to whom, and it knows a SteamID this class does
+                // not. Two things racing to start the same client would be a coin flip.
+                Debug.Log("[NetworkBootstrap] A lobby was asked for on the command line; "
+                          + "SteamLobby starts the connection.");
+                return;
+            }
+
             if (!host && !server && !client)
             {
                 if (Application.isEditor && _autoHostInEditor) host = true;
@@ -138,6 +148,42 @@ namespace EscapeWithYourFriends.Net
             _quitAt = -1f;
             Debug.Log("[NetworkBootstrap] -quitAfter elapsed, shutting down.");
             Application.Quit();
+        }
+
+        /// <summary>
+        /// Hosts: server plus a local client, the way a real session runs.
+        ///
+        /// The local client goes over <paramref name="localLink"/>. Steam is the right answer when a
+        /// Steam lobby is up: FishyFacepunch routes a client whose own server is running through its
+        /// ClientHostSocket, so that half needs no socket, no port and no loopback.
+        /// </summary>
+        public void StartHost(NetLink localLink, ushort port = 0)
+        {
+            if (port == 0) port = _defaultPort;
+
+            StartServer(port);
+
+            string address = localLink == NetLink.Steam
+                ? SteamRuntime.LocalSteamId.ToString()
+                : _defaultAddress;
+
+            StartClient(localLink, address, port);
+        }
+
+        /// <summary>Connects as a client. The address is a SteamID when the link is Steam.</summary>
+        public void Connect(NetLink link, string address, ushort port = 0)
+        {
+            if (port == 0) port = _defaultPort;
+            StartClient(link, address, port);
+        }
+
+        /// <summary>Stops whichever halves are running. Safe to call when nothing is.</summary>
+        public void Disconnect()
+        {
+            if (_manager == null) return;
+
+            if (_manager.ClientManager.Started) _manager.ClientManager.StopConnection();
+            if (_manager.ServerManager.Started) _manager.ServerManager.StopConnection(true);
         }
 
         void StartServer(ushort port)

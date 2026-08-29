@@ -201,6 +201,7 @@ namespace EscapeWithYourFriends.EditorTools
             timeManager.SetTickRate(TickRate);
 
             go.AddComponent<NetworkBootstrap>();
+            AttachLobby(go);
             AttachPlayerSpawner(go);
 
             Debug.Log($"[SceneBootstrap] NetworkManager: Multipass on {DefaultPort}, tick {TickRate}Hz.");
@@ -235,6 +236,7 @@ namespace EscapeWithYourFriends.EditorTools
             if (oldSteam != null) Object.DestroyImmediate(oldSteam);
 
             BuildTransports(go);
+            AttachLobby(go);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, BootstrapPath);
@@ -285,6 +287,18 @@ namespace EscapeWithYourFriends.EditorTools
 
             go.AddComponent<SteamRuntime>();
             go.AddComponent<TransportSelector>();
+        }
+
+        /// <summary>
+        /// Puts the Steam lobby on the NetworkManager object, next to the bootstrap it drives.
+        ///
+        /// It sits here rather than on a menu object because a lobby outlives any one scene: an
+        /// invite accepted mid-game has to be handled by something that is still alive, and the
+        /// NetworkManager object is the one thing guaranteed to be.
+        /// </summary>
+        static void AttachLobby(GameObject go)
+        {
+            if (go.GetComponent<SteamLobby>() == null) go.AddComponent<SteamLobby>();
         }
 
         /// <summary>

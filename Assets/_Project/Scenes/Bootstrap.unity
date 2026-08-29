@@ -354,12 +354,13 @@ GameObject:
   - component: {fileID: 1894776706}
   - component: {fileID: 1894776705}
   - component: {fileID: 1894776704}
+  - component: {fileID: 1894776712}
+  - component: {fileID: 1894776718}
+  - component: {fileID: 1894776717}
+  - component: {fileID: 1894776716}
   - component: {fileID: 1894776715}
   - component: {fileID: 1894776714}
   - component: {fileID: 1894776713}
-  - component: {fileID: 1894776712}
-  - component: {fileID: 1894776711}
-  - component: {fileID: 1894776710}
   m_Layer: 0
   m_Name: NetworkManager
   m_TagString: Untagged
@@ -452,31 +453,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1894776710
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1894776703}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5a25f9605ed70f64c90f72ce2d416437, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Net.TransportSelector
---- !u!114 &1894776711
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1894776703}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e823f2aa4979b314f8e2d0a57bfdc1c0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Net.SteamRuntime
-  _appId: 480
 --- !u!114 &1894776712
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -489,7 +465,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34e4a322dca349547989b14021da4e23, type: 3}
   m_Name: 
   m_EditorClassIdentifier: FishNet.Runtime::FishNet.Managing.Transporting.TransportManager
-  Transport: {fileID: 1894776713}
+  Transport: {fileID: 1894776716}
   _maximumClientPacketSize: 20480
   _intermediateLayer: {fileID: 0}
   _latencySimulator:
@@ -507,14 +483,53 @@ MonoBehaviour:
   m_GameObject: {fileID: 1894776703}
   m_Enabled: 1
   m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 906eaf4fa43a6854a9e8db66135a0ba8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Net.SteamLobby
+  _maxMembers: 4
+  _port: 7770
+--- !u!114 &1894776714
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1894776703}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a25f9605ed70f64c90f72ce2d416437, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Net.TransportSelector
+--- !u!114 &1894776715
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1894776703}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e823f2aa4979b314f8e2d0a57bfdc1c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Net.SteamRuntime
+  _appId: 480
+--- !u!114 &1894776716
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1894776703}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 314b449d3505bd24487ba69b61c2fda5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: FishNet.Runtime::FishNet.Transporting.Multipass.Multipass
   GlobalServerActions: 1
   _transports:
-  - {fileID: 1894776715}
-  - {fileID: 1894776714}
---- !u!114 &1894776714
+  - {fileID: 1894776718}
+  - {fileID: 1894776717}
+--- !u!114 &1894776717
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -532,7 +547,7 @@ MonoBehaviour:
   _maximumClients: 16
   _clientAddress: 
   _timeout: 25
---- !u!114 &1894776715
+--- !u!114 &1894776718
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
