@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using EscapeWithYourFriends.Combat;
 using EscapeWithYourFriends.Data;
+using EscapeWithYourFriends.Net;
 using EscapeWithYourFriends.Player;
 using EscapeWithYourFriends.World;
 using FishNet.Component.Transforming;
@@ -260,6 +261,16 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_aimOrigin").objectReferenceValue = aimOrigin;
             });
 
+            // Death pulls the view out to third person. Built after the rig because it has to beat
+            // the rig's priority, and separate from it because a second camera and a blend is how
+            // every later view steal works too — the ghost, the vehicle chase, the revive machine.
+            var deathCamera = root.AddComponent<DeathCamera>();
+            SetFields(deathCamera, so =>
+            {
+                so.FindProperty("_health").objectReferenceValue = health;
+                so.FindProperty("_ragdoll").objectReferenceValue = ragdoll;
+            });
+
             // Now that the motor exists it can be switched off while the body is limp. The reader is
             // deliberately not in this list: disabling it releases the cursor and tears down its
             // action instance, and nothing would bind it again after standing up.
@@ -273,8 +284,17 @@ namespace EscapeWithYourFriends.EditorTools
             // Server-side net for bodies that end up outside the world. See #110.
             root.AddComponent<FallGuard>();
 
-            // Last, so its Awake sweep for renderers finds every body part.
-            root.AddComponent<PlayerIdentity>();
+            // Second to last, so its Awake sweep for renderers finds every body part.
+            var identity = root.AddComponent<PlayerIdentity>();
+
+            // After the identity, because an abandoned body has to unregister itself from the roster
+            // and wants the reference rather than a GetComponent at runtime.
+            var persistence = root.AddComponent<BodyPersistence>();
+            SetFields(persistence, so =>
+            {
+                so.FindProperty("_health").objectReferenceValue = health;
+                so.FindProperty("_identity").objectReferenceValue = identity;
+            });
 
             return root;
         }

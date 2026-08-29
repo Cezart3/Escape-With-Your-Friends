@@ -107,10 +107,13 @@ namespace EscapeWithYourFriends.Combat
 
         void AttachVisual(NetworkObject carrier)
         {
-            var socket = carrier.GetComponent<CarrySystem>()?.CarrySocket;
+            // Asked for by interface, not by type: a truck bed and a boat deck are holders too, and
+            // neither of them has a CarrySystem. See ICarryHolder.
+            Transform socket = carrier.GetComponent<ICarryHolder>()?.CarrySocket;
             if (socket == null)
             {
-                Debug.LogWarning($"[Carryable] {carrier.name} has no CarrySocket; cannot attach {name}.");
+                Debug.LogWarning($"[Carryable] {carrier.name} is not a carry holder, or has no "
+                                 + $"socket; cannot attach {name}.");
                 return;
             }
 

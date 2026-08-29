@@ -58,3 +58,6 @@ BuildOutput/
 Steam/sdk/
 *.log
 .env
+
+# Claude Code session state
+.claude/

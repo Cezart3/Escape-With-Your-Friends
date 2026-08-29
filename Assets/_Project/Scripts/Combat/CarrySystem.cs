@@ -10,8 +10,11 @@ namespace EscapeWithYourFriends.Combat
     ///
     /// Clients ask; the server decides. Range and eligibility are re-checked server-side on every
     /// request, so a client cannot pick something up across the map by editing its own range value.
+    ///
+    /// The socket is exposed through <see cref="ICarryHolder"/> so that a vehicle seat can offer
+    /// one too without pretending to be a character; see that interface for why.
     /// </summary>
-    public class CarrySystem : NetworkBehaviour
+    public class CarrySystem : NetworkBehaviour, ICarryHolder
     {
         [Header("References")]
         [Tooltip("Transform the carried body is parented to, usually on the character's shoulders.")]
@@ -33,6 +36,7 @@ namespace EscapeWithYourFriends.Combat
         StunState _stun;
         Health _health;
 
+        /// <inheritdoc />
         public Transform CarrySocket => _carrySocket;
         public bool IsCarrying => _carrying.Value != null;
         public Carryable Carried => _carrying.Value;

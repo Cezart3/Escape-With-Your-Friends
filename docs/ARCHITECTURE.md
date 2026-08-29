@@ -538,6 +538,60 @@ they stay engaged and stay able to interfere.
 The escalation is the point. Going down is recoverable, being carried off is a fight, and staying
 dead is a bill.
 
+**The view from a corpse.** A first-person camera locked inside a ragdoll's skull is a face full of
+dirt, and a player who cannot see anything stops caring what happens to their body. Death therefore
+pulls the view out to third person. `DeathCamera` is a *second* `CinemachineCamera`, built on death at
+priority 20 against the rig's 10 and destroyed on revive, so the Brain blends both ways and neither
+camera knows the other exists. It tracks the hip bone rather than the body root, because once the
+ragdoll takes over the root stops moving and the corpse slides away from it, and the position damping
+is heavy on purpose — a hip being punted down a hill is not something to follow tightly. The whole
+class is one public method, `Follow(Transform)`, which is also how the ghost gets built: spectating a
+friend is that call with somebody else's bones and the same blend carries the player there.
+
+**A body outlives its owner.** FishNet despawns everything a connection owns the moment that
+connection drops, which is the right default and exactly wrong here. A dead player is a physical
+object their friends have to haul and pay for, and the most common reason to be dead for a long time
+is that the game crashed. If the corpse leaves with the connection, the punishment for a bad
+connection is that your friends cannot get you back.
+
+`BodyPersistence` keeps it, and it does so by ordering rather than by a flag. FishNet's
+`PreventDespawnOnDisconnect` is serialized and internal — unreachable at runtime, and turning it on
+for the player prefab would leave a standing mannequin behind after every disconnect. But
+`ServerManager` raises `OnRemoteConnectionState` *before* it sweeps `connection.Objects`, so removing
+ownership inside that handler takes the body out of the collection the sweep is about to read. No
+prefab flag, no fork, and no despawn-and-respawn dance that would lose the ragdoll's pose and whatever
+the body is currently tangled in.
+
+It only fires if you were already down. An upright player who quits takes their body with them:
+leaving a standing copy behind would be a free decoy and an invitation to disconnect on purpose, and
+there is nothing there to revive. An abandoned body is unregistered from `NetworkPlayerRegistry`, so
+the squad list stops claiming someone is present, and appears in the static `BodyPersistence.Abandoned`
+list the Revive Machine reads instead. `PlayerMotor` builds no input for a body it does not own, so an
+ownerless body simply stands where it fell.
+
+Reclaiming your own body on reconnect is deliberately *not* implemented. It needs a player key that
+survives a reconnect, and neither key available today works: FishNet reuses client ids, so keying by
+id hands a corpse to whoever takes the free slot, and every Tugboat test client shares the address
+`127.0.0.1`. `ServerAdopt(NetworkConnection)` is the seam left for it — and the Revive Machine needs
+that same call anyway, since a revived body with no owner cannot be walked away.
+
+**What you were carrying stays on you.** Death does not scatter loot and does not bank it. The body is
+already the object that has to be recovered, so making it the container costs nothing and doubles the
+stakes of the haul. Inventory itself is M3; the seam it will hook is `Health.ServerStateChanged`,
+which fires server-side before the state SyncVar is written.
+
+**A truck bed is a carrier too.** `Carryable` used to reach for a `CarrySystem` by type, which quietly
+decided that only a character with arms can hold a body. `ICarryHolder` is that assumption made
+explicit and then removed: one property, `CarrySocket`, implemented by `CarrySystem` today and by a
+vehicle seat or a boat deck later, with no second attach path and no fake `CarrySystem` bolted onto a
+truck. Everything else about carrying — the range check, the throw impulse, dropping on death — stays
+with the holder.
+
+`-deathTest <seconds>`, `-deathTestOwner <id>` and `-reviveTest <seconds>` drive the headless
+regression, on the same principle as `-fallTest`: the test lives inside the component it tests,
+because the alternative is a build flavour that only exists for tests and is therefore not the build
+anyone ships.
+
 ### Falling out of the world
 
 A game whose central joke is throwing your friends around will drop one out of the world. Three
