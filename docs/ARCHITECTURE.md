@@ -668,6 +668,78 @@ on `Alive`. The claim is static: every player body on the server carries a `Resc
 one the flag arms a test per player and they all knock each other down at once, leaving nobody upright
 to do any helping.
 
+### The squad HUD
+
+A bleed-out timer nobody can see is not tension, it is a coin flip that happens off screen. The HUD is
+what turns 45 seconds of `Health` state into a decision: who is down, how long they have, how far away
+they are, and whether somebody is already on it.
+
+**The model is separated from the widgets, and that split is what makes the HUD testable.** A headless
+run has no screen, no font and no graphics device, so a HUD written as one lump of Canvas code can only
+ever be checked for "did not throw". `SquadModel` is pure data — one struct per player, built from
+`NetworkPlayerRegistry` plus `Health`, `Carryable` and `Rescuable` — and it runs on every peer whether
+or not a canvas exists. `SquadPanel` and `DownedMarkers` are the only parts that touch uGUI, and
+`HudRoot` builds them only when `SystemInfo.graphicsDeviceType` is not `Null`.
+
+**Nothing in the HUD talks to the server.** Every number it shows is already replicated onto this peer:
+the life state, the tick the bleed-out ends on, the rescuer and the hold progress. A HUD that had to
+ask the server what to draw would lie for a round trip every time something happened, which is exactly
+when it matters. The corollary is that the HUD is a read-only view — it never sends, so nothing about
+it needs validating.
+
+**Built in code, and with legacy `UnityEngine.UI.Text`.** Same rule as the scene and the arena: a thing
+that only exists as a binary someone assembled by hand cannot be reviewed in a diff or rebuilt from a
+terminal, and a HUD is the easiest place in a project to break that rule. TextMeshPro was the obvious
+choice and is not usable here: it needs its essential resources imported through an editor menu before
+a single character renders, and an asset that only appears when a human clicks a menu item is the kind
+of dependency this project keeps out. The built-in font has no asset dependencies at all. `HudFactory`
+is the one file that would change if that ever stops being true.
+
+There is deliberately no `GraphicRaycaster` and no `EventSystem`. Nothing in this HUD is clickable, and
+a raycaster stretched over the whole screen is a good way to eat a click the game wanted.
+
+The panel is one row per player in registration order. Sorting by "most urgent" was the alternative and
+is wrong: rows that move while you are reading them are rows you have to re-find every time somebody
+goes down, which is the exact moment you have no attention to spare. The local player is marked in
+place rather than pulled to the top for the same reason. Rows are built once and reused; four players
+is a small number, but this refreshes every frame.
+
+Colour carries the state, not the identity. The swatch is the player's own colour and answers *who*;
+everything else on the row is coloured by *what happened* — green when someone is helping, purple when
+they are being carried off, grey when dead, and amber running to red as the timer empties, so the
+colour is the countdown for anyone glancing rather than reading. A red player being dead has to look
+different from a red player being fine.
+
+Markers answer the other half. The squad list says *that* someone is down; the marker says *where*,
+and a countdown you cannot act on is only stress. Two details do the work. The anchor is the hip bone,
+not the body root — once the ragdoll takes over, the root stops moving and a root marker would hang in
+the air where the player went down rather than over where they now are, which also makes the marker
+follow a corpse that somebody has picked up. And a marker for a player who is off screen is clamped to
+the screen edge rather than hidden, because the common case is that they went down behind you; a point
+behind the camera is mirrored through the screen centre first, since `WorldToScreenPoint` returns it
+upside-down and backwards when `z` is negative and drawing it unmirrored sends the arrow the wrong way.
+
+The local body is found through ownership every frame rather than cached at spawn. Which body is yours
+is not fixed for a session: the ghost (#26) and reconnect adoption (#111) both change it.
+
+`-hudTest <seconds>` prints the squad rows once a second on whichever peer it is passed to, and the run
+that matters is the client one. Paired with `-rescueTest` on the host, both peers print the same player
+counting down from the same deadline:
+
+```
+[HudRoot] -hudTest host:   owner 1 Player 2 [2m]  DOWN 0:44
+[HudRoot] -hudTest client: owner 1 Player 2 [you] DOWN 0:44
+```
+
+That is the claim worth proving. The countdown is derived from a replicated tick, not from a local
+timer started by a message, so it is the same number on a machine that is not the server — and it stays
+the same number after a dropped packet, which a local timer would not.
+
+`-rescueTest` waits three seconds between downing the victim and reaching for them, rather than half a
+second, so that a once-a-second sample on both peers lands inside the window where the victim is simply
+down. Without the gap every sample landed mid-rescue and the number the HUD exists to show was never
+observed.
+
 ### The ghost
 
 A dead player waits. The wait is deliberate — somebody has to walk over, pick the body up, carry it to

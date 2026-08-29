@@ -234,8 +234,13 @@ namespace EscapeWithYourFriends.Combat
                     Debug.Log($"[RescueSystem] -rescueTest: downed owner {_testVictim.OwnerId} at "
                               + $"{spot}, {_testVictim.Health.BleedOutRemaining:0.0}s to bleed out.");
 
+                    // Three seconds on the floor before anyone reaches for them, not half a second.
+                    // The gap is what the HUD test needs: a window where the victim is simply down,
+                    // long enough for a once-a-second sample on both peers to land inside it and
+                    // print the bleed-out countdown. Without it every sample lands mid-rescue and
+                    // the number the HUD exists to show is never observed.
                     _testPhase = 2;
-                    _testAt = Time.time + 0.5f;
+                    _testAt = Time.time + 3f;
                     return;
                 }
 

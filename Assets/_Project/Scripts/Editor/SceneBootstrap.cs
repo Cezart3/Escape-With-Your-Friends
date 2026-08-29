@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq;
 using EscapeWithYourFriends.Net;
+using EscapeWithYourFriends.UI;
 using EscapeWithYourFriends.World;
 using FishNet.Managing;
 using FishNet.Managing.Object;
@@ -23,6 +24,7 @@ namespace EscapeWithYourFriends.EditorTools
     ///   Unity.exe -quit -batchmode -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.SceneBootstrap.EnsureNetworkManager
     ///   Unity.exe -quit -batchmode -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.SceneBootstrap.EnsureTransports
     ///   Unity.exe -quit -batchmode -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.SceneBootstrap.EnsureWorldSpawner
+    ///   Unity.exe -quit -batchmode -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.SceneBootstrap.EnsureHud
     ///
     /// Bootstrap is the scene that ships as index 0: it holds nothing gameplay-specific and hosts the
     /// NetworkManager, so gameplay scenes can be loaded and unloaded around it.
@@ -173,6 +175,37 @@ namespace EscapeWithYourFriends.EditorTools
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, BootstrapPath);
+
+            if (Application.isBatchMode) EditorApplication.Exit(0);
+        }
+
+        /// <summary>
+        /// Adds the HUD to the existing Bootstrap scene if it is missing.
+        ///
+        ///   Unity.exe -quit -batchmode -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.SceneBootstrap.EnsureHud
+        ///
+        /// The HUD is a bare GameObject with one component: everything it draws is built in code at
+        /// runtime, so there is nothing here to lay out and nothing to keep in sync with a prefab.
+        /// It lives in Bootstrap rather than in a gameplay scene because it has to survive the scene
+        /// loads that will eventually swap the arena for the island.
+        /// </summary>
+        public static void EnsureHud()
+        {
+            var scene = EditorSceneManager.OpenScene(BootstrapPath, OpenSceneMode.Single);
+
+            if (Object.FindFirstObjectByType<HudRoot>() != null)
+            {
+                Debug.Log("[SceneBootstrap] HUD already present; nothing to do.");
+            }
+            else
+            {
+                var go = new GameObject("HUD");
+                go.AddComponent<HudRoot>();
+
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene, BootstrapPath);
+                Debug.Log($"[SceneBootstrap] HUD added to {BootstrapPath}");
+            }
 
             if (Application.isBatchMode) EditorApplication.Exit(0);
         }
