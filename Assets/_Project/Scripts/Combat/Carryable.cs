@@ -98,8 +98,7 @@ namespace EscapeWithYourFriends.Combat
 
         void OnCarrierChanged(NetworkObject prev, NetworkObject next, bool asServer)
         {
-            if (asServer && IsClientStarted) return;
-
+            // Fires on the host as well; see Health.OnHealthChanged for why there is no guard.
             if (next != null) AttachVisual(next);
             else DetachVisual();
 

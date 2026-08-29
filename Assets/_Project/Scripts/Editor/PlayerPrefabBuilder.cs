@@ -192,9 +192,9 @@ namespace EscapeWithYourFriends.EditorTools
                 // _disableWhileRagdolled stays empty until there is a movement script to disable.
             });
 
-            root.AddComponent<Health>();
+            var health = root.AddComponent<Health>();
             root.AddComponent<StunState>();
-            root.AddComponent<ShockState>();
+            var shock = root.AddComponent<ShockState>();
             root.AddComponent<Carryable>();
 
             var carrySystem = root.AddComponent<CarrySystem>();
@@ -224,11 +224,39 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_actions").objectReferenceValue = controls;
             });
 
+            // Nothing else calls the combat systems: they all expose an owner-side Request method and
+            // none of them poll input themselves, so without this component punching, tasing, carrying
+            // and throwing are unreachable from a keyboard.
+            var combatInput = root.AddComponent<PlayerCombatInput>();
+            SetFields(combatInput, so =>
+            {
+                so.FindProperty("_input").objectReferenceValue = inputReader;
+                so.FindProperty("_melee").objectReferenceValue = melee;
+                so.FindProperty("_taser").objectReferenceValue = taserWeapon;
+                so.FindProperty("_carry").objectReferenceValue = carrySystem;
+            });
+
             var motor = root.AddComponent<PlayerMotor>();
             SetFields(motor, so =>
             {
                 so.FindProperty("_input").objectReferenceValue = inputReader;
                 so.FindProperty("_standHeight").floatValue = ControllerHeight;
+            });
+
+            // The camera is built after the motor because it reads from it, and before the ragdoll
+            // list because it must *not* be in that list: the camera has to keep working while limp —
+            // watching yourself get dragged around is the point — so it follows the head bone instead
+            // of the body root and never stops updating.
+            var cameraRig = root.AddComponent<PlayerCameraRig>();
+            SetFields(cameraRig, so =>
+            {
+                so.FindProperty("_input").objectReferenceValue = inputReader;
+                so.FindProperty("_motor").objectReferenceValue = motor;
+                so.FindProperty("_ragdoll").objectReferenceValue = ragdoll;
+                so.FindProperty("_shock").objectReferenceValue = shock;
+                so.FindProperty("_health").objectReferenceValue = health;
+                so.FindProperty("_headBone").objectReferenceValue = bones["Head"];
+                so.FindProperty("_aimOrigin").objectReferenceValue = aimOrigin;
             });
 
             // Now that the motor exists it can be switched off while the body is limp. The reader is
@@ -280,6 +308,11 @@ namespace EscapeWithYourFriends.EditorTools
             var body = go.AddComponent<Rigidbody>();
             body.mass = bone.Mass;
             body.isKinematic = true; // RagdollController flips this; a body that starts limp falls over.
+
+            // Physics runs at 50Hz and the screen does not. Without interpolation a ragdoll steps
+            // between fixed frames, which is invisible on a body across the room and is the whole
+            // picture when the camera is riding the head bone. See PlayerCameraRig.
+            body.interpolation = RigidbodyInterpolation.Interpolate;
 
             // The mesh carries the collider. Unity attaches a collider to the nearest rigidbody above
             // it, so a scaled child collider still belongs to this bone.

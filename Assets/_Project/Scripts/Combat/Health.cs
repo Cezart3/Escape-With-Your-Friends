@@ -237,14 +237,16 @@ namespace EscapeWithYourFriends.Combat
 
         void OnHealthChanged(float prev, float next, bool asServer)
         {
-            // Both server and client raise this; the host would otherwise fire it twice.
-            if (asServer && IsClientStarted) return;
+            // Not guarded against running on a host. FishNet raises this once per machine, not
+            // once per perspective: a server-side write invokes it with asServer true and never
+            // repeats it as the client, so skipping the asServer invoke means a host never sees
+            // its own changes at all.
             Changed?.Invoke(prev, next);
         }
 
         void OnStateChanged(LifeState prev, LifeState next, bool asServer)
         {
-            if (asServer && IsClientStarted) return;
+            // Fires on the host as well; see Health.OnHealthChanged for why there is no guard.
             StateChanged?.Invoke(prev, next);
         }
     }

@@ -74,6 +74,24 @@ difference between a smoke test that gets run and one that does not. The backend
 project setting, so `BuildTool` restores whatever was there before — a fast test build must not
 quietly change what a release ships with.
 
+### SyncVar callbacks fire once, even on a host
+
+Every `OnChange` handler in this project runs unguarded. That is deliberate and it is the opposite of
+what the FishNet documentation suggests: the callback carries an `asServer` flag, which reads like an
+invitation to skip one of two invocations on a machine that is both.
+
+There is only ever one. `SyncVar.SetValue` picks a single perspective — `asServer` is true whenever the
+server is started — and invokes the callback once with it. A host writing its own health therefore gets
+exactly one call, with `asServer` true, and never a second one as the client. Code shaped as
+`if (asServer && IsClientStarted) return;` compiles, reads as careful, and silently deletes the event on
+the one machine that is always in the game.
+
+It cost a full test cycle to find: the host's camera never shook, because `Health.Changed` never
+reached it, because the guard swallowed the only invocation. Five callbacks had the same guard —
+health, life state, stun, carrier and identity — so on a host the player who is hosting had no impact
+shake, no name update and no colour. Every one of them now fires on both sides, and the machine that
+does not care about a given change simply has no subscriber for it.
+
 ### Player bodies, identity and the registry
 
 A connection is not a player. `PlayerSpawner` on the `NetworkManager` object turns one into the other:
@@ -185,6 +203,90 @@ Only the owner ever calls `Bind`, and it binds a **clone** of the asset. Action 
 enabled state, so four bodies in one process sharing one instance would fight over it. Non-owned
 bodies keep the component sitting inert.
 
+Buttons reach the combat systems through one small owner-only component, `PlayerCombatInput`: attack →
+`MeleeAttack.RequestAttack`, alt-attack → `TaserWeapon.RequestFire`, interact and drop →
+`CarrySystem`. None of those systems poll input themselves, on purpose — a weapon that reads the
+keyboard cannot be fired by an NPC, a scripted test bot or a vehicle turret — so this is the single
+place that knows which button means which verb. Combat is not predicted, so it runs on the frame
+rather than the tick, but it still *consumes* from the reader's buffer rather than reading the device:
+a tap can fall between two frames of a stuttering client, and a punch that silently did not happen is
+the worst possible bug in a game about punching your friends.
+
+### Looking around: a camera that is not attached to the body
+
+The camera is **not a child of the player body**, and that is the whole design.
+
+The body is moved by prediction, which means it moves once per network tick — 30 times a second —
+while the screen refreshes at 60 or 144. Parenting the camera to it hands that stepping straight to
+the player's eyes, and no amount of Cinemachine damping downstream can recover motion that was never
+sampled in the first place. FishNet ships a `NetworkTickSmoother` for exactly this, but it is beta,
+it is a `NetworkBehaviour` that has to sit on a graphical child object, and it configures through
+private serialized structs that are awkward to fill from an editor script. `PlayerCameraRig` does the
+smoothing itself instead, in about fifteen lines. Worth revisiting when that component leaves beta.
+
+So the rig owns a **detached target transform** and splits the two halves of a camera pose by where
+they come from:
+
+- **Position** is filtered toward the body's eye point with an exponential follow, time constant 35ms
+  — roughly one tick. Written as `1 - e^(-dt/tau)` rather than a constant `Lerp` factor, because a
+  constant factor is a *different filter at every frame rate*, which is why cameras written that way
+  feel snappy on a fast machine and floaty on a slow one. A jump of more than 1.5m snaps instead of
+  sliding: that is a teleport or a respawn, not motion.
+- **Rotation** is taken from the mouse at frame rate and never filtered at all, so rotational jitter
+  is structurally impossible. Yaw comes from the same `PlayerInputReader` field the motor replicates,
+  so the camera and the body always agree without either driving the other. Pitch is camera-only and
+  is never sent anywhere.
+
+Between the target and the actual `Camera` sits a `CinemachineCamera` with `HardLockToTarget` +
+`RotateWithFollowTarget` — no damping of its own, so there is one filter in the chain rather than two
+fighting each other. Cinemachine is there for what comes next: spectating a dead friend (#26), a
+vehicle chase camera, the revive machine's animation are each a second virtual camera and a priority
+change, instead of a pile of if-statements in the rig. `SceneBootstrap` puts a `CinemachineBrain` on
+the scene camera; the rig adds one defensively if it is missing. The rig runs at
+`[DefaultExecutionOrder(-100)]` because `CinemachineBrain` declares no order of its own, and the
+target has to be written before the brain reads it.
+
+Only the owner runs any of this. A spectator's view of someone else's body is the `NetworkTransform`,
+so `OnStartClient` disables the component outright on non-owned bodies. Because the camera is not
+parented to the body, `OnStopClient` has to destroy it explicitly — otherwise despawning would leave
+the highest-priority view in the scene pointed at nothing.
+
+**Ragdolled.** When the ragdoll takes over, the body root stops moving and the head bone is the only
+thing that knows where the player's eyes are, so the follow target switches to the head bone and the
+time constant is loosened to 90ms — being dragged around should be woozy, not nauseating. Bob and
+shake are skipped entirely while limp. The other half of that fix is not in the rig at all: every
+ragdoll `Rigidbody` is built with `RigidbodyInterpolation.Interpolate`, because physics runs at 50Hz
+and the screen does not. Stepping is invisible on a body across the room and is the entire picture
+when the camera is riding that body's skull.
+
+**Head bob** is driven by distance travelled, not by time, so it slows down when you slow down. A
+figure of eight: vertical at twice the phase, lateral and roll at once. Both are added *after* the
+follow filter, never before — smoothing a footstep is the same as deleting it. When you stop walking
+the offset is unwound rather than cut, because dropping it to zero on the frame you stop is a visible
+snap.
+
+**Shake is trauma, not amplitude.** A single 0..1 value that decays linearly and is squared on the way
+out, so small trauma is a nudge and large trauma is the whole screen. Two consequences, both wanted:
+several hits landing together *build* instead of the last one overwriting the rest, and the falloff is
+sharp rather than a long fade. The displacement is Perlin noise sampled on five separate rows, so
+consecutive samples are related — random per frame is static, not shake. Two things feed it:
+
+- `Health.Changed` — scaled by the fraction of max health lost, so a stray punch is a nudge and being
+  run over is the whole screen. Healing raises health and shakes nothing.
+- `ShockState.CameraShake` — the taser holds trauma at a **floor** for as long as the shock lasts,
+  which gives a continuous rattle without a coroutine ticking it.
+
+Anything else that wants a kick calls `AddShake(0..1)`.
+
+**FOV** eases between 70 and 78 while sprinting on the ground, 180ms time constant.
+
+**Aim.** The rig pitches the body's `AimOrigin` to match the view, so a punch or a taser shot goes at
+whatever is under the crosshair rather than straight out of the chest at eye level. Only the
+*rotation* is touched, and that is a deliberate limit: the weapons send a direction over the wire and
+the server resolves the hit from **its own** copy of that transform, so moving the local one's
+position would change nothing that is transmitted while quietly desyncing what the player sees from
+what the server checks. `AimValidation` only ever tests the horizontal angle, so pitch is free.
+
 ### Proving it works without a keyboard
 
 A headless smoke test has no devices at all, so a run that only checks for silence would pass on a
@@ -201,6 +303,19 @@ motor that never moved. Two flags close that hole:
   milestone is specified against. It lives behind `DEVELOPMENT_BUILD`, so it is compiled out of a
   release build.
 - **`-motorLog`** prints one owner-only line every 60 ticks with the prediction error.
+- **`-cameraLog`** prints one owner-only line every 2 seconds with frame count, average and **worst**
+  frame time, FOV, peak trauma and how many frames of the interval were ragdolled. The worst frame in
+  an interval is the only part of "smooth 60fps, no jitter" a headless run can actually report; the
+  average is not a performance number at all under `-nographics`, where nothing renders. Trauma and
+  the ragdoll are reported as an interval peak and a frame count rather than as instantaneous values,
+  because both are transients — a shock is under a second — and sampling them every two seconds
+  reports zero on a run where they fired dozens of times. The first version did exactly that.
+
+The bots also **brawl**: `-botMove` swings a punch every 1.5 seconds and fires the taser every 7. Four
+bodies circling a 4-metre ring are inside each other's reach, so a headless run ends up exercising
+melee, stun, ragdoll, the shock shake and the ragdolled camera path without anyone touching a
+keyboard. Before that, an automated run only ever saw a character standing upright — which is exactly
+the case the camera handles well.
 
 **That error has to be measured against our own history, not against where we happen to stand now.**
 An incoming state is always a round trip old; comparing it to the present measures the latency and

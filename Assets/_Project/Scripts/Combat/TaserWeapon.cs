@@ -183,8 +183,13 @@ namespace EscapeWithYourFriends.Combat
             // The stun puts them on the floor; this is what makes it look like electricity.
             ShockState shock = victim.GetComponent<ShockState>();
             if (shock != null)
+            {
+                if (Core.CommandLine.HasFlag("-cameraLog"))
+                    Debug.Log($"[TaserWeapon] {ObjectId} tased {shock.ObjectId}.");
+
                 shock.ServerShock(_taser.Hit.StunDuration, _taser.JitterForce,
                                   _taser.JitterInterval, _taser.CameraShake);
+            }
         }
 
         [ObserversRpc(ExcludeOwner = true)]

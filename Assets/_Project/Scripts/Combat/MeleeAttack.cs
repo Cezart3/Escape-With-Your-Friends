@@ -174,6 +174,10 @@ namespace EscapeWithYourFriends.Combat
                 if (victimStun != null) victimStun.ServerStun(info);
             }
 
+            if (Core.CommandLine.HasFlag("-cameraLog"))
+                Debug.Log($"[MeleeAttack] {ObjectId} hit {victim.ObjectId} for {info.Amount}, "
+                          + $"victim now {victim.Current:F0} hp, alive {victim.IsAlive}.");
+
             ObserversHit(contact);
         }
 

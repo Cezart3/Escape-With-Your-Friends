@@ -120,9 +120,7 @@ namespace EscapeWithYourFriends.Combat
 
         void OnStunChanged(bool prev, bool next, bool asServer)
         {
-            // The host runs this callback twice, once per perspective.
-            if (asServer && IsClientStarted) return;
-
+            // Fires on the host as well; see Health.OnHealthChanged for why there is no guard.
             if (next)
                 _ragdoll.EnableRagdoll(Vector3.zero, Vector3.zero);
             else if (_health == null || !_health.IsIncapacitated)

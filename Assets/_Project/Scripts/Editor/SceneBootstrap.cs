@@ -53,6 +53,10 @@ namespace EscapeWithYourFriends.EditorTools
             camera.transform.position = new Vector3(0f, 2f, -10f);
             cameraGo.AddComponent<AudioListener>();
 
+            // The brain is what a CinemachineCamera drives. Without one the scene camera sits where it
+            // was placed and every player looks at the greybox from the same fixed angle.
+            cameraGo.AddComponent<Unity.Cinemachine.CinemachineBrain>();
+
             var lightGo = new GameObject("Directional Light");
             var light = lightGo.AddComponent<Light>();
             light.type = LightType.Directional;

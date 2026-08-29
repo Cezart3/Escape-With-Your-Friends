@@ -103,22 +103,17 @@ namespace EscapeWithYourFriends.Player
 
             _displayName.Value = displayName;
             _colorIndex.Value = colorIndex;
-
-            // The host is its own client and would otherwise never see its own colour, because
-            // SyncVar callbacks do not fire back into the process that wrote them.
-            if (IsClientStarted) return;
-            ApplyColor();
         }
 
         void OnNameChanged(string previous, string next, bool asServer)
         {
-            if (asServer && IsClientStarted) return;
+            // Fires on the host as well; see Health.OnHealthChanged for why there is no guard.
             IdentityChanged?.Invoke(this);
         }
 
         void OnColorChanged(byte previous, byte next, bool asServer)
         {
-            if (asServer && IsClientStarted) return;
+            // Fires on the host as well; see Health.OnHealthChanged for why there is no guard.
             ApplyColor();
             IdentityChanged?.Invoke(this);
         }

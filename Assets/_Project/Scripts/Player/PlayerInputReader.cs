@@ -167,6 +167,11 @@ namespace EscapeWithYourFriends.Player
         /// bots on a 4-metre spawn ring stay well inside the 50-metre greybox floor. Turn slower and
         /// they walk off the edge and fall for the rest of the test, which reads as a movement bug
         /// and is not one.
+        ///
+        /// The bots also brawl. Four bodies circling a 4-metre ring are inside each other's reach, so
+        /// swinging on a timer means the run ends up exercising melee, stun, ragdoll and the shock
+        /// shake without anyone touching a keyboard. Without it a headless test only ever sees a
+        /// character standing upright, which is exactly the case the camera handles well.
         /// </summary>
         void ReadScripted()
         {
@@ -180,6 +185,11 @@ namespace EscapeWithYourFriends.Player
             Crouch = phase > 0.75f && phase < 0.9f;
 
             _jumpQueued |= Mathf.Repeat(t, 4f) < Time.deltaTime;
+            _attackQueued |= Mathf.Repeat(t, 1.5f) < Time.deltaTime;
+
+            // Offset so the taser never fires on the same frame as a punch, which would make a failure
+            // in one look like a failure in the other.
+            _altAttackQueued |= Mathf.Repeat(t + 3f, 7f) < Time.deltaTime;
         }
 
         /// <summary>Reads and clears the buffered jump. Called once per tick by the motor.</summary>
