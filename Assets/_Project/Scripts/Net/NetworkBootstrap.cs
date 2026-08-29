@@ -33,6 +33,9 @@ namespace EscapeWithYourFriends.Net
         [Tooltip("Start hosting on play even without -host. Convenient in the editor, off in builds.")]
         [SerializeField] bool _autoHostInEditor = true;
 
+        [Tooltip("Log every player who joins or leaves. This is how a headless smoke test is read.")]
+        [SerializeField] bool _logRoster = true;
+
         NetworkManager _manager;
         float _quitAt = -1f;
 
@@ -54,13 +57,43 @@ namespace EscapeWithYourFriends.Net
 
             _manager.ServerManager.OnServerConnectionState += OnServerConnectionState;
             _manager.ClientManager.OnClientConnectionState += OnClientConnectionState;
+
+            if (!_logRoster) return;
+            NetworkPlayerRegistry.PlayerAdded += OnPlayerAdded;
+            NetworkPlayerRegistry.PlayerRemoved += OnPlayerRemoved;
         }
 
         void OnDestroy()
         {
+            NetworkPlayerRegistry.PlayerAdded -= OnPlayerAdded;
+            NetworkPlayerRegistry.PlayerRemoved -= OnPlayerRemoved;
+
             if (_manager == null) return;
             _manager.ServerManager.OnServerConnectionState -= OnServerConnectionState;
             _manager.ClientManager.OnClientConnectionState -= OnClientConnectionState;
+        }
+
+        void OnPlayerAdded(NetworkPlayerRegistry.PlayerBody body)
+        {
+            if (body.Identity == null) return;
+
+            // The name and colour are SyncVars, so on a client they may still be defaults at this
+            // moment. Listening for the change as well is what makes the log trustworthy.
+            body.Identity.IdentityChanged += LogIdentity;
+            LogIdentity(body.Identity);
+        }
+
+        void OnPlayerRemoved(NetworkPlayerRegistry.PlayerBody body)
+        {
+            if (body.Identity != null) body.Identity.IdentityChanged -= LogIdentity;
+            Debug.Log($"[Roster] owner {body.OwnerId} left. {NetworkPlayerRegistry.Count} remaining.");
+        }
+
+        static void LogIdentity(Player.PlayerIdentity identity)
+        {
+            Debug.Log($"[Roster] owner {identity.OwnerId}: \"{identity.DisplayName}\" "
+                      + $"colour {identity.ColorIndex} {identity.Color}. "
+                      + $"{NetworkPlayerRegistry.Count} known.");
         }
 
         void Start()
@@ -127,12 +160,26 @@ namespace EscapeWithYourFriends.Net
         {
             Debug.Log($"[NetworkBootstrap] Server: {args.ConnectionState}.");
             ServerStateChanged?.Invoke(args.ConnectionState);
+            ClearRegistryIfFullyStopped();
         }
 
         void OnClientConnectionState(ClientConnectionStateArgs args)
         {
             Debug.Log($"[NetworkBootstrap] Client: {args.ConnectionState}.");
             ClientStateChanged?.Invoke(args.ConnectionState);
+            ClearRegistryIfFullyStopped();
+        }
+
+        /// <summary>
+        /// The player registry is static, so it outlives the session that filled it. Nothing else
+        /// empties it: a clean disconnect despawns every body and each one unregisters itself, but a
+        /// dropped connection or a torn-down transport does not, and the stale entries would then be
+        /// visible in the next lobby.
+        /// </summary>
+        void ClearRegistryIfFullyStopped()
+        {
+            if (_manager.ServerManager.Started || _manager.ClientManager.Started) return;
+            NetworkPlayerRegistry.Clear();
         }
 
         static bool HasFlag(string[] args, string flag)

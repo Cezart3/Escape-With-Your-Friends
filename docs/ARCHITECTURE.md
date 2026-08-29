@@ -70,6 +70,55 @@ difference between a smoke test that gets run and one that does not. The backend
 project setting, so `BuildTool` restores whatever was there before — a fast test build must not
 quietly change what a release ships with.
 
+### Player bodies, identity and the registry
+
+A connection is not a player. `PlayerSpawner` on the `NetworkManager` object turns one into the other:
+it listens to `SceneManager.OnClientLoadedStartScenes`, not to the connection state, because a
+connection that has not finished loading the start scenes has nowhere to put a body yet. The host is a
+client of itself and arrives through the same event, so it needs no special case.
+
+Each spawn does four things, in order:
+
+1. `GetPooledInstantiated` + `ServerManager.Spawn(body, connection)` — the connection owns its body.
+2. `SceneManager.AddOwnerToDefaultScene(body)` — without it the body stays in the spawner's scene and
+   the owning client, which loaded its own copy of the start scenes, never becomes an observer of it.
+3. A spawn point if any are assigned, otherwise a generated 8-slot ring facing the middle. A greybox
+   scene with nothing but a floor still spawns four players who can see each other.
+4. `PlayerIdentity.ServerSetIdentity(name, colourSlot)`.
+
+**Colour is a palette index, not an RGB value.** One replicated byte instead of sixteen, and it
+guarantees the set of player colours stays the set that was chosen to be distinguishable — including
+through the blur the alcohol buff puts over the camera. The server hands out the lowest free slot and
+frees it on disconnect, so with four players the four most distinct colours are always the ones in
+play. More players than palette entries wraps rather than refusing to spawn anyone.
+
+Telling four identical bodies apart is not cosmetic. The comedy only lands if you know *whose* ragdoll
+went off the cliff, which makes identity a mechanic, and it is why it is host-assigned rather than
+client-chosen: two players cannot both be red.
+
+`NetworkPlayerRegistry` is a **static, non-networked** index of the bodies FishNet has already
+replicated onto this machine, keyed by owner id. The HUD draws a row per player, the Revive Machine
+has to find a corpse's owner, natives pick a target, the scoreboard sums wallets — without it each of
+those calls `FindObjectsByType` every frame, which is both slow and subtly wrong, because it also
+finds bodies that are mid-despawn.
+
+Bodies register themselves from `PlayerIdentity.OnStartNetwork` rather than being registered by the
+spawner: that way clients populate their own registry from what they can already see, with no second
+RPC, and a future dedicated server populates it too, where no client callback ever runs. On a client
+the registry therefore holds everyone in observer range; on the host it holds everyone. Because the
+state is static and a dropped connection does not despawn anything, `NetworkBootstrap` clears it once
+both the server and the client have stopped.
+
+**The player prefab is generated, not sculpted.** `PlayerPrefabBuilder` (editor, batchmode) writes
+`Assets/_Project/Prefabs/Player.prefab` from a `Bone[]` table: 11 bones, 10 `CharacterJoint`s, a
+`CharacterController`, and the whole combat stack. Every bone transform sits *unscaled at its joint
+pivot* with the scaled primitive as a `Mesh` child, so resizing a body part never scales the bones
+below it. Total mass is ~56 kg — light for a human, which is exactly why hits send people flying. The
+builder also registers the prefab in `DefaultPrefabObjects`, because FishNet's auto-scan runs on asset
+import and that does not reliably happen inside a single batchmode invocation.
+
+---
+
 ---
 
 ## The signature mechanics
