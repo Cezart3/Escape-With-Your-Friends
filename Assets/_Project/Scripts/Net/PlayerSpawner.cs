@@ -38,6 +38,14 @@ namespace EscapeWithYourFriends.Net
 
         NetworkManager _manager;
 
+        /// <summary>
+        /// The spawner in the loaded scene. Spawn points are scene data, but the things that need to
+        /// put a player back on the map — the fall guard now, the revive machine and the ghost
+        /// respawn later — live on the player prefab, which cannot hold a scene reference. One
+        /// server-side instance is simpler than threading the reference through every spawned body.
+        /// </summary>
+        public static PlayerSpawner Instance { get; private set; }
+
         /// <summary>Palette slots in use, by owner id. Freed on disconnect so slot 0 can be reused.</summary>
         readonly Dictionary<int, byte> _colorByOwner = new();
 
@@ -46,6 +54,8 @@ namespace EscapeWithYourFriends.Net
 
         void Awake()
         {
+            Instance = this;
+
             _manager = GetComponentInParent<NetworkManager>();
             if (_manager == null) _manager = InstanceFinder.NetworkManager;
 
@@ -63,6 +73,8 @@ namespace EscapeWithYourFriends.Net
 
         void OnDestroy()
         {
+            if (Instance == this) Instance = null;
+
             if (_manager == null) return;
 
             _manager.SceneManager.OnClientLoadedStartScenes -= OnClientLoadedStartScenes;
@@ -141,8 +153,14 @@ namespace EscapeWithYourFriends.Net
             return wrapped;
         }
 
-        void GetSpawn(int index, out Vector3 position, out Quaternion rotation)
+        /// <summary>
+        /// Where the body with this index belongs. Public because respawning is the same question as
+        /// spawning, asked later.
+        /// </summary>
+        public void GetSpawn(int index, out Vector3 position, out Quaternion rotation)
         {
+            if (index < 0) index = 0;
+
             if (_spawnPoints != null && _spawnPoints.Length > 0)
             {
                 Transform point = _spawnPoints[index % _spawnPoints.Length];

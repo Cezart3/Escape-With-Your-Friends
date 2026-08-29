@@ -39,6 +39,11 @@ namespace EscapeWithYourFriends.EditorTools
 
         const string PlayerPrefabPath = "Assets/_Project/Prefabs/Player.prefab";
 
+        const float FloorSize = 60f;
+
+        /// <summary>Deliberately thick — see BuildFloor.</summary>
+        const float FloorThickness = 2f;
+
         public static void CreateBootstrapScene()
         {
             Directory.CreateDirectory(SceneDir);
@@ -63,10 +68,7 @@ namespace EscapeWithYourFriends.EditorTools
             light.shadows = LightShadows.Soft;
             lightGo.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
 
-            // A visible floor so a smoke-test build is obviously alive rather than a black screen.
-            var floor = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            floor.name = "Floor";
-            floor.transform.localScale = new Vector3(5f, 1f, 5f);
+            BuildFloor();
 
             BuildNetworkManager();
 
@@ -76,6 +78,49 @@ namespace EscapeWithYourFriends.EditorTools
             RegisterInBuildSettings(BootstrapPath);
 
             if (Application.isBatchMode) EditorApplication.Exit(0);
+        }
+
+        /// <summary>
+        /// Rebuilds the greybox floor in the existing Bootstrap scene.
+        ///
+        ///   Unity.exe -quit -batchmode -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.SceneBootstrap.EnsureArena
+        /// </summary>
+        public static void EnsureArena()
+        {
+            var scene = EditorSceneManager.OpenScene(BootstrapPath, OpenSceneMode.Single);
+
+            foreach (GameObject root in scene.GetRootGameObjects())
+                if (root.name == "Floor")
+                    Object.DestroyImmediate(root);
+
+            BuildFloor();
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, BootstrapPath);
+            Debug.Log($"[SceneBootstrap] floor rebuilt: {FloorSize}m solid box, {FloorThickness}m thick.");
+
+            if (Application.isBatchMode) EditorApplication.Exit(0);
+        }
+
+        /// <summary>
+        /// A visible floor, so a smoke-test build is obviously alive rather than a black screen.
+        ///
+        /// A box rather than the Plane primitive this started as. A Plane is a zero-thickness,
+        /// single-sided mesh: a ragdoll bone driven into it hard enough is on the far side after one
+        /// physics step, and from underneath there is no backface to land on, so the body falls
+        /// forever. Two metres of solid box is thicker than anything moves in a 50Hz step. See #110.
+        ///
+        /// The top surface sits at y = 0, which is what every spawn height in the project assumes.
+        /// </summary>
+        static GameObject BuildFloor()
+        {
+            var floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            floor.name = "Floor";
+            floor.transform.localScale = new Vector3(FloorSize, FloorThickness, FloorSize);
+            floor.transform.position = new Vector3(0f, -FloorThickness * 0.5f, 0f);
+            floor.isStatic = true;
+
+            return floor;
         }
 
         /// <summary>

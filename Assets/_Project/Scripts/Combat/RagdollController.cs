@@ -33,6 +33,14 @@ namespace EscapeWithYourFriends.Combat
         [Tooltip("How far below the hips to search for ground when standing back up.")]
         [SerializeField] float _groundProbeDistance = 3f;
 
+        [Tooltip("How far above the hips the ground probe starts, so a body settled slightly inside "
+                 + "the floor still casts from outside it.")]
+        [SerializeField] float _groundProbeRise = 1f;
+
+        [Tooltip("Height of the second probe, dropped from overhead when the first finds nothing. "
+                 + "Covers a body that ended up under the floor.")]
+        [SerializeField] float _rescueProbeHeight = 200f;
+
         [SerializeField] LayerMask _groundMask = ~0;
 
         readonly List<Rigidbody> _bones = new();
@@ -122,6 +130,15 @@ namespace EscapeWithYourFriends.Combat
                 // Interpolation on kinematic bones costs time and does nothing.
                 bone.interpolation = ragdolled ? RigidbodyInterpolation.Interpolate
                                                : RigidbodyInterpolation.None;
+
+                // A limb accelerated by a punch covers more ground in one 50Hz step than the floor is
+                // thick, and discrete detection samples only the end of the step, so it lands under
+                // the world. Speculative rather than ContinuousDynamic: it is the cheap variant, it
+                // is the only continuous mode a kinematic body is allowed, and the failure it has —
+                // stopping slightly short of a surface — is invisible on a limp arm.
+                bone.collisionDetectionMode = ragdolled ? CollisionDetectionMode.ContinuousSpeculative
+                                                        : CollisionDetectionMode.Discrete;
+
                 if (ragdolled) bone.WakeUp();
             }
 
@@ -143,10 +160,22 @@ namespace EscapeWithYourFriends.Combat
         {
             Vector3 target = hipPosition;
 
-            if (Physics.Raycast(hipPosition + Vector3.up * 0.1f, Vector3.down,
-                                out RaycastHit hit, _groundProbeDistance, _groundMask,
+            // Starting the probe above the hips rather than at them matters: a body that has settled
+            // with its hips a few centimetres inside the floor would otherwise cast from below the
+            // surface, find nothing, and be stood up exactly where it was — inside the ground.
+            if (Physics.Raycast(hipPosition + Vector3.up * _groundProbeRise, Vector3.down,
+                                out RaycastHit hit, _groundProbeRise + _groundProbeDistance, _groundMask,
                                 QueryTriggerInteraction.Ignore))
             {
+                target = hit.point;
+            }
+            else if (Physics.Raycast(hipPosition + Vector3.up * _rescueProbeHeight, Vector3.down,
+                                     out hit, _rescueProbeHeight * 2f, _groundMask,
+                                     QueryTriggerInteraction.Ignore))
+            {
+                // Nothing within reach below: the body is under the world, or fell off the edge of it.
+                // Drop from well overhead to find the surface of whatever is in this column instead of
+                // standing the player up where they are and letting them fall forever. See #110.
                 target = hit.point;
             }
 
@@ -178,6 +207,26 @@ namespace EscapeWithYourFriends.Combat
         {
             foreach (Rigidbody bone in _bones)
                 bone.isKinematic = kinematic;
+        }
+
+        /// <summary>
+        /// Moves the whole skeleton so the hips land on <paramref name="hipTarget"/>, keeping every
+        /// bone's pose and every joint's configuration by shifting them all by the same offset.
+        ///
+        /// A limp body is not where its root transform says it is, so anything that relocates a player
+        /// — the fall guard today, a teleporter later — has to carry the skeleton along or the player
+        /// is moved while the thing everyone can see stays behind.
+        /// </summary>
+        public void TeleportSkeleton(Vector3 hipTarget)
+        {
+            Vector3 offset = hipTarget - _hipBone.position;
+
+            foreach (Rigidbody bone in _bones)
+            {
+                bone.position += offset;
+                bone.linearVelocity = Vector3.zero;
+                bone.angularVelocity = Vector3.zero;
+            }
         }
     }
 }

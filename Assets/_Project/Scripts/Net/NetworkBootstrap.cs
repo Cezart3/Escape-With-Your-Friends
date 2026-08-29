@@ -22,6 +22,7 @@ namespace EscapeWithYourFriends.Net
     ///   -port 7770             port to bind or connect to
     ///   -quitAfter 30          exit after this many seconds, for automated smoke tests
     ///   -latency 50            simulate this many milliseconds each way (development builds)
+    ///   -fallTest 20           read by FallGuard: drop every body out of the world at this time
     ///
     /// With no arguments it does nothing and waits for the lobby to start the connection, which is
     /// what a shipped build does.

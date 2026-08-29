@@ -432,6 +432,48 @@ they stay engaged and stay able to interfere.
 The escalation is the point. Going down is recoverable, being carried off is a fight, and staying
 dead is a bill.
 
+### Falling out of the world
+
+A game whose central joke is throwing your friends around will drop one out of the world. Three
+separate causes did it in the same headless run, and the fix is one of each kind: remove the hole,
+make the hole harder to reach, and survive the ones nobody found yet.
+
+**The floor was a `Plane`.** The greybox floor started as Unity's plane primitive: a zero-thickness,
+single-sided mesh collider. A ragdoll bone driven into it hard enough is on the far side after one
+physics step, and from underneath there is no backface to hit, so there is nothing to land on. It is
+now a two-metre-thick box scaled 60 x 60, its top surface at y = 0 where every spawn height already
+assumed it was. Thickness is the whole point: nothing in this game moves two metres in one 50Hz step.
+
+**Ragdoll bones were using discrete collision detection.** Discrete detection samples only the end of
+a step, so a limb accelerated by a punch is checked after it has already passed through the floor.
+While ragdolled, every bone now uses `ContinuousSpeculative` — the cheap variant, and the only
+continuous mode a kinematic body is allowed, which matters because the same bones go kinematic when
+the body stands back up. Its known weakness is stopping slightly short of a surface, which is
+invisible on a limp arm.
+
+**Standing up could plant you inside the ground.** `RepositionRootUnderHips` probed three metres down
+from just above the hips; a body that had settled slightly *inside* the floor cast from below the
+surface, found nothing, and put the character controller at the raw hip position — under the world,
+falling forever. The probe now starts a metre higher, and when it still finds nothing it drops a
+second one from 200 metres up, which handles a body that is genuinely under the map.
+
+**And a net under all of it.** `FallGuard` is server-side, checks four times a second, and returns any
+body below y = -30 to a spawn point. Plugging holes individually is a losing game — the island alone
+will have thousands of metres of coastline, and every one of them is reachable by a friend with a
+car. The guard does not prevent falling; it makes falling survivable, and it prints a line whenever
+it fires so a fall that *is* a bug still shows up in a log rather than being silently papered over.
+
+Two details make it work on a limp body. A ragdolled player is not where its root transform says it
+is — the hips are what the physics engine is moving — so the guard reads the hip bone's height and
+teleports the whole skeleton by a single shared offset, keeping every bone's pose and every joint's
+configuration. And the upright case goes through `PlayerMotor.ServerTeleport`, which sends nothing:
+position is already part of the reconcile state, so the next tick carries the new one as
+authoritative and the owner replays into it exactly like any other correction. A teleport is just a
+very large misprediction.
+
+`-fallTest <seconds>` throws every body out of the world at that time, because a net nobody has ever
+seen catch anything is not a net you can claim works.
+
 ---
 
 ## World generation

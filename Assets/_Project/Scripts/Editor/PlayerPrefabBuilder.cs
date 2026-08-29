@@ -3,6 +3,7 @@ using System.IO;
 using EscapeWithYourFriends.Combat;
 using EscapeWithYourFriends.Data;
 using EscapeWithYourFriends.Player;
+using EscapeWithYourFriends.World;
 using FishNet.Component.Transforming;
 using FishNet.Managing.Object;
 using FishNet.Object;
@@ -268,6 +269,9 @@ namespace EscapeWithYourFriends.EditorTools
                 disabled.arraySize = 1;
                 disabled.GetArrayElementAtIndex(0).objectReferenceValue = motor;
             });
+
+            // Server-side net for bodies that end up outside the world. See #110.
+            root.AddComponent<FallGuard>();
 
             // Last, so its Awake sweep for renderers finds every body part.
             root.AddComponent<PlayerIdentity>();

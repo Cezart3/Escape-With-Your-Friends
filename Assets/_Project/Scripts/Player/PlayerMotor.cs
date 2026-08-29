@@ -353,6 +353,29 @@ namespace EscapeWithYourFriends.Player
             _controller.enabled = wasEnabled;
         }
 
+        /// <summary>
+        /// Server only. Puts the body somewhere else and drops its momentum.
+        ///
+        /// Nothing is broadcast here and there is no RPC. Position is already part of the reconcile
+        /// state, so the next tick sends the new one as authoritative and the owner replays into it
+        /// exactly like any other correction — a teleport is just a very large mispredicton.
+        /// </summary>
+        public void ServerTeleport(Vector3 position, float yaw)
+        {
+            if (!IsServerStarted) return;
+
+            _velocity = Vector3.zero;
+            _ticksSinceGrounded = byte.MaxValue;
+            _ticksSinceJump = 0;
+
+            // Same reason as in the reconcile: the controller caches its own position and would
+            // overwrite a transform written behind its back.
+            bool wasEnabled = _controller.enabled;
+            _controller.enabled = false;
+            transform.SetPositionAndRotation(position, Quaternion.Euler(0f, yaw, 0f));
+            _controller.enabled = wasEnabled;
+        }
+
         void Remember(uint tick, Vector3 position)
         {
             int slot = (int)(tick % HistoryTicks);
