@@ -20,6 +20,8 @@ namespace EscapeWithYourFriends.Net
     ///   -client                client only
     ///   -address 192.168.1.5   who to connect to (client only, default 127.0.0.1)
     ///   -port 7770             port to bind or connect to
+    ///   -transport steam       connect over Steam instead of raw UDP (default tugboat)
+    ///   -steamId 7656119...    SteamID of the host, and implies -transport steam
     ///   -quitAfter 30          exit after this many seconds, for automated smoke tests
     ///   -latency 50            simulate this many milliseconds each way (development builds)
     ///   -fallTest 20           read by FallGuard: drop every body out of the world at this time
@@ -40,6 +42,7 @@ namespace EscapeWithYourFriends.Net
         [SerializeField] bool _logRoster = true;
 
         NetworkManager _manager;
+        TransportSelector _selector;
         float _quitAt = -1f;
 
         /// <summary>Raised when the local connection state of the server changes.</summary>
@@ -51,6 +54,7 @@ namespace EscapeWithYourFriends.Net
         void Awake()
         {
             _manager = GetComponent<NetworkManager>();
+            _selector = GetComponent<TransportSelector>();
             if (_manager == null)
             {
                 Debug.LogError("[NetworkBootstrap] No NetworkManager on this object; disabling.");
@@ -119,10 +123,12 @@ namespace EscapeWithYourFriends.Net
                 else return; // A shipped build waits for the lobby.
             }
 
-            ConfigureTransport(address, port);
+            // The server listens on every transport at once, so only the client half picks one.
+            NetLink link = TransportSelector.ResolveFromCommandLine(NetLink.Tugboat);
+            if (link == NetLink.Steam) address = CommandLine.GetString("-steamId", address);
 
             if (host || server) StartServer(port);
-            if (host || client) StartClient(address, port);
+            if (host || client) StartClient(link, address, port);
         }
 
         void Update()
@@ -134,29 +140,35 @@ namespace EscapeWithYourFriends.Net
             Application.Quit();
         }
 
-        void ConfigureTransport(string address, ushort port)
-        {
-            Transport transport = _manager.TransportManager.Transport;
-            if (transport == null)
-            {
-                Debug.LogError("[NetworkBootstrap] NetworkManager has no transport configured.");
-                return;
-            }
-
-            transport.SetPort(port);
-            transport.SetClientAddress(address);
-        }
-
         void StartServer(ushort port)
         {
             Debug.Log($"[NetworkBootstrap] Starting server on port {port}.");
+
+            // StartConnection(port) sets the port on every transport under Multipass and starts them
+            // all. A transport that cannot start, Steam on a machine with no Steam client for one,
+            // declines and the rest carry on: FishNet reports the server started if any of them did.
             _manager.ServerManager.StartConnection(port);
         }
 
-        void StartClient(string address, ushort port)
+        void StartClient(NetLink link, string address, ushort port)
         {
-            Debug.Log($"[NetworkBootstrap] Connecting to {address}:{port}.");
-            _manager.ClientManager.StartConnection(address, port);
+            if (_selector == null)
+            {
+                // A scene built before #13. One transport, addressed directly.
+                Debug.Log($"[NetworkBootstrap] Connecting to {address}:{port}.");
+                _manager.ClientManager.StartConnection(address, port);
+                return;
+            }
+
+            NetLink used = _selector.PrepareClient(link, address, port);
+
+            Debug.Log(used == NetLink.Steam
+                ? $"[NetworkBootstrap] Connecting to SteamID {address} over Steam."
+                : $"[NetworkBootstrap] Connecting to {address}:{port} over Tugboat.");
+
+            // No address here on purpose: ClientManager.StartConnection(address, port) would push the
+            // address onto every transport under Multipass, overwriting the one just chosen.
+            _manager.ClientManager.StartConnection();
         }
 
         void OnServerConnectionState(ServerConnectionStateArgs args)

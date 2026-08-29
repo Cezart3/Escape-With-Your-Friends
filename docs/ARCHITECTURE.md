@@ -36,20 +36,70 @@ The rule: a client may *predict* anything about itself and may *animate* anythin
 camera, a light, a placeholder floor, and the `NetworkManager`. Gameplay scenes load and unload around
 it, so the connection survives travelling between the island, the boat and the second island.
 
-The `NetworkManager` object carries four components. FishNet creates the rest of its sub-managers
+The `NetworkManager` object carries these components. FishNet creates the rest of its sub-managers
 itself in `Awake`, so only these are worth pinning down in the scene:
 
 | Component | Why it is set explicitly |
 |---|---|
 | `NetworkManager` | Holds `DefaultPrefabObjects`. FishNet can find it by scanning the project, but assigning it writes the reference into the scene where a diff can see it |
 | `TimeManager` | Tick rate 30. FishNet already defaults to 30; leaving it implicit means a package update could quietly change how fast the whole game simulates |
-| `Tugboat` | Plain UDP on port 7770, 8 clients. Placeholder — shipping runs on the Steam transport (#13) |
+| `TransportManager` | Its `Transport` field names `Multipass`. Left implicit it would `GetComponent<Transport>()` and pick whichever of the three transports serialized first |
+| `Multipass` | The transport FishNet actually talks to. Holds `Tugboat` at index 0 and `FishyFacepunch` at index 1 |
+| `Tugboat` | Plain UDP on port 7770, 8 clients. LAN and every headless test |
+| `FishyFacepunch` | Steam Datagram Relay, 8 clients, app 480 |
+| `SteamRuntime` | Owns `SteamClient.Init` / `Shutdown` for the process, and survives Steam being absent |
+| `TransportSelector` | Picks which link the *client* half dials out on |
 | `NetworkBootstrap` | Starts the connection from command-line arguments |
 
-**Why Tugboat when shipping is Steam.** The Steam transport needs a running Steam client and an app
-id, which makes it useless headless. Tugboat needs neither, so four instances can be launched from one
-script. Both are FishNet transports behind the same interface, so nothing above this layer knows which
-one is loaded.
+### The transport stack
+
+**Both transports are loaded at once, under Multipass.** A host listens on Tugboat and on Steam
+simultaneously, so the same running game accepts a friend joining by SteamID and a second machine on
+the same LAN joining by IP. Only the client half has to choose, and it chooses at runtime.
+
+The alternative was one transport per build, decided when the scene is generated. It was rejected
+because `TransportManager` resolves its transport inside `NetworkManager.Awake`, and `NetworkManager`
+runs at `short.MinValue` execution order — no ordinary component can swap the transport before it is
+read. Shipping a Steam build and a LAN build means two builds, two smoke-test paths, and a class of
+bug that only exists in the one nobody runs.
+
+Multipass is safe here for a specific reason: `ServerManager` computes `Started = IsAnyServerStarted()`,
+so a transport that fails to start does not take the server down with it. On a machine with no Steam
+client, `FishyFacepunch` declines with one warning and Tugboat carries the session. That is exactly
+what every headless run in this project does.
+
+| Argument | Effect |
+|---|---|
+| *(none)* | Tugboat. Multipass defaults its client transport to index 0, so a build with no arguments behaves as it did before Steam existed |
+| `-transport steam` | Client dials out over Steam; `-address` is then read as a SteamID |
+| `-transport tugboat` | Explicitly UDP |
+| `-steamId 7656119…` | The host's SteamID, and implies `-transport steam` |
+| `-steamAppId 480` | Overrides the app id `SteamRuntime` initialises with |
+
+`TransportSelector.PrepareClient` calls `Multipass.SetClientTransport(index)` and
+`SetClientAddress(address, index)`, then `NetworkBootstrap` starts the client with the **no-argument**
+`ClientManager.StartConnection()`. The overload that takes an address would push it onto every
+transport under Multipass and overwrite the one just chosen. If Steam is requested but unavailable,
+the selector logs a warning and falls back to Tugboat rather than failing to connect at all.
+
+**Steam is optional on purpose.** `SteamRuntime` catches a failed `SteamClient.Init` and leaves
+`SteamRuntime.Available` false; nothing else in the game requires it. `SteamClient.Init` is called
+with `asyncCallbacks: true`, so Facepunch pumps its own callbacks and there is deliberately no
+`RunCallbacks` in an `Update`.
+
+**The vendored FishyFacepunch fork.** `Assets/Plugins/FishyFacepunch/` is FishyFacepunch 2.1.1 (MIT)
+copied in as source rather than referenced as a package, because upstream calls `SteamClient.Init`
+unconditionally in `Initialize` and Facepunch *throws* when the Steam client is not running. That code
+runs inside `NetworkManager.Awake`, so on a machine without Steam it takes the whole process down
+before anything else starts — every headless test in this project, in other words. The fork routes
+every entry point through a `TryInitializeSteam()` guard that latches its failure, downgrades the
+errors to one warning, and treats a missing Steam client as a declined transport. The edits are marked
+`EWYF:` in the source.
+
+**`steam_appid.txt`.** Steam reads the app id from the environment when the Steam client launches the
+game and from this file otherwise, which is every run this project makes. `BuildTool` copies the
+project-root file next to the built executable on each successful build. It is a development aid: a
+shipped depot must not contain it.
 
 **Why a command-line bootstrap.** The whole development loop for this project is a terminal, and a
 build that can only be started by clicking a button cannot be tested from one. `NetworkBootstrap`

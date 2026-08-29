@@ -3,8 +3,11 @@ using System.Linq;
 using EscapeWithYourFriends.Net;
 using FishNet.Managing;
 using FishNet.Managing.Object;
+using FishNet.Managing.Transporting;
 using FishNet.Managing.Timing;
 using FishNet.Object;
+using FishNet.Transporting;
+using FishNet.Transporting.Multipass;
 using FishNet.Transporting.Tugboat;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -17,6 +20,7 @@ namespace EscapeWithYourFriends.EditorTools
     ///
     ///   Unity.exe -quit -batchmode -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.SceneBootstrap.CreateBootstrapScene
     ///   Unity.exe -quit -batchmode -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.SceneBootstrap.EnsureNetworkManager
+    ///   Unity.exe -quit -batchmode -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.SceneBootstrap.EnsureTransports
     ///
     /// Bootstrap is the scene that ships as index 0: it holds nothing gameplay-specific and hosts the
     /// NetworkManager, so gameplay scenes can be loaded and unloaded around it.
@@ -189,16 +193,7 @@ namespace EscapeWithYourFriends.EditorTools
             if (prefabs == null) Debug.LogWarning($"[SceneBootstrap] missing {PrefabObjectsPath}");
             else manager.SpawnablePrefabs = prefabs;
 
-            // Tugboat is a placeholder. Shipping runs over the Steam transport, so there is no port
-            // forwarding and no dedicated server, but Steam needs a running client and an app id,
-            // which makes it useless for headless terminal tests. Tugboat is what lets four instances
-            // be launched from a script today. See #13.
-            //
-            // TransportManager picks up whichever transport sits on this object, so nothing further
-            // has to be wired.
-            var transport = go.AddComponent<Tugboat>();
-            transport.SetPort(DefaultPort);
-            transport.SetMaximumClients(8);
+            BuildTransports(go);
 
             // The tick rate FishNet ships with happens to already be 30, but leaving it implicit means
             // a package update could quietly change how fast the whole game simulates.
@@ -208,7 +203,88 @@ namespace EscapeWithYourFriends.EditorTools
             go.AddComponent<NetworkBootstrap>();
             AttachPlayerSpawner(go);
 
-            Debug.Log($"[SceneBootstrap] NetworkManager: Tugboat on {DefaultPort}, tick {TickRate}Hz.");
+            Debug.Log($"[SceneBootstrap] NetworkManager: Multipass on {DefaultPort}, tick {TickRate}Hz.");
+        }
+
+        /// <summary>
+        /// Rebuilds the transport stack on the NetworkManager of the existing Bootstrap scene.
+        ///
+        ///   Unity.exe -quit -batchmode -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.SceneBootstrap.EnsureTransports
+        /// </summary>
+        public static void EnsureTransports()
+        {
+            var scene = EditorSceneManager.OpenScene(BootstrapPath, OpenSceneMode.Single);
+
+            var manager = Object.FindFirstObjectByType<NetworkManager>();
+            if (manager == null)
+            {
+                Debug.LogError("[SceneBootstrap] no NetworkManager in the scene; run EnsureNetworkManager first.");
+                if (Application.isBatchMode) EditorApplication.Exit(1);
+                return;
+            }
+
+            GameObject go = manager.gameObject;
+
+            foreach (Transport existing in go.GetComponents<Transport>())
+                Object.DestroyImmediate(existing);
+
+            var oldSelector = go.GetComponent<TransportSelector>();
+            if (oldSelector != null) Object.DestroyImmediate(oldSelector);
+
+            var oldSteam = go.GetComponent<SteamRuntime>();
+            if (oldSteam != null) Object.DestroyImmediate(oldSteam);
+
+            BuildTransports(go);
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, BootstrapPath);
+            Debug.Log($"[SceneBootstrap] transports rebuilt: Multipass with Tugboat on {DefaultPort} "
+                      + "and FishyFacepunch on Steam app 480.");
+
+            if (Application.isBatchMode) EditorApplication.Exit(0);
+        }
+
+        /// <summary>
+        /// Puts both transports on the NetworkManager, under Multipass.
+        ///
+        /// A shipped session runs over Steam: no port forwarding, no dedicated server, no bill. But
+        /// Steam needs a running Steam client, which a headless build launched from a terminal script
+        /// does not have, so Tugboat has to stay reachable or the whole automated test setup for this
+        /// project dies. Multipass is FishNet answer to exactly that: the server starts every listed
+        /// transport, and a client picks one. See TransportSelector and #13.
+        ///
+        /// Order matters. Multipass defaults its client transport to index 0, so Tugboat first means
+        /// a build with no arguments behaves exactly as it did before Steam existed.
+        /// </summary>
+        static void BuildTransports(GameObject go)
+        {
+            var tugboat = go.AddComponent<Tugboat>();
+            tugboat.SetPort(DefaultPort);
+            tugboat.SetMaximumClients(8);
+
+            var steam = go.AddComponent<global::FishyFacepunch.FishyFacepunch>();
+            steam.SetMaximumClients(8);
+
+            var multipass = go.AddComponent<Multipass>();
+
+            // Three transports now sit on this object and TransportManager would otherwise take
+            // whichever GetComponent returns first, which is a component ordering accident. Adding the
+            // manager here and naming the transport makes the choice explicit and diffable.
+            var transportManager = go.GetComponent<TransportManager>();
+            if (transportManager == null) transportManager = go.AddComponent<TransportManager>();
+            transportManager.Transport = multipass;
+
+            // The list is private and serialized, which is the only way it can be filled from a script
+            // and still be visible in a scene diff.
+            var so = new SerializedObject(multipass);
+            SerializedProperty transports = so.FindProperty("_transports");
+            transports.arraySize = 2;
+            transports.GetArrayElementAtIndex(0).objectReferenceValue = tugboat;
+            transports.GetArrayElementAtIndex(1).objectReferenceValue = steam;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            go.AddComponent<SteamRuntime>();
+            go.AddComponent<TransportSelector>();
         }
 
         /// <summary>

@@ -4,6 +4,7 @@
     "references": [
         "EWYF.Runtime",
         "FishNet.Runtime",
+        "FishyFacepunch",
         "Unity.Cinemachine",
         "Unity.InputSystem",
         "Unity.RenderPipelines.Universal.Runtime",

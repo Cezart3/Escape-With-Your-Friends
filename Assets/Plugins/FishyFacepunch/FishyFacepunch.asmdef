@@ -1,13 +1,8 @@
 {
-    "name": "EWYF.Runtime",
-    "rootNamespace": "EscapeWithYourFriends",
+    "name": "FishyFacepunch",
+    "rootNamespace": "FishyFacepunch",
     "references": [
-        "FishNet.Runtime",
-        "FishyFacepunch",
-        "Unity.InputSystem",
-        "Unity.Cinemachine",
-        "Unity.AI.Navigation",
-        "Unity.RenderPipelines.Universal.Runtime"
+        "FishNet.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

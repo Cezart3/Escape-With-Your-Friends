@@ -81,6 +81,8 @@ namespace EscapeWithYourFriends.EditorTools
 
             if (summary.result == BuildResult.Succeeded)
             {
+                CopySteamAppId(outputDir);
+
                 Debug.Log($"[BuildTool] Succeeded in {summary.totalTime.TotalSeconds:F1}s, " +
                           $"{summary.totalSize / (1024f * 1024f):F1} MB -> {summary.outputPath}");
                 if (Application.isBatchMode) EditorApplication.Exit(0);
@@ -89,6 +91,34 @@ namespace EscapeWithYourFriends.EditorTools
             {
                 Fail($"Build {summary.result} with {summary.totalErrors} error(s).");
             }
+        }
+
+        /// <summary>
+        /// Puts steam_appid.txt beside the built executable.
+        ///
+        /// Steam reads the AppID from the environment when the game is launched by the Steam client
+        /// and from this file otherwise. Every run this project makes is the otherwise case: the
+        /// headless tests start the exe from a shell, and so will the first playtests, which are
+        /// handed around as a zip long before there is a Steam depot. Without the file Steam init
+        /// fails and the Steam transport declines, which looks exactly like a broken build.
+        ///
+        /// It is a development aid only. A shipped depot must not contain it, or the game runs
+        /// against whatever AppID the file names instead of the one Steam launched it with.
+        /// </summary>
+        static void CopySteamAppId(string outputDir)
+        {
+            string source = Path.Combine(Directory.GetCurrentDirectory(), "steam_appid.txt");
+            if (!File.Exists(source))
+            {
+                Debug.LogWarning("[BuildTool] no steam_appid.txt at the project root; the build "
+                                 + "will not be able to initialise Steam outside the Steam client.");
+                return;
+            }
+
+            string destination = Path.Combine(outputDir, "steam_appid.txt");
+            File.Copy(source, destination, true);
+            Debug.Log($"[BuildTool] steam_appid.txt -> {destination} "
+                      + $"(app {File.ReadAllText(source).Trim()}).");
         }
 
         static string[] EnabledScenes() =>
