@@ -142,7 +142,7 @@ namespace EscapeWithYourFriends.World
         }
 
         /// <summary>Stacked octaves of gradient noise, normalised back into 0..1.</summary>
-        float Fbm(float x, float z, float featureSize, int octaves, float gain, float lacunarity, int seed)
+        internal float Fbm(float x, float z, float featureSize, int octaves, float gain, float lacunarity, int seed)
         {
             float frequency = 1f / Mathf.Max(1f, featureSize);
             float amplitude = 1f;
@@ -161,8 +161,11 @@ namespace EscapeWithYourFriends.World
             return total > 0f ? sum / total : 0f;
         }
 
-        /// <summary>Gradient noise on the unit grid, remapped from -1..1 to 0..1.</summary>
-        static float Noise(float x, float z, int seed)
+        /// <summary>
+        /// Gradient noise on the unit grid, remapped from -1..1 to 0..1. Public because the placeholder
+        /// ground textures are generated from the same field, so the island and its dirt match.
+        /// </summary>
+        public static float Noise(float x, float z, int seed)
         {
             int xi = Mathf.FloorToInt(x);
             int zi = Mathf.FloorToInt(z);
@@ -191,7 +194,7 @@ namespace EscapeWithYourFriends.World
         }
 
         /// <summary>Quintic smoothstep. Second derivative is zero at the ends, so octaves do not crease.</summary>
-        static float Smooth(float t) => t * t * t * (t * (t * 6f - 15f) + 10f);
+        internal static float Smooth(float t) => t * t * t * (t * (t * 6f - 15f) + 10f);
 
         /// <summary>
         /// Integer hash. FNV-1a over the two coordinates and the seed, finished with an avalanche so
@@ -215,7 +218,7 @@ namespace EscapeWithYourFriends.World
         }
 
         /// <summary>Mixes the profile seed with a per-layer salt, so one seed drives every layer.</summary>
-        int Salt(int salt)
+        internal int Salt(int salt)
         {
             unchecked { return _profile.Seed * 1103515245 + salt; }
         }

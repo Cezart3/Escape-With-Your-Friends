@@ -36,6 +36,10 @@ namespace EscapeWithYourFriends.EditorTools
         const string TerrainDataPath = "Assets/_Project/Data/IslandTerrain.asset";
         const string ScenePath = "Assets/_Project/Scenes/Island.unity";
         const string TerrainObjectName = "Island";
+        const string TerrainArtFolder = "Assets/_Project/Art/Terrain";
+
+        // Fixed salt for the placeholder textures: their look must not change when the island seed does.
+        const int TextureSalt = 606060;
 
         // The ASCII map in the log. Wide and short, because terminal characters are about twice as
         // tall as they are wide and a square map printed square looks stretched.
@@ -72,6 +76,26 @@ namespace EscapeWithYourFriends.EditorTools
             ReportShape(profile, heights, resolution);
 
             TerrainData data = WriteTerrainData(profile, heights, resolution);
+
+            int splatResolution = ValidSplatResolution(profile.SplatResolution);
+            if (splatResolution != profile.SplatResolution)
+            {
+                Debug.LogWarning($"[TerrainGenerator] Splat resolution {profile.SplatResolution} is not a "
+                                 + $"power of two; using {splatResolution} instead.");
+                profile.SplatResolution = splatResolution;
+            }
+
+            stopwatch.Restart();
+            float[,,] splat = SampleSplat(profile, splatResolution, out bool[,] land);
+            stopwatch.Stop();
+
+            uint splatHash = HashSplat(splat);
+            Debug.Log($"[TerrainGenerator] Painted {splatResolution}^2 splat cells in "
+                      + $"{stopwatch.ElapsedMilliseconds}ms. Splatmap hash {splatHash:X8}.");
+
+            ReportCover(splat, land, splatResolution);
+            WriteSplat(profile, data, splat, splatResolution);
+
             WriteScene(profile, data);
 
             // Read back what actually landed on disk. The hash above proves the maths repeats; this
@@ -80,7 +104,10 @@ namespace EscapeWithYourFriends.EditorTools
             AssetDatabase.Refresh();
             uint assetHash = HashFile(TerrainDataPath);
 
-            Debug.Log($"[TerrainGenerator] Wrote {TerrainDataPath} (asset hash {assetHash:X8}) and {ScenePath}.");
+            var written = AssetDatabase.LoadAssetAtPath<TerrainData>(TerrainDataPath);
+            Debug.Log($"[TerrainGenerator] Wrote {TerrainDataPath} (asset hash {assetHash:X8}) and {ScenePath}. "
+                      + $"Heightmap {written.heightmapResolution}^2, alphamap {written.alphamapResolution}^2, "
+                      + $"{written.terrainLayers.Length} layers.");
         }
 
         /// <summary>
@@ -276,6 +303,249 @@ namespace EscapeWithYourFriends.EditorTools
             }
 
             return map.ToString();
+        }
+
+        /// <summary>
+        /// Evaluates the cover rules over the alphamap grid. Slope comes from central differences on
+        /// the shape itself rather than from the baked heightmap, so the painting does not inherit the
+        /// stair-stepping of a coarser height sample.
+        /// </summary>
+        static float[,,] SampleSplat(IslandProfile profile, int resolution, out bool[,] land)
+        {
+            var shape = new IslandShape(profile);
+            var splat = new IslandSplat(shape);
+            var map = new float[resolution, resolution, IslandSplat.LayerCount];
+            land = new bool[resolution, resolution];
+            var weights = new float[IslandSplat.LayerCount];
+
+            float half = profile.Size * 0.5f;
+            float step = profile.Size / resolution;
+
+            // One metre either side. Smaller and the gradient picks up noise detail no texture can
+            // show; larger and cliff edges smear into the grass above them.
+            const float delta = 1f;
+
+            for (int z = 0; z < resolution; z++)
+            {
+                float worldZ = -half + (z + 0.5f) * step;
+                for (int x = 0; x < resolution; x++)
+                {
+                    float worldX = -half + (x + 0.5f) * step;
+
+                    float height = shape.HeightAt(worldX, worldZ);
+                    land[z, x] = height > IslandShape.SeaLevel;
+                    float gx = (shape.HeightAt(worldX + delta, worldZ) - shape.HeightAt(worldX - delta, worldZ)) * 0.5f / delta;
+                    float gz = (shape.HeightAt(worldX, worldZ + delta) - shape.HeightAt(worldX, worldZ - delta)) * 0.5f / delta;
+                    float slope = Mathf.Sqrt(gx * gx + gz * gz);
+
+                    splat.Weights(height, slope, worldX, worldZ, weights);
+                    for (int layer = 0; layer < IslandSplat.LayerCount; layer++)
+                        map[z, x, layer] = weights[layer];
+                }
+            }
+
+            return map;
+        }
+
+        /// <summary>Nearest power of two at or below the request. Alphamaps are not 2^n+1, unlike heightmaps.</summary>
+        static int ValidSplatResolution(int requested)
+        {
+            int clamped = Mathf.Clamp(requested, 64, 2048);
+            int power = 64;
+            while (power * 2 <= clamped) power *= 2;
+            return power;
+        }
+
+        /// <summary>
+        /// Hangs the four layers on the terrain and writes the alphamap. The resolution is set first
+        /// for the same reason the heightmap resolution is: changing it throws the maps away.
+        /// </summary>
+        static void WriteSplat(IslandProfile profile, TerrainData data, float[,,] splat, int resolution)
+        {
+            data.terrainLayers = EnsureLayers(profile);
+            data.alphamapResolution = resolution;
+            data.SetAlphamaps(0, 0, splat);
+            EditorUtility.SetDirty(data);
+        }
+
+        /// <summary>
+        /// The four terrain layers, with textures generated the first time. Existing assets are reused
+        /// so the terrain keeps pointing at the same GUIDs across a regeneration, and so an art pass
+        /// that replaces a texture is not undone the next time somebody rerolls the seed.
+        /// </summary>
+        static TerrainLayer[] EnsureLayers(IslandProfile profile)
+        {
+            Directory.CreateDirectory(TerrainArtFolder);
+
+            float[] tiling =
+            {
+                profile.SandTiling, profile.GrassTiling, profile.RockTiling, profile.DirtTiling
+            };
+
+            // Base colour and grain colour per layer. Placeholder ground until the art pass, but
+            // placeholder ground you can read a slope off, which greybox grey cannot do.
+            Color[] baseColours =
+            {
+                new Color(0.86f, 0.79f, 0.60f), new Color(0.33f, 0.46f, 0.22f),
+                new Color(0.49f, 0.48f, 0.46f), new Color(0.45f, 0.35f, 0.25f)
+            };
+
+            Color[] grainColours =
+            {
+                new Color(0.75f, 0.68f, 0.50f), new Color(0.24f, 0.36f, 0.16f),
+                new Color(0.33f, 0.33f, 0.32f), new Color(0.33f, 0.26f, 0.18f)
+            };
+
+            var layers = new TerrainLayer[IslandSplat.LayerCount];
+            for (int i = 0; i < IslandSplat.LayerCount; i++)
+            {
+                string name = IslandSplat.LayerNames[i];
+                Texture2D texture = EnsureTexture($"{TerrainArtFolder}/{name}.png", baseColours[i], grainColours[i], i);
+                layers[i] = EnsureLayer($"{TerrainArtFolder}/{name}.terrainlayer", texture, tiling[i]);
+            }
+
+            return layers;
+        }
+
+        static TerrainLayer EnsureLayer(string path, Texture2D texture, float tiling)
+        {
+            var layer = AssetDatabase.LoadAssetAtPath<TerrainLayer>(path);
+            bool fresh = layer == null;
+            if (fresh) layer = new TerrainLayer();
+
+            layer.diffuseTexture = texture;
+            layer.tileSize = new Vector2(tiling, tiling);
+            layer.tileOffset = Vector2.zero;
+            layer.specular = Color.black;
+            layer.metallic = 0f;
+            layer.smoothness = 0.03f;
+
+            if (fresh) AssetDatabase.CreateAsset(layer, path);
+            EditorUtility.SetDirty(layer);
+            return layer;
+        }
+
+        /// <summary>
+        /// A tiling grain texture, generated once and then left alone. Two octaves of the same noise
+        /// the island is built from, cross-faded against a wrapped copy of themselves so the texture
+        /// repeats without a visible seam every few metres.
+        /// </summary>
+        static Texture2D EnsureTexture(string path, Color baseColour, Color grainColour, int salt)
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            if (existing != null) return existing;
+
+            const int size = 256;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var pixels = new Color32[size * size];
+
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float coarse = Tileable(x, y, size, 8, TextureSalt + salt * 31);
+                    float fine = Tileable(x, y, size, 32, TextureSalt + salt * 31 + 7);
+                    float grain = Mathf.Clamp01(coarse * 0.55f + fine * 0.45f);
+                    pixels[y * size + x] = Color.Lerp(baseColour, grainColour, grain);
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            File.WriteAllBytes(path, texture.EncodeToPNG());
+            UnityEngine.Object.DestroyImmediate(texture);
+
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+            var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (importer != null)
+            {
+                importer.wrapMode = TextureWrapMode.Repeat;
+                importer.maxTextureSize = size;
+                importer.textureCompression = TextureImporterCompression.Compressed;
+                importer.SaveAndReimport();
+            }
+
+            Debug.Log($"[TerrainGenerator] Generated placeholder texture {path}.");
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        }
+
+        /// <summary>
+        /// Noise that wraps. Four samples of the same field, one per corner of the wrapped square,
+        /// blended by distance, which is the cheap standard trick for a seamless tile. Periods have to
+        /// divide the texture evenly, hence integer cells per side.
+        /// </summary>
+        static float Tileable(int x, int y, int size, int cells, int seed)
+        {
+            float scale = cells / (float)size;
+            float fx = x * scale;
+            float fy = y * scale;
+
+            float a = IslandShape.Noise(fx, fy, seed) * (cells - fx) * (cells - fy);
+            float b = IslandShape.Noise(fx - cells, fy, seed) * fx * (cells - fy);
+            float c = IslandShape.Noise(fx, fy - cells, seed) * (cells - fx) * fy;
+            float d = IslandShape.Noise(fx - cells, fy - cells, seed) * fx * fy;
+
+            return (a + b + c + d) / (cells * cells);
+        }
+
+        /// <summary>
+        /// How the island came out painted. Reported by dominant layer over the dry land, because the
+        /// seabed is three quarters of the square and is all sand, so a whole-square number says
+        /// nothing about what anyone will walk on.
+        /// </summary>
+        static void ReportCover(float[,,] splat, bool[,] land, int resolution)
+        {
+            var counts = new int[IslandSplat.LayerCount];
+            int dry = 0;
+
+            for (int z = 0; z < resolution; z++)
+            {
+                for (int x = 0; x < resolution; x++)
+                {
+                    if (!land[z, x]) continue;
+
+                    int best = 0;
+                    for (int layer = 1; layer < IslandSplat.LayerCount; layer++)
+                        if (splat[z, x, layer] > splat[z, x, best]) best = layer;
+
+                    counts[best]++;
+                    dry++;
+                }
+            }
+
+            var line = new StringBuilder("[TerrainGenerator] Cover of the dry land:");
+            for (int layer = 0; layer < IslandSplat.LayerCount; layer++)
+                line.Append($" {IslandSplat.LayerNames[layer]} {counts[layer] * 100f / Mathf.Max(1, dry):F1}%");
+
+            Debug.Log(line.ToString());
+        }
+
+        /// <summary>FNV-1a over an alphamap, same shape as the heightmap hash.</summary>
+        static uint HashSplat(float[,,] splat)
+        {
+            unchecked
+            {
+                uint hash = 2166136261u;
+                int depth = splat.GetLength(0);
+                int width = splat.GetLength(1);
+                int layers = splat.GetLength(2);
+
+                for (int z = 0; z < depth; z++)
+                {
+                    for (int x = 0; x < width; x++)
+                    {
+                        for (int layer = 0; layer < layers; layer++)
+                        {
+                            uint bits = (uint)BitConverter.SingleToInt32Bits(splat[z, x, layer]);
+                            hash = (hash ^ (bits & 0xFF)) * 16777619u;
+                            hash = (hash ^ ((bits >> 8) & 0xFF)) * 16777619u;
+                            hash = (hash ^ ((bits >> 16) & 0xFF)) * 16777619u;
+                            hash = (hash ^ (bits >> 24)) * 16777619u;
+                        }
+                    }
+                }
+
+                return hash;
+            }
         }
 
         /// <summary>FNV-1a over the raw bits of every sample. Two runs that disagree anywhere disagree here.</summary>

@@ -98,6 +98,56 @@ namespace EscapeWithYourFriends.World
         [Tooltip("Metres per cell of the ridge noise.")]
         public float MountainRidgeFeatureSize = 150f;
 
+        [Header("Ground cover")]
+        [Tooltip("Metres above sea level where sand gives way to whatever grows inland.")]
+        public float SandTop = 3.5f;
+
+        [Tooltip("Height over which sand fades out, in metres. Wider is a softer dune edge.")]
+        public float SandBlend = 3f;
+
+        [Tooltip("Slope where rock takes over, as a gradient (rise over run). 0.7 is about 35 degrees.")]
+        public float RockSlope = 0.7f;
+
+        [Tooltip("Slope range over which rock fades in.")]
+        public float RockSlopeBlend = 0.25f;
+
+        [Tooltip("Height in metres above which the ground goes bare regardless of slope.")]
+        public float RockHeight = 78f;
+
+        [Tooltip("Metres over which the bare high ground fades in.")]
+        public float RockHeightBlend = 24f;
+
+        [Tooltip("Metres per cell of the dirt patch noise. This is roughly the size of a clearing.")]
+        public float DirtFeatureSize = 90f;
+
+        [Tooltip("Noise level above which grass becomes dirt, 0 to 1. Higher means fewer patches.")]
+        public float DirtThreshold = 0.58f;
+
+        [Tooltip("Width of the dirt patch edge, in noise units. Small values give hard-edged patches.")]
+        public float DirtBlend = 0.07f;
+
+        [Tooltip("How much noise wobbles the cover boundaries, in metres of height and gradient. Stops the shoreline reading as a contour line.")]
+        public float CoverJitter = 1.6f;
+
+        [Tooltip("Metres per cell of the boundary jitter noise.")]
+        public float CoverJitterFeatureSize = 26f;
+
+        [Header("Splatmap")]
+        [Tooltip("Alphamap resolution. 512 over a 1024m island is one splat texel every two metres.")]
+        public int SplatResolution = 512;
+
+        [Tooltip("Metres per repeat of the sand texture.")]
+        public float SandTiling = 9f;
+
+        [Tooltip("Metres per repeat of the grass texture.")]
+        public float GrassTiling = 7f;
+
+        [Tooltip("Metres per repeat of the rock texture.")]
+        public float RockTiling = 12f;
+
+        [Tooltip("Metres per repeat of the dirt texture.")]
+        public float DirtTiling = 7f;
+
         /// <summary>Total vertical range of the terrain object: seabed plus the tallest land allowed.</summary>
         public float TotalHeight => SeabedDepth + PeakHeight;
 

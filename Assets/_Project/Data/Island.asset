@@ -37,3 +37,19 @@ MonoBehaviour:
   MountainSharpness: 2.4
   MountainRidge: 0.35
   MountainRidgeFeatureSize: 150
+  SandTop: 3.5
+  SandBlend: 3
+  RockSlope: 0.7
+  RockSlopeBlend: 0.25
+  RockHeight: 78
+  RockHeightBlend: 24
+  DirtFeatureSize: 90
+  DirtThreshold: 0.58
+  DirtBlend: 0.07
+  CoverJitter: 1.6
+  CoverJitterFeatureSize: 26
+  SplatResolution: 512
+  SandTiling: 9
+  GrassTiling: 7
+  RockTiling: 12
+  DirtTiling: 7
