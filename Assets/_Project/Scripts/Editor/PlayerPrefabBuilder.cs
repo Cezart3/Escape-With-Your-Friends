@@ -343,6 +343,10 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_identity").objectReferenceValue = identity;
             });
 
+            // Last: it looks up Health in Awake and builds its playback object under the root, so it
+            // wants every other component already there.
+            root.AddComponent<VoiceChat>();
+
             return root;
         }
 

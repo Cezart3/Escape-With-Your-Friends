@@ -1012,6 +1012,87 @@ very large misprediction.
 `-fallTest <seconds>` throws every body out of the world at that time, because a net nobody has ever
 seen catch anything is not a net you can claim works.
 
+### Hearing each other
+
+Voice is not a feature of this game, it is the delivery mechanism. Almost every laugh in it is
+somebody reacting out loud to a ragdoll, so `VoiceChat` sits on the player prefab next to the
+combat components rather than in a UI menu somewhere.
+
+It is **proximity voice, not a party channel**. Hearing a friend get quieter as they are dragged
+away is the joke; a channel that follows everyone everywhere would delete it.
+
+```
+owner:    SteamUser.ReadVoiceDataBytes  ->  ServerRelay      (unreliable)
+server:   distance test, per listener   ->  TargetPlay       (unreliable)
+listener: DecompressVoice               ->  ring buffer  ->  streaming AudioClip
+```
+
+Steam captures and compresses; the server decides who is close enough to hear it; Unity plays the
+result out of an `AudioSource` parented to the speaker's body, at head height, with linear rolloff
+from `_fullVolumeRange` to `_maxRange` — so distance falloff costs nothing and is automatically
+consistent with where the body actually is, ragdolled or not.
+
+**The server does the range test, not the listener.** Sending every frame to everyone and letting
+clients turn the volume down would be less code and it is what a lot of games do. It also ships
+every word anyone says to every machine in the lobby: a bandwidth bill that grows with the square of
+the player count, and a free wallhack for anyone willing to read their own packets. The listener
+never receives a voice frame from someone it is not allowed to hear.
+
+**Unreliable, both directions, always.** A voice frame that arrives late is worse than one that never
+arrives — reliable delivery would stall the stream behind a retransmit and then dump the backlog all
+at once. A dropped frame is a click; a stalled frame is a robot.
+
+**A dead player speaks from their corpse.** The ghost is deliberately a purely local object: it is
+never spawned, so the server does not know where it is and could not range-test against it without
+replicating a ghost position that exists for no other reason. The corpse is the better rule anyway.
+Death costs you the room: you are heard where your body is, muffled, and drifting off to haunt
+somebody across the map means nobody can hear you at all. Downed and dead are filtered rather than
+cut — volume 0.75 and a 4kHz low-pass face down on the floor, 0.5 and 700Hz once dead, because being
+able to hear the person you are dragging is most of the reason to drag them.
+
+**Open mic, no push-to-talk.** Push-to-talk protects against a reaction reaching the group late,
+which is precisely the thing this game is made of. A mute toggle belongs to the settings menu (#84).
+
+Two implementation details worth keeping. Every frame carries a one-byte codec tag, `Steam` or
+`RawPcm`; the second exists only so the headless test can push real audio through the real path on a
+machine with no microphone and no Steam. And playback writes into a two-second float ring that Unity
+drains from a streaming `AudioClip` on the audio thread, so a late frame is silence instead of a
+stall and no clip is ever allocated per utterance. An overrun drops the oldest samples: a listener
+two seconds behind wants the present, not the past.
+
+Steam is optional everywhere else in this project and it is optional here. With no Steam there is no
+capture and no relay, and nothing else in the game changes.
+
+#### Proving it without four microphones
+
+`-voiceTest <seconds>` and `-voiceRange <metres>`.
+
+A headless build has no microphone and usually no Steam, so capture and the codec are the two things
+an automated run genuinely cannot exercise. Everything after them can. `-voiceTest` synthesises a
+440Hz tone and feeds it into the same `SendFrame` the microphone uses, tagged `RawPcm` so the
+listener skips Steam's decoder and nothing else: framing, the unreliable relay, the server range
+test, the ring buffer and the muffling all run exactly as they do in a real game. It never claims
+anything was *audible* — under `-nographics` the audio thread may never pull a sample — it reports
+what the network moved and what reached the buffer.
+
+`-voiceRange` exists because the greybox spawn ring puts four players 6m from the middle at 90° from
+each other: neighbours land 8.49m apart and opposites 12m, so a range of 10 straddles the ring and
+nobody has to walk. Four processes, all speaking, host killing ALPHA at t=20 by key:
+
+```
+host    (0,0,6)  heard owner 1, heard owner 3          ... never owner 2
+ALPHA   (6,0,0)  heard owner 0, heard owner 2          ... never owner 3
+BRAVO   (0,0,-6) heard owner 1, heard owner 3          ... never owner 0
+CHARLIE (-6,0,0) heard owner 0, heard owner 2          ... never owner 1
+
+[VoiceChat] -voiceTest: server relayed owner 0 446 time(s), skipped 223 listener-frame(s) beyond 10m.
+[VoiceChat] -voiceTest: heard owner 1: 270 frames, 121230 samples, speaker Dead, volume 0.50, cutoff 700Hz.
+```
+
+Every peer hears exactly its two neighbours and never the one across the ring, the server skipped
+one listener-frame for every one it sent, and ALPHA kept talking after dying — from the floor, at
+half volume, through a 700Hz filter.
+
 ---
 
 ## World generation
