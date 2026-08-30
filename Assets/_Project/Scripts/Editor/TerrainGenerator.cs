@@ -96,6 +96,9 @@ namespace EscapeWithYourFriends.EditorTools
             ReportCover(splat, land, splatResolution);
             WriteSplat(profile, data, splat, splatResolution);
 
+            WriteFlora(profile, data);
+            WriteDetail(profile, data);
+
             WriteScene(profile, data);
 
             // Read back what actually landed on disk. The hash above proves the maths repeats; this
@@ -212,10 +215,20 @@ namespace EscapeWithYourFriends.EditorTools
             var terrain = island.AddComponent<Terrain>();
             terrain.terrainData = data;
 
-            // No material assigned: URP hands the terrain its own default, and the real splatmap
-            // material arrives with #31.
+            // No material assigned: URP hands the terrain its own default, which reads the layers
+            // and the alphamap written above.
             terrain.heightmapPixelError = 5f;
             terrain.basemapDistance = 400f;
+
+            // The vegetation budget, all of it in one place. Trees are meshes out to
+            // TreeBillboardDistance and cheap impostors from there to TreeDistance; grass stops
+            // dead at DetailDistance, which is where an integrated GPU spends most of its frame.
+            terrain.treeDistance = profile.TreeDistance;
+            terrain.treeBillboardDistance = profile.TreeBillboardDistance;
+            terrain.treeCrossFadeLength = profile.TreeCrossFade;
+            terrain.treeMaximumFullLODCount = profile.TreeMaximumFullLOD;
+            terrain.detailObjectDistance = profile.DetailDistance;
+            terrain.detailObjectDensity = profile.DetailDensity;
 
             var collider = island.AddComponent<TerrainCollider>();
             collider.terrainData = data;
@@ -321,10 +334,6 @@ namespace EscapeWithYourFriends.EditorTools
             float half = profile.Size * 0.5f;
             float step = profile.Size / resolution;
 
-            // One metre either side. Smaller and the gradient picks up noise detail no texture can
-            // show; larger and cliff edges smear into the grass above them.
-            const float delta = 1f;
-
             for (int z = 0; z < resolution; z++)
             {
                 float worldZ = -half + (z + 0.5f) * step;
@@ -334,11 +343,8 @@ namespace EscapeWithYourFriends.EditorTools
 
                     float height = shape.HeightAt(worldX, worldZ);
                     land[z, x] = height > IslandShape.SeaLevel;
-                    float gx = (shape.HeightAt(worldX + delta, worldZ) - shape.HeightAt(worldX - delta, worldZ)) * 0.5f / delta;
-                    float gz = (shape.HeightAt(worldX, worldZ + delta) - shape.HeightAt(worldX, worldZ - delta)) * 0.5f / delta;
-                    float slope = Mathf.Sqrt(gx * gx + gz * gz);
 
-                    splat.Weights(height, slope, worldX, worldZ, weights);
+                    splat.Weights(height, shape.SlopeAt(worldX, worldZ), worldX, worldZ, weights);
                     for (int layer = 0; layer < IslandSplat.LayerCount; layer++)
                         map[z, x, layer] = weights[layer];
                 }
@@ -517,6 +523,224 @@ namespace EscapeWithYourFriends.EditorTools
                 line.Append($" {IslandSplat.LayerNames[layer]} {counts[layer] * 100f / Mathf.Max(1, dry):F1}%");
 
             Debug.Log(line.ToString());
+        }
+
+        /// <summary>
+        /// Plants the island. Trees go in as terrain tree instances rather than as scene objects,
+        /// which is the whole reason this is cheap: the terrain culls, LODs and batches them itself,
+        /// and the scene file stays four kilobytes instead of carrying ten thousand transforms.
+        ///
+        /// Tree positions are normalised into 0..1 over the terrain, and the height is normalised
+        /// over the vertical size the same way the heightmap is. Colours are forced to white because
+        /// the default TreeInstance is all zeroes, and a tree with a black instance colour renders
+        /// black.
+        /// </summary>
+        static void WriteFlora(IslandProfile profile, TerrainData data)
+        {
+            GameObject[] prefabs = FloraFactory.EnsurePrototypes();
+
+            var prototypes = new TreePrototype[prefabs.Length];
+            for (int i = 0; i < prefabs.Length; i++)
+                prototypes[i] = new TreePrototype { prefab = prefabs[i], bendFactor = 0f };
+            data.treePrototypes = prototypes;
+
+            var stopwatch = Stopwatch.StartNew();
+            var shape = new IslandShape(profile);
+            var placed = new IslandFlora(shape).Scatter();
+            stopwatch.Stop();
+
+            float half = profile.Size * 0.5f;
+            float total = profile.TotalHeight;
+
+            var instances = new TreeInstance[placed.Count];
+            var counts = new int[IslandFlora.SpeciesCount];
+
+            for (int i = 0; i < placed.Count; i++)
+            {
+                FloraInstance plant = placed[i];
+                counts[plant.Prototype]++;
+
+                instances[i] = new TreeInstance
+                {
+                    prototypeIndex = plant.Prototype,
+                    position = new Vector3((plant.Position.x + half) / profile.Size,
+                                           (plant.Position.y + profile.SeabedDepth) / total,
+                                           (plant.Position.z + half) / profile.Size),
+                    rotation = plant.Rotation,
+                    widthScale = plant.Width,
+                    heightScale = plant.Height,
+                    color = Color.white,
+                    lightmapColor = Color.white
+                };
+            }
+
+            // Snapped to the baked heightmap rather than trusted at the sampled height: the shape is
+            // continuous but the terrain is bilinear between samples, and a tree standing on the
+            // maths instead of on the mesh floats a few centimetres over every hollow.
+            data.SetTreeInstances(instances, true);
+
+            var line = new StringBuilder($"[TerrainGenerator] Scattered {placed.Count} plants in "
+                                         + $"{stopwatch.ElapsedMilliseconds}ms (placement hash {HashFlora(placed):X8}):");
+            for (int i = 0; i < IslandFlora.SpeciesCount; i++)
+                line.Append($" {IslandFlora.SpeciesNames[i]} {counts[i]}");
+
+            Debug.Log(line.ToString());
+            ReportTriangles(prefabs, counts, profile);
+        }
+
+        /// <summary>
+        /// Grass, as a detail layer. One billboard prototype and one density map: the terrain draws
+        /// them in patches and drops whole patches past <see cref="IslandProfile.DetailDistance"/>,
+        /// which is the single knob that decides whether the island runs on an integrated GPU.
+        ///
+        /// Density follows the grass weight of the splatmap, so the grass grows exactly where the
+        /// ground is already painted green rather than in its own unrelated pattern.
+        /// </summary>
+        static void WriteDetail(IslandProfile profile, TerrainData data)
+        {
+            Texture2D blades = FloraFactory.EnsureGrassTexture();
+
+            data.detailPrototypes = new[]
+            {
+                new DetailPrototype
+                {
+                    prototypeTexture = blades,
+                    renderMode = DetailRenderMode.GrassBillboard,
+                    usePrototypeMesh = false,
+                    healthyColor = new Color(0.55f, 0.72f, 0.38f),
+                    dryColor = new Color(0.66f, 0.66f, 0.36f),
+                    minWidth = 0.7f,
+                    maxWidth = 1.5f,
+                    minHeight = 0.6f,
+                    maxHeight = 1.2f,
+                    noiseSpread = 0.4f
+                }
+            };
+
+            // Resolution before the layer, for the same reason the alphamap resolution comes before
+            // the alphamap: changing it throws the maps away.
+            int resolution = Mathf.Max(8, profile.DetailResolution);
+            data.SetDetailResolution(resolution, Mathf.Max(8, profile.DetailPerPatch));
+
+            var shape = new IslandShape(profile);
+            var splat = new IslandSplat(shape);
+            var weights = new float[IslandSplat.LayerCount];
+
+            // Detail maps are indexed [z, x], the same way alphamaps are. Verified against the
+            // terrain rather than assumed: a transposed grass map mirrors the island diagonally and
+            // looks almost right, which is the worst kind of wrong.
+            var layer = new int[resolution, resolution];
+            float half = profile.Size * 0.5f;
+            float step = profile.Size / resolution;
+            int cells = 0;
+
+            for (int z = 0; z < resolution; z++)
+            {
+                float worldZ = -half + (z + 0.5f) * step;
+                for (int x = 0; x < resolution; x++)
+                {
+                    float worldX = -half + (x + 0.5f) * step;
+
+                    float height = shape.HeightAt(worldX, worldZ);
+                    if (height <= profile.FloraMinHeight) continue;
+
+                    splat.Weights(height, shape.SlopeAt(worldX, worldZ), worldX, worldZ, weights);
+                    float grass = weights[IslandSplat.Grass];
+                    if (grass < profile.GrassThreshold) continue;
+
+                    // Linear from the threshold up, so the edge of a grass patch thins out instead of
+                    // ending on a line you can see from across the bay.
+                    float t = (grass - profile.GrassThreshold) / Mathf.Max(0.01f, 1f - profile.GrassThreshold);
+                    int count = Mathf.RoundToInt(Mathf.Lerp(1f, profile.GrassPerCell, t));
+                    if (count <= 0) continue;
+
+                    layer[z, x] = count;
+                    cells++;
+                }
+            }
+
+            data.SetDetailLayer(0, 0, 0, layer);
+            data.wavingGrassStrength = 0.35f;
+            data.wavingGrassSpeed = 0.4f;
+            data.wavingGrassAmount = 0.3f;
+            data.wavingGrassTint = new Color(0.7f, 0.75f, 0.6f);
+
+            EditorUtility.SetDirty(data);
+            Debug.Log($"[TerrainGenerator] Grass on {cells} of {resolution * resolution} detail cells "
+                      + $"({cells * 100f / (resolution * resolution):F1}%), up to {profile.GrassPerCell} per cell, "
+                      + $"drawn to {profile.DetailDistance}m at density {profile.DetailDensity}.");
+        }
+
+        /// <summary>
+        /// What the vegetation costs, in the only unit that can be measured without a screen. The
+        /// frame rate itself needs the target machine; this is the budget the frame rate comes out of.
+        /// </summary>
+        static void ReportTriangles(GameObject[] prefabs, int[] counts, IslandProfile profile)
+        {
+            var line = new StringBuilder("[TerrainGenerator] Triangle budget:");
+            int worst = 0;
+
+            for (int i = 0; i < prefabs.Length; i++)
+            {
+                int near = 0;
+                int far = 0;
+
+                var group = prefabs[i].GetComponent<LODGroup>();
+                LOD[] lods = group != null ? group.GetLODs() : new LOD[0];
+                for (int level = 0; level < lods.Length; level++)
+                {
+                    int triangles = 0;
+                    foreach (Renderer renderer in lods[level].renderers)
+                    {
+                        var filter = renderer != null ? renderer.GetComponent<MeshFilter>() : null;
+                        if (filter != null && filter.sharedMesh != null)
+                            triangles += (int)(filter.sharedMesh.triangles.Length / 3);
+                    }
+
+                    if (level == 0) near = triangles; else far = triangles;
+                }
+
+                worst = Mathf.Max(worst, near);
+                line.Append($" {IslandFlora.SpeciesNames[i]} {near}/{far} tris x{counts[i]}");
+            }
+
+            Debug.Log(line.ToString());
+            Debug.Log($"[TerrainGenerator] Worst case at full LOD: {profile.TreeMaximumFullLOD} trees x {worst} tris "
+                      + $"= {profile.TreeMaximumFullLOD * worst} triangles, everything past that is the low LOD.");
+        }
+
+        /// <summary>FNV-1a over the placement, so two runs that plant one tree differently disagree here.</summary>
+        static uint HashFlora(System.Collections.Generic.List<FloraInstance> placed)
+        {
+            unchecked
+            {
+                uint hash = 2166136261u;
+                foreach (FloraInstance plant in placed)
+                {
+                    hash = (hash ^ (uint)plant.Prototype) * 16777619u;
+                    hash = Mix(hash, plant.Position.x);
+                    hash = Mix(hash, plant.Position.y);
+                    hash = Mix(hash, plant.Position.z);
+                    hash = Mix(hash, plant.Rotation);
+                    hash = Mix(hash, plant.Height);
+                    hash = Mix(hash, plant.Width);
+                }
+
+                return hash;
+            }
+        }
+
+        static uint Mix(uint hash, float value)
+        {
+            unchecked
+            {
+                uint bits = (uint)BitConverter.SingleToInt32Bits(value);
+                hash = (hash ^ (bits & 0xFF)) * 16777619u;
+                hash = (hash ^ ((bits >> 8) & 0xFF)) * 16777619u;
+                hash = (hash ^ ((bits >> 16) & 0xFF)) * 16777619u;
+                hash = (hash ^ (bits >> 24)) * 16777619u;
+                return hash;
+            }
         }
 
         /// <summary>FNV-1a over an alphamap, same shape as the heightmap hash.</summary>

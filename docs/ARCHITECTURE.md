@@ -1327,6 +1327,147 @@ fileIDs each time, so a regeneration with an unchanged seed still shows a diff t
 and the same terrain under different numbers. Harmless, and #39 replaces that scene with the real
 game world anyway, so it is not worth pinning the IDs down for.
 
+### Planting it: trees, bushes and grass
+
+The island was bare after #31 — correct ground, correct paint, nothing growing on it. #32 puts the
+vegetation on, under one hard constraint: it has to look like a jungle on a laptop with a Radeon
+760M in it.
+
+The whole design follows from that constraint. **Trees go in as terrain tree instances, not as
+scene objects.** Fourteen thousand `GameObject`s would be fourteen thousand transforms in
+`Island.unity`, culled one by one on the CPU; fourteen thousand `TreeInstance`s are a flat array
+inside the terrain asset, culled, LOD-ed, batched and billboarded by the terrain system itself. The
+scene file stays four kilobytes. Grass is a **detail layer** for the same reason: the terrain draws
+it in patches and drops whole patches at a distance, so the cost is one number in the profile.
+
+Three new pieces:
+
+| File | Job |
+|---|---|
+| `Scripts/World/IslandFlora.cs` | Where the plants go. Pure function of the seed, no Unity types beyond `Vector3`. |
+| `Scripts/Editor/FloraFactory.cs` | What the plants look like. Generates meshes, materials, LOD prefabs and the grass texture. |
+| `TerrainGenerator.WriteFlora` / `WriteDetail` | Bakes both into the terrain asset. |
+
+#### Where the plants go
+
+A jittered grid, not a random spray. Uniform random scatter clumps and gaps for free — that is
+what uniform random *is* — and the gaps read as bald patches you cannot tune away by adding more
+trees. One candidate per grid cell, offset inside its own cell by the same hash that decides
+whether it lives, gives even coverage with no visible lattice, at one hash per cell instead of a
+rejection loop.
+
+Two passes: canopy on a 4 m grid, undergrowth on a 2.4 m grid. Bushes are not competing with trees
+for the same slot, so the ground under a canopy is not bare.
+
+Each candidate asks the same two functions the splatmap asks — `IslandShape.HeightAt` and
+`IslandShape.SlopeAt` — and then the splat weights themselves, so the forest agrees with the paint
+instead of contradicting it. Suitability per species is a height band × a slope ceiling × a demand
+on the cover already painted there:
+
+| Species | Height band | Slope ceiling | Wants |
+|---|---|---|---|
+| Palm | 0.6–7 m | 0.45 | sand, a little grass |
+| Jungle tree | 2.5–58 m | 0.62 | grass, some dirt |
+| Highland tree | 28–110 m | 0.70 | grass, dirt, a little rock |
+| Bush | 1–92 m | 0.75 | grass, dirt, a little sand |
+
+Slope is a gradient, never degrees — the same rule as everywhere else in the deterministic path, so
+no `atan` gets in. Species are tried in order and the roll is spent as it goes, which makes the
+ordering a priority: a palm-suitable cell down by the water is a palm before it is anything else.
+
+Clumping is then put back deliberately, per species, as a low-frequency grove mask, so palms bunch
+along one stretch of beach and not another and the highland pines thin out before the rock instead
+of stopping dead on a contour line.
+
+**The grove span was the trap, and it cost two retunes.** The obvious thing to write is
+`(noise - floor) / (1 - floor)` — remap everything above the floor into 0..1. But averaged gradient
+noise piles up around 0.5 and almost never reaches the ends, so that expression multiplies the
+*entire island* by about a quarter. It does not read as clumping, it reads as a thin forest with no
+clearings anywhere: the first run produced 5192 plants and 894 trees over a square kilometre. The
+fix is an explicit narrow `GroveSpan` (0.14) as the denominator, which puts the noise's own middle
+at full density and lets only the genuine dips open up into clearings.
+
+A second, duller lesson came with it: **changing a default in `IslandProfile.cs` does nothing to an
+already-serialised profile.** `Island.asset` keeps whatever it stored; only genuinely new fields
+pick up their defaults. Both retunes had to edit the YAML asset in lockstep with the C#.
+
+#### What the plants look like
+
+`FloraFactory` generates four prefabs and six materials from code, same as the ground textures and
+for the same reason — nothing sculpted by hand, everything reproducible from the terminal. A fixed
+salt separate from the island seed drives the shapes, so rerolling the island does not reroll what
+a palm tree looks like.
+
+Each prefab is an `LODGroup` over two generated meshes with two submeshes each (bark, foliage).
+LOD1 also stops casting and receiving shadows, which is most of what it saves. Bushes get no
+collider; trees get a capsule.
+
+```
+Palm          178 tris near / 36 far
+JungleTree    172 / 80
+HighlandTree   74 / 28
+Bush           96 / 40
+```
+
+Grass is a 64² RGBA texture of seven parabolic blades, drawn as a `GrassBillboard` detail — no mesh
+per tuft. Density follows the grass weight of the splatmap, ramped linearly from `GrassThreshold`
+up, so the edge of a grass patch thins out instead of ending on a line you can see from across the
+bay.
+
+Two Unity details worth writing down, both of which fail silently:
+
+- **`TreeInstance` defaults to all zeroes**, so `color` and `lightmapColor` have to be forced to
+  white or every tree renders black.
+- **Detail layers are indexed `[z, x]`**, like alphamaps. This was *verified*, not assumed: a
+  throwaway editor script called `GetDetailLayer(0, 0, 4, 2, 0)` on an in-memory `TerrainData` and
+  printed `GetLength(0)=2 GetLength(1)=4`. A transposed grass map mirrors the island diagonally and
+  looks almost right, which is the worst kind of wrong.
+
+Tree positions are also snapped to the baked heightmap (`SetTreeInstances(…, true)`) rather than
+trusted at the sampled height: the shape is continuous but the terrain is bilinear between samples,
+and a tree standing on the maths instead of on the mesh floats over every hollow.
+
+#### The performance knobs
+
+All six live in `IslandProfile` and are applied to the `Terrain` component by `WriteScene`, so
+tuning min-spec is editing one asset, not hunting through code:
+
+| Knob | Value | What it buys |
+|---|---|---|
+| `TreeDistance` | 320 m | Trees stop drawing entirely. |
+| `TreeBillboardDistance` | 90 m | Mesh → billboard. The band from here to 320 m is nearly free. |
+| `TreeCrossFade` | 25 m | Fade across that switch. Zero pops visibly. |
+| `TreeMaximumFullLOD` | 60 | Hard cap on full-mesh trees. Bounds the worst frame. |
+| `DetailDistance` | 85 m | Grass draw distance. The single biggest cost on a weak GPU. |
+| `DetailDensity` | 0.8 | Global grass multiplier. The min-spec escape hatch. |
+
+`terrain.drawInstanced` is deliberately left alone — it is on the way out in Unity 6 and the
+terrain instances trees by itself.
+
+#### What it produced
+
+```
+seed 20260830   heightmap 0B19930F   splat 6A9D0D17   placement C929620F   asset DCAC426A
+                14236 plants: Palm 1608   JungleTree 2399   HighlandTree 232   Bush 9997
+                Grass on 29079 of 262144 detail cells (11.1%), up to 6 per cell
+seed 20260830   -> placement C929620F, asset DCAC426A, md5 11fbc769..., 0 assets regenerated
+seed 7          splat 2C61AA86   placement CF3B98FA   asset 8CCB6F99
+                13732 plants: Palm 1111   JungleTree 3459   HighlandTree 7   Bush 9155
+```
+
+~172 trees per hectare, and the two seeds disagree in the way they should: seed 7 has more inland
+jungle, almost no highland (its mountain barely clears the band) and a shorter beach ring.
+
+The refactor that pulled the inlined central-difference out of `TerrainGenerator.SampleSplat` and
+into `IslandShape.SlopeAt` — so the splat, the flora and everything after it ask the same function
+— is proven bit-identical by the splat hash staying `6A9D0D17` across it.
+
+**What is not verified here:** the acceptance criterion says "dense-looking jungle that still hits
+60fps on the min-spec iGPU", and a frame rate cannot be measured in batchmode with `-nographics`.
+What is measured is the budget the frame rate comes out of: instance counts, per-species triangle
+counts, and the cap of 60 × 178 = 10680 triangles of full-LOD tree in the worst case. The frame
+rate itself needs the Radeon 760M and a human looking at the screen.
+
 ---
 
 ## Data-driven content

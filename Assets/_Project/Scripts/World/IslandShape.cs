@@ -95,6 +95,21 @@ namespace EscapeWithYourFriends.World
             return Mathf.Clamp(height, -_profile.SeabedDepth, _profile.PeakHeight);
         }
 
+        /// <summary>
+        /// Steepness at a world position as a gradient - rise over run - by central differences on
+        /// the shape itself. Never an angle: converting to degrees would put atan in a path whose
+        /// whole reason for existing is that nothing in it may drift between machines.
+        ///
+        /// One metre either side by default. Smaller and the gradient picks up noise detail nothing
+        /// downstream can act on; larger and cliff edges smear into the ground above them.
+        /// </summary>
+        public float SlopeAt(float x, float z, float delta = 1f)
+        {
+            float gx = (HeightAt(x + delta, z) - HeightAt(x - delta, z)) * 0.5f / delta;
+            float gz = (HeightAt(x, z + delta) - HeightAt(x, z - delta)) * 0.5f / delta;
+            return Mathf.Sqrt(gx * gx + gz * gz);
+        }
+
         /// <summary>True when the ground here is dry. The one question most systems ask.</summary>
         public bool IsLand(float x, float z) => HeightAt(x, z) > SeaLevel;
 

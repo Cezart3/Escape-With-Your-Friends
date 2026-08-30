@@ -53,3 +53,26 @@ MonoBehaviour:
   GrassTiling: 7
   RockTiling: 12
   DirtTiling: 7
+  CanopyCellSize: 4
+  UndergrowthCellSize: 2.4
+  FloraJitter: 0.9
+  FloraMinHeight: 0.35
+  FloraMinScale: 0.8
+  FloraMaxScale: 1.35
+  PalmDensity: 0.8
+  JungleDensity: 0.95
+  HighlandDensity: 0.9
+  BushDensity: 0.6
+  GroveFeatureSize: 140
+  GroveFloor: 0.36
+  GroveSpan: 0.14
+  DetailResolution: 512
+  DetailPerPatch: 32
+  GrassPerCell: 6
+  GrassThreshold: 0.35
+  TreeDistance: 320
+  TreeBillboardDistance: 90
+  TreeCrossFade: 25
+  TreeMaximumFullLOD: 60
+  DetailDistance: 85
+  DetailDensity: 0.8

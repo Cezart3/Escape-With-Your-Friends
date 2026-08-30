@@ -148,6 +148,78 @@ namespace EscapeWithYourFriends.World
         [Tooltip("Metres per repeat of the dirt texture.")]
         public float DirtTiling = 7f;
 
+        [Header("Vegetation")]
+        [Tooltip("Metres between canopy candidates. One tree per cell at most, so this is the densest the forest can ever be.")]
+        public float CanopyCellSize = 4f;
+
+        [Tooltip("Metres between undergrowth candidates. Finer than the canopy so bushes fill in underneath it.")]
+        public float UndergrowthCellSize = 2.4f;
+
+        [Tooltip("How far a plant may wander inside its cell, as a fraction of the cell. 0 is a visible grid, 1 lets neighbours touch.")]
+        public float FloraJitter = 0.9f;
+
+        [Tooltip("Metres above sea level below which nothing grows. Keeps the waterline clear of half-drowned trees.")]
+        public float FloraMinHeight = 0.35f;
+
+        [Tooltip("Smallest size multiplier a plant can roll.")]
+        public float FloraMinScale = 0.8f;
+
+        [Tooltip("Largest size multiplier a plant can roll.")]
+        public float FloraMaxScale = 1.35f;
+
+        [Tooltip("Chance a suitable beach cell grows a palm, before the grove mask.")]
+        public float PalmDensity = 0.8f;
+
+        [Tooltip("Chance a suitable inland cell grows a jungle tree, before the grove mask.")]
+        public float JungleDensity = 0.95f;
+
+        [Tooltip("Chance a suitable high cell grows a highland tree, before the grove mask.")]
+        public float HighlandDensity = 0.9f;
+
+        [Tooltip("Chance a suitable cell grows a bush, before the grove mask.")]
+        public float BushDensity = 0.6f;
+
+        [Tooltip("Metres per cell of the grove noise. Roughly the size of one thicket or one clearing.")]
+        public float GroveFeatureSize = 140f;
+
+        [Tooltip("Grove noise below this thins out to nothing, 0 to 1. Higher means more clearings.")]
+        public float GroveFloor = 0.36f;
+
+        [Tooltip("How far above the floor the grove noise has to climb for full density. Small, because the noise rarely strays far from the middle.")]
+        public float GroveSpan = 0.14f;
+
+        [Header("Grass detail")]
+        [Tooltip("Detail map resolution. 512 over a 1024m island is one grass cell every two metres.")]
+        public int DetailResolution = 512;
+
+        [Tooltip("Detail cells per patch. Unity draws a patch at a time, so this is the culling granularity.")]
+        public int DetailPerPatch = 32;
+
+        [Tooltip("Most grass billboards allowed in one detail cell.")]
+        public int GrassPerCell = 6;
+
+        [Tooltip("Least grass cover a cell needs before any grass grows there, 0 to 1.")]
+        public float GrassThreshold = 0.35f;
+
+        [Header("Vegetation performance")]
+        [Tooltip("Metres at which trees stop drawing entirely.")]
+        public float TreeDistance = 320f;
+
+        [Tooltip("Metres at which trees drop to billboards. The gap up to TreeDistance is the cheap band.")]
+        public float TreeBillboardDistance = 90f;
+
+        [Tooltip("Metres over which a tree fades between mesh and billboard. Zero pops.")]
+        public float TreeCrossFade = 25f;
+
+        [Tooltip("Most full-mesh trees drawn at once. Everything beyond this is a billboard however close it is.")]
+        public int TreeMaximumFullLOD = 60;
+
+        [Tooltip("Metres at which grass stops drawing. The single biggest cost knob on a weak GPU.")]
+        public float DetailDistance = 85f;
+
+        [Tooltip("Global multiplier on grass density, 0 to 1. The min-spec escape hatch.")]
+        public float DetailDensity = 0.8f;
+
         /// <summary>Total vertical range of the terrain object: seabed plus the tallest land allowed.</summary>
         public float TotalHeight => SeabedDepth + PeakHeight;
 
