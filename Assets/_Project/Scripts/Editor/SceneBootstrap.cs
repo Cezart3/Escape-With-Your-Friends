@@ -25,6 +25,7 @@ namespace EscapeWithYourFriends.EditorTools
     ///   Unity.exe -quit -batchmode -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.SceneBootstrap.EnsureTransports
     ///   Unity.exe -quit -batchmode -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.SceneBootstrap.EnsureWorldSpawner
     ///   Unity.exe -quit -batchmode -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.SceneBootstrap.EnsureHud
+    ///   Unity.exe -quit -batchmode -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.SceneBootstrap.EnsureAuthenticator
     ///
     /// Bootstrap is the scene that ships as index 0: it holds nothing gameplay-specific and hosts the
     /// NetworkManager, so gameplay scenes can be loaded and unloaded around it.
@@ -235,6 +236,7 @@ namespace EscapeWithYourFriends.EditorTools
             timeManager.SetTickRate(TickRate);
 
             go.AddComponent<NetworkBootstrap>();
+            AttachAuthenticator(go);
             AttachLobby(go);
             AttachPlayerSpawner(go);
             AttachWorldSpawner(go);
@@ -322,6 +324,53 @@ namespace EscapeWithYourFriends.EditorTools
 
             go.AddComponent<SteamRuntime>();
             go.AddComponent<TransportSelector>();
+        }
+
+        /// <summary>
+        /// Adds the player-key authenticator to the NetworkManager of the existing Bootstrap scene.
+        ///
+        ///   Unity.exe -quit -batchmode -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.SceneBootstrap.EnsureAuthenticator
+        /// </summary>
+        public static void EnsureAuthenticator()
+        {
+            var scene = EditorSceneManager.OpenScene(BootstrapPath, OpenSceneMode.Single);
+
+            var manager = Object.FindFirstObjectByType<NetworkManager>();
+            if (manager == null)
+            {
+                Debug.LogError("[SceneBootstrap] No NetworkManager in the scene; run EnsureNetworkManager first.");
+                if (Application.isBatchMode) EditorApplication.Exit(1);
+                return;
+            }
+
+            if (manager.GetComponent<PlayerKeyAuthenticator>() != null)
+            {
+                Debug.Log("[SceneBootstrap] Authenticator already present; nothing to do.");
+            }
+            else
+            {
+                AttachAuthenticator(manager.gameObject);
+
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene, BootstrapPath);
+                Debug.Log($"[SceneBootstrap] PlayerKeyAuthenticator added to {BootstrapPath}");
+            }
+
+            if (Application.isBatchMode) EditorApplication.Exit(0);
+        }
+
+        /// <summary>
+        /// Puts the key authenticator on the NetworkManager object.
+        ///
+        /// It has to be on this exact GameObject and not a child: FishNet's ServerManager finds an
+        /// authenticator with <c>GetComponent</c> on its own object when none is assigned, and its
+        /// sub-managers are added to the NetworkManager's object at runtime. Wiring it that way
+        /// rather than through a serialized reference means the link cannot break when either side is
+        /// regenerated, and there is nothing in the scene file to review except the component itself.
+        /// </summary>
+        static void AttachAuthenticator(GameObject go)
+        {
+            if (go.GetComponent<PlayerKeyAuthenticator>() == null) go.AddComponent<PlayerKeyAuthenticator>();
         }
 
         /// <summary>

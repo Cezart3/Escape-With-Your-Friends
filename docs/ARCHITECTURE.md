@@ -569,11 +569,9 @@ the squad list stops claiming someone is present, and appears in the static `Bod
 list the Revive Machine reads instead. `PlayerMotor` builds no input for a body it does not own, so an
 ownerless body simply stands where it fell.
 
-Reclaiming your own body on reconnect is deliberately *not* implemented. It needs a player key that
-survives a reconnect, and neither key available today works: FishNet reuses client ids, so keying by
-id hands a corpse to whoever takes the free slot, and every Tugboat test client shares the address
-`127.0.0.1`. `ServerAdopt(NetworkConnection)` is the seam left for it — and the Revive Machine needs
-that same call anyway, since a revived body with no owner cannot be walked away.
+Reclaiming that body when its owner comes back is the next section; `ServerAdopt(NetworkConnection)`
+is the call both it and the Revive Machine go through, since a revived body with no owner cannot be
+walked away.
 
 **What you were carrying stays on you.** Death does not scatter loot and does not bank it. The body is
 already the object that has to be recovered, so making it the container costs nothing and doubles the
@@ -587,10 +585,97 @@ vehicle seat or a boat deck later, with no second attach path and no fake `Carry
 truck. Everything else about carrying — the range check, the throw impulse, dropping on death — stays
 with the holder.
 
-`-deathTest <seconds>`, `-deathTestOwner <id>` and `-reviveTest <seconds>` drive the headless
-regression, on the same principle as `-fallTest`: the test lives inside the component it tests,
-because the alternative is a build flavour that only exists for tests and is therefore not the build
-anyone ships.
+`-deathTest <seconds>`, `-deathTestOwner <id>`, `-deathTestKey <key>` and `-reviveTest <seconds>`
+drive the headless regression, on the same principle as `-fallTest`: the test lives inside the
+component it tests, because the alternative is a build flavour that only exists for tests and is
+therefore not the build anyone ships.
+
+---
+
+### Coming back for your own corpse
+
+A crash is the most common way to end up dead for a long time, so the body that outlives its owner is
+worth nothing unless that owner can come back and stand in it again. Doing that needs a name for a
+player that survives losing the connection, and the two names FishNet hands out do not qualify: client
+ids are recycled, so the next joiner walks into the corpse of whoever freed the slot, and every
+Tugboat test client shares `127.0.0.1`.
+
+**`PlayerKey` is that name.** One static class, resolved once per process, first hit wins:
+
+1. `-playerKey <value>` from the command line — how the headless harness gives four processes four
+   stable identities.
+2. The Steam id, when Steam is up. This is the real one in a shipped game.
+3. A GUID kept in `PlayerPrefs`, generated on first run. Covers a direct-connect LAN game with no
+   Steam, and survives a restart because it is on disk.
+
+Never the client id, and never the address.
+
+**The key travels through an `Authenticator`, not through a message after joining.** FishNet's
+`PlayerKeyAuthenticator` runs before the connection is authenticated, which is the only point where
+the server is guaranteed to know the key *before* `OnClientLoadedStartScenes` fires and asks who this
+is. A post-join RPC would race the spawn, and losing that race means a fresh body is already standing
+where the corpse should have been reclaimed. The authenticator broadcasts `PlayerKeyBroadcast` from
+the client, validates it (non-empty, at most 128 characters, no duplicate among live connections),
+answers with `PlayerKeyResultBroadcast`, and keeps a client-id → key table that `PlayerSpawner` reads
+back with `TryGetKey`. Rejecting a duplicate matters: two processes claiming `ALPHA` would otherwise
+fight over one corpse.
+
+The spawn path then has one extra question at the top:
+
+```
+OnClientLoadedStartScenes
+  → ResolveKey(connection)            // null when no authenticator: pre-#111 behaviour, fresh body
+  → BodyPersistence.FindAbandoned(key)
+      hit  → ServerAdopt(connection) → AddOwnerToDefaultScene → book the colour → done
+      miss → spawn a fresh body as before
+```
+
+**Ownership first, scene second.** A body added to the client's scene before it is owned arrives with
+`IsOwner` false, and every owner-side component — motor, camera, HUD — starts up in spectator mode on
+a body the player is supposed to be driving. The spawn ring is also *not* advanced on a reclaim: you
+come back where you fell, not at the next free spawn point.
+
+`BodyPersistence` carries the key it was spawned with (`ServerSetOwnerKey`, stamped right after the
+spawn because the component only accepts it once the object is networked) and `FindAbandoned` matches
+on it, skipping anything that is no longer abandoned. The colour slot is re-booked under the new
+connection id, and `TakeColor` now also refuses any slot an abandoned body is still wearing — the
+table is keyed by connection id and a disconnect frees the entry, so without that check the next
+joiner is handed the colour of a corpse whose owner is about to walk back into it. That is not
+hypothetical: it happened on the first run of the four-process test.
+
+**Two flags exist only to make this reachable without a keyboard.** `-carryTest <seconds>` puts a body
+on the host's shoulder, because "the owner dropped while somebody was carrying them" is the one case
+that cannot be reached by killing and disconnecting alone. It cannot use the sphere cast — that needs
+a camera aimed at a body — so it walks the carrier to the target and then goes in through
+`ServerTryPickup`, the same door the RPC uses, with every rule still enforced including the server-side
+range check. Only the aiming is stubbed. `-deathTestKey <key>` kills the body belonging to one player
+key rather than one connection id.
+
+**That second flag exists because connection ids are not stable across a multi-process run.** They are
+handed out in the order the transport accepts sockets, and a host's own local client is not reliably
+connection 0: a client process that finished booting while the host was still loading the scene takes
+0, and the host lands on 1. The first run of this test used `-deathTestOwner 1`, killed the *host's*
+body, left the intended victim standing, exited green on all four processes and proved nothing. Any
+test hook that has to name a specific player names it by key.
+
+The four-process run, host log, in order:
+
+```
+[PlayerKeyAuthenticator] connection 1 accepted with key ALPHA.
+[PlayerSpawner] Spawned body for connection 1 at (6.00, 1.20, 0.00), colour slot 1, key ALPHA.
+[BodyPersistence] -deathTest: owner 0 spared, key HOST is not ALPHA.
+[BodyPersistence] -deathTest: owner 1 killed, state Dead.
+[CarrySystem] -carryTest: owner 0 picked up owner 1 = True, carried=True, body at (6.00, 0.08, 0.00).
+[BodyPersistence] Owner 1 left while Dead; body kept in the world at (6.00, 0.08, 0.00). 1 abandoned.
+[PlayerSpawner] Spawned body for connection 2 at (0.00, 1.20, -6.00), colour slot 2, key BRAVO.
+[BodyPersistence] Body of owner 1 adopted by connection 3.
+[PlayerSpawner] Connection 3 reclaimed the body of former owner 1 (key ALPHA) at (6.00, 0.08, 0.00), state Dead, colour slot 1.
+```
+
+ALPHA died while being carried, dropped out mid-carry, came back on a *different* connection id and
+got the same body, in the same place, in the same state. BRAVO, who joined in between, got a fresh
+body and a different colour. On its own client ALPHA's returning process draws its own squad row as
+`[you] DEAD - carried` — it is not watching that body, it is that body.
 
 ### Getting back up
 

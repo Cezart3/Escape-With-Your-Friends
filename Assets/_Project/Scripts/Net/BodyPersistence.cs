@@ -41,11 +41,17 @@ namespace EscapeWithYourFriends.Net
     /// <see cref="Player.PlayerMotor"/> builds no input for a body it does not own, so an ownerless body
     /// simply stands where it fell — no drift, no phantom movement.
     ///
-    /// Reclaiming your own body on reconnect is deliberately not here. It needs a player key that
-    /// survives a reconnect, and neither of the two available today works: FishNet reuses client ids,
-    /// so keying by id hands a corpse to whoever takes the free slot, and every Tugboat test client
-    /// shares the address 127.0.0.1. That is filed separately, and until it lands a returning player
-    /// spawns fresh next to the corpse of who they used to be, which is funny enough to ship.
+    /// **Reclaiming your own body on reconnect (#111).** Each body remembers the
+    /// <see cref="PlayerKey"/> of whoever it was spawned for, in <see cref="OwnerKey"/>. That key
+    /// outlives the connection — which is the whole point, since a client id is reused by FishNet and
+    /// every Tugboat test client shares one address — so a returning player is matched to the body
+    /// they left rather than to the slot they happen to land in. <see cref="PlayerSpawner"/> does the
+    /// matching through <see cref="FindAbandoned"/> and hands the body over with
+    /// <see cref="ServerAdopt"/> instead of spawning a fresh one.
+    ///
+    /// **No expiry.** An unclaimed body sits there until the Revive Machine consumes it or the session
+    /// ends. A timer that cleaned bodies up would delete the content: the corpse is the thing your
+    /// friends have to go and fetch, and the longer it has been lying there the more that matters.
     /// </summary>
     public class BodyPersistence : NetworkBehaviour
     {
@@ -62,9 +68,17 @@ namespace EscapeWithYourFriends.Net
         ServerManager _serverManager;
         int _spawnOwnerId = -1;
 
+        /// <summary>
+        /// Server-only, and deliberately not a SyncVar. Only the server ever asks who a body belongs
+        /// to, and replicating it would put every player's Steam id on every other player's machine
+        /// for no gameplay reason at all.
+        /// </summary>
+        string _ownerKey = string.Empty;
+
         // Headless test hooks; see the fields' use in OnStartServer.
         float _killAt = -1f;
         float _reviveAt = -1f;
+        string _killKey;
 
         /// <summary>
         /// Every body still in the world whose owner is gone. The Revive Machine works from this
@@ -80,6 +94,13 @@ namespace EscapeWithYourFriends.Net
 
         /// <summary>The connection id this body was spawned for. Survives losing ownership.</summary>
         public int SpawnOwnerId => _spawnOwnerId;
+
+        /// <summary>
+        /// The <see cref="PlayerKey"/> of the player this body belongs to, or empty if it was spawned
+        /// before anyone asked. Unlike <see cref="SpawnOwnerId"/> this survives the player leaving and
+        /// coming back, which is the only reason it exists.
+        /// </summary>
+        public string OwnerKey => _ownerKey;
 
         /// <summary>The life state machine on this body, for callers that only hold the persistence.</summary>
         public Health Health => _health;
@@ -123,6 +144,36 @@ namespace EscapeWithYourFriends.Net
             if (_serverManager != null)
                 _serverManager.OnRemoteConnectionState -= OnRemoteConnectionState;
             _serverManager = null;
+        }
+
+        /// <summary>
+        /// Server only. Stamps this body with the key of the player it was spawned for. Called once,
+        /// by <see cref="PlayerSpawner"/>, at spawn.
+        /// </summary>
+        public void ServerSetOwnerKey(string key)
+        {
+            if (!IsServerStarted || string.IsNullOrEmpty(key)) return;
+            _ownerKey = key;
+        }
+
+        /// <summary>
+        /// The most recently abandoned body belonging to <paramref name="key"/>, or null.
+        ///
+        /// Searched newest first. One player should never have two bodies waiting — adopting the
+        /// first one back is what stops a second from being created — but if a session ever produces
+        /// two, the one they left last is the one they remember dying in.
+        /// </summary>
+        public static BodyPersistence FindAbandoned(string key)
+        {
+            if (string.IsNullOrEmpty(key)) return null;
+
+            for (int i = _abandonedBodies.Count - 1; i >= 0; i--)
+            {
+                BodyPersistence body = _abandonedBodies[i];
+                if (body != null && body._ownerKey == key) return body;
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -198,9 +249,17 @@ namespace EscapeWithYourFriends.Net
         ///
         ///   -deathTest 12        kill this body 12 seconds after the server starts
         ///   -deathTestOwner 1    ...but only the body owned by connection 1 (default: every body)
+        ///   -deathTestKey ALPHA  ...or only the body belonging to that player key
         ///   -reviveTest 35       revive this body at 35 seconds, if it is dead by then
         ///
-        /// All three are read on the server, so only the host's command line matters.
+        /// All four are read on the server, so only the host's command line matters.
+        ///
+        /// Prefer <c>-deathTestKey</c> over <c>-deathTestOwner</c> in anything with more than two
+        /// processes. Connection ids are handed out in the order the transport accepts sockets, and
+        /// a host's own client is not reliably first: a client process that finished booting while
+        /// the host was still loading the scene takes connection 0, and the run then kills the wrong
+        /// body while still exiting green. That is exactly how the first #111 run passed for the
+        /// wrong reason.
         /// </summary>
         void ScheduleTests()
         {
@@ -211,7 +270,14 @@ namespace EscapeWithYourFriends.Net
             if (killAfter > 0 && (onlyOwner < 0 || onlyOwner == _spawnOwnerId))
             {
                 _killAt = Time.time + killAfter;
-                Debug.Log($"[BodyPersistence] -deathTest: owner {_spawnOwnerId} dies in {killAfter}s.");
+
+                // Matched at fire time rather than here: PlayerSpawner stamps the key immediately
+                // after the spawn, which is immediately after this runs, so there is nothing to
+                // compare against yet.
+                _killKey = CommandLine.GetString("-deathTestKey", null);
+
+                Debug.Log($"[BodyPersistence] -deathTest: owner {_spawnOwnerId} dies in {killAfter}s"
+                          + $"{(string.IsNullOrEmpty(_killKey) ? "" : $", if its key is {_killKey}")}.");
             }
 
             if (reviveAfter > 0) _reviveAt = Time.time + reviveAfter;
@@ -224,6 +290,14 @@ namespace EscapeWithYourFriends.Net
             if (_killAt > 0f && Time.time >= _killAt)
             {
                 _killAt = -1f;
+
+                if (!string.IsNullOrEmpty(_killKey) && _ownerKey != _killKey)
+                {
+                    Debug.Log($"[BodyPersistence] -deathTest: owner {_spawnOwnerId} spared, key "
+                              + $"{PlayerKey.Short(_ownerKey)} is not {_killKey}.");
+                    return;
+                }
+
                 _health.ServerKill(DamageInfo.World(0f, DamageType.Environment));
                 Debug.Log($"[BodyPersistence] -deathTest: owner {_spawnOwnerId} killed, "
                           + $"state {_health.State}.");

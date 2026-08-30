@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using EscapeWithYourFriends.Player;
 using FishNet;
 using FishNet.Connection;
@@ -93,6 +93,9 @@ namespace EscapeWithYourFriends.Net
                 return;
             }
 
+            string key = ResolveKey(connection);
+            if (TryReclaim(connection, key)) return;
+
             GetSpawn(_spawnCounter, out Vector3 position, out Quaternion rotation);
             _spawnCounter++;
 
@@ -111,7 +114,56 @@ namespace EscapeWithYourFriends.Net
             else
                 identity.ServerSetIdentity($"Player {connection.ClientId + 1}", colorIndex);
 
-            Debug.Log($"[PlayerSpawner] Spawned body for connection {connection.ClientId} at {position}, colour slot {colorIndex}.");
+            // Stamped after the spawn, because the component only accepts the key once the object is
+            // networked. This is what makes the body findable again if this player drops (#111).
+            var persistence = body.GetComponent<BodyPersistence>();
+            if (persistence != null) persistence.ServerSetOwnerKey(key);
+
+            Debug.Log($"[PlayerSpawner] Spawned body for connection {connection.ClientId} at {position}, "
+                      + $"colour slot {colorIndex}, key {PlayerKey.Short(key)}.");
+        }
+
+        /// <summary>
+        /// The key <paramref name="connection"/> authenticated with, or null when there is no key
+        /// authenticator in the scene. Null is not an error: it means every connection gets a fresh
+        /// body, which is exactly how this behaved before #111.
+        /// </summary>
+        string ResolveKey(NetworkConnection connection)
+        {
+            var authenticator = _manager.ServerManager.GetAuthenticator() as PlayerKeyAuthenticator;
+            return authenticator != null && authenticator.TryGetKey(connection, out string key)
+                ? key
+                : null;
+        }
+
+        /// <summary>
+        /// Hands this connection the body it left behind, if it left one. True when it did, in which
+        /// case nothing new is spawned and the spawn ring is not advanced — the player comes back
+        /// where they fell, not where the next free spawn point is.
+        /// </summary>
+        bool TryReclaim(NetworkConnection connection, string key)
+        {
+            BodyPersistence body = BodyPersistence.FindAbandoned(key);
+            if (body == null) return false;
+
+            // Ownership first, scene second. The client becomes an observer of the body when it is
+            // added to the scene, and a body observed before it is owned arrives on the client with
+            // IsOwner false — every owner-side component would start up in spectator mode.
+            if (!body.ServerAdopt(connection)) return false;
+
+            _manager.SceneManager.AddOwnerToDefaultScene(body.NetworkObject);
+
+            // The body keeps the name and colour it died with, so the colour slot has to be booked
+            // under the new connection id or the next player to join would be handed the same one.
+            var identity = body.GetComponent<PlayerIdentity>();
+            if (identity != null) _colorByOwner[connection.ClientId] = identity.ColorIndex;
+
+            string state = body.Health != null ? body.Health.State.ToString() : "unknown";
+            Debug.Log($"[PlayerSpawner] Connection {connection.ClientId} reclaimed the body of former "
+                      + $"owner {body.SpawnOwnerId} (key {PlayerKey.Short(key)}) at "
+                      + $"{body.transform.position}, state {state}, colour slot "
+                      + $"{(identity != null ? identity.ColorIndex : (byte)0)}.");
+            return true;
         }
 
         void OnRemoteConnectionState(NetworkConnection connection, RemoteConnectionStateArgs args)
@@ -133,6 +185,11 @@ namespace EscapeWithYourFriends.Net
         /// <summary>
         /// Lowest palette slot nobody is using. Reusing freed slots matters more than variety: with
         /// four players the first four colours are the four most distinct ones in the palette.
+        ///
+        /// A slot counts as in use while an abandoned body is still wearing it (#111). The table is
+        /// keyed by connection id and a disconnect frees the entry, but the corpse on the ground
+        /// keeps its colour and its owner may walk back in and reclaim it, so handing the slot to
+        /// the next joiner would put two live players in the same colour.
         /// </summary>
         byte TakeColor(int ownerId)
         {
@@ -142,6 +199,7 @@ namespace EscapeWithYourFriends.Net
             for (byte candidate = 0; candidate < paletteSize; candidate++)
             {
                 if (_colorByOwner.ContainsValue(candidate)) continue;
+                if (IsWornByAbandonedBody(candidate)) continue;
 
                 _colorByOwner[ownerId] = candidate;
                 return candidate;
@@ -151,6 +209,23 @@ namespace EscapeWithYourFriends.Net
             var wrapped = (byte)(ownerId % paletteSize);
             _colorByOwner[ownerId] = wrapped;
             return wrapped;
+        }
+
+        /// <summary>
+        /// True when a body lying on the ground with no owner still has this colour. Cheap: the
+        /// list holds corpses, not players, and it is empty in the common case.
+        /// </summary>
+        static bool IsWornByAbandonedBody(byte colorIndex)
+        {
+            foreach (BodyPersistence body in BodyPersistence.Abandoned)
+            {
+                if (body == null) continue;
+
+                var identity = body.GetComponent<PlayerIdentity>();
+                if (identity != null && identity.ColorIndex == colorIndex) return true;
+            }
+
+            return false;
         }
 
         /// <summary>

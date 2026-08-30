@@ -1,3 +1,6 @@
+using EscapeWithYourFriends.Core;
+using EscapeWithYourFriends.Net;
+using EscapeWithYourFriends.Player;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
 using UnityEngine;
@@ -35,6 +38,10 @@ namespace EscapeWithYourFriends.Combat
 
         StunState _stun;
         Health _health;
+
+        // -carryTest, host only. See RunTest.
+        static bool _testClaimed;
+        float _testAt = -1f;
 
         /// <inheritdoc />
         public Transform CarrySocket => _carrySocket;
@@ -118,24 +125,32 @@ namespace EscapeWithYourFriends.Combat
         }
 
         [ServerRpc]
-        void ServerPickup(Carryable target)
+        void ServerPickup(Carryable target) => ServerTryPickup(target);
+
+        /// <summary>
+        /// Server only. Every rule a pickup has to pass, in one place so that the RPC and the
+        /// headless test go through the same door. Returns false, quietly, on any refusal: a client
+        /// aiming at something it is not allowed to lift is ordinary, not an error.
+        /// </summary>
+        public bool ServerTryPickup(Carryable target)
         {
-            if (target == null || IsCarrying) return;
+            if (!IsServerStarted || target == null || IsCarrying) return false;
 
             // A body on the floor does not get to haul another body.
-            if (_health != null && _health.IsIncapacitated) return;
-            if (_stun != null && _stun.IsStunned) return;
+            if (_health != null && _health.IsIncapacitated) return false;
+            if (_stun != null && _stun.IsStunned) return false;
 
-            if (!target.ServerCanBeCarriedBy(NetworkObject)) return;
+            if (!target.ServerCanBeCarriedBy(NetworkObject)) return false;
 
             // Re-validate range on the server. The client picked the target, but it does not get to
             // decide how far away it was allowed to be.
             float maxDistance = _pickupRange + _serverRangeTolerance;
             if ((target.transform.position - transform.position).sqrMagnitude > maxDistance * maxDistance)
-                return;
+                return false;
 
             target.ServerAttach(NetworkObject);
             _carrying.Value = target;
+            return true;
         }
 
         [ServerRpc]
@@ -161,10 +176,86 @@ namespace EscapeWithYourFriends.Combat
             carried.ServerDetach();
         }
 
+        public override void OnStartServer()
+        {
+            base.OnStartServer();
+
+            float delay = CommandLine.GetFloat("-carryTest", -1f);
+            if (delay <= 0f) return;
+
+            // Same claim as RescueSystem: the flag is read by every player body on the server, and
+            // without a claim all four of them try to haul each other at the same instant.
+            //
+            // Unlike RescueSystem the claim is never released. This test exists for a reconnect
+            // scenario, so bodies come and go while it runs, and a claim that came back when the
+            // claimant left would re-arm the whole test on the next player to join.
+            if (_testClaimed) return;
+
+            _testClaimed = true;
+            _testAt = Time.time + delay;
+        }
+
         public override void OnStopServer()
         {
             base.OnStopServer();
             ServerForceDrop();
+        }
+
+        void Update()
+        {
+            if (!IsServerStarted || _testAt < 0f || Time.time < _testAt) return;
+            _testAt = -1f;
+            RunTest();
+        }
+
+        /// <summary>
+        /// <c>-carryTest &lt;seconds&gt;</c>, host only. Puts a body on the host's shoulder without a
+        /// keyboard, so that "the owner disconnected while somebody was carrying them" (#111) is a
+        /// case a headless run can actually reach.
+        ///
+        /// The sphere cast is the one part no headless run can drive — it needs a camera pointed at a
+        /// body — so the test walks the carrier to the target and then goes in through
+        /// <see cref="ServerTryPickup"/>, which is the same door the RPC uses. Everything the pickup
+        /// actually guards is still checked, the server range test included; only the aiming is
+        /// stubbed out.
+        /// </summary>
+        void RunTest()
+        {
+            Carryable target = FindIncapacitated();
+            if (target == null)
+            {
+                Debug.LogWarning("[CarrySystem] -carryTest: no body on the floor to pick up; skipped.");
+                return;
+            }
+
+            // Walk to the body rather than teleporting the body to the carrier. The whole point of
+            // this test is the state the corpse is left in, and a corpse that was yanked across the
+            // map first is no longer lying where it died.
+            Vector3 spot = target.transform.position - transform.forward * 1.2f;
+            spot.y = transform.position.y;
+
+            var motor = GetComponent<PlayerMotor>();
+            if (motor != null) motor.ServerTeleport(spot, transform.eulerAngles.y);
+            else transform.position = spot;
+
+            bool picked = ServerTryPickup(target);
+
+            Debug.Log($"[CarrySystem] -carryTest: owner {OwnerId} picked up owner {target.OwnerId} "
+                      + $"= {picked}, carried={target.IsCarried}, body at {target.transform.position}.");
+        }
+
+        Carryable FindIncapacitated()
+        {
+            foreach (NetworkPlayerRegistry.PlayerBody body in NetworkPlayerRegistry.Players)
+            {
+                if (!body.IsValid || body.Object == NetworkObject) continue;
+
+                var carryable = body.Object.GetComponent<Carryable>();
+                var health = body.Object.GetComponent<Health>();
+                if (carryable != null && health != null && health.IsIncapacitated) return carryable;
+            }
+
+            return null;
         }
 
         void OnDrawGizmosSelected()
