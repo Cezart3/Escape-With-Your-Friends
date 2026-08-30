@@ -49,3 +49,7 @@
 *.so    filter=lfs diff=lfs merge=lfs -text
 *.bundle filter=lfs diff=lfs merge=lfs -text
 *.terrainlayer.asset -filter -diff -merge text
+
+# TerrainData serialises as binary whatever the project setting says, and a regeneration
+# rewrites all 2MB of it. Last match wins, so this beats the *.asset rule above.
+Assets/_Project/Data/IslandTerrain.asset filter=lfs diff=lfs merge=lfs -text

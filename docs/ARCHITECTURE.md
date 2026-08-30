@@ -1155,6 +1155,94 @@ edit, not an editor session. `WorldSpawner` is that spawner's honest first draft
 casino, the native village and the wreck are all "a prefab at a position", and the only thing that
 changes on the way to M2 is where the list comes from.
 
+### The island, from a seed
+
+That is now code, not a plan. Three files do it:
+
+| File | Role |
+|---|---|
+| `Scripts/World/IslandProfile.cs` | Every number, as a ScriptableObject. The island is `Assets/_Project/Data/Island.asset`, a YAML file you can `sed` |
+| `Scripts/World/IslandShape.cs` | The shape as a pure function: `HeightAt(x, z)` in metres above sea level |
+| `Scripts/Editor/TerrainGenerator.cs` | Bakes that function onto a grid, writes `IslandTerrain.asset` and `Island.unity` |
+
+One command rebuilds the world:
+
+```
+Unity.exe -quit -batchmode -nographics -projectPath . \
+  -executeMethod EscapeWithYourFriends.EditorTools.TerrainGenerator.GenerateIsland \
+  -islandSeed 20260830 -logFile island.log
+```
+
+`-islandSeed`, `-islandSize` and `-islandRes` override the asset and are written back into it, so the
+profile always describes the island that was actually baked. A missing profile is created with
+defaults, so a fresh clone needs no editor step.
+
+**The noise is hand-written, and that is the whole point.** Unity documents `Mathf.PerlinNoise` as an
+unspecified implementation that may change between versions. The acceptance criterion for this issue
+is that a seed reproduces the island byte for byte, and "byte for byte until we upgrade the editor"
+does not meet it. `IslandShape` is integer hashing (FNV-1a with an avalanche finish), eight fixed
+gradient directions, and float lerps — no trigonometry, no library calls, nothing that can drift.
+
+The shape is five layers, in order:
+
+1. **Domain warp** — two noise fields drag the sampling position up to 110m sideways. Without this
+   every later layer is visibly radial and the hills read as blobs.
+2. **fBm relief** — six octaves at a 380m base feature size, shifted by a *water line* of 0.40 before
+   being scaled to 46m. Moving that line up or down is how much of the island is dry.
+3. **Coast mask** — a radial falloff whose radius is itself noisy, which is what produces bays and
+   headlands instead of a circle.
+4. **Mountain** — a dome at 34% of the half-size, carved by ridged noise so it reads as rock rather
+   than as a scoop of ice cream. It peaks at ~116m and is the thing you navigate by.
+5. **Beach flattening** — anything within 5m of sea level has its slope cut to 30%, which turns the
+   shoreline into sand you can drag a boat onto instead of a wall you swim along.
+
+Geometry: **1024 x 1024m** at **1025 heightmap samples** — one sample per metre. Sea level is
+**y = 0**, fixed, so buoyancy and the water plane never need a lookup; the terrain object sits at
+`(-512, -40, -512)` and its 200m of vertical range covers 40m of seabed plus 160m of headroom.
+
+One tuning lesson worth keeping: the seabed pull must be **squared**, not linear. With
+`height = hills * mask - (1 - mask) * 40`, forty metres of sea beats five metres of hill everywhere
+except the last tenth of the falloff, so the first island came out at 16% land — a small blob in a
+big square of water. `(1 - mask)²` moves the shoreline back out to where the mask actually fades and
+leaves a shallow shelf to swim in over. Same seed, same everything else: **23.5% land, 24.6
+hectares**, roughly 560m across.
+
+#### Proving determinism without opening the editor
+
+The generator logs an FNV-1a hash of the heightmap and a second one of the saved asset bytes — the
+first proves the maths repeats, the second proves the serialisation does. Four runs:
+
+```
+seed 20260830   heightmap 0B19930F   asset C3E49260   md5 8d085281...
+seed 20260830   heightmap 0B19930F   asset C3E49260
+seed 20260830   heightmap 0B19930F   asset C3E49260
+seed 7          heightmap E24368CA   asset CE732FF3   md5 98297105...   (20.8% land)
+seed 20260830   heightmap 0B19930F   asset C3E49260   md5 8d085281...
+```
+
+The last line is the one that matters: going away to another seed and coming back reproduces the
+file exactly, so the output is a function of the seed and not merely of an idempotent write.
+
+Every run also prints land fraction, beach fraction, mean land height, peak height, and a 72x30 ASCII
+map, so a parameter change that quietly drowns the island is visible in the log:
+
+```
+~~~~~~~~~~~~~~~~~~~.:---+++++++++++---------------::..~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~.:--+++++++^+++++++---------------:::..~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~.:--++++^^^^^^^^+++++-------------:::::..~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~.:--+++++^^^^^^+++++++----------::::::::..~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~..:-----++++++++++----------:::::::::::::..~~~~~~~~~~~~~~~
+```
+
+Sampling 1025² points takes ~1.5s, so regenerating is cheap enough to iterate on parameters from the
+terminal.
+
+`Island.unity` holds the terrain and a sun and nothing else, and is deliberately **not** in build
+settings: it has nothing networked in it yet, and adding it would slow every headless test down for
+no gain. Loading it as the game world is #39. `IslandTerrain.asset` is tracked with Git LFS —
+`TerrainData` serialises as binary whatever the project setting says, and it is 2MB that a
+regeneration rewrites whole.
+
 ---
 
 ## Data-driven content

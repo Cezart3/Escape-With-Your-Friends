@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6526cf5e0e54e2a4c97f8f86d976371d, type: 3}
+  m_Name: Island
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.IslandProfile
+  Seed: 20260830
+  Size: 1024
+  Resolution: 1025
+  SeabedDepth: 40
+  PeakHeight: 160
+  HillFeatureSize: 380
+  HillOctaves: 6
+  HillGain: 0.5
+  HillLacunarity: 2.03
+  HillHeight: 46
+  HillWaterLine: 0.4
+  WarpStrength: 110
+  WarpFeatureSize: 500
+  CoastInnerRadius: 0.42
+  CoastOuterRadius: 0.88
+  CoastRaggedness: 0.17
+  CoastFeatureSize: 260
+  BeachBand: 5
+  BeachFlatten: 0.3
+  MountainCentre: {x: -0.18, y: 0.22}
+  MountainRadius: 0.34
+  MountainHeight: 112
+  MountainSharpness: 2.4
+  MountainRidge: 0.35
+  MountainRidgeFeatureSize: 150
