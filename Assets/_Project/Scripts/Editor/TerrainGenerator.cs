@@ -240,6 +240,16 @@ namespace EscapeWithYourFriends.EditorTools
             light.intensity = 1.1f;
             light.shadows = LightShadows.Soft;
 
+            // The sea, as a prefab instance rather than as loose objects, so a shader or mesh
+            // change reaches the scene without regenerating the island. It sits at the world origin
+            // and moves itself to follow the camera at runtime.
+            GameObject waterPrefab = WaterFactory.EnsureWater(profile);
+            if (waterPrefab != null)
+            {
+                var water = (GameObject)PrefabUtility.InstantiatePrefab(waterPrefab, scene);
+                water.transform.position = new Vector3(0f, IslandShape.SeaLevel, 0f);
+            }
+
             Directory.CreateDirectory(Path.GetDirectoryName(ScenePath));
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -479,7 +489,7 @@ namespace EscapeWithYourFriends.EditorTools
         /// blended by distance, which is the cheap standard trick for a seamless tile. Periods have to
         /// divide the texture evenly, hence integer cells per side.
         /// </summary>
-        static float Tileable(int x, int y, int size, int cells, int seed)
+        internal static float Tileable(int x, int y, int size, int cells, int seed)
         {
             float scale = cells / (float)size;
             float fx = x * scale;

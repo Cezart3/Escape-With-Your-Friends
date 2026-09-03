@@ -76,3 +76,10 @@ MonoBehaviour:
   TreeMaximumFullLOD: 60
   DetailDistance: 85
   DetailDensity: 0.8
+  WaterPatchExtent: 320
+  WaterCellSize: 4
+  WaterFadeBand: 70
+  WaterHorizon: 4000
+  WaterDepthResolution: 512
+  ShoreFadeDepth: 14
+  FoamWidth: 1.6

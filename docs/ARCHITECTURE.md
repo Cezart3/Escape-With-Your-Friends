@@ -110,12 +110,17 @@ reads `-host` / `-server` / `-client`, plus `-address`, `-port`, `-quitAfter`, a
 ```
 Unity.exe -quit -batchmode -nographics -projectPath .   -executeMethod EscapeWithYourFriends.EditorTools.BuildTool.PerformBuild   -buildOutput D:/Builds/EWYF-dev -development -scriptingBackend mono
 
-EscapeWithYourFriends.exe -batchmode -nographics -host   -port 7770 -quitAfter 18 -logfile host.log
-EscapeWithYourFriends.exe -batchmode -nographics -client -address 127.0.0.1 -port 7770 -logfile c1.log
+EscapeWithYourFriends.exe -batchmode -nographics -host   -port 7770 -playerKey test:host -quitAfter 18 -logfile host.log
+EscapeWithYourFriends.exe -batchmode -nographics -client -address 127.0.0.1 -port 7770 -playerKey test:c1 -logfile c1.log
 
 # the movement test: four bots walking a lap through a simulated 100ms round trip
 EscapeWithYourFriends.exe -batchmode -nographics -host -port 7770     -latency 50 -botMove -motorLog -quitAfter 45 -logfile host.log
 ```
+
+**`-playerKey` is not optional in a local smoke test.** Two processes on one machine with no Steam
+running fall back to the same stored `PlayerPrefs` key, and the authenticator correctly rejects the
+second one — "key already held by connection 0" — so the host spawns one body and the run looks like
+a networking failure that is really the persistence system working. Give each process its own key.
 
 With no arguments it does nothing and waits for the lobby, which is what a shipped build does. In the
 editor it auto-hosts, so pressing play is a one-player session rather than a disconnected one.
@@ -1467,6 +1472,165 @@ into `IslandShape.SlopeAt` — so the splat, the flora and everything after it a
 What is measured is the budget the frame rate comes out of: instance counts, per-species triangle
 counts, and the cap of 60 × 178 = 10680 triangles of full-LOD tree in the worst case. The frame
 rate itself needs the Radeon 760M and a human looking at the screen.
+
+### The sea
+
+The acceptance criterion for #33 is two words long — "looks decent, costs almost nothing on the GPU"
+— and the entire design is the second half of that sentence arguing with the first.
+
+**The decision that shaped everything else: no camera depth texture.** Every water shader tutorial
+starts by sampling `_CameraDepthTexture` to find how far the seabed is behind the surface, and then
+fades the alpha and draws foam with it. In URP that requires `m_RequireDepthTexture` on the pipeline
+asset, which adds a depth prepass to *every frame of the game*, not just the frames with water in
+them. All three quality tiers here have it off, and the min-spec target is a Radeon 760M.
+
+So the depth is baked instead. `WaterFactory.BakeDepthMask` evaluates the same `IslandShape` the
+terrain is built from over a 512² grid and writes how deep the water is at each point, normalised
+against `ShoreFadeDepth`, into a single-channel PNG. The shader samples it with world-space UVs over
+the island square: one texture fetch, no prepass, and the surf line follows the coast exactly,
+because it *is* the coast.
+
+The honest cost of that choice: **nothing dynamic gets intersection foam.** A boat hull, a swimming
+player and a thrown corpse all pass through the surface without a ring of white around them. If that
+turns out to matter more than the frame rate does, the mask can stay and a depth sample can be added
+on the High tier only.
+
+#### Five files
+
+| File | Job |
+|---|---|
+| `Scripts/World/WaterWaves.cs` | The waves, as numbers. One definition, read by both the shader and the physics. |
+| `Scripts/World/WaterSurface.cs` | The runtime component: the clock, the camera follow, and `HeightAt` for buoyancy. |
+| `Art/Water/Water.shader` | Hand-written URP ShaderLab. Vertex waves, baked-depth fade, foam, ripples, fresnel. |
+| `Scripts/Editor/WaterFactory.cs` | Bakes the mask, generates the ripple normals, the material, both meshes and the prefab. |
+| `TerrainGenerator.WriteScene` | Drops the prefab into `Island.unity`. |
+
+#### Two meshes, one material
+
+The ocean is a **near patch** of 4 m quads, 320 m in each direction from the camera, and a **far
+ring** — a square annulus of eight vertices — out to 4 km. The patch carries the vertex waves; the
+ring is flat. Waving the whole ocean would mean either quads so large the waves alias into a
+strobing zigzag, or a mesh no integrated GPU wants to see; and past a few hundred metres a wave is
+smaller than a pixel.
+
+That split creates exactly one problem, which is the seam. The shader solves it by fading the wave
+amplitude to zero between 250 m and 320 m **in object space**:
+
+```hlsl
+float edge = max(abs(IN.positionOS.x), abs(IN.positionOS.z));
+float fade = 1.0 - smoothstep(_PatchFade.x, _PatchFade.y, edge);
+positionWS.y += height * fade;
+```
+
+Object space for the fade, world space for the wave phase. That combination is the whole trick. The
+patch root snaps to whole cells as it follows the camera, so the wave crests stay locked to the
+world and do not slide when the mesh moves — a half-cell slide makes every crest shimmer — while the
+fade stays locked to the mesh, so the amplitude is always exactly zero where the geometry ends,
+whatever the camera is doing. No crack, no z-fighting, no popping.
+
+Three things have to agree for that to hold, and `WaterFactory.Verify` checks all three on every
+generation, because none of them throws an error — they show up as a crease in the ocean, a strip of
+missing sea, or waves that strobe, and all three are invisible in a batchmode build:
+
+1. the shader's fade must finish before the patch geometry runs out;
+2. the ring's inner edge must be exactly where the patch's outer edge is;
+3. the shortest wavelength must span at least four cells.
+
+Number two is a real trap: the patch extent is snapped **up to a whole number of cells**
+(`PatchExtent`), because 320 m of 3 m cells is 106.67 cells and a patch that stops two thirds of the
+way through a cell leaves a one-metre strip of nothing between itself and the horizon.
+
+#### The waves are shared, not duplicated
+
+`WaterWaves` holds three directional sine waves — direction, amplitude, wavelength, speed — and
+nothing else. `WaterFactory` packs them into the material at generation time; `WaterSurface.HeightAt`
+evaluates the same sum in C#. A boat that floats on a different set of waves than the one being drawn
+is the defining bug of every hand-rolled water system, and the only defence is that there is one
+definition and both consumers read it.
+
+```
+Wave   direction        amplitude   wavelength   speed
+A      (0.86,  0.51)     0.34 m       41 m       3.1 m/s
+B      (-0.42, 0.91)     0.19 m       23 m       2.4 m/s
+C      (0.60, -0.80)     0.09 m       17 m       1.7 m/s
+```
+
+Peak-to-trough swell 1.24 m, and 17 m over 4 m cells is 4.3 cells per wave — just above the aliasing
+floor the verifier checks for.
+
+**Not Gerstner.** Gerstner waves displace vertices horizontally as well as vertically, which is what
+gives real water its sharp crests, but it also means "how high is the water at (x, z)" stops being a
+function and becomes a fixed-point solve. Buoyancy in M5 needs that question answered a few hundred
+times a frame. Vertical-only sine waves keep it a single evaluation, and the sharpness is a normal
+map's job.
+
+The clock is deliberately not `Time.time`:
+
+```csharp
+public static float Clock { get; set; }
+public static bool ExternalClock { get; set; }
+```
+
+`WaterSurface` pushes it to the GPU as a **global** shader float, `_WaterTime`, every frame, so the
+surface being drawn and the surface being floated on are the same instant. When the boats arrive, a
+FishNet tick can drive `Clock` on every machine and four players will see one ocean instead of four
+that agree on average.
+
+#### What the fragment shader actually costs
+
+One fetch of the depth mask, two of the ripple normal map, and arithmetic. No refraction, no
+reflection probe, no shadow sampling, no screen-space anything. The colour is a shallow-to-deep
+lerp driven by the mask, tinted toward a horizon colour by fresnel, with a Blinn-Phong glint from
+the main light and `SampleSH` for ambient. Foam is the mask's shallow band torn up by two crossing
+sines so the edge is lacy and moving instead of a contour line.
+
+The ripples are the standard two-samples-at-different-scales trick — the same tile at 1× and 0.47×,
+scrolling in different directions — which is the cheapest thing that stops a tiling normal map from
+reading as a tiling normal map. The tile itself is generated from the same wrapped noise the ground
+textures use, with the derivatives taken wrapped as well: a normal map that tiles in value but not
+in slope shows a hard line every few metres in exactly the lighting you built it for.
+
+`Blend SrcAlpha OneMinusSrcAlpha`, `ZWrite Off`, shadow casting off and `receiveShadows` false on
+both renderers. Alpha runs from 0.45 at the waterline to 0.96 out deep, so the sand shows through in
+the shallows — which, without a single refraction sample, is most of what sells it as water.
+
+#### Where the numbers live
+
+Seven fields on `IslandProfile`, so tuning the sea is editing one text asset:
+
+| Field | Value | What it does |
+|---|---|---|
+| `WaterPatchExtent` | 320 m | Half-width of the wavy patch. |
+| `WaterCellSize` | 4 m | Quad size. Also the camera snap step, and the lower bound on wavelength. |
+| `WaterFadeBand` | 70 m | How far in from the edge the waves start flattening. |
+| `WaterHorizon` | 4000 m | Half-width of the flat ring. Eight vertices, so it may as well be large. |
+| `WaterDepthResolution` | 512 | Depth mask side. One texel every two metres. |
+| `ShoreFadeDepth` | 14 m | How deep counts as fully open ocean. |
+| `FoamWidth` | 1.6 m | Depth over which the surf is drawn. |
+
+#### What it produced
+
+```
+Baked WaterDepth.png at 512x512: 76.5% of the square is under water, full depth at 14m.
+Patch 320m half-extent, 25921 verts, 51200 tris; waves fade from 250m to 320m; ring 320m to 4000m.
+Shortest wave 17m = 4.3 cells; peak-to-trough swell 1.24m.
+```
+
+Four consecutive generations at seed 20260830: heightmap `0B19930F`, splat `6A9D0D17`, placement
+`C929620F`, asset `DCAC426A` — all unchanged by the addition — and `WaterDepth.png` md5
+`2a298130…` identical every time. After the first run the meshes and the normal map are reused; only
+the mask and the prefab are rewritten, both byte-identical.
+
+The shader is checked, not assumed: `WaterFactory` calls `ShaderUtil.ShaderHasError` after
+`Shader.Find` and logs every message, because a shader with a compile error still loads, still
+assigns to a material, and only turns magenta on a screen that nobody is looking at during a
+batchmode run. Zero errors across all four runs.
+
+**What is not verified here:** whether it looks decent. Nothing in `-nographics` renders a pixel, so
+the colours, the foam width, the glint and the swell height are all first drafts waiting on a human
+with a screen. What *is* verified is the geometry, the seam, the determinism, the compile and the
+budget: 51 200 triangles of water, one mask fetch and two normal fetches per pixel, no depth prepass
+and no extra render pass anywhere in the frame.
 
 ---
 

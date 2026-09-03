@@ -220,6 +220,28 @@ namespace EscapeWithYourFriends.World
         [Tooltip("Global multiplier on grass density, 0 to 1. The min-spec escape hatch.")]
         public float DetailDensity = 0.8f;
 
+        [Header("Water")]
+        [Tooltip("Half-width in metres of the wavy patch that follows the camera. Everything beyond it is the flat ring.")]
+        public float WaterPatchExtent = 320f;
+
+        [Tooltip("Metres per quad of the water patch. Waves shorter than about four cells alias, so this bounds the wavelengths.")]
+        public float WaterCellSize = 4f;
+
+        [Tooltip("Metres over which the waves flatten out before the seam with the far ring. Too narrow and the seam creases.")]
+        public float WaterFadeBand = 70f;
+
+        [Tooltip("Half-width in metres of the flat ring that fills the horizon. Sixteen vertices, so it may as well be large.")]
+        public float WaterHorizon = 4000f;
+
+        [Tooltip("Side of the baked water-depth mask. 512 over a 1024m island is one texel every two metres, fine enough for the surf line.")]
+        public int WaterDepthResolution = 512;
+
+        [Tooltip("How deep the seabed has to be for the water to read as fully open ocean.")]
+        public float ShoreFadeDepth = 14f;
+
+        [Tooltip("Metres of depth over which the shoreline foam is drawn. Roughly how far up the beach the surf reaches.")]
+        public float FoamWidth = 1.6f;
+
         /// <summary>Total vertical range of the terrain object: seabed plus the tallest land allowed.</summary>
         public float TotalHeight => SeabedDepth + PeakHeight;
 
