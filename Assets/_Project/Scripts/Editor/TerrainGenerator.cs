@@ -280,6 +280,11 @@ namespace EscapeWithYourFriends.EditorTools
             POIFactory.Bake(profile, spawner);
             POIFactory.ReportReachability(profile);
 
+            // The walkable surface, baked last of the world-building steps because it wants the
+            // terrain, its collider and the resolved POI positions all to exist first. It puts the
+            // buildings in temporarily, bakes around them and takes them out again.
+            NavFactory.Bake(profile, spawner);
+
             WriteSpawnPoints(profile);
 
             // The first objective, and the only thing in this scene that is about the game rather
@@ -287,6 +292,11 @@ namespace EscapeWithYourFriends.EditorTools
             // has no wreck to point at.
             var intro = new GameObject("Intro");
             intro.AddComponent<IslandIntro>();
+
+            // Dormant unless -navWalk asks for it. It is the acceptance test for #37 living in the
+            // scene it tests, so it cannot drift away from the island it was written against.
+            var navCheck = new GameObject("NavCheck");
+            navCheck.AddComponent<NavWalk>();
 
             Directory.CreateDirectory(Path.GetDirectoryName(ScenePath));
             EditorSceneManager.MarkSceneDirty(scene);

@@ -224,6 +224,19 @@ namespace EscapeWithYourFriends.World
         [Tooltip("Where the camps, the shop and the village stand. Their pads are part of the height function, so changing this changes the island.")]
         public POICatalog Pois;
 
+        [Header("Navigation")]
+        [Tooltip("Voxel edge in metres for the NavMesh bake. Half the agent radius is the usual choice; smaller is more faithful and much slower over a square kilometre.")]
+        public float NavVoxelSize = 0.25f;
+
+        [Tooltip("Voxels per NavMesh tile. Bigger tiles mean fewer seams for an agent to catch on, at the cost of memory while baking.")]
+        public int NavTileSize = 512;
+
+        [Tooltip("Square metres below which a disconnected patch of NavMesh is thrown away. Kills the specks on offshore rocks nothing can reach.")]
+        public float NavMinRegionArea = 6f;
+
+        [Tooltip("Height above sea level where the walkable surface stops. The bake volume floor sits here, so the sea is not navigable and the beach is.")]
+        public float NavWaterline = 0.4f;
+
         [Header("Water")]
         [Tooltip("Half-width in metres of the wavy patch that follows the camera. Everything beyond it is the flat ring.")]
         public float WaterPatchExtent = 320f;

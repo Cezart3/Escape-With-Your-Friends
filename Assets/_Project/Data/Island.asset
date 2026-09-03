@@ -77,6 +77,10 @@ MonoBehaviour:
   DetailDistance: 85
   DetailDensity: 0.8
   Pois: {fileID: 11400000, guid: 5de992fcce44e734d888a225d71cb91f, type: 2}
+  NavVoxelSize: 0.25
+  NavTileSize: 512
+  NavMinRegionArea: 6
+  NavWaterline: 0.4
   WaterPatchExtent: 320
   WaterCellSize: 4
   WaterFadeBand: 70

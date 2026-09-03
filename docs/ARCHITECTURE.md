@@ -105,8 +105,8 @@ shipped depot must not contain it.
 **Why a command-line bootstrap.** The whole development loop for this project is a terminal, and a
 build that can only be started by clicking a button cannot be tested from one. `NetworkBootstrap`
 reads `-host` / `-server` / `-client`, plus `-address`, `-port`, `-quitAfter`, and the test flags
-`-latency`, `-botMove`, `-motorLog` and `-clockLog` described under movement and the day/night cycle
-below:
+`-latency`, `-botMove`, `-motorLog`, `-clockLog` and `-navWalk` described under movement, the
+day/night cycle and navigation below:
 
 ```
 Unity.exe -quit -batchmode -nographics -projectPath .   -executeMethod EscapeWithYourFriends.EditorTools.BuildTool.PerformBuild   -buildOutput D:/Builds/EWYF-dev -development -scriptingBackend mono
@@ -2091,6 +2091,128 @@ machine from `WorldSpawner`, a body at (0, 1.2, 6).
 **What is not verified:** what any of it looks like. The camp, the ring facing inward, the banner and
 the wreck on the horizon are all first drafts that need a screen and four people — which is now
 possible, and was not before this change.
+
+### Somewhere to walk
+
+Natives, animals and every other thing with a brain need to cross a square kilometre of noise-built
+terrain without falling off it. `NavFactory` bakes that surface at island-generation time and
+`NavWalk` proves an agent can actually use it.
+
+#### The bake is bounded by the waterline
+
+The NavMesh is built into a volume 1024 m square whose **floor is 0.4 m above sea level** and whose
+ceiling is above the highest peak. Recast rasterises triangles into the build bounds and clips
+whatever falls outside, so the seabed — roughly half the square — is never voxelised at all. That is
+both the correct answer (the sea is not walkable) and the reason the whole bake takes **0.7 seconds**
+rather than minutes.
+
+Bounding it explicitly also avoids a trap. A surface that measures itself against every source in the
+scene would include the water's **four-kilometre horizon ring** and produce a bake volume sixteen
+times the island.
+
+Settings: the humanoid agent from `ProjectSettings/NavMeshAreas.asset` (radius 0.5 m, height 2 m,
+slope 45°, climb 0.75 m), 0.25 m voxels, 512-voxel tiles, `minRegionArea` 6 m². Big tiles were chosen
+deliberately: a tile is 128 m across, so there are 64 of them over the whole island and correspondingly
+few internal seams for an agent to catch on.
+
+#### The buildings are baked in, not carved out
+
+The POIs are spawned by the server, so at bake time the scene is bare terrain and a NavMesh built from
+it would send agents straight through the shop. `NavFactory` instantiates each POI prefab where
+`POISpawner` will put the real one, bakes around it, and destroys it before the scene is saved.
+
+The alternative — a carving `NavMeshObstacle` on every solid piece — costs a re-voxelisation per
+obstacle at spawn and buys nothing, because the buildings never move.
+
+**Terrain trees are not in the NavMesh.** Unity collects a terrain as one heightmap source; its
+fourteen thousand trees are not colliders it can see. Agents will clip palm trunks. Fixing that
+properly means fourteen thousand obstacles or a hand-built modifier per grove, and neither is worth it
+before there is an agent to be annoyed by it.
+
+#### Two bugs that cost most of the work
+
+**The first NavMesh contained seven roofs and no island.** A `NavMeshSurface` set to collect a volume
+asks the scene which colliders overlap that box, and a `TerrainCollider` created seconds earlier in a
+scene that has never been saved answers that question with nothing. The stand-in buildings were found;
+the terrain under them was not. The fix is to stop asking: the terrain source is now built by hand from
+its `TerrainData` and the position of the terrain object, and each building's colliders are converted
+one at a time. Nothing depends on a collider's bookkeeping being up to date.
+
+**The second NavMesh was still empty, and this one was subtler.** The heights are written into the
+`TerrainData` minutes earlier and live in a GPU-side texture until something asks for them back. Recast
+reads the CPU copy. Without a `SyncHeightmap()` it faithfully rasterises a terrain that is still flat —
+which produces a NavMesh of nothing, and looks exactly like a collection failure. One line:
+
+```csharp
+terrainData.SyncHeightmap();
+terrain.Flush();
+```
+
+#### Landmarks are approached, not entered
+
+A catalog coordinate is usually *inside* the building it names — between the shop's hut and its
+counter, inside the wreck's hull. The NavMesh is baked around those walls, so the patch under the
+coordinate is a sealed room a metre across, and a path to it comes back `PathPartial` for a reason that
+has nothing to do with the island.
+
+`NavApproach` is what anything that wants to reach a landmark should ask. It tries the coordinate
+itself, then a ring of eight points 10 m out, and returns the first pair that joins up. **Both ends get
+that treatment** — approaching only the destination works when the walk starts on open ground and fails
+when it starts in the shop, which is exactly the bug the first version had.
+
+Nothing spawns agents inside a sealed building, so the interior patches are harmless. Whether players
+can get *into* the buildings is a greybox question and belongs with #38.
+
+#### The acceptance test walks
+
+A bake report cannot tell you whether an agent gets stuck. A path can come back `PathComplete` and
+still strand one, because a complete path is a list of corners and getting stuck happens *between*
+them — on a tile boundary, on a ledge the agent can see across but not step down, on a sliver of
+NavMesh narrower than its radius.
+
+So `NavWalk` puts a real `NavMeshAgent` on the island and watches it. Server-side, not networked,
+dormant unless asked for:
+
+```
+-navWalk village:camp.base   one leg, between two catalog ids
+-navWalk all                 every landmark to the camp, one after another
+```
+
+It fails a leg when the agent moves less than 0.6 m in 4 seconds, when the path is partial, or when the
+leg runs past its timeout — and it reports how far it walked against the straight line, which is the
+number that says whether the route was sensible.
+
+#### What came out
+
+```
+[NavFactory] 34 sources over 1024x1024m, from y 0.4 to 170.0: one terrain
+             (1025^2, 200m tall, mid-island height 46.1m) and 33 pieces of building.
+[NavFactory] Baked in 0.7s at 0.25m voxels, 512-voxel tiles: 3300 vertices, 1516 triangles,
+             23.1 hectares walkable out of 21.8 the terrain offers (106%).
+```
+
+The comparison is worth keeping: 21.8 ha is what the island's *shape* says a human could stand on,
+sampled independently on a 4 m grid with the same 45° limit. A NavMesh that came out at a fraction of
+it would mean the bake lost the island rather than trimming it.
+
+Every landmark connects to the camp, and an agent walks every one of them:
+
+```
+[NavWalk] camp.revive -> camp.base: arrived in  2.6s, walked  13m for   9m straight (1.47x)
+[NavWalk] shop        -> camp.base: arrived in 16.5s, walked  97m for  95m straight (1.02x)
+[NavWalk] casino      -> camp.base: arrived in 31.4s, walked 187m for 188m straight (0.99x)
+[NavWalk] village     -> camp.base: arrived in 56.9s, walked 340m for 331m straight (1.03x)
+[NavWalk] wreck       -> camp.base: arrived in 15.1s, walked  89m for  93m straight (0.96x)
+[NavWalk] cave        -> camp.base: arrived in 36.8s, walked 221m for 212m straight (1.04x)
+[NavWalk] Done: 6 arrived, 0 failed.
+```
+
+**village → camp.base is the issue's acceptance criterion**: 340 m across the island, never stalling,
+3% longer than flying. The 1.47x on the revive machine is a nine-metre walk round a hut, which is what
+a short leg looks like.
+
+The island regenerated to the same terrain hash (`8F7F1E51`) with the NavMesh added, so none of this
+moved the ground.
 
 ---
 

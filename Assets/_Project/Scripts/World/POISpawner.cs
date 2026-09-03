@@ -53,6 +53,13 @@ namespace EscapeWithYourFriends.World
         /// <summary>Everything this spawner put into the world. Server-side only; empty on clients.</summary>
         public IReadOnlyList<NetworkObject> Spawned => _live;
 
+        /// <summary>
+        /// Where the island's buildings will stand, before anything has spawned them. The NavMesh
+        /// bake needs this: the POIs are server-spawned, so at bake time the scene is bare terrain
+        /// and the only record of the shop's position is this list.
+        /// </summary>
+        public IReadOnlyList<Placement> Placements => _placements;
+
         /// <summary>The spawner in the loaded island scene, for anything that needs to find a POI.</summary>
         public static POISpawner Instance { get; private set; }
 

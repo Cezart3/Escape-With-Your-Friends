@@ -5,6 +5,7 @@
         "EWYF.Runtime",
         "FishNet.Runtime",
         "FishyFacepunch",
+        "Unity.AI.Navigation",
         "Unity.Cinemachine",
         "Unity.InputSystem",
         "Unity.RenderPipelines.Universal.Runtime",
