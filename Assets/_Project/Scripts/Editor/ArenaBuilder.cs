@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using EscapeWithYourFriends.Net;
+using EscapeWithYourFriends.World;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -38,7 +39,7 @@ namespace EscapeWithYourFriends.EditorTools
     /// </summary>
     public static class ArenaBuilder
     {
-        const string BootstrapPath = "Assets/_Project/Scenes/Bootstrap.unity";
+        const string ArenaPath = "Assets/_Project/Scenes/Arena.unity";
 
         /// <summary>Root the whole arena hangs off, so rebuilding it is one DestroyImmediate.</summary>
         const string RootName = "Arena";
@@ -71,18 +72,30 @@ namespace EscapeWithYourFriends.EditorTools
         const float SpawnHeight = 1.2f;
 
         /// <summary>
-        /// Rebuilds the arena in the existing Bootstrap scene and re-points the spawner at its new
-        /// spawn transforms. Safe to run repeatedly: it removes what it built last time first.
+        /// Writes the arena into its own scene, replacing whatever was there. Safe to run repeatedly.
+        ///
+        /// It used to be built into Bootstrap, which was convenient while it was the only map in the
+        /// game and wrong the moment there were two: Bootstrap is loaded for the whole session, so a
+        /// sixty-metre concrete plate living in it would sit in the middle of the island's sea.
         /// </summary>
         public static void BuildArena()
         {
-            Scene scene = EditorSceneManager.OpenScene(BootstrapPath, OpenSceneMode.Single);
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             Build();
-            WireSpawnPoints();
 
+            var sun = new GameObject("Sun");
+            sun.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+            Light light = sun.AddComponent<Light>();
+            light.type = LightType.Directional;
+            light.intensity = 1.1f;
+            light.shadows = LightShadows.Soft;
+
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(ArenaPath));
             EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene, BootstrapPath);
+            EditorSceneManager.SaveScene(scene, ArenaPath);
+
+            Debug.Log($"[ArenaBuilder] Wrote {ArenaPath}.");
 
             if (Application.isBatchMode) EditorApplication.Exit(0);
         }
@@ -249,6 +262,13 @@ namespace EscapeWithYourFriends.EditorTools
         /// </summary>
         static void BuildSpawnPoints(Transform parent)
         {
+            // Under their own root carrying SceneSpawnPoints, which hands them to the spawner when
+            // this scene loads. They cannot be wired in an inspector any more: the spawner lives in
+            // Bootstrap and these live here, and Unity has no cross-scene references.
+            var root = new GameObject("SpawnPoints");
+            root.transform.SetParent(parent, false);
+            parent = root.transform;
+
             for (int i = 0; i < SpawnCount; i++)
             {
                 float angle = i * Mathf.PI * 2f / SpawnCount;
@@ -263,12 +283,14 @@ namespace EscapeWithYourFriends.EditorTools
                 var facing = new Vector3(-position.x, 0f, -position.z).normalized;
                 go.transform.SetPositionAndRotation(position, Quaternion.LookRotation(facing, Vector3.up));
             }
+
+            root.AddComponent<SceneSpawnPoints>();
         }
 
         /// <summary>
-        /// Points the spawner at the arena's spawn transforms. Separate from <see cref="Build"/>
-        /// because the spawner lives on the NetworkManager, which <see cref="SceneBootstrap"/> builds
-        /// after the geometry.
+        /// Points a spawner in the *same scene* at the arena's spawn transforms. Kept for the case
+        /// where somebody builds an arena into a scene that also holds a spawner; the normal path is
+        /// SceneSpawnPoints registering itself at run time, because the spawner is in Bootstrap.
         /// </summary>
         public static void WireSpawnPoints()
         {
@@ -285,7 +307,7 @@ namespace EscapeWithYourFriends.EditorTools
             {
                 if (root.name != RootName) continue;
 
-                foreach (Transform child in root.transform)
+                foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
                     if (child.name.StartsWith("SpawnPoint.")) points.Add(child);
             }
 

@@ -113,6 +113,12 @@ namespace EscapeWithYourFriends.World
                                                      Quaternion.Euler(placement.Euler));
                 instance.name = placement.Prefab.name + " (" + placement.Id + ")";
 
+                // The catalog id wins over whatever the prefab was built with. The prefab is a kind
+                // of place; the catalog entry is this particular one, and everything that looks a
+                // landmark up - objectives, the HUD, the abduction target in #107 - means that one.
+                var landmark = instance.GetComponent<Landmark>();
+                if (landmark != null) landmark.Id = placement.Id;
+
                 _manager.ServerManager.Spawn(instance);
                 _live.Add(instance);
                 placed++;

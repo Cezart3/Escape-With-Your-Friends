@@ -76,23 +76,20 @@ namespace EscapeWithYourFriends.EditorTools
             // was placed and every player looks at the greybox from the same fixed angle.
             cameraGo.AddComponent<Unity.Cinemachine.CinemachineBrain>();
 
-            var lightGo = new GameObject("Directional Light");
-            var light = lightGo.AddComponent<Light>();
-            light.type = LightType.Directional;
-            light.shadows = LightShadows.Soft;
-            lightGo.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
-
-            ArenaBuilder.Build();
+            // No light and no geometry here any more. The arena used to be built into this scene,
+            // which was fine while it was the only map and wrong the moment there were two: Bootstrap
+            // stays loaded for the whole session, so a sixty-metre plate in it would sit in the
+            // middle of the island's sea and its sun would fight the island's day/night cycle for
+            // which directional light URP treats as the main one. Both maps bring their own.
 
             BuildNetworkManager();
-
-            // After the manager, because this is the step that needs the PlayerSpawner to exist.
-            ArenaBuilder.WireSpawnPoints();
 
             EditorSceneManager.SaveScene(scene, BootstrapPath);
             Debug.Log($"[SceneBootstrap] created {BootstrapPath}");
 
             RegisterInBuildSettings(BootstrapPath);
+            RegisterInBuildSettings(SceneDir + "/Island.unity");
+            RegisterInBuildSettings(SceneDir + "/Arena.unity");
 
             if (Application.isBatchMode) EditorApplication.Exit(0);
         }
@@ -190,6 +187,50 @@ namespace EscapeWithYourFriends.EditorTools
         /// It lives in Bootstrap rather than in a gameplay scene because it has to survive the scene
         /// loads that will eventually swap the arena for the island.
         /// </summary>
+        /// <summary>
+        ///   Unity.exe -quit -batchmode -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.SceneBootstrap.EnsureSceneLoader
+        ///
+        /// Adds the map loader to a Bootstrap scene that predates it, and registers both gameplay
+        /// scenes in build settings. Separate from CreateBootstrapScene because rebuilding Bootstrap
+        /// from scratch throws away the NetworkManager's serialized transport settings.
+        /// </summary>
+        public static void EnsureSceneLoader()
+        {
+            var scene = EditorSceneManager.OpenScene(BootstrapPath, OpenSceneMode.Single);
+
+            var manager = Object.FindFirstObjectByType<NetworkManager>();
+            if (manager == null)
+            {
+                Debug.LogError("[SceneBootstrap] No NetworkManager in Bootstrap; run CreateBootstrapScene.");
+                return;
+            }
+
+            if (manager.GetComponent<GameSceneLoader>() == null)
+            {
+                manager.gameObject.AddComponent<GameSceneLoader>();
+                Debug.Log("[SceneBootstrap] Added GameSceneLoader to the NetworkManager.");
+            }
+
+            // The arena is its own scene now, so anything left of it here is a plate floating in the
+            // island's sea. Removed rather than disabled: it is generated output, not somebody's work.
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                if (root.name != "Arena" && root.name != "Floor" && root.name != "Directional Light") continue;
+
+                Debug.Log($"[SceneBootstrap] Removed '{root.name}' from Bootstrap; it belongs to a map.");
+                Object.DestroyImmediate(root);
+            }
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, BootstrapPath);
+
+            RegisterInBuildSettings(BootstrapPath);
+            RegisterInBuildSettings(SceneDir + "/Island.unity");
+            RegisterInBuildSettings(SceneDir + "/Arena.unity");
+
+            if (Application.isBatchMode) EditorApplication.Exit(0);
+        }
+
         public static void EnsureHud()
         {
             var scene = EditorSceneManager.OpenScene(BootstrapPath, OpenSceneMode.Single);
@@ -241,7 +282,12 @@ namespace EscapeWithYourFriends.EditorTools
             AttachPlayerSpawner(go);
             AttachWorldSpawner(go);
 
-            Debug.Log($"[SceneBootstrap] NetworkManager: Multipass on {DefaultPort}, tick {TickRate}Hz.");
+            // Decides which map the session is played on, and loads it as a global scene when the
+            // server starts. Bootstrap holds no gameplay, so something has to say what the game is.
+            if (go.GetComponent<GameSceneLoader>() == null) go.AddComponent<GameSceneLoader>();
+
+            Debug.Log($"[SceneBootstrap] NetworkManager: Multipass on {DefaultPort}, tick {TickRate}Hz, "
+                      + "GameSceneLoader attached.");
         }
 
         /// <summary>
@@ -469,8 +515,19 @@ namespace EscapeWithYourFriends.EditorTools
                 return;
             }
 
-            // Bootstrap must stay at index 0 — it is what the player loads first.
-            scenes.Insert(0, new EditorBuildSettingsScene(path, true));
+            scenes.Add(new EditorBuildSettingsScene(path, true));
+
+            // Bootstrap must be index 0 - it is the scene the player loads into, and everything else
+            // is loaded around it. This used to insert at the front, which was right while Bootstrap
+            // was the only entry and quietly wrong the moment a second scene was registered after it.
+            int bootstrap = scenes.FindIndex(entry => entry.path == BootstrapPath);
+            if (bootstrap > 0)
+            {
+                EditorBuildSettingsScene first = scenes[bootstrap];
+                scenes.RemoveAt(bootstrap);
+                scenes.Insert(0, first);
+            }
+
             EditorBuildSettings.scenes = scenes.ToArray();
 
             Debug.Log($"[SceneBootstrap] build settings now: " +

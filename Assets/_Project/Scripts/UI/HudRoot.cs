@@ -36,6 +36,7 @@ namespace EscapeWithYourFriends.UI
 
         readonly SquadPanel _panel = new();
         readonly DownedMarkers _markers = new();
+        readonly ObjectiveBanner _objective = new();
 
         Canvas _canvas;
         Camera _camera;
@@ -84,6 +85,7 @@ namespace EscapeWithYourFriends.UI
             var root = (RectTransform)go.transform;
             _panel.Build(root);
             _markers.Build(root);
+            _objective.Build(root);
         }
 
         void Update()
@@ -99,6 +101,7 @@ namespace EscapeWithYourFriends.UI
 
                 _panel.Refresh(_entries);
                 _markers.Refresh(_entries, _camera);
+                _objective.Refresh(SquadModel.FindLocalAnchor());
             }
 
             if (_testRunning) RunTest();

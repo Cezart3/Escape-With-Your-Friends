@@ -8,5 +8,11 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Project/Scenes/Bootstrap.unity
     guid: ebbb41f74b6b15a4eaa2c583b836f7b8
+  - enabled: 1
+    path: Assets/_Project/Scenes/Arena.unity
+    guid: 29baca939ff72c74bad68c6eca2ee5a6
+  - enabled: 1
+    path: Assets/_Project/Scenes/Island.unity
+    guid: e8efe4fc509fdf24db83a2cd0a4876d5
   m_configObjects: {}
   m_UseUCBPForAssetBundles: 0

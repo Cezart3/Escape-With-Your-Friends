@@ -229,6 +229,21 @@ namespace EscapeWithYourFriends.Net
         }
 
         /// <summary>
+        /// Hands the spawner the spawn points of the gameplay scene that just loaded, or null when
+        /// that scene is going away. Called by SceneSpawnPoints rather than wired in an inspector,
+        /// because Unity has no cross-scene references and the spawner lives in Bootstrap while the
+        /// points live in the arena or on the island.
+        /// </summary>
+        public void UseSpawnPoints(Transform[] points, string source)
+        {
+            _spawnPoints = points;
+
+            Debug.Log(points == null || points.Length == 0
+                ? $"[PlayerSpawner] {source} took its spawn points away; falling back to the ring."
+                : $"[PlayerSpawner] Using {points.Length} spawn points from {source}.");
+        }
+
+        /// <summary>
         /// Where the body with this index belongs. Public because respawning is the same question as
         /// spawning, asked later.
         /// </summary>

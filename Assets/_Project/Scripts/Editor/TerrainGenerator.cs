@@ -280,9 +280,72 @@ namespace EscapeWithYourFriends.EditorTools
             POIFactory.Bake(profile, spawner);
             POIFactory.ReportReachability(profile);
 
+            WriteSpawnPoints(profile);
+
+            // The first objective, and the only thing in this scene that is about the game rather
+            // than about the world. It lives here because it is a property of this map: the arena
+            // has no wreck to point at.
+            var intro = new GameObject("Intro");
+            intro.AddComponent<IslandIntro>();
+
             Directory.CreateDirectory(Path.GetDirectoryName(ScenePath));
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
+        }
+
+        /// <summary>
+        /// Four places to stand, in a ring round the camp fire, facing in.
+        ///
+        /// Facing in matters more than it sounds. The first thing that happens in a fresh session is
+        /// four people appearing at once, and if they spawn facing outward the first thing each of
+        /// them sees is trees - so nobody knows anyone else is there until somebody turns round. A
+        /// ring facing the middle means the first frame of the game is your three friends.
+        ///
+        /// The ring is placed off the camp's own POI entry rather than at a fixed coordinate, so it
+        /// follows the camp when the seed changes or somebody moves it.
+        /// </summary>
+        static void WriteSpawnPoints(IslandProfile profile)
+        {
+            const int count = 4;
+            const float radius = 6.5f;
+            const float clearance = 1.2f;
+
+            POIEntry camp = profile.Pois != null ? profile.Pois.Find("camp.base") : null;
+            Vector2 centre = camp != null ? camp.Position : Vector2.zero;
+
+            var shape = new IslandShape(profile);
+
+            var root = new GameObject("SpawnPoints");
+            var points = new Transform[count];
+
+            for (int i = 0; i < count; i++)
+            {
+                float angle = i * Mathf.PI * 2f / count;
+                float x = centre.x + Mathf.Sin(angle) * radius;
+                float z = centre.y + Mathf.Cos(angle) * radius;
+
+                // On the ground the terrain actually has, not on the ring's own plane: the camp pad
+                // is level but the clearance still has to come off the baked surface.
+                float y = shape.HeightAt(x, z) + clearance;
+
+                var go = new GameObject($"SpawnPoint.{i}");
+                go.transform.SetParent(root.transform, false);
+
+                var facing = new Vector3(centre.x - x, 0f, centre.y - z).normalized;
+                go.transform.SetPositionAndRotation(new Vector3(x, y, z),
+                                                    Quaternion.LookRotation(facing, Vector3.up));
+                points[i] = go.transform;
+            }
+
+            var component = root.AddComponent<SceneSpawnPoints>();
+            var so = new SerializedObject(component);
+            SerializedProperty list = so.FindProperty("_points");
+            list.arraySize = count;
+            for (int i = 0; i < count; i++) list.GetArrayElementAtIndex(i).objectReferenceValue = points[i];
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            Debug.Log($"[TerrainGenerator] {count} spawn points on a {radius}m ring round the camp at "
+                      + $"({centre.x}, {centre.y}), ground {shape.HeightAt(centre.x, centre.y):F1}m.");
         }
 
         /// <summary>

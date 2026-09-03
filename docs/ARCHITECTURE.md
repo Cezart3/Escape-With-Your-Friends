@@ -1986,6 +1986,112 @@ the scene the game loads. What is verified is that the six exist, are registered
 their purpose as data, and stand on ground a person could walk between.
 
 
+### Landing on the island
+
+Until #39 the island existed and the game did not play on it. Bootstrap held the NetworkManager
+*and* the greybox arena, only Bootstrap was in build settings, and pressing play put four players on
+a sixty-metre concrete plate. This is the change that makes the island the game.
+
+#### Three scenes instead of one and a half
+
+The arena was built into Bootstrap, which was fine while it was the only map and wrong the moment
+there were two: **Bootstrap stays loaded for the whole session.** A concrete plate living in it would
+sit in the middle of the island's sea, and its directional light would fight the island's day/night
+cycle over which light URP treats as the main one.
+
+So the arena moved into `Arena.unity`, the island is `Island.unity`, and Bootstrap went back to being
+what its own comment always claimed it was: a NetworkManager and nothing else.
+
+`GameSceneLoader` sits on the NetworkManager and decides which one is played, on the server, because
+four clients cannot each pick their own island. It loads it as a FishNet **global** scene — meaning
+every connection gets it, including ones that arrive later — which produces exactly the order
+everything downstream already assumed:
+
+```
+server starts -> global scene loads -> a client connects -> that client loads the global scenes
+              -> OnClientLoadedStartScenes -> PlayerSpawner spawns a body
+```
+
+The island's spawn points, its POIs, its water and its sun are all in place before anybody has a body
+to put on them, and not one "wait until" was needed to arrange that.
+
+```
+-scene island   the real map (default)
+-scene arena    the M1 greybox, for testing combat without a kilometre of terrain
+-scene none     load nothing, which is what the Bootstrap-only smoke tests expect
+```
+
+#### Spawn points cannot be wired, so they register themselves
+
+`PlayerSpawner` lives in Bootstrap; the spawn points live in whichever map loaded. **Unity has no
+cross-scene references**, so a serialized `Transform[]` cannot span that boundary. `SceneSpawnPoints`
+hands them over at run time instead, and takes them back on destroy — a spawner holding transforms
+from an unloaded scene would put the next player at the origin without saying why.
+
+Both maps use it, which is how the arena kept working unchanged.
+
+#### Four people, facing each other
+
+The island's ring is written by `TerrainGenerator` around the camp POI rather than at a fixed
+coordinate, so it follows the camp when the seed changes or somebody moves it. Four points, 6.5 m
+radius, 1.2 m of clearance over the terrain — and **facing inward**.
+
+That last part is not decoration. The first thing that happens in a fresh session is four people
+appearing at once, and if they spawn facing outward the first thing each of them sees is trees;
+nobody knows anyone else is there until somebody turns round. Facing the middle means the first frame
+of the game is your three friends.
+
+#### An obvious first objective
+
+`Objective` is a static holding one imperative line and an optional target transform. It is not
+networked, deliberately: an objective is a conclusion every peer can reach from state it already has,
+and a replicated one would mean four clients waiting a round trip to be told something each of them
+could work out on the spot.
+
+`IslandIntro` sets it to **"Search the wreck on the beach"** and then polls for a few seconds for the
+landmark to arrive, because the POIs are spawned by the server and reach a client whenever they
+reach it — polling is both simpler and more robust than an event that has already fired by the time
+anybody subscribes. `ObjectiveBanner` draws it top-centre with a live distance, because a player who
+has just spawned is looking at the middle of the screen.
+
+The wreck is the right first pointer: it is on the tideline within sight of the camp, it is plainly
+what you arrived on, and it is where the boat parts come from in M5.
+
+**One bug this found:** the catalog calls it `wreck` and the prefab was built as `Wreck`. The server
+stamps the catalog id onto what it spawns, so a case-sensitive lookup worked on the host and silently
+failed on every client. The lookup is case-insensitive now, and the reason is written next to it.
+
+#### Two more things that were quietly wrong
+
+`RegisterInBuildSettings` inserted at index 0 with the comment "Bootstrap must stay at index 0" —
+correct while Bootstrap was the only entry, and exactly backwards once a second scene was registered
+after it, which put Arena at index 0 and made it the scene the player boots into. It now appends and
+then moves Bootstrap to the front explicitly.
+
+`SceneSpawnPoints` registered from both `Awake` and `OnEnable`, so every load logged the same line
+twice. Harmless, and the kind of thing that trains people to stop reading logs.
+
+#### What a session looks like now
+
+```
+[GameSceneLoader] Loading 'Island' as a global scene for every connection.
+[PlayerSpawner]   Using 4 spawn points from SpawnPoints.
+[POISpawner]      Placed 7 points of interest.
+[Objective]       Search the wreck on the beach -> Wreck (wreck).
+[PlayerSpawner]   Spawned body for connection 0 at (-84.00, 6.11, -40.50), colour slot 0.
+[PlayerSpawner]   Spawned body for connection 1 at (-77.50, 6.11, -47.00), colour slot 1.
+```
+
+Both bodies stand on the camp pad at (-84, -47), 4.9 m of ground plus 1.2 m of clearance. The client
+resolves the same objective from its own copy of the world. Zero exceptions on either side.
+
+`-scene arena` still produces the M1 session unchanged: the arena's own four spawn points, the revive
+machine from `WorldSpawner`, a body at (0, 1.2, 6).
+
+**What is not verified:** what any of it looks like. The camp, the ring facing inward, the banner and
+the wreck on the horizon are all first drafts that need a screen and four people — which is now
+possible, and was not before this change.
+
 ---
 
 ## Data-driven content
