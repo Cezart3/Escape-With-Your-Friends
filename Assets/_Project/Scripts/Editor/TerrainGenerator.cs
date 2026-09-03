@@ -278,6 +278,7 @@ namespace EscapeWithYourFriends.EditorTools
             var pois = new GameObject("POIs");
             var spawner = pois.AddComponent<POISpawner>();
             POIFactory.Bake(profile, spawner);
+            POIFactory.ReportReachability(profile);
 
             Directory.CreateDirectory(Path.GetDirectoryName(ScenePath));
             EditorSceneManager.MarkSceneDirty(scene);

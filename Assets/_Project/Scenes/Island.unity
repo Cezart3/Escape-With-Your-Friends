@@ -37,7 +37,7 @@ RenderSettings:
   m_ReflectionBounces: 1
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
-  m_Sun: {fileID: 1173313199}
+  m_Sun: {fileID: 622330072}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &184717027
+--- !u!1 &342438337
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -127,9 +127,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 184717030}
-  - component: {fileID: 184717029}
-  - component: {fileID: 184717028}
+  - component: {fileID: 342438340}
+  - component: {fileID: 342438339}
+  - component: {fileID: 342438338}
   m_Layer: 0
   m_Name: Island
   m_TagString: Untagged
@@ -137,13 +137,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!154 &184717028
+--- !u!154 &342438338
 TerrainCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 184717027}
+  m_GameObject: {fileID: 342438337}
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
@@ -157,13 +157,13 @@ TerrainCollider:
   serializedVersion: 2
   m_TerrainData: {fileID: 15600000, guid: c7eafc3ade55e334389d9866e4c53b0a, type: 2}
   m_EnableTreeColliders: 1
---- !u!218 &184717029
+--- !u!218 &342438339
 Terrain:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 184717027}
+  m_GameObject: {fileID: 342438337}
   m_Enabled: 1
   serializedVersion: 6
   m_TerrainData: {fileID: 15600000, guid: c7eafc3ade55e334389d9866e4c53b0a, type: 2}
@@ -198,13 +198,13 @@ Terrain:
   m_EnableTreesAndDetailsRayTracing: 0
   m_EnableHeightmapLODFrustumCulling: 1
   m_TreeMotionVectorModeOverride: 3
---- !u!4 &184717030
+--- !u!4 &342438340
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 184717027}
+  m_GameObject: {fileID: 342438337}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -512, y: -40, z: -512}
@@ -213,7 +213,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &845268764
+--- !u!1 &622330070
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -221,116 +221,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 845268766}
-  - component: {fileID: 845268765}
-  m_Layer: 0
-  m_Name: POIs
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &845268765
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 845268764}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c129bd828c53ac14395cb03f266af936, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.POISpawner
-  _placements:
-  - Id: camp.revive
-    Prefab: {fileID: 1273783363121690521, guid: 33ab89d3c6fc9ce4984f59d2b10e0176, type: 3}
-    Position: {x: -85, y: 5.0536923, z: -43}
-    Euler: {x: 0, y: 63.16596, z: 0}
-  _catalog: {fileID: 11400000, guid: 5de992fcce44e734d888a225d71cb91f, type: 2}
---- !u!4 &845268766
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 845268764}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &896398903
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 2995940273068743103, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2995940273068743103, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2995940273068743103, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2995940273068743103, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 2995940273068743103, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2995940273068743103, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2995940273068743103, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2995940273068743103, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2995940273068743103, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2995940273068743103, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4452004592030040074, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
-      propertyPath: m_Name
-      value: Water
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
---- !u!1 &1173313197
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1173313200}
-  - component: {fileID: 1173313199}
-  - component: {fileID: 1173313198}
+  - component: {fileID: 622330073}
+  - component: {fileID: 622330072}
+  - component: {fileID: 622330071}
   m_Layer: 0
   m_Name: Sun
   m_TagString: Untagged
@@ -338,29 +231,29 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1173313198
+--- !u!114 &622330071
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1173313197}
+  m_GameObject: {fileID: 622330070}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ef23b05fba30ee0478adc0258c39cc9b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.DayNightCycle
   Profile: {fileID: 11400000, guid: 75aea82033cf78b49973ca8f38f38900, type: 2}
-  Sun: {fileID: 1173313199}
+  Sun: {fileID: 622330072}
   Sky: {fileID: 2100000, guid: 3f5d06fa00992b24b911b4251eb879ba, type: 2}
   NightGroundBounce: 0.4
---- !u!108 &1173313199
+--- !u!108 &622330072
 Light:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1173313197}
+  m_GameObject: {fileID: 622330070}
   m_Enabled: 1
   serializedVersion: 12
   m_Type: 1
@@ -419,13 +312,13 @@ Light:
   m_LightUnit: 1
   m_LuxAtDistance: 1
   m_EnableSpotReflector: 1
---- !u!4 &1173313200
+--- !u!4 &622330073
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1173313197}
+  m_GameObject: {fileID: 622330070}
   serializedVersion: 2
   m_LocalRotation: {x: 0.049473967, y: -0.2687182, z: 0.17449065, w: 0.9459894}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -434,11 +327,142 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &794664617
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 794664619}
+  - component: {fileID: 794664618}
+  m_Layer: 0
+  m_Name: POIs
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &794664618
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 794664617}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c129bd828c53ac14395cb03f266af936, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.POISpawner
+  _placements:
+  - Id: camp.base
+    Prefab: {fileID: 6263055462330699957, guid: 5126e6a3d6e4dff44a57236180dcfa51, type: 3}
+    Position: {x: -84, y: 4.9107203, z: -47}
+    Euler: {x: 0, y: 61, z: 0}
+  - Id: camp.revive
+    Prefab: {fileID: 1273783363121690521, guid: 33ab89d3c6fc9ce4984f59d2b10e0176, type: 3}
+    Position: {x: -76, y: 4.9107203, z: -43}
+    Euler: {x: 0, y: 241, z: 0}
+  - Id: shop
+    Prefab: {fileID: 7430790008593953652, guid: 3fd66ce5418d54247b982a16e7068391, type: 3}
+    Position: {x: -177, y: 8.307549, z: -28}
+    Euler: {x: 0, y: 102, z: 0}
+  - Id: casino
+    Prefab: {fileID: 738940233283173273, guid: bb10a2b0ee65d4c45bc2c2b603fd371f, type: 3}
+    Position: {x: -270, y: 6.2800655, z: -74}
+    Euler: {x: 0, y: 82, z: 0}
+  - Id: village
+    Prefab: {fileID: 8665099786978586152, guid: 4b44a8357ecf59d49b2070e6faf69fdf, type: 3}
+    Position: {x: 130, y: 10.2429905, z: 205}
+    Euler: {x: 0, y: -140, z: 0}
+  - Id: wreck
+    Prefab: {fileID: 6864973059503036892, guid: ff368d683922b9f468df813b468ac4fa, type: 3}
+    Position: {x: 9, y: 0.31938165, z: -47}
+    Euler: {x: 0, y: -90, z: 0}
+  - Id: cave
+    Prefab: {fileID: 3147191381890212601, guid: d509fb77476f79a488a7804df1809d97, type: 3}
+    Position: {x: -9, y: 34.213005, z: 149}
+    Euler: {x: 0, y: -159, z: 0}
+  _catalog: {fileID: 11400000, guid: 5de992fcce44e734d888a225d71cb91f, type: 2}
+--- !u!4 &794664619
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 794664617}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &1122765921
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 2995940273068743103, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2995940273068743103, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2995940273068743103, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2995940273068743103, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2995940273068743103, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2995940273068743103, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2995940273068743103, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2995940273068743103, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2995940273068743103, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2995940273068743103, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4452004592030040074, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
+      propertyPath: m_Name
+      value: Water
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 184717030}
-  - {fileID: 1173313200}
-  - {fileID: 896398903}
-  - {fileID: 845268766}
+  - {fileID: 342438340}
+  - {fileID: 622330073}
+  - {fileID: 1122765921}
+  - {fileID: 794664619}

@@ -168,55 +168,160 @@ namespace EscapeWithYourFriends.EditorTools
                 Debug.LogError($"[POIFactory] '{entry.Id}' is outside the island square.");
         }
 
+
         // ---------------------------------------------------------------- the defaults
 
+        const string GreyboxDir = "Assets/_Project/Prefabs/World";
+
+        /// <summary>What a landmark wants from the ground it stands on.</summary>
+        struct SiteWish
+        {
+            public float WantedHeight;
+            public float MinHeight;
+            public float MaxHeight;
+            public Vector2 Reference;
+            public float MinFromReference;
+            public float MaxFromReference;
+            public float FlatWeight;
+            public float Separation;
+            public float FootprintRadius;
+        }
+
         /// <summary>
-        /// The catalog as it ships. The camp position is not typed in: it is searched for, so that a
-        /// different seed puts the camp on that island's beach rather than in that island's sea.
-        /// After the first generation it is a number in a text file like everything else, and a human
-        /// is free to move it.
+        /// The catalog as it ships. Nothing here is a typed-in coordinate: every landmark is searched
+        /// for against the island it is going to stand on, so a different seed puts the village
+        /// inland on *that* island rather than in that island's sea.
+        ///
+        /// After the first generation they are numbers in a text file like everything else, and a
+        /// human is free to drag any of them somewhere better.
         /// </summary>
         static POIEntry[] DefaultEntries(IslandProfile profile)
         {
             // Searched against the island with no pads in it, which is the state the catalog is being
-            // written for: the pad this search chooses is the one that will exist afterwards.
+            // written for: the pads these searches choose are the ones that will exist afterwards.
             var bare = ScriptableObject.CreateInstance<IslandProfile>();
             EditorUtility.CopySerialized(profile, bare);
             bare.Pois = null;
 
             var shape = new IslandShape(bare);
-            Vector2 camp = FindCampSite(shape, bare);
+            var taken = new List<Vector2>();
+
+            // Camp first, because everything else is placed relative to it: the shop and the casino
+            // are a walk, the village is a hike, and the cave is somewhere in between.
+            Vector2 camp = Site(shape, bare, taken, new SiteWish
+            {
+                WantedHeight = 4.5f, MinHeight = 1.5f, MaxHeight = 12f,
+                MaxFromReference = 0f, FlatWeight = 0.6f, FootprintRadius = 12f
+            }, "camp");
+
+            Vector2 shop = Site(shape, bare, taken, new SiteWish
+            {
+                WantedHeight = 8f, MinHeight = 2f, MaxHeight = 22f, Reference = camp,
+                MinFromReference = 70f, MaxFromReference = 160f,
+                FlatWeight = 0.7f, Separation = 40f, FootprintRadius = 8f
+            }, "shop");
+
+            Vector2 casino = Site(shape, bare, taken, new SiteWish
+            {
+                WantedHeight = 6f, MinHeight = 2f, MaxHeight = 20f, Reference = camp,
+                MinFromReference = 90f, MaxFromReference = 210f,
+                FlatWeight = 0.7f, Separation = 60f, FootprintRadius = 10f
+            }, "casino");
+
+            // Far enough that walking into it is a decision rather than an accident.
+            Vector2 village = Site(shape, bare, taken, new SiteWish
+            {
+                WantedHeight = 20f, MinHeight = 6f, MaxHeight = 48f, Reference = camp,
+                MinFromReference = 240f, MaxFromReference = 600f,
+                FlatWeight = 0.9f, Separation = 90f, FootprintRadius = 18f
+            }, "village");
+
+            // On the tideline. It is the first thing seen from the water and it is where the boat
+            // parts come from, so it belongs half in the sea.
+            Vector2 wreck = Site(shape, bare, taken, new SiteWish
+            {
+                WantedHeight = 0.3f, MinHeight = -1.5f, MaxHeight = 2f, Reference = camp,
+                MinFromReference = 60f, MaxFromReference = 320f,
+                FlatWeight = 0.4f, Separation = 50f, FootprintRadius = 10f
+            }, "wreck");
+
+            Vector2 cave = Site(shape, bare, taken, new SiteWish
+            {
+                WantedHeight = 34f, MinHeight = 18f, MaxHeight = 80f, Reference = camp,
+                MinFromReference = 120f, MaxFromReference = 500f,
+                FlatWeight = 0.5f, Separation = 70f, FootprintRadius = 10f
+            }, "cave");
+
             Object.DestroyImmediate(bare);
 
-            // Facing inland, so walking out of the machine looks at the island rather than the sea.
-            float facing = Mathf.Atan2(-camp.x, -camp.y) * Mathf.Rad2Deg;
+            float campFacing = Facing(camp, Vector2.zero);
 
             return new[]
             {
-                new POIEntry
-                {
-                    Id = "camp.revive",
-                    PrefabPath = ReviveMachinePrefabPath,
-                    Position = camp,
-                    Yaw = facing,
-                    SnapToGround = true,
-                    PadRadius = 16f,
-                    PadFalloff = 14f,
-                    PadRaise = 0.6f,
-                    MaxSlope = 0.3f
-                }
+                Entry("camp.base", GreyboxDir + "/BaseCamp.prefab", camp, campFacing,
+                      pad: 22f, falloff: 16f, raise: 0.5f, maxSlope: 0.28f),
+
+                // The machine stands inside the camp's own pad rather than on one of its own: two
+                // overlapping pads at different heights make a step in the middle of the camp.
+                Entry("camp.revive", ReviveMachinePrefabPath, camp + Offset(campFacing, 9f),
+                      campFacing + 180f, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
+
+                Entry("shop", GreyboxDir + "/Shop.prefab", shop, Facing(shop, camp),
+                      pad: 12f, falloff: 12f, raise: 0.4f, maxSlope: 0.3f),
+
+                Entry("casino", GreyboxDir + "/Casino.prefab", casino, Facing(casino, camp),
+                      pad: 14f, falloff: 12f, raise: 0.4f, maxSlope: 0.3f),
+
+                Entry("village", GreyboxDir + "/NativeVillage.prefab", village, Facing(village, camp),
+                      pad: 24f, falloff: 20f, raise: 0.3f, maxSlope: 0.32f),
+
+                Entry("wreck", GreyboxDir + "/Wreck.prefab", wreck, Facing(wreck, camp),
+                      pad: 10f, falloff: 14f, raise: 0f, maxSlope: 0.5f, allowUnderwater: true),
+
+                Entry("cave", GreyboxDir + "/Cave.prefab", cave, Facing(cave, camp),
+                      pad: 13f, falloff: 16f, raise: 0.2f, maxSlope: 0.45f)
             };
         }
 
-        /// <summary>
-        /// A flat spot near the shore, on the sunny side of the island, found by search rather than
-        /// by eye. Scores candidates on how close they are to the height a camp wants and how flat
-        /// the ground around them is, because a camp on a slope is a camp everything rolls out of.
-        /// </summary>
-        public static Vector2 FindCampSite(IslandShape shape, IslandProfile profile)
+        static POIEntry Entry(string id, string prefab, Vector2 position, float yaw, float pad,
+                              float falloff, float raise, float maxSlope, bool allowUnderwater = false)
+            => new POIEntry
+            {
+                Id = id,
+                PrefabPath = prefab,
+                Position = new Vector2(Mathf.Round(position.x), Mathf.Round(position.y)),
+                Yaw = Mathf.Round(yaw),
+                SnapToGround = true,
+                PadRadius = pad,
+                PadFalloff = falloff,
+                PadRaise = raise,
+                MaxSlope = maxSlope,
+                AllowUnderwater = allowUnderwater
+            };
+
+        /// <summary>Degrees that turn <paramref name="from"/> to look at <paramref name="at"/>.</summary>
+        static float Facing(Vector2 from, Vector2 at)
         {
-            const float wantedHeight = 4.5f;
-            const int steps = 96;
+            Vector2 delta = at - from;
+            return delta.sqrMagnitude < 0.001f ? 0f : Mathf.Atan2(delta.x, delta.y) * Mathf.Rad2Deg;
+        }
+
+        static Vector2 Offset(float yaw, float distance)
+        {
+            float radians = yaw * Mathf.Deg2Rad;
+            return new Vector2(Mathf.Sin(radians), Mathf.Cos(radians)) * distance;
+        }
+
+        /// <summary>
+        /// The best ground on the island for one landmark, by search rather than by eye. Scored on how
+        /// close the height is to what the place wants and how flat the ground is across its whole
+        /// footprint, because a metre of noise at the sample point says nothing about the twenty
+        /// metres the building will actually sit on.
+        /// </summary>
+        static Vector2 Site(IslandShape shape, IslandProfile profile, List<Vector2> taken,
+                            SiteWish wish, string label)
+        {
+            const int steps = 110;
 
             float half = profile.Size * 0.5f;
             float step = profile.Size / steps;
@@ -230,26 +335,41 @@ namespace EscapeWithYourFriends.EditorTools
                 for (int i = 1; i < steps; i++)
                 {
                     float x = -half + i * step;
+                    var candidate = new Vector2(x, z);
 
                     float height = shape.HeightAt(x, z);
-                    if (height < 1.5f || height > 12f) continue;
+                    if (height < wish.MinHeight || height > wish.MaxHeight) continue;
 
-                    // Flatness over the whole footprint, not just at the centre: a metre of terrain
-                    // noise at the sample point says nothing about the twenty metres around it.
+                    if (wish.MaxFromReference > 0f)
+                    {
+                        float distance = Vector2.Distance(candidate, wish.Reference);
+                        if (distance < wish.MinFromReference || distance > wish.MaxFromReference) continue;
+                    }
+
+                    bool crowded = false;
+                    foreach (Vector2 other in taken)
+                    {
+                        if (Vector2.Distance(candidate, other) >= wish.Separation) continue;
+                        crowded = true;
+                        break;
+                    }
+
+                    if (crowded) continue;
+
+                    float footprint = Mathf.Max(4f, wish.FootprintRadius);
                     float roughness = 0f;
                     for (int k = 0; k < 4; k++)
                     {
                         float angle = k * Mathf.PI * 0.5f;
-                        float sx = x + Mathf.Cos(angle) * 12f;
-                        float sz = z + Mathf.Sin(angle) * 12f;
-                        roughness += Mathf.Abs(shape.HeightAt(sx, sz) - height);
+                        roughness += Mathf.Abs(shape.HeightAt(x + Mathf.Cos(angle) * footprint,
+                                                              z + Mathf.Sin(angle) * footprint) - height);
                     }
 
-                    float score = -Mathf.Abs(height - wantedHeight) - roughness * 0.6f;
+                    float score = -Mathf.Abs(height - wish.WantedHeight) - roughness * wish.FlatWeight;
 
-                    // A nudge toward the middle of the map, so the camp is not tucked into a corner
-                    // where half the island is a long walk away.
-                    score -= new Vector2(x, z).magnitude / profile.Size;
+                    // A nudge inland, so nothing ends up tucked into a corner of the square with half
+                    // the island a long walk away.
+                    score -= candidate.magnitude / profile.Size;
 
                     if (score <= bestScore) continue;
 
@@ -258,8 +378,155 @@ namespace EscapeWithYourFriends.EditorTools
                 }
             }
 
-            Debug.Log($"[POIFactory] Camp site found at ({best.x}, {best.y}), "
-                      + $"ground {shape.HeightAt(best.x, best.y):F1}m, score {bestScore:F2}.");
+            taken.Add(best);
+            Debug.Log($"[POIFactory] {label} site ({best.x}, {best.y}), ground "
+                      + $"{shape.HeightAt(best.x, best.y):F1}m, score {bestScore:F2}.");
+            return best;
+        }
+
+        // ---------------------------------------------------------------- reachability
+
+        /// <summary>
+        /// Whether you can walk from the camp to each of the others, and how far it is.
+        ///
+        /// The acceptance criterion for #36 is that all six landmarks are reachable on foot, and that
+        /// is a claim about the terrain rather than about the prefabs, so it is checked against the
+        /// shape: a flood fill with a cost over an eight-metre grid of cells that are above water and
+        /// no steeper than a character controller can climb. It is not a NavMesh - that is #37 - but
+        /// a NavMesh cannot invent a route the terrain does not have.
+        /// </summary>
+        public static void ReportReachability(IslandProfile profile)
+        {
+            POICatalog catalog = profile.Pois;
+            if (catalog == null || catalog.Entries.Length == 0) return;
+
+            const float cell = 8f;
+            const float maxSlope = 0.8f;      // about 39 degrees, past which a character controller stalls
+            const float minHeight = 0.25f;
+
+            var shape = new IslandShape(profile);
+            int side = Mathf.Max(8, Mathf.RoundToInt(profile.Size / cell));
+            float half = profile.Size * 0.5f;
+
+            var walkable = new bool[side, side];
+            int walkableCells = 0;
+
+            for (int j = 0; j < side; j++)
+            {
+                float z = -half + (j + 0.5f) * cell;
+                for (int i = 0; i < side; i++)
+                {
+                    float x = -half + (i + 0.5f) * cell;
+                    walkable[j, i] = shape.HeightAt(x, z) > minHeight && shape.SlopeAt(x, z, 4f) <= maxSlope;
+                    if (walkable[j, i]) walkableCells++;
+                }
+            }
+
+            POIEntry start = catalog.Find("camp.base") ?? catalog.Entries[0];
+            if (!Cell(start.Position, half, cell, side, out int startX, out int startZ))
+            {
+                Debug.LogError("[POIFactory] The camp is off the reachability grid; nothing was checked.");
+                return;
+            }
+
+            var distance = new float[side, side];
+            for (int j = 0; j < side; j++)
+                for (int i = 0; i < side; i++)
+                    distance[j, i] = float.MaxValue;
+
+            // Breadth-first with a cost, which on a uniform grid with only two edge lengths comes out
+            // close enough to Dijkstra to report a walking distance anyone would recognise.
+            var queue = new Queue<Vector2Int>();
+            distance[startZ, startX] = 0f;
+            queue.Enqueue(new Vector2Int(startX, startZ));
+
+            int[] dx = { 1, -1, 0, 0, 1, 1, -1, -1 };
+            int[] dz = { 0, 0, 1, -1, 1, -1, 1, -1 };
+
+            while (queue.Count > 0)
+            {
+                Vector2Int at = queue.Dequeue();
+                for (int k = 0; k < 8; k++)
+                {
+                    int nx = at.x + dx[k];
+                    int nz = at.y + dz[k];
+                    if (nx < 0 || nz < 0 || nx >= side || nz >= side) continue;
+                    if (!walkable[nz, nx]) continue;
+
+                    float cost = distance[at.y, at.x] + (k < 4 ? cell : cell * 1.41421f);
+                    if (cost >= distance[nz, nx]) continue;
+
+                    distance[nz, nx] = cost;
+                    queue.Enqueue(new Vector2Int(nx, nz));
+                }
+            }
+
+            int reached = 0;
+            int total = 0;
+
+            foreach (POIEntry entry in catalog.Entries)
+            {
+                if (entry == null) continue;
+                total++;
+
+                if (!Cell(entry.Position, half, cell, side, out int ex, out int ez))
+                {
+                    Debug.LogError($"[POIFactory] {entry.Id} is off the reachability grid entirely.");
+                    continue;
+                }
+
+                // A landmark on the tideline sits on a cell that is under water by a few centimetres,
+                // so the search widens until it finds walkable ground. It starts at the centre cell
+                // and grows one ring at a time rather than taking the best of a wide neighbourhood:
+                // a fixed three-cell window quietly shaves up to thirty metres off every distance it
+                // reports, which turns a measurement into a flattering guess.
+                float best = float.MaxValue;
+                int slack = 0;
+
+                for (; slack <= 3 && best >= float.MaxValue; slack++)
+                    best = Nearest(distance, ex, ez, side, slack);
+
+                if (best >= float.MaxValue)
+                {
+                    Debug.LogError($"[POIFactory] {entry.Id} cannot be walked to from the camp: "
+                                   + "water or a cliff is in the way.");
+                    continue;
+                }
+
+                reached++;
+                int rings = slack - 1;
+                Debug.Log($"[POIFactory] {entry.Id} is {best:F0}m of walking from the camp"
+                          + (rings > 0 ? $", landing {rings * cell:F0}m short of its centre - the "
+                                       + "ground under it is not walkable" : "") + ".");
+            }
+
+            Debug.Log($"[POIFactory] {reached} of {total} landmarks reachable on foot across "
+                      + $"{walkableCells} walkable cells of {cell}m at up to {maxSlope:F1} gradient.");
+        }
+
+        static bool Cell(Vector2 position, float half, float cell, int side, out int x, out int z)
+        {
+            x = Mathf.FloorToInt((position.x + half) / cell);
+            z = Mathf.FloorToInt((position.y + half) / cell);
+            return x >= 0 && z >= 0 && x < side && z < side;
+        }
+
+        /// <summary>Shortest distance in any cell within <paramref name="reach"/> cells of this one.</summary>
+        static float Nearest(float[,] distance, int x, int z, int side, int reach)
+        {
+            float best = float.MaxValue;
+
+            for (int j = -reach; j <= reach; j++)
+            {
+                for (int i = -reach; i <= reach; i++)
+                {
+                    int nx = x + i;
+                    int nz = z + j;
+                    if (nx < 0 || nz < 0 || nx >= side || nz >= side) continue;
+                    best = Mathf.Min(best, distance[nz, nx]);
+                }
+            }
+
             return best;
         }
     }

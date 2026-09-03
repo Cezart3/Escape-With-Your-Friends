@@ -1901,6 +1901,91 @@ The splatmap hash did not move across that experiment, and that is right rather 
 wreck's pad was underwater, where the ground is seabed sand at any height and nothing grows.
 
 
+### Six landmarks, as boxes
+
+#36 asks for blockouts of the six places that make the island a place rather than a heightmap, with
+one criterion: all six reachable on foot, each with a clear purpose.
+
+They are deliberately crude — primitives, five colours, no detail — because a greybox that starts
+looking finished stops getting replaced, and all of this is meant to be thrown away in M8. What is
+*not* crude is the layout, because that is the part being tested and the part that survives the art
+pass:
+
+| Landmark | Shape | What the shape is for |
+|---|---|---|
+| Base Camp | shelter, storage, bench, fire, in a loose ring | Four players landing at once do not all stand in the same box |
+| Trading Post | hut with a counter facing out | Trade is a gesture at a counter, not a menu behind a door |
+| The Shack | three walls, open front, round table, bar | Four players crowding one table *is* the casino scene |
+| Native Village | five huts round an open middle, totem | Cover to break line of sight, nowhere entirely safe, visible over the canopy |
+| The Wreck | tipped hull, fallen mast, debris | The first thing seen from the water; where the boat parts come from |
+| The Cave | two slabs, a lintel, a room behind | Shelter at night and something to mine, without needing a hollowed mesh |
+
+`Landmark` carries the purpose into the running game — id, display name, one line of why you would
+walk there, a radius, and whether it is hostile. A comment in a builder script is not a purpose; the
+HUD and the objective system need to be able to read it. It is not a `NetworkBehaviour`: every field
+is baked into the prefab and never changes, so replicating it would be sending four clients a
+constant they already have on disk.
+
+Decoration keeps no collider. Every collider on a landmark is something a ragdoll can wedge itself
+behind, and a blockout has no business generating those by accident — so of 61 parts across the six,
+32 are solid and the rest are scenery.
+
+#### Placed by search, not by hand
+
+None of the six has a typed-in coordinate. `POIFactory` searches for each one against the island it
+will stand on, with a wish per landmark: a height it wants, a height range it will accept, how far
+from the camp it must be, how flat its own footprint has to be, and how far it must stay from
+anything already placed.
+
+That ordering matters: the camp is found first and everything else is positioned relative to it, so
+the shop is a walk, the village is a hike, and the cave is somewhere in between — on any seed.
+
+```
+camp    (-84, -47)   4.4m      shop    (-177, -28)   7.9m
+casino  (-270, -74)  5.9m      village ( 130, 205)   9.9m
+wreck   (   9, -47)  0.3m      cave    (  -9, 149)  34.0m
+```
+
+Each gets a pad, so the buildings stand on level ground — and because pads live inside the height
+function (see the previous section), the splatmap and the forest agree with them. Six pads is the
+whole difference between heightmap `BD4244A0` and `155D4AAC`.
+
+The revive machine is the exception that proves the rule: it is placed *inside* the camp's pad rather
+than on one of its own, because two overlapping pads at different heights make a step in the middle
+of the camp.
+
+#### Proving "reachable on foot" without feet
+
+The criterion is a claim about the terrain, not about the prefabs, so it is checked against
+`IslandShape`: a cost-carrying flood fill from the camp over an eight-metre grid, where a cell is
+walkable if it is above water and no steeper than 0.8 — about 39°, past which a character controller
+stalls. It is not a NavMesh — that is #37 — but a NavMesh cannot invent a route the terrain does not
+have.
+
+```
+camp.base     0m        camp.revive     8m
+shop        103m        casino        197m
+wreck        96m        cave          222m
+village     337m
+7 of 7 landmarks reachable on foot across 3359 walkable cells of 8m at up to 0.8 gradient
+```
+
+**The first version of this lied and the numbers looked better for it.** It took the shortest distance
+found anywhere in a three-cell window around each landmark, to cope with a wreck standing on a tile
+that is under water by a few centimetres — which quietly shaved up to thirty metres off every
+distance it reported. The shop came out as 72 m of walking from a point 95 m away in a straight line,
+which is not a suspicious number unless you look at it. The fix is to start at the centre cell and
+grow one ring at a time, reporting how far short it landed when it has to: the shop is 103 m, which
+is longer than the straight line, as walking always is.
+
+#### What is not verified
+
+That the buildings look like buildings, and that a player can get *into* them rather than merely up
+to them. Both need a screen and a body, and the bodies do not walk on this island until #39 makes it
+the scene the game loads. What is verified is that the six exist, are registered as spawnable, carry
+their purpose as data, and stand on ground a person could walk between.
+
+
 ---
 
 ## Data-driven content

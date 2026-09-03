@@ -13,14 +13,80 @@ MonoBehaviour:
   m_Name: POIs
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.POICatalog
   Entries:
-  - Id: camp.revive
-    PrefabPath: Assets/_Project/Prefabs/ReviveMachine.prefab
-    Position: {x: -85, y: -43}
-    Yaw: 63.16596
+  - Id: camp.base
+    PrefabPath: Assets/_Project/Prefabs/World/BaseCamp.prefab
+    Position: {x: -84, y: -47}
+    Yaw: 61
     YOffset: 0
     SnapToGround: 1
-    PadRadius: 16
-    PadFalloff: 14
-    PadRaise: 0.6
+    PadRadius: 22
+    PadFalloff: 16
+    PadRaise: 0.5
+    MaxSlope: 0.28
+    AllowUnderwater: 0
+  - Id: camp.revive
+    PrefabPath: Assets/_Project/Prefabs/ReviveMachine.prefab
+    Position: {x: -76, y: -43}
+    Yaw: 241
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 0
+    PadFalloff: 0
+    PadRaise: 0
     MaxSlope: 0.3
+    AllowUnderwater: 0
+  - Id: shop
+    PrefabPath: Assets/_Project/Prefabs/World/Shop.prefab
+    Position: {x: -177, y: -28}
+    Yaw: 102
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 12
+    PadFalloff: 12
+    PadRaise: 0.4
+    MaxSlope: 0.3
+    AllowUnderwater: 0
+  - Id: casino
+    PrefabPath: Assets/_Project/Prefabs/World/Casino.prefab
+    Position: {x: -270, y: -74}
+    Yaw: 82
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 14
+    PadFalloff: 12
+    PadRaise: 0.4
+    MaxSlope: 0.3
+    AllowUnderwater: 0
+  - Id: village
+    PrefabPath: Assets/_Project/Prefabs/World/NativeVillage.prefab
+    Position: {x: 130, y: 205}
+    Yaw: -140
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 24
+    PadFalloff: 20
+    PadRaise: 0.3
+    MaxSlope: 0.32
+    AllowUnderwater: 0
+  - Id: wreck
+    PrefabPath: Assets/_Project/Prefabs/World/Wreck.prefab
+    Position: {x: 9, y: -47}
+    Yaw: -90
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 10
+    PadFalloff: 14
+    PadRaise: 0
+    MaxSlope: 0.5
+    AllowUnderwater: 1
+  - Id: cave
+    PrefabPath: Assets/_Project/Prefabs/World/Cave.prefab
+    Position: {x: -9, y: 149}
+    Yaw: -159
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 13
+    PadFalloff: 16
+    PadRaise: 0.2
+    MaxSlope: 0.45
     AllowUnderwater: 0
