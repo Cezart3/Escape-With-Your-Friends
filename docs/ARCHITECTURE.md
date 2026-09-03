@@ -105,7 +105,8 @@ shipped depot must not contain it.
 **Why a command-line bootstrap.** The whole development loop for this project is a terminal, and a
 build that can only be started by clicking a button cannot be tested from one. `NetworkBootstrap`
 reads `-host` / `-server` / `-client`, plus `-address`, `-port`, `-quitAfter`, and the test flags
-`-latency`, `-botMove` and `-motorLog` described under movement below:
+`-latency`, `-botMove`, `-motorLog` and `-clockLog` described under movement and the day/night cycle
+below:
 
 ```
 Unity.exe -quit -batchmode -nographics -projectPath .   -executeMethod EscapeWithYourFriends.EditorTools.BuildTool.PerformBuild   -buildOutput D:/Builds/EWYF-dev -development -scriptingBackend mono
@@ -1631,6 +1632,144 @@ the colours, the foam width, the glint and the swell height are all first drafts
 with a screen. What *is* verified is the geometry, the seam, the determinism, the compile and the
 budget: 51 200 triangles of water, one mask fetch and two normal fetches per pixel, no depth prepass
 and no extra render pass anywhere in the frame.
+
+### Day and night
+
+The acceptance criterion for #34 is "full cycle configurable in minutes, synced across clients", and
+the second half of that is where all the interesting design is.
+
+**Nothing about the sky is replicated.** The obvious implementation is a float on the host pushed out
+to everyone, and it is wrong in both of its variants: send it every tick and it costs a message a
+tick forever, send it occasionally and the clients visibly jump when it lands. FishNet already
+synchronises `TimeManager.Tick` — that is its whole job, and it does it for late joiners too — so the
+time of day is simply a function of the tick:
+
+```csharp
+public static float Elapsed
+{
+    get
+    {
+        TimeManager time = InstanceFinder.TimeManager;
+        if (time != null) return (float)(time.Tick * time.TickDelta);
+        return Time.time;
+    }
+}
+```
+
+Zero bytes on the wire, no drift, and a player who joins an hour in sees the same sunset as everyone
+else because they are reading the same counter. With no network manager at all — the editor, a
+batchmode run, a future single-player mode — it falls back to `Time.time` and the sky still moves.
+
+`-timeOfDay 0.5` freezes the clock at noon, which is the only way to test a lighting change in a
+build that has no screen: without it the run is over before the sun has moved.
+
+#### Four files
+
+| File | Job |
+|---|---|
+| `Scripts/World/WorldClock.cs` | What time it is. Static, tick-derived, no networking code of its own. |
+| `Scripts/World/DayNightProfile.cs` | Every colour and every number, as a ScriptableObject. |
+| `Scripts/World/DayNightCycle.cs` | Applies the profile to the light, the ambient, the fog and the sky. |
+| `Scripts/Editor/SkyFactory.cs` | Generates the profile and the skybox material, and reports what they do. |
+
+#### One light that turns around
+
+There is a single directional light in the scene. While the sun is up it is the sun; after that it
+rotates 180° to come from where the moon would be, takes a cold blue, and drops to a tenth of the
+intensity. Two lights would mean URP choosing a main light every frame and shadow cascades handing
+over between them mid-sunset; one light that turns around is the standard trick and costs nothing.
+
+**The handover is not at the horizon crossing, and that matters.** Swapping when the sun's elevation
+passes zero is the obvious rule and it swings every shadow in the world through 180° in a single
+frame, at sunrise, in full view. Instead the moon fades out as the sun comes up and the swap happens
+where the two are equally bright:
+
+```csharp
+float moonlight = Profile.MoonIntensity * (1f - Mathf.Clamp01(sunlight / Handover));
+bool day = sunlight >= moonlight;
+```
+
+At the crossover both are around 0.1 against an ambient of 0.14, so the flip is invisible.
+
+A light with zero intensity still costs a shadow pass, so shadows are switched off entirely below
+0.02 — which is exactly the part of twilight where they are longest and most expensive.
+
+#### Making the night genuinely dark
+
+The issue asks for night dark enough that flashlights matter, and the lever for that is **not** the
+moon's intensity. Direct light only touches what it hits; ambient is what fills every shadow, and a
+night with bright ambient reads as an overcast afternoon with a blue filter no matter what the
+directional light is doing. So the ambient sky colour runs from `(0.46, 0.60, 0.80)` at noon to
+`(0.020, 0.026, 0.048)` at midnight — a factor of about twenty — and the skybox exposure drops from
+1.30 to 0.16, which is what makes the sky black rather than merely navy.
+
+The floor is deliberate. 0.14 of blue moonlight is enough to make out a treeline and a shoreline. A
+black screen is not tense; it is a bug report.
+
+#### The gradients are generated, not typed
+
+A Unity `Gradient` serialises as a block of packed key data that is unreadable in YAML and
+unmergeable in git. `SkyFactory` writes them from code, where they are eight lines anybody can argue
+with, into a `DayNight.asset` that is still a plain text file a human can hand-tune afterwards.
+
+Same create-once rule as every other look asset here: the profile exists so that a person tunes it,
+so once it is on disk the generator leaves it alone. `-rebuildSky` throws the tuning away and starts
+again from the numbers in the code, which is the escape hatch the flora work needed and did not have.
+
+The skybox is Unity's own `Skybox/Procedural`: tint, exposure and atmosphere thickness in, a sky out,
+one full-screen pass of arithmetic and no cubemap to load. The cycle drives it through a **runtime
+copy** — writing tint and exposure into the asset every frame would leave the repository permanently
+dirty at whatever time of day the editor was last closed. The copy is `HideAndDontSave`, and
+`WriteScene` puts the real asset back into `RenderSettings.skybox` before saving, or the scene file
+would reference an object that does not exist the next time it is opened.
+
+#### What it produced
+
+A day, sampled by `SkyFactory.Report` during generation:
+
+```
+00:00 (t=0.000) moon intensity 0.140, elevation 90.0deg, ambient 0.027, fog 0.0060
+03:00 (t=0.125) moon intensity 0.140, elevation 45.0deg, ambient 0.043, fog 0.0073
+05:45 (t=0.240) moon intensity 0.111, elevation  3.6deg, ambient 0.141, fog 0.0076
+06:43 (t=0.280) sun  intensity 0.446, elevation 10.8deg, ambient 0.311, fog 0.0069
+08:23 (t=0.350) sun  intensity 1.050, elevation 36.0deg, ambient 0.397, fog 0.0047
+12:00 (t=0.500) sun  intensity 1.250, elevation 90.0deg, ambient 0.581, fog 0.0029
+16:47 (t=0.700) sun  intensity 0.654, elevation 18.0deg, ambient 0.464, fog 0.0062
+18:14 (t=0.760) moon intensity 0.111, elevation  3.6deg, ambient 0.263, fog 0.0075
+19:40 (t=0.820) moon intensity 0.140, elevation 25.2deg, ambient 0.086, fog 0.0077
+21:00 (t=0.875) moon intensity 0.140, elevation 45.0deg, ambient 0.048, fog 0.0073
+
+Full daylight is 5.0x the brightest real night (1.118 vs 0.226, sun plus ambient).
+Cycle 20 minutes, starting at 0.28, replicated by tick.
+```
+
+Twilight is excluded from both ends of that ratio on purpose. Dusk is dark, and it is also not night;
+counting it turns a real measurement into a meaningless one. The generator logs an error if night
+ever comes within a quarter of daylight, because at that point a flashlight is pointless and the
+whole feature has quietly stopped working.
+
+#### Proving the sync without a screen
+
+`-clockLog N` prints the tick and the time of day every N seconds. Two processes started seven
+seconds apart:
+
+```
+host    tick   3  06:43 (t=0.2801)      client  tick   3  06:43 (t=0.2801)
+host    tick  95  06:46 (t=0.2826)
+host    tick 185  06:50 (t=0.2851)
+host    tick 275  06:54 (t=0.2876)      client  tick 314  06:55 (t=0.2887)
+host    tick 365  06:57 (t=0.2901)      client  tick 404  06:59 (t=0.2912)
+host    tick 455  07:01 (t=0.2926)      client  tick 494  07:02 (t=0.2937)
+```
+
+The client's tick jumps by **311 across a three-second interval** — ninety ticks of its own plus the
+snap onto the host's clock as it connects — and tracks the host from there. That jump is the test:
+without the tick sync the client would have stayed roughly two hundred ticks behind for the rest of
+the session, and the two would have been looking at different skies.
+
+**What is not verified here:** whether sunrise is pretty. Nothing in `-nographics` renders a pixel,
+so the gradients are a first draft. What is measured is the arc, the intensities, the ambient ratio
+and the sync — the parts that are either right or wrong rather than a matter of taste.
 
 ---
 

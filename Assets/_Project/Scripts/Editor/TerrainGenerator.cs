@@ -233,12 +233,29 @@ namespace EscapeWithYourFriends.EditorTools
             var collider = island.AddComponent<TerrainCollider>();
             collider.terrainData = data;
 
+            // One directional light for the whole island, driven by the clock rather than posed.
+            // It is the sun while the sun is up and the moon after that - see DayNightCycle for why
+            // that is one light turning around rather than two lights handing over.
             var sun = new GameObject("Sun");
-            sun.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
             Light light = sun.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.intensity = 1.1f;
             light.shadows = LightShadows.Soft;
+            light.shadowBias = 0.05f;
+
+            DayNightProfile sky = SkyFactory.EnsureProfile();
+            Material skyMaterial = SkyFactory.EnsureSkyMaterial();
+
+            var cycle = sun.AddComponent<DayNightCycle>();
+            cycle.Profile = sky;
+            cycle.Sun = light;
+            cycle.Sky = skyMaterial;
+
+            SkyFactory.Report(cycle);
+
+            // The cycle runs on a hidden copy of the skybox so it never writes to the asset. That
+            // copy must not be what the scene file points at, or the saved scene references an
+            // object that does not exist the next time it is opened.
+            RenderSettings.skybox = skyMaterial;
 
             // The sea, as a prefab instance rather than as loose objects, so a shader or mesh
             // change reaches the scene without regenerating the island. It sits at the world origin

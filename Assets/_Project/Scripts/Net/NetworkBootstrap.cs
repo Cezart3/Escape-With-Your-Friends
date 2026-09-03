@@ -1,6 +1,9 @@
 using System;
 using EscapeWithYourFriends.Core;
+using EscapeWithYourFriends.World;
+using FishNet;
 using FishNet.Managing;
+using FishNet.Managing.Timing;
 using FishNet.Transporting;
 using UnityEngine;
 
@@ -25,6 +28,7 @@ namespace EscapeWithYourFriends.Net
     ///   -quitAfter 30          exit after this many seconds, for automated smoke tests
     ///   -latency 50            simulate this many milliseconds each way (development builds)
     ///   -fallTest 20           read by FallGuard: drop every body out of the world at this time
+    ///   -clockLog 2            print the world clock every N seconds, to prove two processes agree
     ///
     /// With no arguments it does nothing and waits for the lobby to start the connection, which is
     /// what a shipped build does. SteamLobby drives it through StartHost, Connect and Disconnect,
@@ -123,6 +127,8 @@ namespace EscapeWithYourFriends.Net
 
             ConfigureLatencySimulation(CommandLine.GetInt("-latency", 0));
 
+            _clockLogEvery = CommandLine.GetFloat("-clockLog", 0f);
+
             if (SteamLobby.RequestedFromCommandLine)
             {
                 // The lobby decides who connects to whom, and it knows a SteamID this class does
@@ -146,8 +152,29 @@ namespace EscapeWithYourFriends.Net
             if (host || client) StartClient(link, address, port);
         }
 
+        float _clockLogEvery;
+        float _clockLogAt;
+
+        /// <summary>
+        /// Prints the world clock on a fixed cadence. There is no other way to check that the day is
+        /// synchronised: the sky is a pure function of the FishNet tick, so the test is that two
+        /// processes started a few seconds apart report the same time of day, and they can only do
+        /// that if the tick reached both of them.
+        /// </summary>
+        void LogClock()
+        {
+            if (_clockLogEvery <= 0f || Time.time < _clockLogAt) return;
+            _clockLogAt = Time.time + _clockLogEvery;
+
+            TimeManager time = InstanceFinder.TimeManager;
+            Debug.Log($"[WorldClock] tick {(time != null ? (long)time.Tick : -1L)}, "
+                      + $"day {WorldClock.Day}, {WorldClock.Clock24} (t={WorldClock.Normalized:F4})");
+        }
+
         void Update()
         {
+            LogClock();
+
             if (_quitAt < 0f || Time.time < _quitAt) return;
 
             _quitAt = -1f;
