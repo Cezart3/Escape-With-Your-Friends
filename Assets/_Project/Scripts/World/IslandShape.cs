@@ -43,10 +43,39 @@ namespace EscapeWithYourFriends.World
         readonly IslandProfile _profile;
         readonly float _half;
 
+        /// <summary>
+        /// The flattened pads under the points of interest, with the height each one levels off at.
+        /// Resolved once here rather than looked up per sample: the target is the raw ground at the
+        /// centre of the pad, and asking for that inside the height function would be a recursion.
+        /// </summary>
+        readonly POIEntry[] _pads;
+        readonly float[] _padHeights;
+
         public IslandShape(IslandProfile profile)
         {
             _profile = profile;
             _half = profile.Size * 0.5f;
+
+            _pads = CollectPads(profile);
+            _padHeights = new float[_pads.Length];
+            for (int i = 0; i < _pads.Length; i++)
+                _padHeights[i] = RawHeightAt(_pads[i].Position.x, _pads[i].Position.y) + _pads[i].PadRaise;
+        }
+
+        static POIEntry[] CollectPads(IslandProfile profile)
+        {
+            if (profile.Pois == null || profile.Pois.Entries == null) return System.Array.Empty<POIEntry>();
+
+            int count = 0;
+            foreach (POIEntry entry in profile.Pois.Entries)
+                if (entry != null && entry.PadRadius > 0f) count++;
+
+            var pads = new POIEntry[count];
+            int index = 0;
+            foreach (POIEntry entry in profile.Pois.Entries)
+                if (entry != null && entry.PadRadius > 0f) pads[index++] = entry;
+
+            return pads;
         }
 
         public IslandProfile Profile => _profile;
@@ -57,8 +86,35 @@ namespace EscapeWithYourFriends.World
         /// <summary>
         /// Ground height in metres above sea level at a world position, clamped into the vertical
         /// range of the terrain. Negative is seabed.
+        ///
+        /// This is the height everything downstream uses - the heightmap, the splatmap, the trees,
+        /// the spawn points - so the pads under the camps have to be applied here rather than to the
+        /// baked heightmap afterwards. Flatten the terrain asset alone and the paint and the forest
+        /// go on believing in the hillside that used to be there.
         /// </summary>
         public float HeightAt(float x, float z)
+        {
+            float height = RawHeightAt(x, z);
+
+            for (int i = 0; i < _pads.Length; i++)
+            {
+                POIEntry pad = _pads[i];
+                float dx = x - pad.Position.x;
+                float dz = z - pad.Position.y;
+                float distance = Mathf.Sqrt(dx * dx + dz * dz);
+
+                float falloff = Mathf.Max(0.01f, pad.PadFalloff);
+                float weight = 1f - Smooth(Mathf.Clamp01((distance - pad.PadRadius) / falloff));
+                if (weight <= 0f) continue;
+
+                height = Mathf.Lerp(height, _padHeights[i], weight);
+            }
+
+            return height;
+        }
+
+        /// <summary>The island before anything is levelled into it. The five layers, and nothing else.</summary>
+        float RawHeightAt(float x, float z)
         {
             // 1. Domain warp. Two independent noise fields, one per axis, sampled at the unwarped
             //    position: cheap, and enough to break up the radial symmetry of everything below.

@@ -76,6 +76,7 @@ MonoBehaviour:
   TreeMaximumFullLOD: 60
   DetailDistance: 85
   DetailDensity: 0.8
+  Pois: {fileID: 11400000, guid: 5de992fcce44e734d888a225d71cb91f, type: 2}
   WaterPatchExtent: 320
   WaterCellSize: 4
   WaterFadeBand: 70

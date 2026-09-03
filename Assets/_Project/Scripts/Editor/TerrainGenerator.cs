@@ -62,6 +62,11 @@ namespace EscapeWithYourFriends.EditorTools
 
             EditorUtility.SetDirty(profile);
 
+            // Before a single height is sampled. The catalog carries the flattened pads under the
+            // camps, and those live inside the height function - levelling the baked heightmap
+            // afterwards would leave the splatmap and every tree standing on the hill that was there.
+            POIFactory.EnsureCatalog(profile);
+
             Debug.Log($"[TerrainGenerator] Seed {profile.Seed}, {profile.Size}m square, {resolution}^2 "
                       + $"samples, heights {-profile.SeabedDepth}m to {profile.PeakHeight}m.");
 
@@ -266,6 +271,13 @@ namespace EscapeWithYourFriends.EditorTools
                 var water = (GameObject)PrefabUtility.InstantiatePrefab(waterPrefab, scene);
                 water.transform.position = new Vector3(0f, IslandShape.SeaLevel, 0f);
             }
+
+            // The points of interest, resolved against the terrain that now exists and baked into a
+            // spawner that lives in this scene rather than in Bootstrap: they belong to the island,
+            // and the arena has its own props.
+            var pois = new GameObject("POIs");
+            var spawner = pois.AddComponent<POISpawner>();
+            POIFactory.Bake(profile, spawner);
 
             Directory.CreateDirectory(Path.GetDirectoryName(ScenePath));
             EditorSceneManager.MarkSceneDirty(scene);

@@ -220,6 +220,10 @@ namespace EscapeWithYourFriends.World
         [Tooltip("Global multiplier on grass density, 0 to 1. The min-spec escape hatch.")]
         public float DetailDensity = 0.8f;
 
+        [Header("Points of interest")]
+        [Tooltip("Where the camps, the shop and the village stand. Their pads are part of the height function, so changing this changes the island.")]
+        public POICatalog Pois;
+
         [Header("Water")]
         [Tooltip("Half-width in metres of the wavy patch that follows the camera. Everything beyond it is the flat ring.")]
         public float WaterPatchExtent = 320f;

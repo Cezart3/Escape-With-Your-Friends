@@ -1771,6 +1771,136 @@ the session, and the two would have been looking at different skies.
 so the gradients are a first draft. What is measured is the arc, the intensities, the ambient ratio
 and the sync — the parts that are either right or wrong rather than a matter of taste.
 
+### Points of interest
+
+The acceptance criterion for #35 is "a new POI can be added from the terminal in one edit", and the
+design falls out of taking that literally.
+
+A Unity object reference in YAML is a GUID. Nobody types a GUID, so `POIEntry` names its prefab by
+**asset path** and the editor resolves it once at bake time:
+
+```yaml
+- Id: camp.revive
+  PrefabPath: Assets/_Project/Prefabs/ReviveMachine.prefab
+  Position: {x: -85, y: -43}
+  Yaw: 63.16596
+  PadRadius: 16
+  PadFalloff: 14
+  PadRaise: 0.6
+  MaxSlope: 0.3
+  AllowUnderwater: 0
+```
+
+Append that block to `Assets/_Project/Data/POIs.asset`, run the usual island command, and the thing
+is standing on the beach with the ground levelled under it. No scene is opened and nothing is
+dragged.
+
+#### The ordering constraint that shapes everything
+
+`PadRadius` flattens the ground under a POI, and **the flattening has to happen inside
+`IslandShape.HeightAt`, not to the baked heightmap afterwards.** Everything downstream — the
+splatmap, fourteen thousand trees, the grass, the spawn heights, the water depth mask — asks the
+shape, not the terrain asset. Level the asset alone and all of them go on believing in the hillside
+that used to be there: trees standing in mid-air over the camp, rock paint on a flat pad, grass on a
+slope that no longer exists.
+
+So the catalog is a **runtime** asset, `IslandProfile` holds a reference to it, and `POIFactory`
+attaches it *before a single height is sampled*. The pad is a smoothstep blend toward the raw height
+at the pad's own centre, which means the target does not have to be typed in and cannot be typed in
+wrong:
+
+```csharp
+_padHeights[i] = RawHeightAt(pad.Position.x, pad.Position.y) + pad.PadRaise;
+```
+
+That split — `RawHeightAt` for the five layers of island, `HeightAt` for the island with its pads —
+is the only structural change to the shape since #30.
+
+The visible consequence is that **the catalog is part of the island's identity**. Adding a POI
+changes the heightmap hash, and that is correct rather than alarming: the terrain genuinely is a
+different terrain.
+
+#### Where the camp came from
+
+The first entry's position is not typed in. `POIFactory.FindCampSite` searches a 96×96 grid for a
+spot between 1.5 m and 12 m above the sea, scoring each candidate on how close it is to the height a
+camp wants (4.5 m) and how flat the ground is at four points twelve metres out — because a metre of
+noise at the sample point says nothing about the twenty metres around it — with a small pull toward
+the middle of the map so the camp is not tucked in a corner.
+
+On seed 20260830 it picks (-85, -43), 4.5 m above the sea, and faces the machine inland so walking
+out of it looks at the island rather than at the water. After that first generation it is a number in
+a text file like everything else and a human can move it.
+
+The search runs against a copy of the profile with the catalog detached, because the site being
+chosen is the site the pad will be built on: searching the already-padded island would be asking
+where to put the camp on an island that assumes the camp is already there.
+
+#### Baking, and what it refuses to do
+
+`POIFactory.Bake` resolves each entry against the terrain that now exists, snaps it to the ground,
+and writes the resolved list into a `POISpawner` in `Island.unity`. The array is rewritten whole
+rather than appended to — it is generated output, and a second run must not leave two revive
+machines in the same spot.
+
+It validates, and none of the validations refuse to build:
+
+| Check | Level | Why not fatal |
+|---|---|---|
+| Below sea level without `AllowUnderwater` | error | Wrecks and docks want to be; it is a tuning question |
+| Slope over `MaxSlope` | warning | A pad fixes it, and the author may have meant it |
+| Outside the island square | error | Almost certainly a typo, still not worth failing a build |
+| Prefab does not exist | warning, skipped | The catalog is allowed to describe the shop before #36 builds it |
+| Duplicate id | error | Lookups by id become a coin flip |
+
+That last-but-one row matters more than it looks: the catalog can list the shop, the casino and the
+native village now, with their pads already levelled into the terrain, and each one starts appearing
+as its prefab arrives. The world gets built in the order the art gets built, without a merge.
+
+#### Spawned, not placed
+
+`POISpawner` instantiates from registered prefabs on the server, exactly as `WorldSpawner` does for
+the arena and `PlayerSpawner` does for bodies. FishNet identifies scene objects by an id baked at
+save time, and every scene in this project is written by an editor script in batchmode — a path where
+that baking is unproven. Spawning from a registered prefab is the path that already works every time
+a client connects.
+
+It handles both orders of events, which is not optional: the island is loaded as a scene *after* the
+server is up, so the state event that would have started it has already fired. `Start` checks
+`ServerManager.Started`, and the event covers a scene that happens to load first.
+
+`WorldSpawner` stays where it is, holding the arena's revive machine. It was the honest first draft
+and it still owns the greybox arena; the island's props are the island's.
+
+#### What it produced
+
+```
+[POIFactory] Camp site found at (-85, -43), ground 4.5m, score -0.83.
+[POIFactory] Generated Assets/_Project/Data/POIs.asset with 1 entries.
+[POIFactory] Attached the catalog to the island profile; its pads are now part of the shape.
+[POIFactory] camp.revive -> .../ReviveMachine.prefab at (-85.0, 5.1, -43.0), yaw 63, pad 16m.
+```
+
+The one-edit criterion, demonstrated by appending eleven lines from a shell and regenerating:
+
+```
+heightmap BD4244A0  ->  8E4DA61A          (the new pad is in the shape)
+[POIFactory] 'beach.wreck' is at -1.4m, under the sea, and is not marked AllowUnderwater.
+[POIFactory] 'beach.wreck' wants .../Wreck.prefab, which does not exist yet. Placed nothing;
+             the pad under it is still in the terrain.
+[POIFactory] Baked 1 of 2 catalog entries into the island spawner; 1 have no prefab yet.
+
+remove the eleven lines, regenerate  ->  heightmap BD4244A0, asset AFD42A0C
+```
+
+Both halves are the point: the edit reached the terrain, the validator caught that the wreck had been
+put in the sea, the missing prefab was reported rather than fatal, and taking the edit back restored
+the island byte for byte.
+
+The splatmap hash did not move across that experiment, and that is right rather than suspicious — the
+wreck's pad was underwater, where the ground is seabed sand at any height and nothing grows.
+
+
 ---
 
 ## Data-driven content
