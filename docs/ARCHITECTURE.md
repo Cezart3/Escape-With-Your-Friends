@@ -105,8 +105,8 @@ shipped depot must not contain it.
 **Why a command-line bootstrap.** The whole development loop for this project is a terminal, and a
 build that can only be started by clicking a button cannot be tested from one. `NetworkBootstrap`
 reads `-host` / `-server` / `-client`, plus `-address`, `-port`, `-quitAfter`, and the test flags
-`-latency`, `-botMove`, `-motorLog`, `-clockLog` and `-navWalk` described under movement, the
-day/night cycle and navigation below:
+`-latency`, `-botMove`, `-motorLog`, `-clockLog`, `-navWalk`, `-quality` and `-perfLog` described
+under movement, the day/night cycle, navigation and performance below:
 
 ```
 Unity.exe -quit -batchmode -nographics -projectPath .   -executeMethod EscapeWithYourFriends.EditorTools.BuildTool.PerformBuild   -buildOutput D:/Builds/EWYF-dev -development -scriptingBackend mono
@@ -2213,6 +2213,142 @@ a short leg looks like.
 
 The island regenerated to the same terrain hash (`8F7F1E51`) with the NavMesh added, so none of this
 moved the ground.
+
+### Making it run on the laptop
+
+The target is sixty frames a second at 1080p on a Radeon 760M — an integrated GPU sharing system
+memory with the CPU. Nothing in this repository can confirm that number: the machine that writes the
+code has a discrete card, and a headless build has no frames at all. So this section is two things
+kept apart on purpose — the settings that give the island a chance, and the instrument that says
+whether it took it.
+
+#### The build was shipping on Ultra
+
+Unity's per-platform default quality for Standalone was 5, which is Ultra: four shadow cascades, 2x
+MSAA, full resolution. On a laptop iGPU the first thing a player would have concluded is that the game
+is broken.
+
+Three things had to change, and only the first is obvious.
+
+**`m_PerPlatformDefaultQuality: Standalone` is what a build starts at** — not `m_CurrentQuality`,
+which is only the editor's. Setting the level in the editor and shipping is how a build ends up on
+Ultra while every screenshot in the office looks fine. There is no scripting API for that map, so the
+value lives in `ProjectSettings/QualitySettings.asset` and `RenderTuning` checks it rather than
+setting it. It is now 2, Medium.
+
+**`GraphicsBoot` picks a level before the first frame**, and says why:
+
+```
+[GraphicsBoot] Quality 'Low' (1) - integrated graphics.
+               AMD Radeon 760M Graphics, 2048MB video, 31938MB system, 12 cores.
+```
+
+The order is command line → the player's saved choice → a guess. The guess looks at the device *name*
+before it looks at memory, because an iGPU reports a slice of system RAM: a 760M can claim 2 GB of
+"video memory" while having a fraction of the bandwidth that number implies. Guesses about hardware
+age badly, so it logs both its answer and the facts it used — a wrong one is a bug report rather than a
+mystery, and #84's settings menu will write the preference that overrides it.
+
+`-quality Low` / `-quality "Very High"` / `-quality 3` pins it, and works headless, which is the only
+way to test this path without a screen.
+
+#### Three tiers, in a file rather than in an inspector
+
+`RenderTuning.Apply` writes the three URP assets from one table, so the tiers can be read side by side:
+
+| | render scale | MSAA | HDR | shadows | cascades | lights/object |
+|---|---|---|---|---|---|---|
+| **URP_Low** | 0.8 | off | off | 1024² over 45 m, hard | 1 | 2 |
+| **URP_Medium** | 1.0 | off | off | 2048² over 80 m, soft | 2 | 4 |
+| **URP_High** | 1.0 | 2x | on | 2048² over 150 m, soft | 4 | 8 |
+
+Render scale is the single biggest lever on an integrated GPU — 0.8 is 64% of the pixels for a
+softness nobody notices at 1080p. MSAA stays off below High because this game has no thin geometry for
+it to rescue. And all three keep the depth and opaque textures off, because each is a whole render pass
+this game does not use — `Water.shader` was written to avoid the depth texture on purpose, and turning
+it on in a quality preset would quietly undo that decision.
+
+The high tier's shadow distance is 150 m rather than more because the fog closes at about 700 m and
+shadows past that are invisible by definition.
+
+#### Grass is most of the frame
+
+The largest remaining lever is not a renderer setting. It is that the island draws thousands of
+alpha-tested grass quads, back to front, filling the screen whenever you look down a slope.
+
+`TerrainQuality` scales the terrain's distances to the quality level, as multipliers of what
+`IslandProfile` asked for — so the profile stays the one place the island's look is defined, and this
+only says how much of it a given machine gets:
+
+```
+[TerrainQuality] low:    trees 192m, grass 43m at 0.48 density, terrain error 10px
+[TerrainQuality] medium: trees 272m, grass 68m at 0.68 density, terrain error  7px
+[TerrainQuality] high:   trees 320m, grass 85m at 0.80 density, terrain error  5px
+```
+
+**Halving the grass distance quarters its area.** Tree billboards keep their share rather than being
+pulled in with everything else, because that is the cheap half of the tree budget and losing it makes
+the island look bald from a hilltop for almost no saving.
+
+#### Two smaller cuts
+
+Greybox decoration — signs, stock crates, bench legs, the logs on the fire — no longer casts shadows.
+Those are extra draws in the shadow pass for silhouettes nobody can pick out from two metres away, and
+the shadow pass is where an integrated GPU spends its afternoon. The pieces that make a building's
+shape, the ones with colliders, still cast.
+
+The camera's clip planes are now in `CameraTuning` and read by both the scene camera and every player's
+Cinemachine lens. Two different things were setting them from two different defaults, and Cinemachine's
+wins whenever a virtual camera is live — which is how a build ends up rendering a different distance
+depending on whether anyone has spawned yet.
+
+`RenderTuning` also checks the three distances that have to stay in order — where the fog goes opaque,
+the far plane, and the outer edge of the water's horizon ring:
+
+```
+[RenderTuning] Draw distance agrees with the fog: fog opaque at 693m
+               (thinnest density 0.0029), camera far plane 5000m, water horizon out to 4000m.
+```
+
+If the fog ever reaches further than the camera does, the sea ends in mid-air. Nobody would change a
+fog curve while thinking about a camera, which is exactly why a machine checks it.
+
+#### Occlusion culling was considered and skipped
+
+The issue asks for it. It would do nothing here, and saying so is more useful than baking it.
+
+Unity's occlusion culling works on renderers flagged static, and it culls whole objects. This island has
+one terrain — a single renderer that occlusion culling cannot subdivide — and seven buildings that are
+**spawned by the server at run time**, so they are not static and cannot be in the bake at all. Nothing
+is left for Umbra to cull, and the data would cost bake time and load-time memory to achieve it.
+
+It becomes worth revisiting when there are interiors: the cave, the village huts, anything you can be
+inside and not see out of. That is #78's territory, not this one.
+
+#### Measuring it
+
+`PerfProbe` is the instrument. Average frame rate on its own is close to useless for a game — a run
+that averages 62 fps and stutters to 14 twice a second feels far worse than a flat 45, and the average
+hides it completely. So the number to quote is the **1% low**: the mean of the worst one percent of
+frames in the window.
+
+```
+EscapeWithYourFriends.exe -perfLog 10 -logfile perf.log
+
+[PerfProbe] AMD Radeon 760M Graphics (2048MB), 1920x1080 fullscreen, quality 'Low', vsync 1, ...
+[PerfProbe] 604 frames: 60 fps average (16.6ms), 61 median, 1% low 41 fps (24.4ms), worst 38.1ms.
+[PerfProbe] Session: 3611 frames, 59 fps average (16.9ms), worst single frame 210ms. <device again>
+```
+
+Every line carries the device, resolution and quality level, because a frame time without them means
+nothing. Development builds also draw the two numbers in the top-right corner of the HUD, so somebody
+playtesting can see a stutter without reading a log.
+
+**What is not verified:** the sixty. That needs one run on the 760M at 1080p with four players
+connected, which is a thing only a person with that laptop can do. If it comes back short, the next
+levers in order are: grass distance below 43 m, render scale 0.7, and a cheap variant of the water
+shader that drops its second normal sample — the water covers a large part of the screen and is the
+only per-pixel cost on the island that has not been touched.
 
 ---
 

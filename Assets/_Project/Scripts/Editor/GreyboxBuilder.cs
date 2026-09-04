@@ -5,6 +5,7 @@ using FishNet.Managing.Object;
 using FishNet.Object;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace EscapeWithYourFriends.EditorTools
 {
@@ -300,10 +301,17 @@ namespace EscapeWithYourFriends.EditorTools
 
             // Decoration keeps no collider. Every collider on a landmark is something a ragdoll can
             // get wedged behind, and a blockout has no business generating those by accident.
+            //
+            // It casts no shadow either. A sign, a crate and four bench legs are five extra draws in
+            // the shadow pass for silhouettes nobody can pick out from two metres away, and the
+            // shadow pass is where an integrated GPU spends its afternoon. The pieces that make the
+            // building's shape - the ones with colliders - still cast.
             if (!solid)
             {
                 Collider existing = go.GetComponent<Collider>();
                 if (existing != null) Object.DestroyImmediate(existing);
+
+                if (renderer != null) renderer.shadowCastingMode = ShadowCastingMode.Off;
             }
 
             return go;

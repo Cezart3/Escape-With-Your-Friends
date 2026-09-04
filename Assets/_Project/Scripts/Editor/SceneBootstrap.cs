@@ -1,5 +1,6 @@
 using System.IO;
 using System.Linq;
+using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.Net;
 using EscapeWithYourFriends.UI;
 using EscapeWithYourFriends.World;
@@ -69,6 +70,8 @@ namespace EscapeWithYourFriends.EditorTools
             cameraGo.tag = "MainCamera";
             var camera = cameraGo.AddComponent<Camera>();
             camera.clearFlags = CameraClearFlags.Skybox;
+            camera.nearClipPlane = CameraTuning.NearPlane;
+            camera.farClipPlane = CameraTuning.FarPlane;
             camera.transform.position = new Vector3(0f, 2f, -10f);
             cameraGo.AddComponent<AudioListener>();
 

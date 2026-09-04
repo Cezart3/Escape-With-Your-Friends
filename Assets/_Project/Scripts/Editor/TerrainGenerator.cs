@@ -238,6 +238,12 @@ namespace EscapeWithYourFriends.EditorTools
             var collider = island.AddComponent<TerrainCollider>();
             collider.terrainData = data;
 
+            // Those distances are what an integrated GPU can least afford, so they are not fixed:
+            // TerrainQuality scales them to whatever quality level the machine ended up on.
+            var quality = island.AddComponent<TerrainQuality>();
+            quality.Configure(terrain, profile.TreeDistance, profile.TreeBillboardDistance,
+                              profile.DetailDistance, profile.DetailDensity);
+
             // One directional light for the whole island, driven by the clock rather than posed.
             // It is the sun while the sun is up and the moon after that - see DayNightCycle for why
             // that is one light turning around rather than two lights handing over.

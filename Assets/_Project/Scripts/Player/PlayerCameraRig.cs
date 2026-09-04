@@ -190,6 +190,11 @@ namespace EscapeWithYourFriends.Player
             _camera = go.AddComponent<CinemachineCamera>();
             _camera.Target.TrackingTarget = _target;
             _camera.Lens.FieldOfView = _baseFov;
+
+            // Cinemachine's lens overwrites the brain camera's every frame, so the clip planes have
+            // to be set here too or the draw distance changes the moment a player spawns.
+            _camera.Lens.NearClipPlane = CameraTuning.NearPlane;
+            _camera.Lens.FarClipPlane = CameraTuning.FarPlane;
             _camera.Priority.Value = 10;
 
             go.AddComponent<CinemachineHardLockToTarget>();
