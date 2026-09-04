@@ -53,6 +53,7 @@ namespace EscapeWithYourFriends.Player
         readonly SyncVar<float> _stamina = new(new SyncTypeSettings(0.1f));
 
         Health _health;
+        BuffState _buffs;
 
         float _recoveryAllowedAt;
         float _nextDamageAt;
@@ -87,6 +88,7 @@ namespace EscapeWithYourFriends.Player
         void Awake()
         {
             _health = GetComponent<Health>();
+            _buffs = GetComponent<BuffState>();
 
             _hunger.OnChange += OnBarChanged;
             _thirst.OnChange += OnBarChanged;
@@ -177,7 +179,12 @@ namespace EscapeWithYourFriends.Player
         {
             if (sprinting)
             {
-                _stamina.Value = Mathf.Max(0f, _stamina.Value - _profile.StaminaSprintDrain * delta);
+                // A buff can make running cheaper or dearer. Multiplied rather than added, so a buff
+                // that halves the cost keeps halving it however the profile is retuned.
+                float cost = _profile.StaminaSprintDrain
+                             * (_buffs != null ? _buffs.StaminaCostMultiplier : 1f);
+
+                _stamina.Value = Mathf.Max(0f, _stamina.Value - cost * delta);
                 _recoveryAllowedAt = Time.time + _profile.StaminaRecoveryDelay;
                 return;
             }

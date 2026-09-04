@@ -55,6 +55,20 @@ namespace EscapeWithYourFriends.Data
         [Tooltip("What it looks like lying on the ground. Spawned by the world item in #42.")]
         [SerializeField] GameObject _worldPrefab;
 
+        [Header("Using it")]
+        [Tooltip("What applying this item does. Null means it is not consumable - a plank is a plank. "
+                 + "The same BuffDef type the casino's alcohol uses; see BuffDef.")]
+        [SerializeField] BuffDef _effect;
+
+        [Tooltip("Seconds the use takes. The item is spent at the end, not the start, so being "
+                 + "punched mid-bandage costs you the time but not the bandage.")]
+        [Min(0f)]
+        [SerializeField] float _useSeconds = 1.5f;
+
+        [Tooltip("What is left in the slot afterwards - an empty bottle, a stripped branch. Null "
+                 + "means the item is simply gone.")]
+        [SerializeField] ItemDef _leavesBehind;
+
         [Header("Economy")]
         [Tooltip("Base price at the shop in #M4. Zero means it cannot be sold.")]
         [Min(0)]
@@ -69,6 +83,13 @@ namespace EscapeWithYourFriends.Data
         public Sprite Icon => _icon;
         public GameObject WorldPrefab => _worldPrefab;
         public int Value => _value;
+
+        public BuffDef Effect => _effect;
+        public float UseSeconds => Mathf.Max(0f, _useSeconds);
+        public ItemDef LeavesBehind => _leavesBehind;
+
+        /// <summary>True when pressing Use on this does anything at all.</summary>
+        public bool Consumable => _effect != null;
 
         /// <summary>True when this can share a slot with more of itself.</summary>
         public bool Stackable => MaxStack > 1;

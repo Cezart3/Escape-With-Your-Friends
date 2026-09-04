@@ -254,6 +254,14 @@ namespace EscapeWithYourFriends.EditorTools
             var survival = root.AddComponent<SurvivalStats>();
             survival.Configure(SurvivalFactory.Ensure());
 
+            // What is currently affecting you. Added before ItemUse, which applies buffs, and before
+            // the motor, which reads the speed multiplier off it.
+            var buffs = root.AddComponent<BuffState>();
+            buffs.Configure(BuffFactory.Catalog());
+
+            var itemUse = root.AddComponent<ItemUse>();
+            itemUse.Configure(inventory, buffs);
+
             var melee = root.AddComponent<MeleeAttack>();
             SetFields(melee, so =>
             {
@@ -303,6 +311,7 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_rescue").objectReferenceValue = rescueSystem;
                 so.FindProperty("_dropper").objectReferenceValue = dropper;
                 so.FindProperty("_inventory").objectReferenceValue = inventory;
+                so.FindProperty("_use").objectReferenceValue = itemUse;
             });
 
             var motor = root.AddComponent<PlayerMotor>();

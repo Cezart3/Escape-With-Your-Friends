@@ -140,6 +140,7 @@ namespace EscapeWithYourFriends.Player
         Health _health;
         StunState _stun;
         SurvivalStats _stats;
+        BuffState _buffs;
 
         /// <summary>
         /// Whether this body was sprinting last tick. Not part of the reconciled state: it only feeds
@@ -192,6 +193,7 @@ namespace EscapeWithYourFriends.Player
             _health = GetComponent<Health>();
             _stun = GetComponent<StunState>();
             _stats = GetComponent<SurvivalStats>();
+            _buffs = GetComponent<BuffState>();
             _carryable = GetComponent<Carryable>();
             _ragdoll = GetComponent<RagdollController>();
 
@@ -314,6 +316,11 @@ namespace EscapeWithYourFriends.Player
             float targetSpeed = _crouching
                 ? _crouchSpeed
                 : wantsSprint && input.y > 0.1f ? _sprintSpeed : _walkSpeed;
+
+            // Buffs scale it. Read from a SyncVar-backed list inside a predicted tick, the same trade
+            // stamina makes: a buff landing mid-tick is corrected by the next reconcile, and putting
+            // the multiplier into every replicate would cost more than that correction is worth.
+            if (_buffs != null) targetSpeed *= _buffs.SpeedMultiplier;
 
             Vector3 wish = transform.TransformDirection(new Vector3(input.x, 0f, input.y));
             var horizontal = new Vector3(_velocity.x, 0f, _velocity.z);

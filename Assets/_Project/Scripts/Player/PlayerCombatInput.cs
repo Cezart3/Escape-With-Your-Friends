@@ -29,6 +29,7 @@ namespace EscapeWithYourFriends.Player
         [SerializeField] GhostController _ghost;
         [SerializeField] RescueSystem _rescue;
         [SerializeField] ItemDropper _dropper;
+        [SerializeField] ItemUse _use;
         [SerializeField] Inventory _inventory;
 
         // Diagnostics only, behind -cameraLog: a headless run cannot see a punch land, so the count of
@@ -68,6 +69,7 @@ namespace EscapeWithYourFriends.Player
             bool altAttack = _input.ConsumeAltAttack();
             bool interact = _input.ConsumeInteract();
             bool drop = _input.ConsumeDrop();
+            bool use = _input.ConsumeUse();
 
             // Attack means two different verbs depending on whether you have a body. The dead get the
             // shove; routing it through here rather than letting GhostController poll input itself is
@@ -112,6 +114,8 @@ namespace EscapeWithYourFriends.Player
                 if (_carry != null && _carry.IsCarrying) _carry.RequestThrow();
                 else if (_dropper != null) _dropper.RequestDrop(thrown);
             }
+
+            if (use && _use != null) _use.RequestUse();
 
             // Hotbar. Sent straight through rather than buffered per tick: selection is idempotent,
             // so the last one to arrive wins and a lost packet costs nothing.

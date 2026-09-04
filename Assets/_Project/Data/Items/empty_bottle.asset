@@ -10,17 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dec79073e0c5b3d4c932cfd2929ea34d, type: 3}
-  m_Name: fish_raw
+  m_Name: empty_bottle
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.ItemDef
-  _id: fish_raw
-  _displayName: Raw Fish
-  _description: Edible. Not advisable.
-  _category: 1
-  _maxStack: 5
-  _weight: 1
+  _id: empty_bottle
+  _displayName: Empty Bottle
+  _description: Refillable at the filter. Worth carrying back.
+  _category: 2
+  _maxStack: 4
+  _weight: 0.3
   _icon: {fileID: 0}
   _worldPrefab: {fileID: 0}
-  _effect: {fileID: 11400000, guid: 303523f8585edc54cbc2b5ee87fb423b, type: 2}
-  _useSeconds: 3
+  _effect: {fileID: 0}
+  _useSeconds: 1.5
   _leavesBehind: {fileID: 0}
-  _value: 6
+  _value: 3

@@ -147,7 +147,11 @@ namespace EscapeWithYourFriends.UI
             // The survival bars, from the same replicated state the canvas draws. Printed even
             // headlessly, where there is no canvas at all, because the claim is about the numbers.
             Player.SurvivalStats stats = SquadModel.FindLocalStats();
-            if (stats != null) Debug.Log($"[HudRoot] -hudTest {peer}: bars {stats.Describe()}");
+            if (stats == null) return;
+
+            var buffs = stats.GetComponent<Player.BuffState>();
+            Debug.Log($"[HudRoot] -hudTest {peer}: bars {stats.Describe()}"
+                      + (buffs != null ? $" | {buffs.Describe()}" : ""));
         }
     }
 }

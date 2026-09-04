@@ -40,6 +40,7 @@ namespace EscapeWithYourFriends.Player
         InputActionMap _map;
 
         InputAction _move, _look, _jump, _sprint, _crouch, _interact, _attack, _altAttack, _drop;
+        InputAction _use;
         InputAction _hotbarScroll;
         readonly InputAction[] _hotbar = new InputAction[Items.Inventory.HotbarSlots];
 
@@ -49,7 +50,7 @@ namespace EscapeWithYourFriends.Player
 
         // One-shot presses, buffered until whoever cares consumes them. A key tapped between two
         // ticks would otherwise be dropped entirely: at 30Hz that is a third of a second of taps.
-        bool _jumpQueued, _interactQueued, _attackQueued, _altAttackQueued, _dropQueued;
+        bool _jumpQueued, _interactQueued, _attackQueued, _altAttackQueued, _dropQueued, _useQueued;
 
         // Hotbar selection is two inputs for one value. -1 means no number key was pressed; the
         // scroll accumulates because a flick of the wheel is several notches inside one frame.
@@ -124,6 +125,7 @@ namespace EscapeWithYourFriends.Player
 
             // Optional, so an action asset generated before #42 still binds everything else rather
             // than throwing and leaving the player unable to move at all.
+            _use = _map.FindAction("Use", throwIfNotFound: false);
             _hotbarScroll = _map.FindAction("HotbarScroll", throwIfNotFound: false);
             for (int i = 0; i < _hotbar.Length; i++)
                 _hotbar[i] = _map.FindAction($"Hotbar{i + 1}", throwIfNotFound: false);
@@ -185,6 +187,7 @@ namespace EscapeWithYourFriends.Player
             _attackQueued |= _attack.WasPressedThisFrame();
             _altAttackQueued |= _altAttack.WasPressedThisFrame();
             _dropQueued |= _drop.WasPressedThisFrame();
+            if (_use != null) _useQueued |= _use.WasPressedThisFrame();
 
             ReadHotbar();
         }
@@ -271,6 +274,8 @@ namespace EscapeWithYourFriends.Player
 
         public bool ConsumeDrop() => Consume(ref _dropQueued);
 
+        public bool ConsumeUse() => Consume(ref _useQueued);
+
         /// <summary>The hotbar slot a number key asked for, or -1. Cleared by reading.</summary>
         public int ConsumeHotbarSlot()
         {
@@ -297,6 +302,7 @@ namespace EscapeWithYourFriends.Player
         void ClearQueued()
         {
             _jumpQueued = _interactQueued = _attackQueued = _altAttackQueued = _dropQueued = false;
+            _useQueued = false;
             _hotbarQueued = -1;
             _hotbarSteps = 0;
             _scrollRemainder = 0f;

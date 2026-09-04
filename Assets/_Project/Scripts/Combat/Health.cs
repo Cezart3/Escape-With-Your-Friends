@@ -154,13 +154,29 @@ namespace EscapeWithYourFriends.Combat
             if (_state.Value != LifeState.Alive || info.Amount <= 0f) return false;
             if (Time.time < _invulnerableUntil) return false;
 
+            // Buffs scale what arrives, not what was aimed. The attacker resolved a hit for a fixed
+            // amount; whether the victim is drunk enough not to feel it is the victim's business, and
+            // keeping the multiplier here means every damage source gets it for free.
+            float amount = info.Amount * DamageScale();
+
             float previous = _current.Value;
-            _current.Value = Mathf.Max(0f, previous - info.Amount);
+            _current.Value = Mathf.Max(0f, previous - amount);
 
             if (_current.Value <= 0f)
                 ServerDown(info);
 
             return true;
+        }
+
+        /// <summary>
+        /// How much of an incoming hit actually lands, after buffs. One is normal; the casino's rum
+        /// will be below it. Looked up rather than cached because the component is optional and the
+        /// list it reads is almost always empty.
+        /// </summary>
+        float DamageScale()
+        {
+            var buffs = GetComponent<Player.BuffState>();
+            return buffs != null ? buffs.DamageTakenMultiplier : 1f;
         }
 
         /// <summary>Server only. Heals without exceeding <see cref="Max"/>. Does not pick anyone up.</summary>

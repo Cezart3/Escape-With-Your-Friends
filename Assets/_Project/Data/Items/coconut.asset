@@ -20,4 +20,7 @@ MonoBehaviour:
   _weight: 0.8
   _icon: {fileID: 0}
   _worldPrefab: {fileID: 0}
+  _effect: {fileID: 11400000, guid: 7c580ffde086053448e064fe0b40275e, type: 2}
+  _useSeconds: 2.5
+  _leavesBehind: {fileID: 0}
   _value: 5

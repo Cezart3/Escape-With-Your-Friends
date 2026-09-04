@@ -261,6 +261,7 @@ namespace EscapeWithYourFriends.Net
 
             Items.WorldItemTest.Begin();
             Player.SurvivalTest.Begin();
+            Player.BuffTest.Begin();
         }
 
         void OnClientConnectionState(ClientConnectionStateArgs args)

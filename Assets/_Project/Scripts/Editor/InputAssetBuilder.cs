@@ -83,6 +83,13 @@ namespace EscapeWithYourFriends.EditorTools
             drop.AddBinding("<Keyboard>/g");
             drop.AddBinding("<Gamepad>/buttonNorth");
 
+            // Eating, drinking, bandaging. Its own key rather than a mode on Interact, because using
+            // what is in your hand and using what is in front of you are different verbs that a
+            // player wants available at the same moment.
+            InputAction use = map.AddAction("Use", InputActionType.Button);
+            use.AddBinding("<Keyboard>/f");
+            use.AddBinding("<Gamepad>/buttonSouth");
+
             // Hotbar selection. Five slots is what fits across a screen without a second row, and it
             // is what the drop key acts on until the real hotbar UI lands in #46.
             for (int slot = 1; slot <= HotbarSlots; slot++)

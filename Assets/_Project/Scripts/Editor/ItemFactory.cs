@@ -127,7 +127,7 @@ namespace EscapeWithYourFriends.EditorTools
         /// every peer has to derive the same index for the same item, and the only thing guaranteed to
         /// be identical across machines is the ordered set of ids.
         /// </summary>
-        static int Rebuild()
+        internal static int Rebuild()
         {
             List<ItemDef> found = AssetDatabase.FindAssets("t:ItemDef", new[] { Folder })
                                                .Select(AssetDatabase.GUIDToAssetPath)

@@ -106,8 +106,8 @@ shipped depot must not contain it.
 build that can only be started by clicking a button cannot be tested from one. `NetworkBootstrap`
 reads `-host` / `-server` / `-client`, plus `-address`, `-port`, `-quitAfter`, and the test flags
 `-latency`, `-botMove`, `-motorLog`, `-clockLog`, `-navWalk`, `-quality`, `-perfLog`, `-invTest`,
-`-itemTest`, `-statTest` and `-statLog` described under movement, the day/night cycle, navigation,
-performance, the inventory, loot and survival below:
+`-itemTest`, `-statTest`, `-statLog` and `-buffTest` described under movement, the day/night cycle,
+navigation, performance, the inventory, loot, survival and consumables below:
 
 ```
 Unity.exe -quit -batchmode -nographics -projectPath .   -executeMethod EscapeWithYourFriends.EditorTools.BuildTool.PerformBuild   -buildOutput D:/Builds/EWYF-dev -development -scriptingBackend mono
@@ -2768,6 +2768,166 @@ same body reads the same way, from replicated state alone:
 ```
 
 Zero exceptions on either side.
+
+### Eating, drinking, and being drunk
+
+The acceptance criterion for consumables is that they hook into "the same `BuffDef` system the casino
+alcohol will use", which is a statement about layering rather than about food. So nothing in this
+system knows what a coconut is.
+
+`BuffDef` is a bag of numbers with a duration. What applies it — a coconut, a bandage, a bottle of rum
+in M6, a native's poison dart in M4 — is somebody else's problem. Three kinds of number live on it and
+they are genuinely different:
+
+| Kind | When | Example |
+|---|---|---|
+| **Instant** | Once, on landing | A bandage's first eight points of health |
+| **Per second** | Every second for the duration | A bandage's slow heal, alcohol's slow dehydration |
+| **Multipliers** | Continuously, while active | Speed, damage taken, stamina cost |
+
+The multipliers scale rather than add, multiply together when several buffs are active, and are all 1
+by default so a buff that does not care about them costs nothing to declare.
+
+There is a sixth buff, `drunk`, that nothing in the game hands out. It exists so that M6's alcohol is
+an asset and not a system, and so that the multipliers and the screen haze are exercised by something
+before then. Its `haze` is a plain 0..1 float the casino will drive a URP Volume from; nothing reads
+it yet, and that is deliberate — a post-processing stack built now would be built against a guess.
+
+#### Stacking is three different rules
+
+- **Refresh** — reset the timer, one entry. Two bandages in a row give one bandage's worth of healing,
+  twice, rather than a stacked double heal over the same window.
+- **Stack** — side by side, effects multiplied. Three drinks are three drinks.
+- **Ignore** — while one is running, a second does nothing. This is what stops a panicking player from
+  burning four bandages in three seconds for the effect of one.
+
+`Apply` returns whether anything happened, and Ignore is exactly why: a refused buff means the item
+should stay in the bag. Charging somebody for a bandage that did nothing is a bug, not a lesson.
+
+#### A second catalog, on purpose
+
+`BuffCatalog` is the same shape as `ItemCatalog` and follows the same rules — sorted by id, index 0
+means none, the sort order is the wire format, nothing persists an index. An active buff crossing the
+wire is `{ushort index, uint endTick}`.
+
+The end is a **network tick**, not a local timestamp, for the same reason `Health`'s bleed-out is one:
+every peer counts down to the same moment and the HUD shows a number your friends agree with.
+
+Two catalogs rather than one shared registry because the lists have different lifetimes and different
+authors. Items are content somebody adds all afternoon; buffs are a smaller set that mostly changes
+when a system does. Sharing an index space would mean adding a coconut renumbered every buff in flight.
+
+Active buffs are a `SyncList` rather than a fixed array — the opposite choice to inventory slots, and
+for the opposite reason. Slots have a natural capacity and are usually occupied; buffs have no
+capacity and the common case is zero, so a fixed twenty-entry array would replicate twenty empties per
+player to describe nothing happening.
+
+#### Using something takes time
+
+A bandage is three seconds of standing still, and that is the entire reason bandages are interesting:
+the decision is not "do I have one" but "do I have time". The timer runs on the server, and being
+punched, tased, downed or knocked over cancels it.
+
+**The item is spent at the end of the use, not the start.** Being interrupted costs you the seconds
+and not the bandage, which is the version of this rule that does not make players furious. It also
+means a cancelled use cannot duplicate anything, because nothing has left the inventory yet. And the
+slot is re-read when the use finishes rather than remembered from when it started — three seconds is
+long enough for the stack to have been moved, split or dropped.
+
+The client sends "use slot N" and nothing else: not which item, not which effect, not how much it
+heals. The server reads its own copy of the slot.
+
+#### What an item leaves behind
+
+`ItemDef` gained three fields — an effect, a use duration, and what is left afterwards. Drinking a
+water bottle leaves an `empty_bottle`, which is a real item created by `BuffFactory` rather than by
+`ItemFactory` because it only exists as the other half of drinking, and because M4's water filter is
+the thing that will turn it back.
+
+That created item forced one small piece of plumbing: an item missing from the catalog cannot be
+carried at all, since the index *is* the wire format, so `BuffFactory` rebuilds the item catalog when
+it creates the bottle. Leaving it for the next `ItemFactory` run would mean a bottle that vanishes
+when you drink from it, on a rebuild nobody would think to do.
+
+#### Where the multipliers actually land
+
+Three systems read them, and none of them had to be redesigned to do it:
+
+- `Health.TakeDamage` scales the incoming amount. The attacker resolved a hit for a fixed number;
+  whether the victim is drunk enough not to feel it is the victim's business, and putting the
+  multiplier here means every damage source in the game gets it for free.
+- `PlayerMotor` scales the target speed, read inside a predicted tick from replicated state — the same
+  trade stamina already makes.
+- `SurvivalStats` scales the sprint cost.
+
+#### Adding a consumable is a data change
+
+```
+Unity.exe -quit -batchmode -nographics -projectPath . \
+  -executeMethod EscapeWithYourFriends.EditorTools.BuffFactory.Build
+```
+```
+[BuffFactory]   1  bandaged        15s  Ignore   speed x1.00  dmg x1.00  haze 0.00
+[BuffFactory]   2  coconut_water   12s  Refresh  speed x1.00  dmg x1.00  haze 0.00
+[BuffFactory]   3  cooked_meal     45s  Refresh  speed x1.00  dmg x1.00  haze 0.00
+[BuffFactory]   4  drunk           90s  Stack    speed x0.88  dmg x0.75  haze 0.50
+[BuffFactory]   5  hydrated         0s  Refresh  speed x1.00  dmg x1.00  haze 0.00
+[BuffFactory]   6  well_fed        20s  Refresh  speed x1.00  dmg x1.00  haze 0.00
+[BuffFactory] 6 buff(s) in the catalog, 6 created just now; 5 item(s) are consumable.
+```
+
+Like `ItemFactory`, it creates and never overwrites — a buff somebody has tuned is theirs. The one
+thing it *does* re-apply on every run is the link from an item to its effect, because that is
+structure rather than balance: a coconut with no effect is a missing reference, not a design decision.
+
+#### Proving it
+
+`-buffTest` runs 35 checks on the server. It deliberately does both halves of the acceptance criterion
+through the same code path — it eats a coconut, and then it applies the `drunk` buff that nothing in
+the game hands out. If the second works through `BuffState.Apply` with no consumable involved, M6 is
+an asset rather than a system.
+
+```
+EscapeWithYourFriends.exe -batchmode -nographics -host -port 7812 -playerKey test:host -buffTest
+```
+```
+[BuffTest] start: no buffs, food 100 water 100 stam 100 warm 100
+[BuffTest] 35 passed, 0 failed.
+  end: no buffs | 4/20 slots, 3.3/40kg [0:coconut, 1:bandage, 2:empty_bottle, 3:plank]
+```
+
+The end state is itself the evidence for two rules: the bandage survived being interrupted, and the
+empty bottle is what the full one left behind.
+
+The checks cover: a fresh player has nothing and all three multipliers read 1; five items are
+consumable and a plank is not; using a coconut starts a timed use, does not spend it immediately,
+finishes, raises both hunger and thirst and leaves a running buff; a cancelled use costs the time and
+not the item and applies nothing; Ignore refuses a second application and does not extend the first;
+Refresh applied twice stays one entry; Stack applied twice is two entries whose multipliers multiply;
+`drunk` slows you, softens hits and hazes the screen; `Health` actually scales incoming damage (20
+asked for, less landed); a buff can be ended early; drinking a bottle leaves an empty one; a plank, an
+empty slot and a nonexistent slot are all refused; and clearing everything returns the multipliers to
+neutral.
+
+On a separate client process, reading replicated state alone:
+
+```
+[BuffState] client owner 0 sees: coconut_water 10.7s, bandaged 13.7s, drunk 88.7s
+[BuffState] client owner 0 sees: no buffs
+```
+
+Three different buffs with three different remaining times, on a machine that applied none of them.
+And on the HUD, from the same state the canvas draws:
+
+```
+[HudRoot] -hudTest host: bars food 76 water 80 stam 100 warm 100 | coconut_water 11.7s, bandaged 14.7s, drunk 89.7s
+```
+
+Zero exceptions on either side.
+
+**Not done here:** use *animations*. `ItemUse.Progress` is replicated so an animator can be driven off
+it on every peer, but there is no rig to drive yet — that belongs with the art pass, not with a
+system that would have to guess at it now.
 
 ---
 

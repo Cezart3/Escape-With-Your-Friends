@@ -41,6 +41,7 @@ namespace EscapeWithYourFriends.UI
 
         RectTransform _root;
         SurvivalStats _stats;
+        Text _buffs;
 
         public void Build(RectTransform parent)
         {
@@ -55,6 +56,13 @@ namespace EscapeWithYourFriends.UI
             Make(_warmth, 1, "warmth", new Color(0.80f, 0.55f, 0.30f), new Color(0.45f, 0.70f, 1.00f));
             Make(_water, 2, "water", new Color(0.35f, 0.65f, 0.90f), new Color(1.00f, 0.65f, 0.25f));
             Make(_food, 3, "food", new Color(0.65f, 0.75f, 0.40f), new Color(1.00f, 0.45f, 0.35f));
+
+            // One line above the bars for whatever is currently affecting you. Text rather than icons
+            // because there is no icon art yet and a row of blank squares says less than four words.
+            _buffs = HudFactory.Label(_root, "Buffs", 13, TextAnchor.LowerLeft);
+            _buffs.color = new Color(0.85f, 0.80f, 0.55f);
+            HudFactory.Anchor((RectTransform)_buffs.transform, new Vector2(0f, 1f), new Vector2(0f, 0f),
+                              new Vector2(0f, 6f), new Vector2(320f, 18f));
         }
 
         void Make(Bar bar, int row, string label, Color calm, Color alarm)
@@ -105,6 +113,23 @@ namespace EscapeWithYourFriends.UI
             Draw(_water, stats.ThirstFraction, low, alarmOnlyWhenLow: true);
             Draw(_warmth, stats.WarmthFraction, low, alarmOnlyWhenLow: true);
             Draw(_stamina, stats.StaminaFraction, 1f, alarmOnlyWhenLow: false);
+
+            DrawBuffs(stats.GetComponent<Player.BuffState>());
+        }
+
+        /// <summary>
+        /// The buff line, hidden entirely when nothing is active. A permanent empty row would be a
+        /// piece of HUD that only ever says "nothing is happening", which is the thing this panel is
+        /// built to avoid.
+        /// </summary>
+        void DrawBuffs(Player.BuffState buffs)
+        {
+            if (_buffs == null) return;
+
+            bool any = buffs != null && buffs.Count > 0;
+            _buffs.enabled = any;
+
+            if (any) _buffs.text = buffs.Describe();
         }
 
         static void Draw(Bar bar, float fraction, float lowThreshold, bool alarmOnlyWhenLow)
