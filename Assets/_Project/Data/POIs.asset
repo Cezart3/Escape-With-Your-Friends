@@ -35,6 +35,17 @@ MonoBehaviour:
     PadRaise: 0
     MaxSlope: 0.3
     AllowUnderwater: 0
+  - Id: camp.bench
+    PrefabPath: Assets/_Project/Prefabs/Stations/CraftingBench.prefab
+    Position: {x: -78, y: -52}
+    Yaw: 311
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 0
+    PadFalloff: 0
+    PadRaise: 0
+    MaxSlope: 0.3
+    AllowUnderwater: 0
   - Id: shop
     PrefabPath: Assets/_Project/Prefabs/World/Shop.prefab
     Position: {x: -177, y: -28}

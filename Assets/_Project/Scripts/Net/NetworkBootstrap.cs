@@ -260,6 +260,7 @@ namespace EscapeWithYourFriends.Net
             if (args.ConnectionState != LocalConnectionState.Started) return;
 
             Items.WorldItemTest.Begin();
+            Items.CraftingTest.Begin();
             Player.SurvivalTest.Begin();
             Player.BuffTest.Begin();
         }

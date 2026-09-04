@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b018104493bf5a48bdf1b6c0de4174b, type: 3}
+  m_Name: crafting_bench
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.RecipeDef
+  _id: crafting_bench
+  _displayName: Crafting Bench
+  _description: A second bench, for a second camp.
+  _station: 1
+  _seconds: 8
+  _tier: 3
+  _inputs:
+  - Item: {fileID: 11400000, guid: c087966ca235c4a4889ec3bd5626d9e8, type: 2}
+    Count: 6
+  - Item: {fileID: 11400000, guid: f35703f74c122f84da9933e3ffcfda78, type: 2}
+    Count: 2
+  _outputItem: {fileID: 0}
+  _outputCount: 1
+  _outputStructure: {fileID: 8439332502949787416, guid: e77d1e96bf3419c49aed550588400808, type: 3}

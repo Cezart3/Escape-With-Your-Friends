@@ -262,6 +262,12 @@ namespace EscapeWithYourFriends.EditorTools
             var itemUse = root.AddComponent<ItemUse>();
             itemUse.Configure(inventory, buffs);
 
+            // Turning what you carry into something better. The recipe catalog is wired in for the
+            // same reason the item catalog is: the wire carries an index into it, and the index means
+            // nothing unless every peer holds the identical asset.
+            var crafting = root.AddComponent<Crafting>();
+            crafting.Configure(RecipeFactory.Catalog(), inventory);
+
             var melee = root.AddComponent<MeleeAttack>();
             SetFields(melee, so =>
             {

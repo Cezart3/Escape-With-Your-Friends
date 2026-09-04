@@ -266,6 +266,14 @@ namespace EscapeWithYourFriends.EditorTools
                 Entry("camp.revive", ReviveMachinePrefabPath, camp + Offset(campFacing, 9f),
                       campFacing + 180f, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
 
+                // #43's starting bench. On the camp's pad for the same reason the machine is, and off
+                // to one side of it so the two do not fight over the same square metre. One bench is
+                // given rather than crafted because the first recipe a player needs is the one that
+                // makes a bench possible somewhere else.
+                Entry("camp.bench", StationBuilder.BenchPath,
+                      camp + Offset(campFacing + 70f, 8f), campFacing + 250f,
+                      pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
+
                 Entry("shop", GreyboxDir + "/Shop.prefab", shop, Facing(shop, camp),
                       pad: 12f, falloff: 12f, raise: 0.4f, maxSlope: 0.3f),
 

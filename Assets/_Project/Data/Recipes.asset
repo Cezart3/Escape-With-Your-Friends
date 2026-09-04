@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f2ff02857caee1449fa4977f158b8fd, type: 3}
+  m_Name: Recipes
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.RecipeCatalog
+  _recipes:
+  - {fileID: 11400000, guid: 37c1ba2a85a0a1a43971f9c4c0d1fcd9, type: 2}
+  - {fileID: 11400000, guid: d69b91645a85100438ee63c5498b5968, type: 2}
+  - {fileID: 11400000, guid: 1afd247103dccf74a82ef6efed1656c9, type: 2}
+  - {fileID: 11400000, guid: e6566c3974c80d34395605e04b7452ca, type: 2}
+  - {fileID: 11400000, guid: 4dfa69fc10046cc479b1b72304d8c6f9, type: 2}
+  - {fileID: 11400000, guid: 920e901690a045d49906a36d4b9848f6, type: 2}
+  - {fileID: 11400000, guid: c7fbb9f994f7fd243acd0213afbc7e30, type: 2}
+  - {fileID: 11400000, guid: 499369db410efb9408426671bab91112, type: 2}
+  - {fileID: 11400000, guid: 71958147b606b514f96a9034bd2f3076, type: 2}
+  - {fileID: 11400000, guid: 268c6da14be355d4aadea1487eb83e80, type: 2}
+  - {fileID: 11400000, guid: 7da4ae6b37120da408dc61edb41d8368, type: 2}
+  - {fileID: 11400000, guid: 355be9e103407154ebfaf8982f0c11cd, type: 2}

@@ -106,8 +106,9 @@ shipped depot must not contain it.
 build that can only be started by clicking a button cannot be tested from one. `NetworkBootstrap`
 reads `-host` / `-server` / `-client`, plus `-address`, `-port`, `-quitAfter`, and the test flags
 `-latency`, `-botMove`, `-motorLog`, `-clockLog`, `-navWalk`, `-quality`, `-perfLog`, `-invTest`,
-`-itemTest`, `-statTest`, `-statLog` and `-buffTest` described under movement, the day/night cycle,
-navigation, performance, the inventory, loot, survival and consumables below:
+`-itemTest`, `-statTest`, `-statLog`, `-buffTest` and `-craftTest` described under movement, the
+day/night cycle, navigation, performance, the inventory, loot, survival, consumables and crafting
+below:
 
 ```
 Unity.exe -quit -batchmode -nographics -projectPath .   -executeMethod EscapeWithYourFriends.EditorTools.BuildTool.PerformBuild   -buildOutput D:/Builds/EWYF-dev -development -scriptingBackend mono
@@ -2928,6 +2929,106 @@ Zero exceptions on either side.
 **Not done here:** use *animations*. `ItemUse.Progress` is replicated so an animator can be driven off
 it on every peer, but there is no rig to drive yet — that belongs with the art pass, not with a
 system that would have to guess at it now.
+
+### Making things
+
+**A recipe is a `RecipeDef`: inputs, one output, a station and a number of seconds.** The output is
+either an item *or* a structure, never both, and that distinction is what turns a list of recipes into
+a progression - the campfire you build is the station the next recipe needs.
+
+The tier-1 set, seeded by `RecipeFactory` and sorted by id into `Recipes.asset`:
+
+| station | recipe | costs | makes |
+|---|---|---|---|
+| hand | `bandage` | 2x cloth | bandage |
+| hand | `rope` | 3x cloth | 2x rope |
+| hand | `torch` | plank + cloth + flint | torch |
+| hand | `knife` | scrap_metal + rope | knife |
+| hand | `campfire` | 4x plank + flint | **Campfire** |
+| fire | `cook_fish` | fish_raw | fish_cooked |
+| bench | `bottle` | scrap_metal + cloth | empty_bottle |
+| bench | `hatchet` | 2x scrap_metal + plank + rope | hatchet |
+| bench | `fishing_rod` | 2x plank + 2x rope | fishing_rod |
+| bench | `water_filter` | 2x plank + 2x cloth + scrap_metal | **WaterFilter** |
+| bench | `crafting_bench` | 6x plank + 2x rope | **CraftingBench** |
+| filter | `fill_bottle` | empty_bottle | water_bottle |
+
+The campfire is craftable *by hand* on purpose. Everything else is gated behind a station, but gating
+the first structure behind a bench would put the whole progression behind a walk back to camp. One
+bench is given rather than crafted, standing at the camp as the `camp.bench` POI, for the same reason:
+the first thing you need a bench for is building a second one somewhere else.
+
+**Stations are proximity, not interaction.** `CraftingStation` is not an `IInteractable`. Walking up to
+a bench presses no button; the bench simply exists, and `Crafting` asks whether one of the right kind
+is within its radius when a recipe is requested. Two consequences, both wanted: an `Interact` prompt
+would promise a UI that does not exist until #46, and four players can share one bench without
+queueing for it. Live stations are held in a static list rather than found by physics - there are
+single digits of them in a session and they never move, so a sphere cast per craft attempt would be
+work for nothing.
+
+`Crafting` is the same shape as `ItemUse`, because it is the same gesture - stand still for a few
+seconds and something happens - and the two rules that matter were learned there:
+
+- **Inputs are taken at the end, not the start.** Being interrupted costs the seconds and not the
+  materials, and a cancelled craft cannot duplicate anything because nothing has left the bag yet.
+- **Everything is re-checked when the timer finishes.** Eight seconds is long enough for a friend to
+  have taken the planks, for the bench to have been destroyed, or for you to have walked off it.
+
+Two more rules that only crafting needs. `HasRoom` is asked *before* anything is taken, in weight and
+slots and mergeable space, because taking four planks and then discovering the hatchet does not fit is
+how a player loses four planks and gets nothing. And a structure is dropped onto the ground by a
+raycast from three metres up rather than left at the player's feet, because a campfire spawned at hip
+height on a slope ends up either floating or buried.
+
+A client sends a `ushort` recipe index and nothing else - not what it costs, not what it makes, not
+whether it is standing at a bench. The server reads its own catalog, the same doctrine as `ItemCatalog`
+and `BuffCatalog`.
+
+**The campfire is what makes warmth solvable.** It carries a `HeatSource`: 12 warmth per second within
+five metres, pushed through the same `SurvivalStats.ServerFeed` door a coconut goes through. Survival
+left night at a warmth target of 40 - cold, and worth solving, with nothing yet to solve it with. This
+is the answer, and it is why the campfire is in the progression rather than in the decoration.
+
+**Verified headless**, on the island so the camp's bench exists:
+
+```
+EscapeWithYourFriends.exe -batchmode -nographics -host -port 7796 -playerKey test:host -scene island -craftTest
+```
+```
+[CraftingTest] 12 recipes, 1 bench(es), 0 fire(s), 0 filter(s) in the world.
+[Crafting] Player(Clone) built Campfire at (-79.5, 4.9, -47.0).
+[Crafting] Player(Clone) built WaterFilter at (-81.5, 4.9, -50.7).
+[CraftingTest] 43 passed, 0 failed.
+  end: 5/20 slots, 5.4/40kg [0:bandage, 1:cloth x2, 2:fish_cooked, 3:water_bottle, 5:hatchet] | idle
+```
+
+The end state is the progression itself, one item per station: the bandage was made by hand, the fish
+was cooked at a fire that did not exist when the session started, the hatchet came off the camp's
+bench, and the full bottle came out of a filter the player built. The two cloth are the refund that
+never happened - they are what a cancelled craft did not spend.
+
+On a second process, which built none of it:
+
+```
+[CraftingStation] client sees a Bench at (-78.0, 4.9, -52.0), radius 4.5m.
+[CraftingStation] client sees a Fire at (-79.5, 4.9, -47.0), radius 4.0m.
+[CraftingStation] client sees a Filter at (-81.5, 4.9, -50.7), radius 3.5m.
+```
+
+The same three coordinates, to the decimetre: the bench the island came with, and the two structures
+the other player built while it watched. Zero exceptions on either side.
+
+The test walks the actual progression rather than crafting one thing and calling it proven: a bandage
+by hand, then a campfire by hand, then raw fish cooked *at the fire that was just built*, then a walk
+to the bench for a hatchet and a water filter, then an empty bottle filled *at the filter that was just
+built*. Every step past the first is only possible because the step before it existed.
+
+The checks also cover the rules that are invisible in a log: that the cloth is still in the bag while
+the timer runs, that a cancelled craft spends nothing and makes nothing, that a second craft cannot
+start on top of the first, that a fire recipe is refused with no fire nearby and a bench recipe from
+across the island, that index 0 is nobody and every recipe round-trips through its index, and that the
+fire actually warms - eight points of warmth in one second, which the 3.5/s ambient recovery cannot do
+on its own.
 
 ---
 

@@ -197,6 +197,17 @@ namespace EscapeWithYourFriends.Items
             return stack.With(take);
         }
 
+        /// <summary>
+        /// Empties the bag. Nothing is dropped: whoever calls this decides what happens to the
+        /// contents first - death spills them on the ground (#26), a wipe throws them away.
+        /// </summary>
+        [Server]
+        public void ServerClear()
+        {
+            for (int i = 0; i < _slots.Count; i++)
+                if (!_slots[i].IsEmpty) _slots[i] = ItemStack.Empty;
+        }
+
         /// <summary>How many of something is being carried. Crafting and quests both ask this.</summary>
         public int CountOf(ItemDef def)
         {

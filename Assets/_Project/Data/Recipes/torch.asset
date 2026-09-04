@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b018104493bf5a48bdf1b6c0de4174b, type: 3}
+  m_Name: torch
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.RecipeDef
+  _id: torch
+  _displayName: Torch
+  _description: A plank, a rag and a spark. Twenty minutes of not tripping over.
+  _station: 0
+  _seconds: 3
+  _tier: 1
+  _inputs:
+  - Item: {fileID: 11400000, guid: c087966ca235c4a4889ec3bd5626d9e8, type: 2}
+    Count: 1
+  - Item: {fileID: 11400000, guid: 102f3a04d85440748b6620ef0043bc6d, type: 2}
+    Count: 1
+  - Item: {fileID: 11400000, guid: 44dc35f5974ecd4408e030cbe34bc31f, type: 2}
+    Count: 1
+  _outputItem: {fileID: 11400000, guid: 4ba4d009695ab274daa659c36125f37e, type: 2}
+  _outputCount: 1
+  _outputStructure: {fileID: 0}

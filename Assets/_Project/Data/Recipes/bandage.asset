@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b018104493bf5a48bdf1b6c0de4174b, type: 3}
+  m_Name: bandage
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.RecipeDef
+  _id: bandage
+  _displayName: Bandage
+  _description: Two strips of sailcloth. Better than bleeding.
+  _station: 0
+  _seconds: 2.5
+  _tier: 1
+  _inputs:
+  - Item: {fileID: 11400000, guid: 102f3a04d85440748b6620ef0043bc6d, type: 2}
+    Count: 2
+  _outputItem: {fileID: 11400000, guid: 824f7266f5cf17145ae427803853352d, type: 2}
+  _outputCount: 1
+  _outputStructure: {fileID: 0}
