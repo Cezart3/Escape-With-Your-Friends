@@ -105,8 +105,8 @@ shipped depot must not contain it.
 **Why a command-line bootstrap.** The whole development loop for this project is a terminal, and a
 build that can only be started by clicking a button cannot be tested from one. `NetworkBootstrap`
 reads `-host` / `-server` / `-client`, plus `-address`, `-port`, `-quitAfter`, and the test flags
-`-latency`, `-botMove`, `-motorLog`, `-clockLog`, `-navWalk`, `-quality` and `-perfLog` described
-under movement, the day/night cycle, navigation and performance below:
+`-latency`, `-botMove`, `-motorLog`, `-clockLog`, `-navWalk`, `-quality`, `-perfLog` and `-invTest`
+described under movement, the day/night cycle, navigation, performance and the inventory below:
 
 ```
 Unity.exe -quit -batchmode -nographics -projectPath .   -executeMethod EscapeWithYourFriends.EditorTools.BuildTool.PerformBuild   -buildOutput D:/Builds/EWYF-dev -development -scriptingBackend mono
@@ -2349,6 +2349,125 @@ connected, which is a thing only a person with that laptop can do. If it comes b
 levers in order are: grass distance below 43 m, render scale 0.7, and a cheap variant of the water
 shader that drops its second normal sample — the water covers a large part of the screen and is the
 only per-pixel cost on the island that has not been touched.
+
+### What you are carrying
+
+Four players, twenty slots each, and a list that resends itself every time anybody picks anything up.
+That constraint decided the shape of the whole inventory before any of the rules did.
+
+**A slot is four bytes.** `ItemStack` is a `ushort` catalog index and a `ushort` count, and nothing
+else. The obvious alternative — a slot holding a string id, or a reference to the `ItemDef` asset —
+fails for two different reasons. A ScriptableObject reference cannot cross the wire at all; there is
+no such thing as sending an asset. A string id can, but `"scrap_metal"` is eleven bytes against two,
+on a structure that replicates eighty times over in a four-player session, for information that both
+peers already have on disk. So the wire carries a number and the catalog turns it back into a thing.
+
+**Index 0 means empty.** Real items run 1..N. This is not a sentinel bolted on afterwards: it means a
+default-constructed `ItemStack` *is* an empty slot, so a fresh array needs no initialisation pass and
+no null check ever has to distinguish "nothing here" from "not set up yet". `Valid` exists to catch
+the one state that should never occur — an index with no count, or a count with no index.
+
+**The catalog is sorted by id, and the sort order is the wire format.** `ItemCatalog` is one asset
+holding every `ItemDef`, rebuilt whole by `ItemFactory` and never hand-edited. Every peer has to derive
+the same index for the same item, and the only thing guaranteed identical across two machines running
+the same build is the ordered set of ids — not file names, not GUIDs, not the order Unity happened to
+return from `FindAssets`. Ordinal sort on the id is the one deterministic function available.
+
+Adding an item shifts the indices of everything alphabetically after it, which is fine and worth being
+explicit about: nothing persists an index. A save file, a recipe, a shop listing and a quest all refer
+to items by id. The index exists only for the duration of a session, between peers that are by
+definition running the same build, because Steam will not let two different builds into one lobby.
+
+**Slots are a fixed-length `SyncList`, not a growing list of occupied ones.** A fixed list means
+picking something up is one four-byte entry changing at a known position; a compacted list means the
+whole array reorders and resends. It also means positions are stable, which the UI in #46 needs — an
+item should not slide out from under your cursor because a friend across the island picked up a plank.
+
+#### The rules, and where they live
+
+Everything that decides is `[Server]`. There is deliberately **no RPC that lets a client add an item**
+— not a validated one, not a rate-limited one, none. A client can send exactly two messages,
+`MoveSlot` and `SplitSlot`, both `[ServerRpc]`, both ownership-gated by FishNet so a client can only
+rearrange its own bag, and both bounds-checked on arrival because a message is a request and not a
+promise. Picking things up (#42), crafting (#43) and shops (M4) all call the server-side methods here
+*after* the server has already decided the player was entitled to it.
+
+Two fill rules are worth the words:
+
+- **Partial stacks before empty slots.** `Add` runs `Fill` twice, first over slots already holding
+  the same kind with room to spare, then over empty ones. Filling an empty slot while a half-full one
+  of the same thing exists is exactly how a bag ends up as twelve fragments of rope.
+- **Weight admits per item, not per stack.** `Allowed` divides the remaining kilograms by the item's
+  weight and clamps, so a heavy stack half-fits instead of being refused whole. Refusing whole is how
+  a player with 39 kg carried ends up unable to pick up one plank because they asked for ten.
+
+Weight is a limit rather than a second grid on purpose: it is the thing that makes a second trip a
+decision, and it costs one float instead of a tetris minigame nobody wanted.
+
+#### Adding an item is a data change
+
+`ItemFactory.Build` seeds fifteen items and rebuilds the catalog:
+
+```
+Unity.exe -quit -batchmode -nographics -projectPath . \
+  -executeMethod EscapeWithYourFriends.EditorTools.ItemFactory.Build
+```
+
+It **creates** an item asset that does not exist and it **rebuilds the catalog**, but it never
+overwrites an item that is already there. The seed table is a starting point, not a source of truth —
+once an asset exists its numbers belong to whoever is balancing the game, and a rerun of the factory
+must not undo their afternoon. So a sixteenth item is either a new row in `ItemFactory` or an `.asset`
+file dropped into `Assets/_Project/Data/Items` by hand or by sed. Both end up in the catalog, and
+neither is a code change to anything that reads it.
+
+The rebuild also refuses to be quiet about the two mistakes that break lookups: a blank id (nothing
+can refer to it, and it will not survive the next rebuild) and a duplicate id (`Find` becomes a coin
+flip and one of the two is unreachable). Both are errors, not warnings.
+
+One Unity constraint shaped this file. `ItemCatalog` lives in `EWYF.Runtime` and `ItemFactory` in
+`EWYF.Editor`, and `internal` does not cross an assembly boundary — an `internal SetItems` was not
+visible from the editor assembly at all. Making it `public` was the wrong fix: the array is the wire
+format and nothing at run time has any business rewriting it. The factory writes `_items` through a
+`SerializedObject` instead, which is how an editor tool is supposed to touch a serialised field, and
+then calls the one public method the catalog does expose — `Invalidate()` — because a `SerializedObject`
+write changes the field without going through any code that could have dropped the cached lookups.
+
+#### Proving it
+
+There is no test framework in this project, and adding one to check a stacking rule would be the wrong
+trade. What actually needs proving is that the rules hold *in a real session* — server-authoritative,
+replicated to a real client, in a Mono build — so the test runs inside the game. On `-invTest` the
+server runs a scripted sequence against the first inventory it sees and checks every step, while every
+client logs its own replicated copy whenever it changes.
+
+```
+EscapeWithYourFriends.exe -batchmode -nographics -host   -port 7792 -playerKey test:host -invTest
+EscapeWithYourFriends.exe -batchmode -nographics -client -address 127.0.0.1 -port 7792 -playerKey test:c1 -invTest
+```
+
+Twenty-three checks cover: starts empty; every slot valid; rope stacking to ten so fifteen is a full
+stack plus a partial; the full stack coming first because partials fill first; a non-stackable hatchet
+taking its own slot; merge topping up the target and leaving the remainder; split halving into an
+empty slot; swap exchanging two different kinds; out-of-range moves changing nothing; the carry limit
+biting while slots are still free; removal finding items wherever they sit; and `TakeSlot` lifting one
+slot out whole.
+
+```
+[ItemFactory]  15 items in the catalog, 15 created just now
+[InventoryTest] start: 0/20 slots, 0.0/40kg [empty]
+[InventoryTest] 23 passed, 0 failed. server holds: 4/20 slots, 25.5/40kg [2:rope, 3:boat_part, 4:boat_part, 7:rope x2]
+```
+
+and, in the separate client process:
+
+```
+[InventoryTest] client sees: 4/20 slots, 25.5/40kg [2:rope, 3:boat_part, 4:boat_part, 7:rope x2]
+[InventoryTest] client sees: 0/20 slots, 0.0/40kg [empty]
+```
+
+Two processes, two descriptions, and the remote client's copy of the host's bag is character-identical
+to what the server holds — which is the only statement about replication worth making. The second line
+is the client's own inventory, correctly empty. Zero exceptions on either side.
 
 ---
 

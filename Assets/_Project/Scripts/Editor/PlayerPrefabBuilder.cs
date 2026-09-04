@@ -3,6 +3,7 @@ using System.IO;
 using EscapeWithYourFriends.Combat;
 using EscapeWithYourFriends.Data;
 using EscapeWithYourFriends.Economy;
+using EscapeWithYourFriends.Items;
 using EscapeWithYourFriends.Net;
 using EscapeWithYourFriends.Player;
 using EscapeWithYourFriends.World;
@@ -234,6 +235,13 @@ namespace EscapeWithYourFriends.EditorTools
             // What this player can spend. The Revive Machine bills it; the shop and the casino
             // (#47, #77) will too.
             root.AddComponent<Wallet>();
+
+            // What this player is carrying. Twenty slots and forty kilograms: the slots are what the
+            // UI in #46 has to draw, and the weight is what makes a second trip a decision. The
+            // catalog is wired in here because a network message carries an index into it, and the
+            // index means nothing without the same asset on every peer.
+            var inventory = root.AddComponent<Inventory>();
+            inventory.Configure(ItemFactory.Catalog(), slots: 20, carryLimit: 40f);
 
             var melee = root.AddComponent<MeleeAttack>();
             SetFields(melee, so =>
