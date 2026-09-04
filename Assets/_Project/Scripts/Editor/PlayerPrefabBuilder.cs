@@ -249,6 +249,11 @@ namespace EscapeWithYourFriends.EditorTools
             var dropper = root.AddComponent<ItemDropper>();
             dropper.Configure(aimOrigin, inventory);
 
+            // Hunger, thirst, stamina and warmth. Added before the motor, which reads stamina to
+            // decide whether a sprint may start and reports back whether one is actually happening.
+            var survival = root.AddComponent<SurvivalStats>();
+            survival.Configure(SurvivalFactory.Ensure());
+
             var melee = root.AddComponent<MeleeAttack>();
             SetFields(melee, so =>
             {

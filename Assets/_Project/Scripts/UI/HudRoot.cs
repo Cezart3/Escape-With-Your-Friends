@@ -38,6 +38,7 @@ namespace EscapeWithYourFriends.UI
         readonly DownedMarkers _markers = new();
         readonly ObjectiveBanner _objective = new();
         readonly FrameCounter _frames = new();
+        readonly StatBars _stats = new();
 
         Canvas _canvas;
         Camera _camera;
@@ -88,6 +89,7 @@ namespace EscapeWithYourFriends.UI
             _markers.Build(root);
             _objective.Build(root);
             _frames.Build(root);
+            _stats.Build(root);
         }
 
         void Update()
@@ -105,6 +107,7 @@ namespace EscapeWithYourFriends.UI
                 _markers.Refresh(_entries, _camera);
                 _objective.Refresh(SquadModel.FindLocalAnchor());
                 _frames.Refresh();
+                _stats.Refresh(SquadModel.FindLocalStats());
             }
 
             if (_testRunning) RunTest();
@@ -140,6 +143,11 @@ namespace EscapeWithYourFriends.UI
 
             for (int i = 0; i < _entries.Count; i++)
                 Debug.Log($"[HudRoot] -hudTest {peer}: {SquadModel.Describe(_entries[i])}");
+
+            // The survival bars, from the same replicated state the canvas draws. Printed even
+            // headlessly, where there is no canvas at all, because the claim is about the numbers.
+            Player.SurvivalStats stats = SquadModel.FindLocalStats();
+            if (stats != null) Debug.Log($"[HudRoot] -hudTest {peer}: bars {stats.Describe()}");
         }
     }
 }

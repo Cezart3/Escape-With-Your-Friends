@@ -138,6 +138,23 @@ namespace EscapeWithYourFriends.UI
         /// than cached on spawn, because which body is "yours" is not fixed for the whole session —
         /// reconnect adoption (#111) hands it to a different object.
         /// </summary>
+        /// <summary>
+        /// The local player's survival bars, or null while there is no body of ours. Found through the
+        /// same registry the rest of the HUD uses rather than cached, because the body is replaced on
+        /// death, on revive and on reconnect adoption - and a cached one would draw a corpse's numbers.
+        /// </summary>
+        public static Player.SurvivalStats FindLocalStats()
+        {
+            foreach (NetworkPlayerRegistry.PlayerBody body in NetworkPlayerRegistry.Players)
+            {
+                if (!body.IsValid || !body.Object.IsOwner) continue;
+
+                return body.Object.GetComponent<Player.SurvivalStats>();
+            }
+
+            return null;
+        }
+
         public static Transform FindLocalAnchor()
         {
             foreach (NetworkPlayerRegistry.PlayerBody body in NetworkPlayerRegistry.Players)

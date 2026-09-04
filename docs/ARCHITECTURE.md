@@ -105,9 +105,9 @@ shipped depot must not contain it.
 **Why a command-line bootstrap.** The whole development loop for this project is a terminal, and a
 build that can only be started by clicking a button cannot be tested from one. `NetworkBootstrap`
 reads `-host` / `-server` / `-client`, plus `-address`, `-port`, `-quitAfter`, and the test flags
-`-latency`, `-botMove`, `-motorLog`, `-clockLog`, `-navWalk`, `-quality`, `-perfLog`, `-invTest` and
-`-itemTest` described under movement, the day/night cycle, navigation, performance, the inventory and
-loot below:
+`-latency`, `-botMove`, `-motorLog`, `-clockLog`, `-navWalk`, `-quality`, `-perfLog`, `-invTest`,
+`-itemTest`, `-statTest` and `-statLog` described under movement, the day/night cycle, navigation,
+performance, the inventory, loot and survival below:
 
 ```
 Unity.exe -quit -batchmode -nographics -projectPath .   -executeMethod EscapeWithYourFriends.EditorTools.BuildTool.PerformBuild   -buildOutput D:/Builds/EWYF-dev -development -scriptingBackend mono
@@ -2612,6 +2612,162 @@ takes it and the first does not get it back; the pile despawns once emptied; a p
 without a player dropping it; an overloaded bag takes exactly what fits and leaves a correct
 remainder, conserving the total; a throw leaves with speed on it; the thrower cannot instantly take it
 back; and it can be taken once it has travelled and landed.
+
+### Staying alive
+
+Four bars — food, water, stamina, warmth — ticked on the host and replicated to everyone. The
+acceptance criterion is "annoying enough to drive behaviour but never tedious", which is a judgement
+made in play rather than something code can be correct about. So the interesting decisions here are
+about **shape**, and every **rate** lives in a text asset where the person tuning it can argue with it.
+
+#### Two of them are clocks; one is an equilibrium
+
+Hunger and thirst fall to zero and stay there until you eat or drink. That is a chore, deliberately —
+it is the thing that sends somebody back to the base while the others keep gathering.
+
+Warmth is not a clock. It moves toward whatever the environment says it should be and comes back on
+its own:
+
+| Where you are | Warmth settles at |
+|---|---|
+| Daylight, on land | 100 — the bar sits full and you never think about it |
+| Night, in the open | 40 — cold and worth solving, but nothing is killing you |
+| In the sea | 0 — 91 seconds from comfortable to freezing |
+
+A warmth bar that only ever fell would mean carrying firewood everywhere, which is the definition of
+tedious. This shape means the mechanic is invisible until you do one of two specific things: stay out
+after dark, or swim.
+
+**The sea target is zero on purpose.** The first version had it at 8, which read as "cold but not
+lethal" and was actually "cannot ever hurt you": damage only applies to a bar at zero, so an
+equilibrium anywhere above zero meant hypothermia could never fire at all. Night settles at 40 because
+night is *supposed* to be survivable. The water is the one place the bar bottoms out.
+
+Stamina limits a burst, not a journey: about eight seconds of sprint, a one-second pause and then a
+refill in under seven. It decides whether you can outrun the thing chasing you, not whether you can
+cross the island — a stamina bar that gated travel would turn every walk into a rhythm game.
+
+#### What empty costs
+
+0.8 health per second hungry, 1.2 thirsty, 1.5 freezing, and they stack. On thirst alone that is 83
+seconds from full health to downed; with all three it is 29. Long enough to reach a coconut, short
+enough that ignoring it is a decision rather than an oversight. Damage lands once a second rather than
+continuously, so the number on the HUD visibly ticks and the log stays readable.
+
+One ordering detail matters more than it looks. Damage is evaluated **before** the bars are ticked,
+against their values as of the end of last frame. The first version ran it last and hypothermia could
+never fire: at several hundred frames a second, warmth's recovery rate lifts it off zero within a
+single frame, so by the time the check ran the bar was never actually empty. Evaluating first also
+reads correctly — you do not stop being hypothermic the instant you step out of the sea.
+
+#### Hunger and thirst do something before they empty
+
+Below the low threshold they cut stamina recovery, by up to 60% at their worst. This is the only place
+they have a mechanical effect short of damage, and it is what makes them worth glancing at rather than
+something you notice when the health bar starts moving.
+
+#### Where the rates live
+
+`SurvivalProfile` is a ScriptableObject, and `SurvivalFactory` creates it and then reports what its
+numbers mean in minutes:
+
+```
+Unity.exe -quit -batchmode -nographics -projectPath . \
+  -executeMethod EscapeWithYourFriends.EditorTools.SurvivalFactory.Build
+```
+```
+[SurvivalFactory] A day is 20 minutes. Hunger empties in 40 min walking, 18 running.
+                  Thirst in 25 min walking, 9 running.
+[SurvivalFactory] Stamina: 8.3s of sprint, 6.7s to refill (after a 1.0s pause), 8 per jump,
+                  sprint needs 20 to start.
+[SurvivalFactory] Warmth settles at 100 by day, 40 at night, 0 in the sea -
+                  91s to freeze in the water, 29s to recover out of it.
+[SurvivalFactory] Empty costs 0.8 hp/s hungry, 1.2 thirsty, 1.5 freezing:
+                  83s from full health on thirst alone, 29s with all three.
+```
+
+The report exists because the stored numbers are unreadable. Nobody has an opinion about 0.067 points
+per second; everybody has an opinion about "you get thirsty in 25 minutes and a day lasts 20". Like
+`ItemFactory`, it creates and never overwrites — once the asset exists, the numbers belong to whoever
+is tuning them.
+
+#### Sprinting, and who tells whom
+
+`PlayerMotor` reads stamina to decide whether a sprint may **start** and reports back whether one is
+actually **happening**. Both halves are needed and neither can be inverted: only the motor knows the
+difference between holding shift and moving forward while holding shift, and only the stats know
+whether there is anything left to spend.
+
+The gate has hysteresis — starting needs a real reserve (20), continuing needs anything above zero.
+One threshold for both would let a drained player sprint for a single tick, stop, and do it again
+forever.
+
+Stamina is read inside a predicted tick from a SyncVar rather than from reconciled state, which is the
+same trade `IsImmobilized` already makes: a mispredicted tick at the moment stamina runs out is
+corrected by the next reconcile, and putting four survival floats into every replicate would cost more
+bandwidth than a rare one-tick correction is worth. The jump cost and the sprint report are both
+applied on the server only, so a replayed tick during reconciliation cannot charge for the same jump
+twice.
+
+Send intervals are per bar: half a second for hunger, thirst and warmth, which move by less than a
+point in that time, and a tenth for stamina, which drains in eight seconds and is watched while it
+happens.
+
+#### The HUD says nothing until it has something to say
+
+Four bars in the bottom-left. Above the low threshold a bar draws dim and unlabelled; at or below it,
+it brightens, changes colour and shows its name. That is the presentation half of "never tedious" —
+the HUD is quiet until one of them is a problem, and then it is not quiet at all. Stamina is the
+exception and stays readable whenever it is not full, because it is a number you watch rather than a
+warning you wait for.
+
+Adding these caught a real gap: the HUD object was not in the Bootstrap scene at all.
+`CreateBootstrapScene` rebuilds that scene from an empty one, so the `EnsureHud` entry point that
+added it in #106 was silently undone the next time the generator ran, and `-hudTest` had been printing
+nothing. The HUD is now created by the generator itself, which is where anything that must survive a
+regeneration belongs.
+
+#### Proving it
+
+`-statTest` runs eighteen checks on the server, measuring rates against the clock rather than trusting
+them — a drain silently running at twice the profile's rate would look correct in every individual log
+line.
+
+```
+EscapeWithYourFriends.exe -batchmode -nographics -host -port 7803 -playerKey test:host -statTest -botMove
+```
+```
+[SurvivalTest] start: food 100 water 100 stam 100 warm 100 at 06:43, day 0.
+[SurvivalTest] 18 passed, 0 failed. end: food 100 water 60 stam 43 warm 16 [freezing], health 92/100
+```
+
+The checks cover: everything starts full; hunger drains at the profile's rate; thirst drains faster
+than hunger; stamina can be emptied, gates a sprint at both thresholds, recovers on its own after the
+delay and cannot overfill; warmth can be driven to zero, costs health while held there, recovers
+toward the environment once released, and reaches zero only in the sea; dehydration costs about
+1.2 hp/s measured against the clock; it downs you rather than killing you outright; and eating and
+drinking put the bars back without overfilling.
+
+The motor-to-stats path is proven separately, by watching a bot that sprints for half of every
+eight-second cycle:
+
+```
+[SurvivalStats] host owner 0: food 100 water 100 stam 92 warm 100
+[SurvivalStats] host owner 0: food 100 water  99 stam 47 warm 100
+[SurvivalStats] host owner 0: food  99 water  99 stam 80 warm 100
+[SurvivalStats] host owner 0: food  99 water  98 stam 35 warm 100
+[SurvivalStats] host owner 0: food  99 water  97 stam 23 warm 100
+```
+
+Stamina cycles with the sprint and refills between bursts, and water is visibly ahead of food — which
+is the tuning intent, in the log, without anybody reading the asset. On a separate client process the
+same body reads the same way, from replicated state alone:
+
+```
+[SurvivalStats] client owner 0: food 99 water 99 stam 87 warm 100
+```
+
+Zero exceptions on either side.
 
 ---
 

@@ -257,7 +257,10 @@ namespace EscapeWithYourFriends.Net
 
             // #42's harness needs a server and a second player, and only the server can start it.
             // It no-ops without -itemTest, so this costs a flag check on a state change.
-            if (args.ConnectionState == LocalConnectionState.Started) Items.WorldItemTest.Begin();
+            if (args.ConnectionState != LocalConnectionState.Started) return;
+
+            Items.WorldItemTest.Begin();
+            Player.SurvivalTest.Begin();
         }
 
         void OnClientConnectionState(ClientConnectionStateArgs args)

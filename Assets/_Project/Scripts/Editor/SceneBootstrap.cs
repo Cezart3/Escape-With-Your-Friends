@@ -87,6 +87,13 @@ namespace EscapeWithYourFriends.EditorTools
 
             BuildNetworkManager();
 
+            // The HUD belongs to the scene that stays loaded for the whole session, and it belongs
+            // *here* rather than only in EnsureHud: this method rebuilds the scene from an empty one,
+            // so anything added by a separate entry point is silently thrown away the next time it
+            // runs. That is what happened to the HUD between #106 and #40, which is why the survival
+            // bars had nothing to draw on and -hudTest printed nothing at all.
+            new GameObject("HUD").AddComponent<HudRoot>();
+
             EditorSceneManager.SaveScene(scene, BootstrapPath);
             Debug.Log($"[SceneBootstrap] created {BootstrapPath}");
 

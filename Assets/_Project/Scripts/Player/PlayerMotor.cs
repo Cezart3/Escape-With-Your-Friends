@@ -139,6 +139,14 @@ namespace EscapeWithYourFriends.Player
         CharacterController _controller;
         Health _health;
         StunState _stun;
+        SurvivalStats _stats;
+
+        /// <summary>
+        /// Whether this body was sprinting last tick. Not part of the reconciled state: it only feeds
+        /// the stamina hysteresis, and a one-tick disagreement after a correction costs nothing worse
+        /// than a sprint that starts or stops a thirtieth of a second early.
+        /// </summary>
+        bool _sprinting;
         Carryable _carryable;
         RagdollController _ragdoll;
 
@@ -183,6 +191,7 @@ namespace EscapeWithYourFriends.Player
             _controller = GetComponent<CharacterController>();
             _health = GetComponent<Health>();
             _stun = GetComponent<StunState>();
+            _stats = GetComponent<SurvivalStats>();
             _carryable = GetComponent<Carryable>();
             _ragdoll = GetComponent<RagdollController>();
 
@@ -276,6 +285,14 @@ namespace EscapeWithYourFriends.Player
             bool wantsSprint = !immobile && (md.Flags & MoveFlags.Sprint) != 0;
             bool wantsJump = !immobile && (md.Flags & MoveFlags.Jump) != 0;
 
+            // Stamina gates sprinting, with hysteresis: starting needs a real reserve, continuing
+            // only needs anything above empty. One threshold for both would let a drained player
+            // sprint for a single tick, stop, and do it again forever.
+            if (wantsSprint && _stats != null)
+                wantsSprint = _sprinting ? _stats.CanKeepSprinting : _stats.CanSprint;
+
+            _sprinting = wantsSprint;
+
             ResolveCrouch(wantsCrouch);
 
             // isGrounded describes the last Move call, which is exactly the state this tick starts in.
@@ -325,12 +342,22 @@ namespace EscapeWithYourFriends.Player
                 _velocity.y = Mathf.Sqrt(2f * Mathf.Abs(Physics.gravity.y) * _gravityScale * _jumpHeight);
                 _ticksSinceGrounded = byte.MaxValue;
                 _ticksSinceJump = 0;
+
+                // Server only: a replayed tick during reconciliation would otherwise charge for the
+                // same jump several times over.
+                if (IsServerStarted && _stats != null) _stats.ServerSpendJump();
             }
 
             _velocity.y = Mathf.Max(_velocity.y + Physics.gravity.y * _gravityScale * delta,
                                     -_terminalVelocity);
 
             _controller.Move(_velocity * delta);
+
+            // Actually running, as opposed to holding shift while standing still. Only the motor can
+            // tell the difference, so it tells the stats rather than them guessing from input they
+            // cannot see. Server only, for the same reason the jump cost is.
+            if (IsServerStarted && _stats != null)
+                _stats.ServerReportSprinting(wantsSprint && input.y > 0.1f && grounded);
         }
 
         [Reconcile]

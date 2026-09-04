@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f887c6646374d80429b4731a585b1ba5, type: 3}
+  m_Name: Survival
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.SurvivalProfile
+  _hungerDrain: 0.042
+  _hungerSprintDrain: 0.05
+  _thirstDrain: 0.067
+  _thirstSprintDrain: 0.12
+  _staminaSprintDrain: 12
+  _staminaJumpCost: 8
+  _staminaRecovery: 15
+  _staminaRecoveryDelay: 1
+  _staminaSprintThreshold: 20
+  _staminaStarvationPenalty: 0.6
+  _warmthDay: 100
+  _warmthNight: 40
+  _warmthWater: 0
+  _warmthLossRate: 1.1
+  _warmthGainRate: 3.5
+  _nightFraction: 0.25
+  _starvationDamage: 0.8
+  _dehydrationDamage: 1.2
+  _hypothermiaDamage: 1.5
+  _damageInterval: 1
+  _lowThreshold: 0.25
