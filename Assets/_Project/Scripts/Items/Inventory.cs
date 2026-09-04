@@ -39,10 +39,28 @@ namespace EscapeWithYourFriends.Items
 
         readonly SyncList<ItemStack> _slots = new();
 
+        /// <summary>
+        /// Which slot the player is pointing at. Replicated rather than kept on the owner, because
+        /// everybody else needs it: dropping validates against it on the server, and the held-item
+        /// visual in the art pass reads it off a body that is not theirs.
+        ///
+        /// It exists now, before the hotbar UI in #46, because "drop" has to mean *something* - a key
+        /// that drops whichever slot happens to be first is not a feature anybody can aim.
+        /// </summary>
+        readonly SyncVar<int> _selected = new();
+
         /// <summary>Fired on every peer after any change. The UI redraws off this rather than polling.</summary>
         public event Action Changed;
 
         public int SlotCount => _slots.Count;
+
+        /// <summary>The slot the drop key acts on. Always in range; see <see cref="ServerSelect"/>.</summary>
+        public int SelectedSlot => _selected.Value;
+
+        public ItemStack Selected => this[_selected.Value];
+
+        /// <summary>How many slots the hotbar row covers. The rest of the bag is not reachable by key.</summary>
+        public const int HotbarSlots = 5;
         public float CarryLimit => _carryLimit;
         public ItemCatalog Catalog => _catalog;
 
@@ -69,9 +87,14 @@ namespace EscapeWithYourFriends.Items
             ItemCatalog.Use(_catalog);
 
             _slots.OnChange += OnSlotsChanged;
+            _selected.OnChange += OnSelectedChanged;
         }
 
-        void OnDestroy() => _slots.OnChange -= OnSlotsChanged;
+        void OnDestroy()
+        {
+            _slots.OnChange -= OnSlotsChanged;
+            _selected.OnChange -= OnSelectedChanged;
+        }
 
         public override void OnStartServer()
         {
@@ -95,6 +118,13 @@ namespace EscapeWithYourFriends.Items
         {
             // Both the server and the client raise this on a host. Firing once, on the client pass,
             // keeps listeners from redrawing twice for one change.
+            if (asServer && IsClientStarted) return;
+
+            Changed?.Invoke();
+        }
+
+        void OnSelectedChanged(int older, int newer, bool asServer)
+        {
             if (asServer && IsClientStarted) return;
 
             Changed?.Invoke();
@@ -194,6 +224,19 @@ namespace EscapeWithYourFriends.Items
         /// <summary>Split half a stack into an empty slot. The other half of drag-and-drop in #46.</summary>
         [ServerRpc]
         public void SplitSlot(int from, int to) => ServerSplit(from, to);
+
+        /// <summary>Point at a hotbar slot. Costs nothing to get wrong, so it is clamped, not refused.</summary>
+        [ServerRpc]
+        public void SelectSlot(int slot) => ServerSelect(slot);
+
+        [Server]
+        public void ServerSelect(int slot)
+        {
+            // Wrapping rather than clamping, because the scroll wheel is the main way this is driven
+            // and a wheel that sticks at the end of the row feels broken.
+            int count = Mathf.Min(HotbarSlots, Mathf.Max(1, _slots.Count));
+            _selected.Value = ((slot % count) + count) % count;
+        }
 
         [Server]
         public void ServerMove(int from, int to)

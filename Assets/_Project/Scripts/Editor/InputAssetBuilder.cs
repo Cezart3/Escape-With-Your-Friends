@@ -20,6 +20,9 @@ namespace EscapeWithYourFriends.EditorTools
     /// </summary>
     public static class InputAssetBuilder
     {
+        /// <summary>Kept equal to <see cref="Items.Inventory.HotbarSlots"/>; one binding per slot.</summary>
+        const int HotbarSlots = 5;
+
         const string InputDir = "Assets/_Project/Input";
         const string AssetPath = InputDir + "/PlayerControls.inputactions";
 
@@ -74,9 +77,26 @@ namespace EscapeWithYourFriends.EditorTools
             altAttack.AddBinding("<Mouse>/rightButton");
             altAttack.AddBinding("<Gamepad>/leftTrigger");
 
+            // Tap to drop, hold to throw. One key for two verbs because the hold reads as winding up,
+            // and because a separate throw key is a binding nobody would find.
             InputAction drop = map.AddAction("Drop", InputActionType.Button);
             drop.AddBinding("<Keyboard>/g");
             drop.AddBinding("<Gamepad>/buttonNorth");
+
+            // Hotbar selection. Five slots is what fits across a screen without a second row, and it
+            // is what the drop key acts on until the real hotbar UI lands in #46.
+            for (int slot = 1; slot <= HotbarSlots; slot++)
+            {
+                InputAction pick = map.AddAction($"Hotbar{slot}", InputActionType.Button);
+                pick.AddBinding($"<Keyboard>/{slot}");
+            }
+
+            // A Value action rather than a Button: the reader wants the notch count, and it
+            // accumulates fractions so a trackpad works as well as a wheel.
+            InputAction hotbarScroll = map.AddAction("HotbarScroll", InputActionType.Value);
+            hotbarScroll.expectedControlType = "Axis";
+            hotbarScroll.AddBinding("<Mouse>/scroll/y");
+            hotbarScroll.AddBinding("<Gamepad>/dpad/x");
 
             File.WriteAllText(AssetPath, asset.ToJson());
             Object.DestroyImmediate(asset);

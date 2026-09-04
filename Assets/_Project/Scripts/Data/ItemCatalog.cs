@@ -25,6 +25,9 @@ namespace EscapeWithYourFriends.Data
         [Tooltip("Sorted by id and regenerated whole. Do not reorder by hand: the order is the wire format.")]
         [SerializeField] ItemDef[] _items = new ItemDef[0];
 
+        [Tooltip("The one networked prefab every dropped item spawns as. Assigned by WorldItemBuilder.")]
+        [SerializeField] GameObject _worldItemPrefab;
+
         Dictionary<ItemDef, ushort> _indices;
         Dictionary<string, ItemDef> _byId;
 
@@ -32,6 +35,15 @@ namespace EscapeWithYourFriends.Data
         public static ItemCatalog Active { get; private set; }
 
         public IReadOnlyList<ItemDef> Items => _items;
+
+        /// <summary>
+        /// The prefab a dropped stack becomes. **One prefab for every item in the game**, because a
+        /// networked prefab has to be registered in FishNet's spawnable list on every peer, and a
+        /// per-item networked prefab would make adding an item a registration step - which is exactly
+        /// the thing #41 spent its effort removing. What an item *looks* like on the ground is
+        /// <see cref="ItemDef.WorldPrefab"/>, an ordinary non-networked visual parented underneath.
+        /// </summary>
+        public GameObject WorldItemPrefab => _worldItemPrefab;
 
         /// <summary>How many real items there are. Indices run 1..Count.</summary>
         public int Count => _items.Length;

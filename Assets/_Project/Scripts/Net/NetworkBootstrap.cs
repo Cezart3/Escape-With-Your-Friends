@@ -254,6 +254,10 @@ namespace EscapeWithYourFriends.Net
             Debug.Log($"[NetworkBootstrap] Server: {args.ConnectionState}.");
             ServerStateChanged?.Invoke(args.ConnectionState);
             ClearRegistryIfFullyStopped();
+
+            // #42's harness needs a server and a second player, and only the server can start it.
+            // It no-ops without -itemTest, so this costs a flag check on a state change.
+            if (args.ConnectionState == LocalConnectionState.Started) Items.WorldItemTest.Begin();
         }
 
         void OnClientConnectionState(ClientConnectionStateArgs args)

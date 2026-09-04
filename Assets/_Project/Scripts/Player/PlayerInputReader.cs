@@ -40,6 +40,8 @@ namespace EscapeWithYourFriends.Player
         InputActionMap _map;
 
         InputAction _move, _look, _jump, _sprint, _crouch, _interact, _attack, _altAttack, _drop;
+        InputAction _hotbarScroll;
+        readonly InputAction[] _hotbar = new InputAction[Items.Inventory.HotbarSlots];
 
         bool _bound;
         bool _scripted;
@@ -48,6 +50,12 @@ namespace EscapeWithYourFriends.Player
         // One-shot presses, buffered until whoever cares consumes them. A key tapped between two
         // ticks would otherwise be dropped entirely: at 30Hz that is a third of a second of taps.
         bool _jumpQueued, _interactQueued, _attackQueued, _altAttackQueued, _dropQueued;
+
+        // Hotbar selection is two inputs for one value. -1 means no number key was pressed; the
+        // scroll accumulates because a flick of the wheel is several notches inside one frame.
+        int _hotbarQueued = -1;
+        int _hotbarSteps;
+        float _scrollRemainder;
 
         /// <summary>Movement axis, -1..1 per component. Y is forward.</summary>
         public Vector2 Move { get; private set; }
@@ -69,6 +77,13 @@ namespace EscapeWithYourFriends.Player
         /// may already be back up.
         /// </summary>
         public bool InteractHeld { get; private set; }
+
+        /// <summary>
+        /// Drop held down right now. The same reason as <see cref="InteractHeld"/>, for the opposite
+        /// gesture: the drop key is a tap to drop and a hold to throw (see <c>ItemDropper</c>), and
+        /// the difference is only visible while the key is still down.
+        /// </summary>
+        public bool DropHeld { get; private set; }
 
         /// <summary>True while this reader is driving a body, i.e. we own it.</summary>
         public bool IsBound => _bound;
@@ -106,6 +121,12 @@ namespace EscapeWithYourFriends.Player
             _attack = _map.FindAction("Attack", throwIfNotFound: true);
             _altAttack = _map.FindAction("AltAttack", throwIfNotFound: true);
             _drop = _map.FindAction("Drop", throwIfNotFound: true);
+
+            // Optional, so an action asset generated before #42 still binds everything else rather
+            // than throwing and leaving the player unable to move at all.
+            _hotbarScroll = _map.FindAction("HotbarScroll", throwIfNotFound: false);
+            for (int i = 0; i < _hotbar.Length; i++)
+                _hotbar[i] = _map.FindAction($"Hotbar{i + 1}", throwIfNotFound: false);
 
             _map.Enable();
 
@@ -151,6 +172,7 @@ namespace EscapeWithYourFriends.Player
             Sprint = _sprint.IsPressed();
             Crouch = _crouch.IsPressed();
             InteractHeld = _interact.IsPressed();
+            DropHeld = _drop.IsPressed();
 
             Vector2 look = _look.ReadValue<Vector2>();
             Yaw = Mathf.Repeat(Yaw + look.x * _lookSensitivity, 360f);
@@ -163,6 +185,37 @@ namespace EscapeWithYourFriends.Player
             _attackQueued |= _attack.WasPressedThisFrame();
             _altAttackQueued |= _altAttack.WasPressedThisFrame();
             _dropQueued |= _drop.WasPressedThisFrame();
+
+            ReadHotbar();
+        }
+
+        /// <summary>
+        /// Number keys pick a slot outright; the wheel steps through them. Both are buffered like the
+        /// presses above, because selection is sent to the server and a notch that fell between two
+        /// ticks would be a slot the player chose and never got.
+        /// </summary>
+        void ReadHotbar()
+        {
+            for (int i = 0; i < _hotbar.Length; i++)
+                if (_hotbar[i] != null && _hotbar[i].WasPressedThisFrame())
+                    _hotbarQueued = i;
+
+            if (_hotbarScroll == null) return;
+
+            // A wheel reports 120 per notch on Windows and 1 elsewhere, so normalise by sign and keep
+            // the remainder: a trackpad sends a stream of fractions that would otherwise never move.
+            float raw = _hotbarScroll.ReadValue<float>();
+            if (Mathf.Abs(raw) < 0.01f) return;
+
+            _scrollRemainder += Mathf.Abs(raw) > 10f ? raw / 120f : raw;
+
+            int steps = (int)_scrollRemainder;
+            if (steps == 0) return;
+
+            _scrollRemainder -= steps;
+
+            // Wheel up is the previous slot, which is what every game with a hotbar does.
+            _hotbarSteps -= steps;
         }
 
         /// <summary>
@@ -218,6 +271,22 @@ namespace EscapeWithYourFriends.Player
 
         public bool ConsumeDrop() => Consume(ref _dropQueued);
 
+        /// <summary>The hotbar slot a number key asked for, or -1. Cleared by reading.</summary>
+        public int ConsumeHotbarSlot()
+        {
+            int slot = _hotbarQueued;
+            _hotbarQueued = -1;
+            return slot;
+        }
+
+        /// <summary>How many slots the wheel moved since the last read, signed. Cleared by reading.</summary>
+        public int ConsumeHotbarSteps()
+        {
+            int steps = _hotbarSteps;
+            _hotbarSteps = 0;
+            return steps;
+        }
+
         static bool Consume(ref bool flag)
         {
             if (!flag) return false;
@@ -225,8 +294,13 @@ namespace EscapeWithYourFriends.Player
             return true;
         }
 
-        void ClearQueued() =>
+        void ClearQueued()
+        {
             _jumpQueued = _interactQueued = _attackQueued = _altAttackQueued = _dropQueued = false;
+            _hotbarQueued = -1;
+            _hotbarSteps = 0;
+            _scrollRemainder = 0f;
+        }
 
         void ApplyCursorLock(bool locked)
         {

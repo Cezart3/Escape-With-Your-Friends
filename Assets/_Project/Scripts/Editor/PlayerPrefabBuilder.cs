@@ -243,6 +243,12 @@ namespace EscapeWithYourFriends.EditorTools
             var inventory = root.AddComponent<Inventory>();
             inventory.Configure(ItemFactory.Catalog(), slots: 20, carryLimit: 40f);
 
+            // How things leave the bag. Items leave from the eye, not the feet, so a thrown bag goes
+            // where you were looking; the dropper ignores the thrower's own collider for a moment
+            // because that spawn point is inside your capsule.
+            var dropper = root.AddComponent<ItemDropper>();
+            dropper.Configure(aimOrigin, inventory);
+
             var melee = root.AddComponent<MeleeAttack>();
             SetFields(melee, so =>
             {
@@ -290,6 +296,8 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_interactor").objectReferenceValue = interactor;
                 so.FindProperty("_ghost").objectReferenceValue = ghost;
                 so.FindProperty("_rescue").objectReferenceValue = rescueSystem;
+                so.FindProperty("_dropper").objectReferenceValue = dropper;
+                so.FindProperty("_inventory").objectReferenceValue = inventory;
             });
 
             var motor = root.AddComponent<PlayerMotor>();

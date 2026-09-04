@@ -105,8 +105,9 @@ shipped depot must not contain it.
 **Why a command-line bootstrap.** The whole development loop for this project is a terminal, and a
 build that can only be started by clicking a button cannot be tested from one. `NetworkBootstrap`
 reads `-host` / `-server` / `-client`, plus `-address`, `-port`, `-quitAfter`, and the test flags
-`-latency`, `-botMove`, `-motorLog`, `-clockLog`, `-navWalk`, `-quality`, `-perfLog` and `-invTest`
-described under movement, the day/night cycle, navigation, performance and the inventory below:
+`-latency`, `-botMove`, `-motorLog`, `-clockLog`, `-navWalk`, `-quality`, `-perfLog`, `-invTest` and
+`-itemTest` described under movement, the day/night cycle, navigation, performance, the inventory and
+loot below:
 
 ```
 Unity.exe -quit -batchmode -nographics -projectPath .   -executeMethod EscapeWithYourFriends.EditorTools.BuildTool.PerformBuild   -buildOutput D:/Builds/EWYF-dev -development -scriptingBackend mono
@@ -2468,6 +2469,149 @@ and, in the separate client process:
 Two processes, two descriptions, and the remote client's copy of the host's bag is character-identical
 to what the server holds — which is the only statement about replication worth making. The second line
 is the client's own inventory, correctly empty. Zero exceptions on either side.
+
+### Loot on the floor
+
+An inventory that can only ever be filled by the server is safe and completely inert. #42 is the part
+that makes it a game: items come out of the bag as real objects, they stay where they land, and
+**anybody** can take them.
+
+That last word is the whole issue. There is deliberately no ownership test on picking something up.
+A stack you dropped, a stack a friend dropped, a stack that fell out of a corpse — `WorldItem` cannot
+tell them apart and does not try. Robbing the pile is the feature.
+
+#### One networked prefab for every item in the game
+
+A networked prefab has to be registered in FishNet's spawnable list, identically, on every peer. A
+prefab per item would therefore make adding an item a registration step and a rebuild — which is
+exactly the property #41 spent its effort buying. So there is one `WorldItem.prefab`, and what an
+item *looks* like on the ground is `ItemDef.WorldPrefab`: an ordinary, non-networked visual parented
+underneath at run time, falling back to a category-coloured cube while the game is greybox.
+
+The prefab reference lives on `ItemCatalog` rather than on a spawner component in each scene, for the
+same reason the catalog holds everything else: it is already published globally and already wired into
+every inventory, so there is exactly one asset to assign and no singleton to place per scene.
+
+#### Physics belongs to the server
+
+The rigidbody simulates on the server and clients set theirs kinematic, letting `NetworkTransform`
+drive the transform. Two peers integrating the same collision independently is how a crate ends up in
+two places at once, and a crate you can pick up on your screen but not on mine is the one failure mode
+worse than jitter.
+
+The prefab's numbers are the feel of loot on the floor, and three of them are not arbitrary:
+
+- **A box collider, not a sphere.** A sphere rolls forever down the island's slopes. Loot that ends up
+  in the sea because it was dropped on a hill is not a funny bug.
+- **`ContinuousDynamic` collision detection.** A thrown item at 9 m/s covers 30 cm in a tick and the
+  ground is a terrain collider; discrete sweeps let it tunnel through and fall out of the world.
+- **An aggressive sleep threshold.** Most of these objects spend their lives motionless in a pile at
+  the base, and a hundred awake rigidbodies is the host's frame budget spent on nothing.
+
+#### Initialise before spawn, not after
+
+The first version of the spawner called `ServerManager.Spawn` and *then* set the stack. It looked
+right and it was wrong: FishNet builds the spawn message from the SyncVar values as they stand at the
+`Spawn` call, so a value written afterwards arrives as a separate update. Every client saw the item
+exist, briefly, as an empty pile with no visual.
+
+The client-side log caught it — the server's own numbers were perfect the entire time, which is the
+argument for making a harness prove the *client's* view rather than the server's:
+
+```
+[WorldItem] client sees - at (-84.0, 6.5, -39.9)      <- before
+[WorldItem] client sees rope x6 at (-84.0, 6.5, -39.9) <- after
+```
+
+The fix is to initialise the instantiated object before spawning it, which also means
+`Initialise` cannot carry `[Server]`: that attribute checks the object is initialised, which before
+the spawn it is not, and the guard would refuse the one call that matters.
+
+#### Drop, throw, and the one key that does both
+
+Tap `G` to drop the selected stack at your feet; hold it past 0.25 s and release to throw. One binding
+for two verbs, because the hold reads as winding up and a separate throw key is one nobody would find.
+The decision happens on release rather than on press — deciding on press would send the item away
+while you are still winding up.
+
+Two details that only show up in play:
+
+- **A tap fast enough to go down and up inside one frame** would never look like a release. The
+  buffered press opens the hold as well as recording when it started, so the release is still seen.
+- **A thrown item leaves from eye height, which is inside your own capsule.** It is spawned with the
+  thrower's collider ignored for the length of the pickup cooldown, then restored. Without that it
+  hits you in the face and lands at your feet, which reads as the throw not working rather than as a
+  physics detail. The same cooldown stops your own throw from re-entering your bag before it has
+  travelled a metre.
+
+Drop shares the key with throwing a carried body, one step down the same priority list `Interact`
+uses: a body on your shoulder is the bigger commitment, so with your hands free the key means the bag.
+
+#### Selecting what to drop
+
+Drop needs a target slot, so `Inventory` gained a replicated `SelectedSlot` driven by the number keys
+1–5 and the scroll wheel. Replicated rather than owner-local because everybody needs it — the server
+validates against it, and the held-item visual in the art pass reads it off a body that is not theirs.
+The wheel wraps rather than clamping, because a wheel that sticks at the end of the row feels broken,
+and the scroll input accumulates fractions so a trackpad works as well as a notched wheel.
+
+The visible hotbar is #46. This is the minimum that makes "drop" a thing a player can aim.
+
+#### Taking things
+
+Pickup goes through `IInteractable`, so it uses the same sphere cast, the same range, and the same
+server-side revalidation as the Revive Machine. Two rules are worth stating:
+
+- **A full bag takes what fits and leaves the rest.** All-or-nothing would mean an overloaded player
+  cannot take a single bandage off a pile of forty planks. The pile shrinks on everybody's screen
+  rather than vanishing and respawning, which is why the contents are a SyncVar and not a spawn
+  argument.
+- **Nothing despawns loot.** There is no timer, because walking back to your stash and finding it gone
+  is the most annoying thing a survival game can do. What there is instead is a hard cap of 240
+  simultaneous stacks — several full inventories of headroom — beyond which the oldest is removed.
+  That trades a case nobody will hit for an unbounded one that would eventually take the host down.
+
+#### Proving it
+
+The acceptance criterion is "you can rob a friend's dropped loot", and no single process can make that
+claim. `-itemTest` waits up to twelve seconds for a second player to connect and says so in the log if
+none arrives, rather than testing theft against the same player and calling it proof.
+
+```
+EscapeWithYourFriends.exe -batchmode -nographics -host   -port 7798 -playerKey test:host -itemTest
+EscapeWithYourFriends.exe -batchmode -nographics -client -address 127.0.0.1 -port 7798 -playerKey test:c1 -itemTest
+```
+
+Server:
+
+```
+[WorldItemTest] 2 player(s) present. Theft can be tested for real.
+[WorldItemTest] 18 passed, 0 failed. 2 stack(s) on the ground.
+  owner: 0/20 slots, 0.0/40kg [empty]
+  other: 4/20 slots, 40.0/40kg [0:rope x8, 1:boat_part, 2:boat_part, 3:boat_part]
+```
+
+Client, which is the half that matters:
+
+```
+[WorldItem] client sees rope x6 at (-84.0, 6.5, -39.9).
+[WorldItem] client no longer sees rope x6.
+[WorldItem] client sees rope x8 at (-77.5, 6.0, -47.0).
+[WorldItem] client sees the pile change: rope x8 -> rope x6.
+[WorldItem] client sees rope x2 at (-84.0, 6.5, -39.9).
+```
+
+Read in order: a stack the *other* player dropped appears with the right contents, is taken by this
+client and disappears; a pile too heavy to lift whole shrinks by the two that fitted and stays on the
+ground with six left; and a thrown stack arrives where it was thrown. The thief ends the run at
+exactly 40.0/40kg, which is the carry limit doing its job on the way in.
+
+The eighteen checks cover: dropping spawns a networked item carrying the stack that left the bag; the
+bag no longer has it; the item falls under gravity and still exists after settling; a second player
+takes it and the first does not get it back; the pile despawns once emptied; a pile can be spawned
+without a player dropping it; an overloaded bag takes exactly what fits and leaves a correct
+remainder, conserving the total; a throw leaves with speed on it; the thrower cannot instantly take it
+back; and it can be taken once it has travelled and landed.
 
 ---
 

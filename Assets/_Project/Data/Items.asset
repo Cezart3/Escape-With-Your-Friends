@@ -28,3 +28,4 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b0a65aa3f09b4b540a2e8537c53cde48, type: 2}
   - {fileID: 11400000, guid: 4ba4d009695ab274daa659c36125f37e, type: 2}
   - {fileID: 11400000, guid: c41224b3da827e24ba7a88c05331258d, type: 2}
+  _worldItemPrefab: {fileID: 532363243377734599, guid: 3baee3b3442dc5d4db6a78075e7f587f, type: 3}

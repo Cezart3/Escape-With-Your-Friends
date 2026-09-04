@@ -1,4 +1,5 @@
 using EscapeWithYourFriends.Combat;
+using EscapeWithYourFriends.Items;
 using FishNet.Object;
 using UnityEngine;
 
@@ -27,6 +28,8 @@ namespace EscapeWithYourFriends.Player
         [SerializeField] PlayerInteractor _interactor;
         [SerializeField] GhostController _ghost;
         [SerializeField] RescueSystem _rescue;
+        [SerializeField] ItemDropper _dropper;
+        [SerializeField] Inventory _inventory;
 
         // Diagnostics only, behind -cameraLog: a headless run cannot see a punch land, so the count of
         // verbs actually issued is the difference between "combat is wired" and "combat is silent".
@@ -35,6 +38,12 @@ namespace EscapeWithYourFriends.Player
         int _attacks, _altAttacks, _interacts, _drops;
 
         bool _interactHeld;
+        bool _dropHeld;
+
+        // When the drop key went down. A tap drops, a hold throws, and the difference is decided on
+        // release rather than on press - deciding on press would mean the throw fires while you are
+        // still winding up, which is the wrong moment for the item to leave your hand.
+        float _dropPressedAt;
 
         public override void OnStartClient()
         {
@@ -82,7 +91,38 @@ namespace EscapeWithYourFriends.Player
                 bool used = _interactor != null && _interactor.RequestInteract();
                 if (!used && _carry != null) _carry.RequestPickupOrDrop();
             }
-            if (drop && _carry != null) _carry.RequestThrow();
+            // Drop is the same priority list as Interact, one step down. A body on your shoulder is
+            // the bigger commitment, so it goes first; with your hands free the key means the bag.
+            // The buffered press opens the hold as well as recording when it started. Without that,
+            // a tap fast enough to go down and up inside one frame would never look like a release
+            // and would be swallowed entirely.
+            if (drop)
+            {
+                _dropPressedAt = Time.time;
+                _dropHeld = true;
+            }
+
+            bool dropReleased = _dropHeld && !_input.DropHeld;
+            _dropHeld = _input.DropHeld;
+
+            if (dropReleased)
+            {
+                bool thrown = Time.time - _dropPressedAt >= ItemDropper.HoldToThrow;
+
+                if (_carry != null && _carry.IsCarrying) _carry.RequestThrow();
+                else if (_dropper != null) _dropper.RequestDrop(thrown);
+            }
+
+            // Hotbar. Sent straight through rather than buffered per tick: selection is idempotent,
+            // so the last one to arrive wins and a lost packet costs nothing.
+            if (_inventory != null)
+            {
+                int picked = _input.ConsumeHotbarSlot();
+                int steps = _input.ConsumeHotbarSteps();
+
+                if (picked >= 0) _inventory.SelectSlot(picked);
+                else if (steps != 0) _inventory.SelectSlot(_inventory.SelectedSlot + steps);
+            }
 
             // Interact is the only verb in the game that is a hold. The press above starts it, going
             // through the interactor like everything else so the range is validated once; this is the
