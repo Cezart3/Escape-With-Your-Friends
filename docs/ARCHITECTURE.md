@@ -106,9 +106,10 @@ shipped depot must not contain it.
 build that can only be started by clicking a button cannot be tested from one. `NetworkBootstrap`
 reads `-host` / `-server` / `-client`, plus `-address`, `-port`, `-quitAfter`, and the test flags
 `-latency`, `-botMove`, `-motorLog`, `-clockLog`, `-navWalk`, `-quality`, `-perfLog`, `-invTest`,
-`-itemTest`, `-statTest`, `-statLog`, `-buffTest`, `-craftTest`, `-chestTest`, `-uiTest` and
-`-moneyTest` described under movement, the day/night cycle, navigation, performance, the inventory,
-loot, survival, consumables, crafting, storage, the bag screen and money below:
+`-itemTest`, `-statTest`, `-statLog`, `-buffTest`, `-craftTest`, `-chestTest`, `-uiTest`,
+`-moneyTest` and `-shopTest` described under movement, the day/night cycle, navigation, performance,
+the inventory, loot, survival, consumables, crafting, storage, the bag screen, money and the shop
+below:
 
 ```
 Unity.exe -quit -batchmode -nographics -projectPath .   -executeMethod EscapeWithYourFriends.EditorTools.BuildTool.PerformBuild   -buildOutput D:/Builds/EWYF-dev -development -scriptingBackend mono
@@ -3236,6 +3237,82 @@ does not trust that the first check happened.
 
 **Not done here:** where money comes from. Selling loot is the shop (#48), fish is #54, and a lucky
 spin is #64. All three are callers of `ServerAdd`, which is why this issue is small and they are not.
+
+### The shop
+
+*Issue #48. `Data/ShopDef.cs`, `Economy/ShopCounter.cs`, `Economy/Trading.cs`,
+`Editor/ShopFactory.cs`, `Economy/ShopTest.cs`, and the third panel in `UI/InventoryScreen.cs`.*
+
+The trader stands at `shop.counter`, 95 m of walking from the camp, and is the first place the money
+from #47 has anywhere to go. Twelve lines on the shelf: six materials the island gives away anyway,
+five made things that are craftable if you would rather walk to the bench, and the boat part everyone
+is actually saving for.
+
+**The shop only lists what it sells.** Selling *to* it needs no list at all - anything with an
+`ItemDef.Value` above zero is taken at `BuyBackFraction` of that value, half by default. A table of
+everything the trader would buy goes stale the moment somebody adds an item, and it goes stale
+invisibly: a new item that quietly cannot be sold. A fraction of the item's own value cannot. It also
+puts the entire economy in one number - below one it is a spread the player pays for the convenience
+of a shop, at one the shop is a storage box that pays you to use it - and that number is what #56
+will argue about with real playtest numbers.
+
+A boat part is worth zero, so the trader will not take it back. That is deliberate: the win condition
+is not a thing you can flip for cash.
+
+**The acceptance is a race.** "Buy/sell round-trips correctly with 4 players shopping simultaneously"
+is #44's chest problem wearing a different hat - four clients looking at a replicated stock of one,
+all clicking buy, four requests describing a hatchet that only one of them can have. The rules are
+the same three, in the same words:
+
+1. **A request names an offer index and a count, never a price.** Look at `Trading.RequestBuy` -
+   there is nowhere to put a number. A modified client can ask for the wrong thing, or for nine
+   hundred of it, and both are tested; it cannot ask for a discount, because the wire has no field
+   for one.
+2. **Take before give, in one server call.** Stock comes off the shelf, then the money leaves the
+   wallet, then the item goes in the bag.
+3. **Nothing is created that was not destroyed.** Whatever did not fit goes back on the shelf and back
+   in the wallet on the very next line - and the money goes back through `Wallet.ServerRefund`, which
+   *decrements* `Burned` rather than incrementing `Minted`. A refund is not income, and a ledger that
+   called it one would report the shop as printing money every time somebody's bag was full.
+
+Everything clamps rather than refuses. Asking for five when there are two, or when you can afford
+three, buys what is possible. A shop that refuses the whole order because one of the numbers was
+optimistic is a shop nobody uses twice.
+
+**`Trading` lives on the player, not on the counter.** A shop is owned by nobody, so a `ServerRpc` on
+it would have no owner to require and would accept a message from anyone in the game. The bag has an
+owner, so the request comes from the player and *names* the counter, and the server checks the player
+is standing within `ShopCounter.Reach` of it - twice, once in `Trading.Resolve` and again inside the
+transaction, because a check that exists in only one place is a check somebody will refactor away.
+Refusals come back as a `TargetRpc` to the one client that asked; the rest of the squad does not need
+to know you cannot afford a hatchet.
+
+Stock is a `SyncList<int>`, so the other three players watch the shelf empty as somebody else buys.
+That is the only thing that makes the race legible to a player rather than mysterious. One of each
+depleted line comes back every ninety seconds - slow on purpose, because a shelf that refills
+instantly is a shelf with no stock, and the point of a limited line is that the group has to decide
+who gets the hatchet.
+
+**On screen** the shelf takes over the chest's rectangle in the bag screen, because you are never at
+both at once. Twelve rows, each with a name, a price and what is left. The click grammar is one rule:
+**left is here, right is over there.** Left-clicking a bag slot picks it for the hotbar; right-clicking
+one sends it into the chest, or across the counter to be sold. A shelf row buys one, or five with
+shift.
+
+`-shopTest` is the harness, and it needs two real processes. Sixty-five checks, all passing:
+
+```
+[ShopTest] ShopCounter (shop.counter): rope@10, plank@8, ..., knife@60 x2, hatchet@90 x1, boat_part@400 x4
+[ShopCounter] Player(Clone) bought 1x hatchet for 90; 0 left on the shelf.
+[ShopTest] the server's answer to that: "a counter 200m away".
+[ShopTest] 65 passed, 0 failed. end: alice $984, bob $1,000, 4 minted, 20 burned.
+```
+
+Four buy calls back to back on one thread against a shelf of two sell exactly two, leave the shelf at
+zero rather than at minus two, and charge nobody for a knife they did not get. A bag filled to its
+weight limit buys nothing, is charged nothing, and puts the knife back. And the ledger identity -
+wallets, minus minted, plus burned - is asserted after every single step, which is what makes "did the
+shop print money" a question with a number for an answer rather than an opinion.
 
 ---
 

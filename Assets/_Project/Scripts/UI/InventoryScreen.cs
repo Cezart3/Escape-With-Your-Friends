@@ -43,22 +43,30 @@ namespace EscapeWithYourFriends.UI
 
         SlotView[] _bagSlots;
         SlotView[] _chestSlots;
+        SlotView[] _shopRows;
 
         Canvas _canvas;
         RectTransform _root;
         RectTransform _bagPanel;
         RectTransform _chestPanel;
+        RectTransform _shopPanel;
         Text _bagHeader;
         Text _chestHeader;
+        Text _shopHeader;
         Text _hint;
+        Text _message;
 
         RectTransform _dragGhost;
         Text _dragLabel;
         SlotView _dragFrom;
 
         Inventory _bag;
+        Economy.Trading _trading;
         Storage _chest;
+        Economy.ShopCounter _counter;
         SlotView _hovered;
+        string _shownRefusal;
+        float _messageUntil;
 
         public bool IsOpen { get; private set; }
 
@@ -66,6 +74,12 @@ namespace EscapeWithYourFriends.UI
         public const int ChestSlots = 30;
 
         public const int BagSlots = 20;
+
+        /// <summary>How many shelf lines the screen can draw. The trader has twelve.</summary>
+        public const int ShopRows = 16;
+
+        const float RowHeight = 34f;
+        const float RowGap = 4f;
 
         // ---------------------------------------------------------------- building
 
@@ -132,8 +146,20 @@ namespace EscapeWithYourFriends.UI
                                 panelWidth, chestHeight + PanelPad * 2f + HeaderHeight,
                                 out _chestHeader, out RectTransform chestGrid);
 
+            _shopPanel = Panel("Shop", new Vector2((panelWidth + PanelGap) * 0.5f, 0f),
+                               panelWidth, chestHeight + PanelPad * 2f + HeaderHeight,
+                               out _shopHeader, out RectTransform shopGrid);
+
             _bagSlots = Grid(bagGrid, SlotKind.Bag, BagSlots);
             _chestSlots = Grid(chestGrid, SlotKind.Chest, ChestSlots);
+
+            // The shelf shares the chest's rectangle, because only one of them is ever open: you are
+            // either at a chest or at a counter, never both.
+            _shopRows = new SlotView[ShopRows];
+            for (int i = 0; i < ShopRows; i++)
+                _shopRows[i] = SlotView.Create(shopGrid, this, SlotKind.Shop, i,
+                                               new Vector2(0f, -i * (RowHeight + RowGap)),
+                                               new Vector2(gridWidth, RowHeight));
 
             _hint = HudFactory.Label(_root, "Hint", 14, TextAnchor.UpperCenter);
             _hint.color = new Color(0.72f, 0.72f, 0.78f);
@@ -141,7 +167,16 @@ namespace EscapeWithYourFriends.UI
                               new Vector2(0.5f, 1f),
                               new Vector2(0f, -(bagHeight + PanelPad * 2f + HeaderHeight) * 0.5f - 14f),
                               new Vector2(900f, 20f));
-            _hint.text = "drag to move  -  shift-drag for half  -  1-5 or the wheel to select  -  tab to close";
+            _hint.text = "drag to move  -  shift-drag for half  -  right-click to store or sell  -  tab to close";
+
+            // One line under the hint for whatever the server just said no to. Shown for a few
+            // seconds and then gone: a refusal is news, not state.
+            _message = HudFactory.Label(_root, "Message", 15, TextAnchor.UpperCenter);
+            _message.color = new Color(1f, 0.55f, 0.45f);
+            HudFactory.Anchor((RectTransform)_message.transform, new Vector2(0.5f, 0.5f),
+                              new Vector2(0.5f, 1f),
+                              new Vector2(0f, -(bagHeight + PanelPad * 2f + HeaderHeight) * 0.5f - 36f),
+                              new Vector2(900f, 20f));
         }
 
         RectTransform Panel(string name, Vector2 centre, float width, float height,
@@ -233,6 +268,7 @@ namespace EscapeWithYourFriends.UI
             if (_root == null) return;
 
             _bag = holder.Bag;
+            _trading = holder.Trading;
 
             if (_bag == null || !_bag.IsSpawned)
             {
@@ -246,10 +282,13 @@ namespace EscapeWithYourFriends.UI
 
             // Re-asked every frame rather than latched on open: walk away from the chest and the
             // panel goes with it, which is the same rule the server enforces on the transfer.
-            _chest = Storage.NearestInReach(_bag.transform.position);
+            _counter = Economy.ShopCounter.NearestInReach(_bag.transform.position);
+            _chest = _counter != null ? null : Storage.NearestInReach(_bag.transform.position);
 
             DrawBag();
             DrawChest();
+            DrawShop();
+            DrawMessage();
         }
 
         public void SetOpen(bool open)
@@ -291,9 +330,10 @@ namespace EscapeWithYourFriends.UI
             bool has = _chest != null;
             if (_chestPanel.gameObject.activeSelf != has) _chestPanel.gameObject.SetActive(has);
 
-            // With no chest the bag slides back to the middle, so the screen is not permanently
-            // off-centre for the ninety percent of the game spent nowhere near one.
-            _bagPanel.anchoredPosition = has
+            // With nothing on the right the bag slides back to the middle, so the screen is not
+            // permanently off-centre for the ninety percent of the game spent nowhere near either.
+            bool paired = _chest != null || _counter != null;
+            _bagPanel.anchoredPosition = paired
                 ? new Vector2(-(_bagPanel.sizeDelta.x + PanelGap) * 0.5f, 0f)
                 : Vector2.zero;
 
@@ -303,6 +343,51 @@ namespace EscapeWithYourFriends.UI
 
             for (int i = 0; i < _chestSlots.Length; i++)
                 _chestSlots[i].Draw(i < _chest.SlotCount ? _chest[i] : ItemStack.Empty);
+        }
+
+        void DrawShop()
+        {
+            bool has = _counter != null && _counter.Shop != null;
+            if (_shopPanel.gameObject.activeSelf != has) _shopPanel.gameObject.SetActive(has);
+            if (!has) return;
+
+            Data.ShopDef shop = _counter.Shop;
+            _shopHeader.text = $"{shop.DisplayName}   pays {shop.BuyBackFraction:P0} of value";
+
+            for (int i = 0; i < _shopRows.Length; i++)
+            {
+                SlotView row = _shopRows[i];
+                bool live = i < _counter.OfferCount;
+
+                if (row.gameObject.activeSelf != live) row.gameObject.SetActive(live);
+                if (!live) continue;
+
+                Data.ShopDef.Offer offer = _counter.OfferAt(i);
+                ushort index = offer.Item != null && Data.ItemCatalog.Active != null
+                    ? Data.ItemCatalog.Active.IndexOf(offer.Item)
+                    : (ushort)0;
+
+                row.Draw(new ItemStack(index, 1));
+
+                int left = _counter.Remaining(i);
+                row.SetNote(offer.Unlimited
+                                ? $"${offer.Price}"
+                                : left > 0 ? $"${offer.Price}   {left} left" : "sold out");
+            }
+        }
+
+        void DrawMessage()
+        {
+            if (_trading != null && _trading.LastRefusal != null
+                && _trading.LastRefusal != _shownRefusal)
+            {
+                _shownRefusal = _trading.LastRefusal;
+                _messageUntil = Time.time + 3f;
+            }
+
+            bool showing = Time.time < _messageUntil;
+            if (_message.gameObject.activeSelf != showing) _message.gameObject.SetActive(showing);
+            if (showing) _message.text = _shownRefusal;
         }
 
         // ---------------------------------------------------------------- what a drag means
@@ -383,24 +468,50 @@ namespace EscapeWithYourFriends.UI
         }
 
         /// <summary>
-        /// A click with no drag. Left-click on a bag slot picks it for the hotbar; on a chest slot it
-        /// takes the stack. The keyboard shortcut for the most common thing you came here to do.
+        /// A click with no drag, in one rule: **left is here, right is over there.**
+        ///
+        /// Left-clicking a bag slot picks it for the hotbar. Right-clicking one sends it to whatever
+        /// is open on the right - into the chest, or across the counter to be sold. A chest slot or a
+        /// shelf line takes or buys on either button, because there is only one thing either of them
+        /// can mean. Shift buys five.
+        ///
+        /// One rule rather than three because the alternative is a screen where the same click does
+        /// different things depending on what you happen to be standing next to.
         /// </summary>
         public void SlotClick(SlotView slot, PointerEventData pointer)
         {
             if (_bag == null || pointer.dragging) return;
 
-            if (slot.Kind == SlotKind.Bag)
+            bool right = pointer.button == PointerEventData.InputButton.Right;
+
+            switch (slot.Kind)
             {
-                if (slot.Index < Inventory.HotbarSlots) _bag.SelectSlot(slot.Index);
-                else if (_chest != null && !slot.Stack.IsEmpty)
-                    _bag.RequestStore(_chest, slot.Index, slot.Stack.Count);
+                case SlotKind.Bag when !right:
+                    if (slot.Index < Inventory.HotbarSlots) _bag.SelectSlot(slot.Index);
+                    return;
 
-                return;
+                case SlotKind.Bag:
+                    if (slot.Stack.IsEmpty) return;
+
+                    if (_counter != null && _trading != null)
+                        _trading.RequestSell(_counter, slot.Index, slot.Stack.Count);
+                    else if (_chest != null)
+                        _bag.RequestStore(_chest, slot.Index, slot.Stack.Count);
+
+                    return;
+
+                case SlotKind.Chest:
+                    if (_chest != null && !slot.Stack.IsEmpty)
+                        _bag.RequestTake(_chest, slot.Index, slot.Stack.Count);
+
+                    return;
+
+                case SlotKind.Shop:
+                    if (_counter != null && _trading != null)
+                        _trading.RequestBuy(_counter, slot.Index, IsShiftHeld() ? 5 : 1);
+
+                    return;
             }
-
-            if (_chest != null && !slot.Stack.IsEmpty)
-                _bag.RequestTake(_chest, slot.Index, slot.Stack.Count);
         }
 
         static bool IsShiftHeld()
@@ -423,8 +534,11 @@ namespace EscapeWithYourFriends.UI
         {
             if (_bag == null) return "no bag";
 
-            string chest = _chest != null ? _chest.Describe() : "no chest in reach";
-            return $"{(IsOpen ? "open" : "closed")} | {_bag.Describe()} | {chest}";
+            string beside = _counter != null
+                ? _counter.Describe()
+                : _chest != null ? _chest.Describe() : "nothing in reach";
+
+            return $"{(IsOpen ? "open" : "closed")} | {_bag.Describe()} | {beside}";
         }
 
         /// <summary>
@@ -436,12 +550,15 @@ namespace EscapeWithYourFriends.UI
             public readonly Inventory Bag;
             public readonly PlayerInputReader Reader;
             public readonly Economy.Wallet Purse;
+            public readonly Economy.Trading Trading;
 
-            public NetworkObjectHolder(Inventory bag, PlayerInputReader reader, Economy.Wallet purse)
+            public NetworkObjectHolder(Inventory bag, PlayerInputReader reader, Economy.Wallet purse,
+                                       Economy.Trading trading)
             {
                 Bag = bag;
                 Reader = reader;
                 Purse = purse;
+                Trading = trading;
             }
 
             public static NetworkObjectHolder FromLocal()
@@ -451,7 +568,8 @@ namespace EscapeWithYourFriends.UI
 
                 return new NetworkObjectHolder(body.GetComponent<Inventory>(),
                                                body.GetComponent<PlayerInputReader>(),
-                                               body.GetComponent<Economy.Wallet>());
+                                               body.GetComponent<Economy.Wallet>(),
+                                               body.GetComponent<Economy.Trading>());
             }
         }
     }

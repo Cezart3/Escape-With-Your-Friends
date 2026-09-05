@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8175cdd8fd0de1d469bcfc6c61f02353, type: 3}
+  m_Name: Shop
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.ShopDef
+  _id: island_trader
+  _displayName: the Trader
+  _buyBackFraction: 0.5
+  _restockSeconds: 90
+  _offers:
+  - Item: {fileID: 11400000, guid: f35703f74c122f84da9933e3ffcfda78, type: 2}
+    Price: 10
+    Stock: -1
+  - Item: {fileID: 11400000, guid: c087966ca235c4a4889ec3bd5626d9e8, type: 2}
+    Price: 8
+    Stock: -1
+  - Item: {fileID: 11400000, guid: 102f3a04d85440748b6620ef0043bc6d, type: 2}
+    Price: 8
+    Stock: -1
+  - Item: {fileID: 11400000, guid: 44dc35f5974ecd4408e030cbe34bc31f, type: 2}
+    Price: 6
+    Stock: -1
+  - Item: {fileID: 11400000, guid: b0a65aa3f09b4b540a2e8537c53cde48, type: 2}
+    Price: 18
+    Stock: -1
+  - Item: {fileID: 11400000, guid: 662efe19d56c0da498bebe063b2acc8a, type: 2}
+    Price: 10
+    Stock: -1
+  - Item: {fileID: 11400000, guid: 4ba4d009695ab274daa659c36125f37e, type: 2}
+    Price: 25
+    Stock: 5
+  - Item: {fileID: 11400000, guid: 824f7266f5cf17145ae427803853352d, type: 2}
+    Price: 35
+    Stock: 6
+  - Item: {fileID: 11400000, guid: 26b6cba5de2aae54a85162c70fad7849, type: 2}
+    Price: 60
+    Stock: 2
+  - Item: {fileID: 11400000, guid: 72e69a9e8aa50d947ae742d430860875, type: 2}
+    Price: 80
+    Stock: 1
+  - Item: {fileID: 11400000, guid: 242440bf7bf9196499fa8d68fe099d1e, type: 2}
+    Price: 90
+    Stock: 1
+  - Item: {fileID: 11400000, guid: 43200af100ee5ae44884e6b2ea684b1c, type: 2}
+    Price: 400
+    Stock: 4

@@ -11,7 +11,10 @@ namespace EscapeWithYourFriends.UI
     {
         Bag,
         Chest,
-        Hotbar
+        Hotbar,
+
+        /// <summary>A line on the trader's shelf. Wider than a square, and priced.</summary>
+        Shop
     }
 
     /// <summary>
@@ -61,17 +64,20 @@ namespace EscapeWithYourFriends.UI
 
         Text _name;
         Text _count;
+        Text _note;
         ISlotHost _host;
         bool _hovered;
         bool _selected;
 
         /// <summary>Builds the widget under <paramref name="parent"/> at a grid position.</summary>
         public static SlotView Create(RectTransform parent, ISlotHost host, SlotKind kind, int index,
-                                      Vector2 position)
+                                      Vector2 position, Vector2? size = null)
         {
+            Vector2 box = size ?? new Vector2(Size, Size);
+            bool wide = box.x > box.y * 1.5f;
+
             RectTransform rect = HudFactory.Rect(parent, $"{kind}{index}");
-            HudFactory.Anchor(rect, new Vector2(0f, 1f), new Vector2(0f, 1f), position,
-                              new Vector2(Size, Size));
+            HudFactory.Anchor(rect, new Vector2(0f, 1f), new Vector2(0f, 1f), position, box);
 
             var view = rect.gameObject.AddComponent<SlotView>();
             view._host = host;
@@ -85,23 +91,42 @@ namespace EscapeWithYourFriends.UI
             view.Background.raycastTarget = true;
 
             view.Icon = HudFactory.Block(rect, "Icon", new Color(1f, 1f, 1f, 0f));
-            HudFactory.Anchor(view.Icon.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                              Vector2.zero, new Vector2(Size - 16f, Size - 16f));
+            HudFactory.Anchor(view.Icon.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
+                              new Vector2(wide ? 6f : 8f, 0f),
+                              wide ? new Vector2(box.y - 8f, box.y - 8f)
+                                   : new Vector2(box.x - 16f, box.y - 16f));
             view.Icon.preserveAspect = true;
 
-            view._name = HudFactory.Label(rect, "Name", 12, TextAnchor.UpperCenter);
+            // A square reads name-over-count; a row reads name on the left and price on the right,
+            // which is how every shelf anybody has ever looked at is laid out.
+            view._name = HudFactory.Label(rect, "Name", 12,
+                                          wide ? TextAnchor.MiddleLeft : TextAnchor.UpperCenter);
             view._name.horizontalOverflow = HorizontalWrapMode.Wrap;
-            HudFactory.Anchor((RectTransform)view._name.transform, new Vector2(0.5f, 1f),
-                              new Vector2(0.5f, 1f), new Vector2(0f, -6f),
-                              new Vector2(Size - 8f, Size - 20f));
+            HudFactory.Anchor((RectTransform)view._name.transform,
+                              wide ? new Vector2(0f, 0.5f) : new Vector2(0.5f, 1f),
+                              wide ? new Vector2(0f, 0.5f) : new Vector2(0.5f, 1f),
+                              wide ? new Vector2(box.y + 4f, 0f) : new Vector2(0f, -6f),
+                              wide ? new Vector2(box.x * 0.5f, box.y) : new Vector2(box.x - 8f, box.y - 20f));
 
             view._count = HudFactory.Label(rect, "Count", 14, TextAnchor.LowerRight);
             HudFactory.Anchor((RectTransform)view._count.transform, new Vector2(1f, 0f),
                               new Vector2(1f, 0f), new Vector2(-5f, 4f), new Vector2(40f, 18f));
 
+            view._note = HudFactory.Label(rect, "Note", 13,
+                                          wide ? TextAnchor.MiddleRight : TextAnchor.LowerLeft);
+            view._note.color = new Color(0.88f, 0.84f, 0.60f);
+            HudFactory.Anchor((RectTransform)view._note.transform,
+                              wide ? new Vector2(1f, 0.5f) : new Vector2(0f, 0f),
+                              wide ? new Vector2(1f, 0.5f) : new Vector2(0f, 0f),
+                              wide ? new Vector2(-8f, 0f) : new Vector2(5f, 4f),
+                              wide ? new Vector2(box.x * 0.45f, box.y) : new Vector2(50f, 16f));
+
             view.Draw(ItemStack.Empty);
             return view;
         }
+
+        /// <summary>The line on the right of a row: a price, a stock count, whatever it is worth.</summary>
+        public void SetNote(string note) => _note.text = note ?? string.Empty;
 
         /// <summary>Redraws for a stack. Called every frame the screen is open; cheap enough.</summary>
         public void Draw(ItemStack stack)

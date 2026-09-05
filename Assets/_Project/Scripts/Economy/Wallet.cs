@@ -120,6 +120,22 @@ namespace EscapeWithYourFriends.Economy
         }
 
         /// <summary>
+        /// Server only. Money coming back that was spent moments ago - a purchase that did not fit in
+        /// the bag, a cancelled trade. Counted against <see cref="Burned"/> rather than into
+        /// <see cref="Minted"/>, because a refund is not income and a ledger that called it one would
+        /// report the shop as printing money every time somebody's bag was full.
+        /// </summary>
+        public void ServerRefund(int amount, string reason = "refunded")
+        {
+            if (!IsServerStarted || amount <= 0) return;
+
+            _balance.Value += amount;
+            Burned -= amount;
+
+            Debug.Log($"[Wallet] {name} +{amount} ({reason}), now {_balance.Value}.");
+        }
+
+        /// <summary>
         /// Server only. Sets the balance outright, for save loading and for tests. Deliberately not
         /// counted into the ledger: a loaded save is not income, it is the same money again.
         /// </summary>

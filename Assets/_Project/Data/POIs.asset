@@ -79,6 +79,17 @@ MonoBehaviour:
     PadRaise: 0.4
     MaxSlope: 0.3
     AllowUnderwater: 0
+  - Id: shop.counter
+    PrefabPath: Assets/_Project/Prefabs/Stations/ShopCounter.prefab
+    Position: {x: -172, y: -29}
+    Yaw: 282
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 0
+    PadFalloff: 0
+    PadRaise: 0
+    MaxSlope: 0.3
+    AllowUnderwater: 0
   - Id: casino
     PrefabPath: Assets/_Project/Prefabs/World/Casino.prefab
     Position: {x: -270, y: -74}

@@ -255,6 +255,7 @@ namespace EscapeWithYourFriends.EditorTools
             Object.DestroyImmediate(bare);
 
             float campFacing = Facing(camp, Vector2.zero);
+            float shopFacing = Facing(shop, camp);
 
             return new[]
             {
@@ -288,8 +289,14 @@ namespace EscapeWithYourFriends.EditorTools
                       camp + Offset(campFacing + 155f, 8f), campFacing + 335f,
                       pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
 
-                Entry("shop", GreyboxDir + "/Shop.prefab", shop, Facing(shop, camp),
+                Entry("shop", GreyboxDir + "/Shop.prefab", shop, shopFacing,
                       pad: 12f, falloff: 12f, raise: 0.4f, maxSlope: 0.3f),
+
+                // #48's trader, on the camp side of the shop so you walk up to the counter rather
+                // than round the building looking for it. On the shop's own pad, like the revive
+                // machine is on the camp's.
+                Entry("shop.counter", ShopFactory.CounterPath, shop + Offset(shopFacing, 5f),
+                      shopFacing + 180f, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
 
                 Entry("casino", GreyboxDir + "/Casino.prefab", casino, Facing(casino, camp),
                       pad: 14f, falloff: 12f, raise: 0.4f, maxSlope: 0.3f),

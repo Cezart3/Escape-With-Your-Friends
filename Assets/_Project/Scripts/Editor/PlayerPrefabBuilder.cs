@@ -232,9 +232,9 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_aimOrigin").objectReferenceValue = aimOrigin;
             });
 
-            // What this player can spend. The Revive Machine bills it; the shop and the casino
-            // (#47, #77) will too.
-            root.AddComponent<Wallet>();
+            // What this player can spend. The Revive Machine bills it, the shop takes it, and the
+            // casino (#64) will do both.
+            var wallet = root.AddComponent<Wallet>();
 
             // What this player is carrying. Twenty slots and forty kilograms: the slots are what the
             // UI in #46 has to draw, and the weight is what makes a second trip a decision. The
@@ -267,6 +267,11 @@ namespace EscapeWithYourFriends.EditorTools
             // nothing unless every peer holds the identical asset.
             var crafting = root.AddComponent<Crafting>();
             crafting.Configure(RecipeFactory.Catalog(), inventory);
+
+            // The player's side of a trade. Added after both halves it moves, because a shop request
+            // spends money and fills a bag in the same server call.
+            var trading = root.AddComponent<Trading>();
+            trading.Configure(inventory, wallet);
 
             var melee = root.AddComponent<MeleeAttack>();
             SetFields(melee, so =>
