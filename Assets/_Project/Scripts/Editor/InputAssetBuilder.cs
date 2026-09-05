@@ -105,6 +105,13 @@ namespace EscapeWithYourFriends.EditorTools
             hotbarScroll.AddBinding("<Mouse>/scroll/y");
             hotbarScroll.AddBinding("<Gamepad>/dpad/x");
 
+            // Tab, because every game this one's players have already played opens the bag with Tab.
+            // I is the second-most-guessed key and costs nothing to add.
+            InputAction inventory = map.AddAction("ToggleInventory", InputActionType.Button);
+            inventory.AddBinding("<Keyboard>/tab");
+            inventory.AddBinding("<Keyboard>/i");
+            inventory.AddBinding("<Gamepad>/select");
+
             File.WriteAllText(AssetPath, asset.ToJson());
             Object.DestroyImmediate(asset);
 

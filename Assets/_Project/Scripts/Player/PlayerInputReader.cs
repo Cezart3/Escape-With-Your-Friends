@@ -42,6 +42,7 @@ namespace EscapeWithYourFriends.Player
         InputAction _move, _look, _jump, _sprint, _crouch, _interact, _attack, _altAttack, _drop;
         InputAction _use;
         InputAction _hotbarScroll;
+        InputAction _toggleInventory;
         readonly InputAction[] _hotbar = new InputAction[Items.Inventory.HotbarSlots];
 
         bool _bound;
@@ -51,6 +52,7 @@ namespace EscapeWithYourFriends.Player
         // One-shot presses, buffered until whoever cares consumes them. A key tapped between two
         // ticks would otherwise be dropped entirely: at 30Hz that is a third of a second of taps.
         bool _jumpQueued, _interactQueued, _attackQueued, _altAttackQueued, _dropQueued, _useQueued;
+        bool _toggleInventoryQueued;
 
         // Hotbar selection is two inputs for one value. -1 means no number key was pressed; the
         // scroll accumulates because a flick of the wheel is several notches inside one frame.
@@ -90,6 +92,34 @@ namespace EscapeWithYourFriends.Player
         public bool IsBound => _bound;
 
         /// <summary>
+        /// True while a full-screen panel owns the mouse. Set by <c>InventoryScreen</c>.
+        ///
+        /// The world stops taking input entirely while this is on, rather than the UI trying to
+        /// filter clicks out of it. A click meant for an inventory slot must not also swing a fist,
+        /// and a mouse the player is pointing with must not also be turning their head - both of
+        /// those are bugs you only notice once, and then in every session afterwards.
+        /// </summary>
+        public bool UiOpen { get; private set; }
+
+        /// <summary>Opens or closes the world-input gate, and frees or recaptures the cursor.</summary>
+        public void SetUiOpen(bool open)
+        {
+            if (UiOpen == open) return;
+
+            UiOpen = open;
+
+            if (open)
+            {
+                Move = Vector2.zero;
+                Sprint = Crouch = false;
+                InteractHeld = DropHeld = false;
+                ClearQueued();
+            }
+
+            ApplyCursorLock(!open);
+        }
+
+        /// <summary>
         /// Starts reading devices. Called by the motor once it knows this body is ours.
         /// </summary>
         public void Bind(float startYaw)
@@ -127,6 +157,7 @@ namespace EscapeWithYourFriends.Player
             // than throwing and leaving the player unable to move at all.
             _use = _map.FindAction("Use", throwIfNotFound: false);
             _hotbarScroll = _map.FindAction("HotbarScroll", throwIfNotFound: false);
+            _toggleInventory = _map.FindAction("ToggleInventory", throwIfNotFound: false);
             for (int i = 0; i < _hotbar.Length; i++)
                 _hotbar[i] = _map.FindAction($"Hotbar{i + 1}", throwIfNotFound: false);
 
@@ -167,6 +198,18 @@ namespace EscapeWithYourFriends.Player
             if (_scripted)
             {
                 ReadScripted();
+                return;
+            }
+
+            // Read before the gate: the key that closes the screen has to work while it is open.
+            if (_toggleInventory != null)
+                _toggleInventoryQueued |= _toggleInventory.WasPressedThisFrame();
+
+            if (UiOpen)
+            {
+                Move = Vector2.zero;
+                Sprint = Crouch = false;
+                InteractHeld = DropHeld = false;
                 return;
             }
 
@@ -275,6 +318,8 @@ namespace EscapeWithYourFriends.Player
         public bool ConsumeDrop() => Consume(ref _dropQueued);
 
         public bool ConsumeUse() => Consume(ref _useQueued);
+
+        public bool ConsumeToggleInventory() => Consume(ref _toggleInventoryQueued);
 
         /// <summary>The hotbar slot a number key asked for, or -1. Cleared by reading.</summary>
         public int ConsumeHotbarSlot()

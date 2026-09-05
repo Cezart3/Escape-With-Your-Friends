@@ -240,6 +240,56 @@ namespace EscapeWithYourFriends.Items
         [ServerRpc]
         public void SelectSlot(int slot) => ServerSelect(slot);
 
+        /// <summary>
+        /// Move a stack between this bag and a chest, from #46's drag and drop.
+        ///
+        /// These live here rather than on <see cref="Storage"/> because a chest is owned by nobody -
+        /// a ServerRpc on it would have no owner to require. The bag has one, so the request comes
+        /// from the player and names the chest, and the server checks that the player is actually
+        /// standing at it. The UI only ever shows a chest within reach, but that is a courtesy, not
+        /// a check: a client could name any chest on the island.
+        /// </summary>
+        public void RequestStore(Storage chest, int slot, int count)
+        {
+            if (!IsOwner || chest == null) return;
+
+            ServerStore(chest.NetworkObject, slot, count);
+        }
+
+        public void RequestTake(Storage chest, int slot, int count)
+        {
+            if (!IsOwner || chest == null) return;
+
+            ServerTake(chest.NetworkObject, slot, count);
+        }
+
+        [ServerRpc]
+        void ServerStore(NetworkObject chestObject, int slot, int count)
+        {
+            Storage chest = Reachable(chestObject);
+            if (chest != null) chest.ServerDeposit(this, slot, count);
+        }
+
+        [ServerRpc]
+        void ServerTake(NetworkObject chestObject, int slot, int count)
+        {
+            Storage chest = Reachable(chestObject);
+            if (chest != null) chest.ServerWithdraw(this, slot, count);
+        }
+
+        [Server]
+        Storage Reachable(NetworkObject chestObject)
+        {
+            var chest = chestObject != null ? chestObject.GetComponent<Storage>() : null;
+            if (chest == null) return null;
+
+            if (chest.InReach(transform.position)) return chest;
+
+            Debug.Log($"[Inventory] {name} asked for a chest {(chest.transform.position - transform.position).magnitude:F0}m "
+                      + $"away; refused (reach is {Storage.Reach}m).");
+            return null;
+        }
+
         [Server]
         public void ServerSelect(int slot)
         {

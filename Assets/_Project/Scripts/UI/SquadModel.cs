@@ -134,11 +134,6 @@ namespace EscapeWithYourFriends.UI
         }
 
         /// <summary>
-        /// The local player's body, or null before one has spawned. Found through ownership rather
-        /// than cached on spawn, because which body is "yours" is not fixed for the whole session —
-        /// reconnect adoption (#111) hands it to a different object.
-        /// </summary>
-        /// <summary>
         /// The local player's survival bars, or null while there is no body of ours. Found through the
         /// same registry the rest of the HUD uses rather than cached, because the body is replaced on
         /// death, on revive and on reconnect adoption - and a cached one would draw a corpse's numbers.
@@ -150,6 +145,23 @@ namespace EscapeWithYourFriends.UI
                 if (!body.IsValid || !body.Object.IsOwner) continue;
 
                 return body.Object.GetComponent<Player.SurvivalStats>();
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// The local player's body, or null before one has spawned. Found through ownership rather
+        /// than cached on spawn, because which body is "yours" is not fixed for the whole session -
+        /// reconnect adoption (#111) hands it to a different object.
+        /// </summary>
+        public static FishNet.Object.NetworkObject FindLocalBody()
+        {
+            foreach (NetworkPlayerRegistry.PlayerBody body in NetworkPlayerRegistry.Players)
+            {
+                if (!body.IsValid || !body.Object.IsOwner) continue;
+
+                return body.Object;
             }
 
             return null;

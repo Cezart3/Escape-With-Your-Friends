@@ -41,6 +41,41 @@ namespace EscapeWithYourFriends.Items
         [SerializeField] string _label = "chest";
 
         /// <summary>
+        /// How close you have to be for the server to accept a transfer, in metres.
+        ///
+        /// The Interact path is already range-limited by the interactor's own reach, but #46's UI
+        /// sends slot moves straight to the server, so this is where that request is checked. A
+        /// client that can name any chest on the island could otherwise empty all of them from the
+        /// beach, and "the UI only shows nearby chests" is not a check - it is a client-side
+        /// courtesy.
+        /// </summary>
+        public const float Reach = 5f;
+
+        /// <summary>Whether <paramref name="position"/> is close enough to use this chest.</summary>
+        public bool InReach(Vector3 position)
+            => (transform.position - position).sqrMagnitude <= Reach * Reach;
+
+        /// <summary>The nearest chest to a point, within reach, or null. What the UI opens beside the bag.</summary>
+        public static Storage NearestInReach(Vector3 position)
+        {
+            Storage best = null;
+            float bestDistance = float.MaxValue;
+
+            foreach (Storage chest in FindObjectsByType<Storage>(FindObjectsSortMode.None))
+            {
+                if (chest == null || !chest.IsSpawned) continue;
+
+                float distance = (chest.transform.position - position).sqrMagnitude;
+                if (distance > Reach * Reach || distance >= bestDistance) continue;
+
+                best = chest;
+                bestDistance = distance;
+            }
+
+            return best;
+        }
+
+        /// <summary>
         /// What is inside, replicated to everybody. A chest is not owned, so this is not gated on an
         /// owner the way an inventory is - anyone who can see it can see into it.
         /// </summary>

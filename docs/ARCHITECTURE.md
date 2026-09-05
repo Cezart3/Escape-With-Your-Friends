@@ -106,9 +106,9 @@ shipped depot must not contain it.
 build that can only be started by clicking a button cannot be tested from one. `NetworkBootstrap`
 reads `-host` / `-server` / `-client`, plus `-address`, `-port`, `-quitAfter`, and the test flags
 `-latency`, `-botMove`, `-motorLog`, `-clockLog`, `-navWalk`, `-quality`, `-perfLog`, `-invTest`,
-`-itemTest`, `-statTest`, `-statLog`, `-buffTest`, `-craftTest` and `-chestTest` described under
-movement, the day/night cycle, navigation, performance, the inventory, loot, survival, consumables,
-crafting and storage below:
+`-itemTest`, `-statTest`, `-statLog`, `-buffTest`, `-craftTest`, `-chestTest` and `-uiTest` described
+under movement, the day/night cycle, navigation, performance, the inventory, loot, survival,
+consumables, crafting, storage and the bag screen below:
 
 ```
 Unity.exe -quit -batchmode -nographics -projectPath .   -executeMethod EscapeWithYourFriends.EditorTools.BuildTool.PerformBuild   -buildOutput D:/Builds/EWYF-dev -development -scriptingBackend mono
@@ -3103,6 +3103,77 @@ on either side.
 
 **Not done here:** the chest UI, and locks. Both are later issues (#46, #47); a chest that can be
 locked is a social mechanic and this one is deliberately not.
+
+### The bag on screen
+
+Five squares across the bottom, and everything else behind Tab.
+
+**Two canvases, and only one of them has a raycaster.** The always-on HUD - squad list, survival bars,
+objective, hotbar - deliberately has none, because a full-screen `GraphicRaycaster` is the classic way
+a HUD quietly eats the click that was meant to swing a fist. `InventoryScreen` builds its own canvas
+above it, brings its own raycaster and its own `EventSystem`, and takes the mouse on purpose: opening
+it calls `PlayerInputReader.SetUiOpen`, which frees the cursor and stops the world reading input at
+all. Closing gives both back. There is no in-between state where the mouse is doing two jobs.
+
+The `EventSystem` is created by the screen rather than baked into `Bootstrap.unity`, and it uses
+`InputSystemUIInputModule` rather than the legacy `StandaloneInputModule` - with the new input backend
+the old module gives you a screen that draws perfectly and ignores the mouse entirely.
+
+**What a drag means, in one rule.** The stack under the cursor goes to the slot you released it on.
+Same container and the server merges or swaps; different container and it is a transfer. Shift moves
+half. That grammar is identical on the bag grid and the chest grid, so there is nothing to learn
+twice, and a click with no drag does the obvious thing instead: on one of the first five bag slots it
+selects the hotbar slot, and on a chest slot it takes the stack.
+
+**Nothing on screen decides anything.** Every drop is a request - `MoveSlot`, `SplitSlot`,
+`RequestStore`, `RequestTake` - and the screen redraws from replicated state on the next frame. A
+refused move simply does not happen and the squares snap back; there is no optimistic local copy to
+get out of step, which is the same reason the HUD has never had an RPC behind it.
+
+`RequestStore` and `RequestTake` live on `Inventory` rather than on `Storage` because **a chest is
+owned by nobody** - a `ServerRpc` on it would have no owner to require. The bag has one, so the
+request comes from the player and names the chest, and the server checks the player is actually
+standing at it (`Storage.Reach`, five metres). The UI only ever shows a chest within reach, but that is
+a courtesy, not a check: the request names a chest by `NetworkObject`, so a client could name any
+chest on the island.
+
+**No icons, on purpose.** There is no item art yet, so a slot draws the item's name and its count. A
+grid of identical grey squares would be prettier and completely unusable; the `Icon` image is already
+in `SlotView` waiting for sprites. The tooltip carries the numbers a player actually decides with:
+weight each and for the stack, the stack limit, and for a consumable what using it restores and what
+it leaves behind.
+
+Weight is on the HUD above the hotbar, not only inside the bag screen, because "am I about to be
+overloaded" is a question you ask while picking things up rather than while sorting them.
+
+**Verified headless**, which for a UI needs saying plainly. A build with no graphics device has no
+canvas at all, so **the visual half of this - layout, legibility at 1080p, whether dragging feels
+right - is a playtest item and belongs to the #29 gate.** What a terminal can check is everything the
+screen is made of that is not pixels, and `-uiTest` checks all of it:
+
+```
+EscapeWithYourFriends.exe -batchmode -nographics -host -port 7815 -playerKey test:host -scene island -uiTest
+```
+```
+[UiTest] 16 items in the catalog, bag of 20 slots and 40 kg.
+[Inventory] Player(Clone) asked for a chest 202m away; refused (reach is 5m).
+[UiTest] 23 passed, 0 failed. end: 24 / 40 kg | 1/20 slots, 24.0/40kg [9:plank x12]
+```
+
+All sixteen items produce a tooltip that names them, weighs them and - for the consumables - says what
+using them does, which matters more than it sounds: with no icon art, an item whose tooltip is blank is
+an unidentifiable grey square. The weight readout reads zero when empty and says `overloaded` when it
+is. The hotbar wraps in both directions, which is the wheel's entire behaviour. A drag from bag to
+chest stores ten rope, a drag of part of it back takes four and leaves six, and the same request made
+from two hundred metres away is refused by the server with the line above - the one refusal in the log
+is the deliberate one.
+
+Dragging inside the bag moves a stack to an empty slot, splits it in half, and merges the halves back
+together. Zero exceptions.
+
+**Not done here:** icons, an equipped-item model in hand, and controller navigation. The acceptance
+asks for a keyboard/mouse layout and that is what this is; a gamepad needs focus movement and a cursor
+that is not a mouse, which is its own issue.
 
 ---
 
