@@ -274,6 +274,20 @@ namespace EscapeWithYourFriends.EditorTools
                       camp + Offset(campFacing + 70f, 8f), campFacing + 250f,
                       pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
 
+                // #44's chests. Two rather than one, and next to each other, because "the food chest
+                // and the parts chest" is a thing four players will agree on in about a minute and
+                // one chest gives them nothing to agree about.
+                // Eight metres out and behind the camp, in the gap between two of the four spawn
+                // points on the 6.5m ring. Anything closer than that ring is somewhere a player
+                // materialises, and spawning inside a chest is a bug report rather than a joke.
+                Entry("camp.chest.a", StorageBuilder.ChestPath,
+                      camp + Offset(campFacing + 140f, 8f), campFacing + 320f,
+                      pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
+
+                Entry("camp.chest.b", StorageBuilder.ChestPath,
+                      camp + Offset(campFacing + 155f, 8f), campFacing + 335f,
+                      pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
+
                 Entry("shop", GreyboxDir + "/Shop.prefab", shop, Facing(shop, camp),
                       pad: 12f, falloff: 12f, raise: 0.4f, maxSlope: 0.3f),
 

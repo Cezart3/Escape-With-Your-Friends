@@ -261,6 +261,7 @@ namespace EscapeWithYourFriends.Net
 
             Items.WorldItemTest.Begin();
             Items.CraftingTest.Begin();
+            Items.StorageTest.Begin();
             Player.SurvivalTest.Begin();
             Player.BuffTest.Begin();
         }

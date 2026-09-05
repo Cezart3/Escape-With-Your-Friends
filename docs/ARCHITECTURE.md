@@ -106,9 +106,9 @@ shipped depot must not contain it.
 build that can only be started by clicking a button cannot be tested from one. `NetworkBootstrap`
 reads `-host` / `-server` / `-client`, plus `-address`, `-port`, `-quitAfter`, and the test flags
 `-latency`, `-botMove`, `-motorLog`, `-clockLog`, `-navWalk`, `-quality`, `-perfLog`, `-invTest`,
-`-itemTest`, `-statTest`, `-statLog`, `-buffTest` and `-craftTest` described under movement, the
-day/night cycle, navigation, performance, the inventory, loot, survival, consumables and crafting
-below:
+`-itemTest`, `-statTest`, `-statLog`, `-buffTest`, `-craftTest` and `-chestTest` described under
+movement, the day/night cycle, navigation, performance, the inventory, loot, survival, consumables,
+crafting and storage below:
 
 ```
 Unity.exe -quit -batchmode -nographics -projectPath .   -executeMethod EscapeWithYourFriends.EditorTools.BuildTool.PerformBuild   -buildOutput D:/Builds/EWYF-dev -development -scriptingBackend mono
@@ -3029,6 +3029,80 @@ start on top of the first, that a fire recipe is refused with no fire nearby and
 across the island, that index 0 is nobody and every recipe round-trips through its index, and that the
 fire actually warms - eight points of warmth in one second, which the 3.5/s ambient recovery cannot do
 on its own.
+
+### Chests
+
+**A chest is thirty slots that nobody owns.** `Storage` holds a `SyncList<ItemStack>` replicated to
+everybody who can see it - not gated on an owner the way an inventory is, because a shared chest in a
+co-op game is shared. Two of them stand at camp, eight metres out in the gap between two of the four
+spawn points, because "the food chest and the parts chest" is a thing four players will agree on in
+about a minute and one chest gives them nothing to agree about.
+
+**The whole issue is duplication under concurrent access**, and it is worth being precise about what
+that means here. It is not a threading race: the server processes one RPC at a time on one thread, so
+nothing interleaves mid-method. It is a *stale view* race. Two players are looking at the same
+replicated slot, both press take, and both requests arrive describing a pile only one of them can
+have. Three rules answer it, and every transfer obeys all three:
+
+1. **A request names a slot and a count, never an item.** The server reads its own slot. The second
+   player to arrive reads what the first one left, which is usually nothing.
+2. **Take, give, return the remainder - in one server call.** Nothing runs between those lines, so the
+   return cannot fail: the room it needs is the room the take just made.
+3. **Nothing is ever added before it is removed.** Every unit exists in exactly one place at every
+   line of every method.
+
+Rule 2 is there for the *other* half of the bug, which is not duplication but deletion - items voided
+because the destination was full and nobody put them back. That one is easier to write and much harder
+to notice, so the harness checks conservation on every transfer: the total across the chest and both
+bags must not move in either direction.
+
+**Full hands put something in; empty hands take something out.** The chest is an `IInteractable`, and
+this is where it differs from the crafting bench, which deliberately is not one. A bench has nothing
+useful to do on a keypress until there is a UI to open; a chest does. Interact deposits the selected
+hotbar stack, and with nothing selected it hands back the last thing in there. That is a complete loop
+- dump your loot at base, take it back out - with no screen to draw, which makes #46's UI a better way
+to do the same thing rather than the only way to do it at all.
+
+The chest has no weight limit. A bag is a decision about what to carry; a chest is where you stop
+making that decision, and a container that could be overloaded would just be a worse bag. The bag at
+the other end of a transfer *is* weight-limited, which is why a withdrawal can move less than was
+asked for and why the remainder has to go back.
+
+**Verified headless**, two processes, on the island so the camp's chests exist:
+
+```
+EscapeWithYourFriends.exe -batchmode -nographics -host -port 7803 -playerKey test:host -scene island -chestTest
+EscapeWithYourFriends.exe -batchmode -nographics -client -address 127.0.0.1 -port 7803 -playerKey test:c1 -chestTest
+```
+```
+[StorageTest] StorageChest (camp.chest.b): 0/30 slots [], two bags of 20 and 20 slots.
+[Storage] Player(Clone) stored 3 item(s) in StorageChest (camp.chest.b); 1/30 slots used.
+[Storage] Player(Clone) took 3 item(s) out of StorageChest (camp.chest.b); 0/30 slots used.
+[StorageTest] 29 passed, 0 failed. end: 2/30 slots [0:rope x4, 1:plank x9]
+```
+
+The race is not approximated. Two clients pressing take in the same tick arrive at the server as two
+calls, back to back, with nothing between them, so the test makes exactly that call twice on the same
+slot - and anything that survives it survives the real thing. Ten rope in one slot, both players ask
+for ten: one gets ten, the other gets zero, and ten still exist. Twelve planks, both ask for seven:
+seven then five. A bag too heavy for one more flint takes nothing and the flint stays in the chest. A
+chest with thirty full slots swallows nothing and the rope stays in the bag.
+
+From the second process, which asked for none of it:
+
+```
+[Storage] client sees StorageChest(Clone): 1/30 slots [0:rope x10]
+[Storage] client sees StorageChest(Clone): 0/30 slots []
+[Storage] client sees StorageChest(Clone): 1/30 slots [0:plank x12]
+[Storage] client sees StorageChest(Clone): 1/30 slots [0:plank x5]
+```
+
+The pile of ten leaves once. The pile of twelve becomes five. Seventy-nine states in all, ending on
+`2/30 slots [0:rope x4, 1:plank x9]` - character for character what the server said. Zero exceptions
+on either side.
+
+**Not done here:** the chest UI, and locks. Both are later issues (#46, #47); a chest that can be
+locked is a social mechanic and this one is deliberately not.
 
 ---
 
