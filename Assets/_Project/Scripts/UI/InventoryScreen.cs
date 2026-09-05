@@ -435,11 +435,13 @@ namespace EscapeWithYourFriends.UI
         {
             public readonly Inventory Bag;
             public readonly PlayerInputReader Reader;
+            public readonly Economy.Wallet Purse;
 
-            public NetworkObjectHolder(Inventory bag, PlayerInputReader reader)
+            public NetworkObjectHolder(Inventory bag, PlayerInputReader reader, Economy.Wallet purse)
             {
                 Bag = bag;
                 Reader = reader;
+                Purse = purse;
             }
 
             public static NetworkObjectHolder FromLocal()
@@ -448,7 +450,8 @@ namespace EscapeWithYourFriends.UI
                 if (body == null) return default;
 
                 return new NetworkObjectHolder(body.GetComponent<Inventory>(),
-                                               body.GetComponent<PlayerInputReader>());
+                                               body.GetComponent<PlayerInputReader>(),
+                                               body.GetComponent<Economy.Wallet>());
             }
         }
     }

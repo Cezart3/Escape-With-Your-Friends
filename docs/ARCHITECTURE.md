@@ -106,9 +106,9 @@ shipped depot must not contain it.
 build that can only be started by clicking a button cannot be tested from one. `NetworkBootstrap`
 reads `-host` / `-server` / `-client`, plus `-address`, `-port`, `-quitAfter`, and the test flags
 `-latency`, `-botMove`, `-motorLog`, `-clockLog`, `-navWalk`, `-quality`, `-perfLog`, `-invTest`,
-`-itemTest`, `-statTest`, `-statLog`, `-buffTest`, `-craftTest`, `-chestTest` and `-uiTest` described
-under movement, the day/night cycle, navigation, performance, the inventory, loot, survival,
-consumables, crafting, storage and the bag screen below:
+`-itemTest`, `-statTest`, `-statLog`, `-buffTest`, `-craftTest`, `-chestTest`, `-uiTest` and
+`-moneyTest` described under movement, the day/night cycle, navigation, performance, the inventory,
+loot, survival, consumables, crafting, storage, the bag screen and money below:
 
 ```
 Unity.exe -quit -batchmode -nographics -projectPath .   -executeMethod EscapeWithYourFriends.EditorTools.BuildTool.PerformBuild   -buildOutput D:/Builds/EWYF-dev -development -scriptingBackend mono
@@ -3174,6 +3174,68 @@ together. Zero exceptions.
 **Not done here:** icons, an equipped-item model in hand, and controller navigation. The acceptance
 asks for a keyboard/mouse layout and that is what this is; a gamepad needs focus movement and a cursor
 that is not a mouse, which is its own issue.
+
+### Money
+
+**Per-player, not a shared pot.** A shared wallet sounds friendlier and is worse: half the comedy of
+this game is one player refusing to pay to revive another.
+
+`Wallet` is a `SyncVar<int>` that only the server writes. Clients observe, the same shape as `Health`.
+A modified client can lie about its balance on its own screen all it likes; the purchase still goes
+through `ServerTrySpend` on the host.
+
+**"A client cannot mint money" is kept true structurally, not by checking.** There is exactly one
+client-callable money verb in the game - `RequestPay`, handing some of yours to somebody else - and it
+cannot create a coin by construction: it takes from the sender before it gives to the receiver, in one
+server call, with nothing between the two lines. The same rule as the chests in #44, for the same
+reason - a give-then-take would create money for a frame, and a frame is long enough to be a
+duplication bug. Everything else that moves money is server-side and is called by something that
+already decided a sale, a payout or a charge was earned.
+
+That verb exists partly because it is a real co-op gesture - chipping in for a revive, paying somebody
+back for the boat - and partly because it is the honest test of the criterion. A door nobody can open
+proves nothing; this one is open, and still cannot mint.
+
+**Every mutation carries a reason and is counted.** `Wallet.Minted` and `Wallet.Burned` are the total
+money created and destroyed on this server since it started, including the starting balances, because
+a starting balance is money made from nothing and a ledger is only useful if it is honest about that.
+A transfer touches neither counter. With them, "did anything create money this session" is a question
+with a number for an answer rather than an opinion - which is what the harness asks, and what a live
+session can be asked once the casino (#64) is paying out.
+
+The balance shows bottom-right, opposite the survival bars: those are the things killing you and this
+is the thing that gets you off the island. It flashes green on income and red on spending, because a
+number that changes silently is a number nobody notices changing, and "did that sale go through"
+should never be a question.
+
+**Verified headless**, two processes, because the criterion needs two wallets:
+
+```
+EscapeWithYourFriends.exe -batchmode -nographics -host -port 7820 -playerKey test:host -moneyTest
+EscapeWithYourFriends.exe -batchmode -nographics -client -address 127.0.0.1 -port 7820 -playerKey test:c1
+```
+```
+[MoneyTest] two wallets, $1,000 and $200, $1,200 in the world.
+[Wallet] Player(Clone) paid Player(Clone) 300; 700 left, they now have 500.
+[Wallet] Player(Clone) paid Player(Clone) 200; 500 left, they now have 700.
+[Wallet] Player(Clone) -500 (test purchase), now 0.
+[Wallet] Player(Clone) +250 (test sale), now 250.
+[MoneyTest] 29 passed, 0 failed.
+  end: $250 and $700, $950 in the world, 250 minted, 500 burned.
+```
+
+The last line is the whole acceptance in one arithmetic check: 1200 - 500 + 250 = 950. The test does
+not go hunting for exploits, because a list of exploits is only ever as good as the imagination that
+wrote it. It checks **conservation** - the total across every wallet, before and after everything a
+client is allowed to ask for. Minting shows up as that number going up with nothing on the server
+having decided it should.
+
+Paying more than you have, a negative amount, zero, yourself, and a wallet that is not there are all
+refused, twice: once at the client-facing door before a message is sent, and again on the server which
+does not trust that the first check happened.
+
+**Not done here:** where money comes from. Selling loot is the shop (#48), fish is #54, and a lucky
+spin is #64. All three are callers of `ServerAdd`, which is why this issue is small and they are not.
 
 ---
 
