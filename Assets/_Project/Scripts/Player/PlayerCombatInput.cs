@@ -22,7 +22,7 @@ namespace EscapeWithYourFriends.Player
     public class PlayerCombatInput : NetworkBehaviour
     {
         [SerializeField] PlayerInputReader _input;
-        [SerializeField] MeleeAttack _melee;
+        [SerializeField] Combat.Weapon _weapon;
         [SerializeField] TaserWeapon _taser;
         [SerializeField] CarrySystem _carry;
         [SerializeField] PlayerInteractor _interactor;
@@ -78,7 +78,7 @@ namespace EscapeWithYourFriends.Player
             if (attack)
             {
                 if (_ghost != null && _ghost.IsActive) _ghost.RequestNudge();
-                else if (_melee != null) _melee.RequestAttack();
+                else if (_weapon != null) _weapon.RequestAttack();
             }
 
             if (altAttack && _taser != null) _taser.RequestFire();

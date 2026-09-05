@@ -61,3 +61,7 @@ Steam/sdk/
 
 # Claude Code session state
 .claude/
+
+# graphify
+graphify-out/
+.graphify_*

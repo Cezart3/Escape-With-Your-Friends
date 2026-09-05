@@ -75,6 +75,12 @@ namespace EscapeWithYourFriends.EditorTools
             new("torch", "Torch", ItemCategory.Tool, 1, 1f, 12, "Light, for the twenty minutes a night lasts."),
             new("fishing_rod", "Fishing Rod", ItemCategory.Tool, 1, 1.6f, 35, "For the minigame nobody asked for and everybody plays."),
 
+            // Weapons are items like any other: what makes them weapons is a WeaponDef pointing back
+            // at them, not a category. The category is what the shop and the tooltip read.
+            new("machete", "Machete", ItemCategory.Weapon, 1, 1.8f, 55, "Long, heavy, and it sends people over ledges."),
+            new("pistol", "Pistol", ItemCategory.Weapon, 1, 1.1f, 120, "Settles an argument from across the clearing."),
+            new("pistol_ammo", "Pistol Rounds", ItemCategory.Material, 60, 0.02f, 2, "Small, heavy in bulk, gone in seconds."),
+
             new("boat_part", "Boat Part", ItemCategory.Quest, 1, 12f, 0, "One of the pieces that gets you off this island."),
         };
 

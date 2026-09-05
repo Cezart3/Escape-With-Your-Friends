@@ -107,9 +107,9 @@ build that can only be started by clicking a button cannot be tested from one. `
 reads `-host` / `-server` / `-client`, plus `-address`, `-port`, `-quitAfter`, and the test flags
 `-latency`, `-botMove`, `-motorLog`, `-clockLog`, `-navWalk`, `-quality`, `-perfLog`, `-invTest`,
 `-itemTest`, `-statTest`, `-statLog`, `-buffTest`, `-craftTest`, `-chestTest`, `-uiTest`,
-`-moneyTest` and `-shopTest` described under movement, the day/night cycle, navigation, performance,
-the inventory, loot, survival, consumables, crafting, storage, the bag screen, money and the shop
-below:
+`-moneyTest`, `-shopTest`, `-weaponTest` and `-weaponLog` described under movement, the day/night
+cycle, navigation, performance, the inventory, loot, survival, consumables, crafting, storage, the
+bag screen, money, the shop and weapons below:
 
 ```
 Unity.exe -quit -batchmode -nographics -projectPath .   -executeMethod EscapeWithYourFriends.EditorTools.BuildTool.PerformBuild   -buildOutput D:/Builds/EWYF-dev -development -scriptingBackend mono
@@ -3313,6 +3313,91 @@ zero rather than at minus two, and charge nobody for a knife they did not get. A
 weight limit buys nothing, is charged nothing, and puts the knife back. And the ledger identity -
 wallets, minus minted, plus burned - is asserted after every single step, which is what makes "did the
 shop print money" a question with a number for an answer rather than an opinion.
+
+### Weapons
+
+*Issue #49. `Data/WeaponDef.cs`, `Data/WeaponCatalog.cs`, `Combat/Weapon.cs`,
+`Editor/WeaponFactory.cs`, `Combat/WeaponTest.cs`.*
+
+The acceptance is one sentence - *"a new weapon is one `.asset` file plus a prefab, no new code"* -
+and it is a sentence about what does **not** exist. So this issue mostly deleted things.
+
+**One definition type, not two.** `WeaponDef` replaced `MeleeWeaponDef` outright rather than sitting
+beside a new `GunDef`. A second definition type means a second component that reads it, a second
+equip path, and a second place to forget the aim check - and the first person to add a crossbow would
+have needed a third of each. The honest cost of one type is a handful of fields that only one kind
+uses, and that cost is paid in the inspector and nowhere else. `Weapon` likewise absorbed
+`MeleeAttack`: there is exactly **one branch on `WeaponKind`**, inside `ServerResolve`, and it picks
+between a cone and a ray. Everything on either side of it - the cooldown, the incapacitation gate,
+the aim validation, the damage application, the observer RPCs - is shared.
+
+A melee weapon states a cooldown; a gun states rounds per minute, because "rounds per minute" is a
+strange thing to say about a bat. Both arrive at `WeaponDef.Cooldown` as the same number.
+
+**Holding it is equipping it.** `WeaponDef.Item` points at the `ItemDef` the weapon *is*, and the
+server reads the selected hotbar slot every frame, asks `WeaponCatalog.ForItem` what that is, and
+writes the answer into a `SyncVar<ushort>`. Nobody calls an equip function; there is no equip function
+to call. That is what makes the acceptance true in play rather than only in principle: point a new
+asset at an item and the thing swings. An item that is not a weapon falls back to fists, so you can
+punch somebody while holding a fish.
+
+Polling rather than subscribing to `Inventory.Changed`, deliberately: what you are holding is a
+*function* of the bag's state, and a function cannot go wrong because somebody forgot to raise an
+event.
+
+`WeaponCatalog` is the fourth catalog and follows the same doctrine as items, buffs and recipes -
+sorted by id, rebuilt whole from the folder, index 0 means unarmed. **Index 0 is not fists**: fists
+are a real asset with real numbers, and 0 is the value the slot holds before the server has decided
+anything.
+
+**Anti-cheat is unchanged from #17 and now covers guns for free.** The client sends an aim direction
+and nothing else. Range, spread, cone, damage, cooldown and what was actually standing there all come
+from the server's copy of the definition, so editing a local asset buys nothing. Hitscan rather than
+projectiles: a projectile is a networked object with a position to reconcile, and none of these guns
+are slow enough for anyone to see the difference. Where the tracer is drawn is a lie the client tells;
+where the damage landed is the server's raycast.
+
+`WeaponFactory` seeds five - fists, knife and hatchet off items that already existed, a machete that
+needed a new one, and a pistol - which is enough that both branches are real and tested. #50 and #51
+add the rest of the arsenal, and by then adding one is a row in a table.
+
+`-weaponTest` is the harness, and it needs two processes. It never names a weapon: it walks the
+catalog by index, puts each one in the hand, and asserts the damage that landed equals what *that
+asset* says. A hard-coded ten damage in `Weapon` would survive a "does punching work" test and die
+here. **27 checks, all passing:**
+
+```
+[WeaponTest] catalog holds 5 weapon(s): fists, hatchet, knife, machete, pistol
+[WeaponTest] hatchet at 1.2m: 1 hit(s), 34.0 damage, asset says 34.0.
+[WeaponTest] pistol at 30m: 1 hit(s) in 4 shot(s), 26.0 damage.
+[WeaponTest]   hatchet t1 melee 34dmg 0.75s 2.2m cone 50deg x2  -> 34 damage at 1.1m
+[WeaponTest]   knife   t1 melee 22dmg 0.35s 1.8m cone 35deg x1  -> 22 damage at 0.9m
+[WeaponTest]   machete t2 melee 40dmg 0.60s 2.6m cone 70deg x3  -> 40 damage at 1.3m
+[WeaponTest]   pistol  t1 gun 26dmg 300rpm 1x1.5deg 60m mag 12  -> 26 damage at 20.0m
+[WeaponTest] 27 passed, 0 failed.
+```
+
+Three of its first failures were the harness lying rather than the code being wrong, and each is
+worth writing down because the next harness will meet them again:
+
+- **`Inventory.ServerSelect` wraps modulo the five hotbar slots** rather than clamping, because a
+  scroll wheel that sticks at the end of the row feels broken. A sixth item in the bag therefore
+  selects the first, and the test measured a hatchet while believing it held a machete. The bag is
+  now emptied between weapons.
+- **`Health` ignores damage for two seconds after a spawn**, so nobody is killed on the pad they
+  arrived on. The first swing landed inside that window and reported a working hatchet as dealing
+  zero. The test now swings until one lands rather than sleeping a magic number.
+- **A greybox arena has walls in it.** A victim placed thirty metres away had a building seven metres
+  along the line, and a working pistol was reported broken. The test now probes twelve bearings for a
+  clear lane before placing anybody.
+
+And one that was the design working: a 1.5-degree spread throws a single pellet about 0.8 m sideways
+at thirty metres, which is wider than the person being shot at. One shot missing at that range *is*
+the gun. Asserting on one shot is asserting on a dice roll, so the test fires until one connects and
+reports how many it took - four, in the run above.
+
+**Not done here:** ammunition and reloading are defined as data and consumed by nothing (#51), the
+recoil number is read by no camera yet (#51), and `UpgradesTo` is a link nothing follows (#52).
 
 ---
 

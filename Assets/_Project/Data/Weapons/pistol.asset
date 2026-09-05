@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b81482618dd810141af52ce8f2208db6, type: 3}
+  m_Name: pistol
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.WeaponDef
+  _id: pistol
+  _displayName: Pistol
+  _description: Reaches across the clearing. Reloading is #51's problem.
+  _kind: 1
+  _item: {fileID: 11400000, guid: c73b9523f3d4d734387c3549dfd1cbf9, type: 2}
+  _hit:
+    _damage: 26
+    _damageType: 0
+    _knockback: 6
+    _upwardBias: 0.1
+    _stunDuration: 0.6
+  _cooldown: 0
+  _windup: 0
+  _range: 60
+  _radius: 0
+  _coneHalfAngle: 5
+  _maxTargets: 1
+  _shotRange: 60
+  _pellets: 1
+  _spread: 1.5
+  _recoil: 1.2
+  _roundsPerMinute: 300
+  _magazine: 12
+  _reloadSeconds: 1.8
+  _ammo: {fileID: 11400000, guid: 68e4e002373b16e4db2bc877a59b00f7, type: 2}
+  _viewPrefab: {fileID: 1874732295560729294, guid: 61e2fc5ffb5bba84f864dc6e7dd1d558, type: 3}
+  _tier: 1
+  _upgradesTo: {fileID: 0}

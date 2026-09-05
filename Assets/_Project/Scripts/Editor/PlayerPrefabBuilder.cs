@@ -38,7 +38,6 @@ namespace EscapeWithYourFriends.EditorTools
         const string PrefabPath = PrefabDir + "/Player.prefab";
 
         const string DataDir = "Assets/_Project/Data";
-        const string FistsPath = DataDir + "/Fists.asset";
         const string TaserPath = DataDir + "/Taser.asset";
 
         const string PrefabObjectsPath = "Assets/DefaultPrefabObjects.asset";
@@ -121,7 +120,7 @@ namespace EscapeWithYourFriends.EditorTools
             Directory.CreateDirectory(PrefabDir);
             Directory.CreateDirectory(DataDir);
 
-            MeleeWeaponDef fists = EnsureAsset<MeleeWeaponDef>(FistsPath);
+            WeaponCatalog weapons = WeaponFactory.Catalog();
             TaserDef taser = EnsureAsset<TaserDef>(TaserPath);
 
             var controls = AssetDatabase.LoadAssetAtPath<InputActionAsset>(InputAssetPath);
@@ -129,7 +128,7 @@ namespace EscapeWithYourFriends.EditorTools
                 Debug.LogWarning($"[PlayerPrefabBuilder] missing {InputAssetPath}; "
                                  + "run InputAssetBuilder.BuildInputAsset first or nobody will move.");
 
-            GameObject root = BuildHierarchy(fists, taser, controls);
+            GameObject root = BuildHierarchy(weapons, taser, controls);
 
             // Overwrite rather than merge. This prefab is generated output; anything edited into it by
             // hand would be lost on the next run anyway, so losing it loudly is better.
@@ -154,7 +153,8 @@ namespace EscapeWithYourFriends.EditorTools
             if (Application.isBatchMode) EditorApplication.Exit(0);
         }
 
-        static GameObject BuildHierarchy(MeleeWeaponDef fists, TaserDef taser, InputActionAsset controls)
+        static GameObject BuildHierarchy(WeaponCatalog weapons, TaserDef taser,
+                                        InputActionAsset controls)
         {
             var root = new GameObject("Player");
 
@@ -273,12 +273,11 @@ namespace EscapeWithYourFriends.EditorTools
             var trading = root.AddComponent<Trading>();
             trading.Configure(inventory, wallet);
 
-            var melee = root.AddComponent<MeleeAttack>();
-            SetFields(melee, so =>
-            {
-                so.FindProperty("_aimOrigin").objectReferenceValue = aimOrigin;
-                so.FindProperty("_fists").objectReferenceValue = fists;
-            });
+            // One component for every weapon in the game. It reads the selected hotbar slot and
+            // asks the catalog what that item is, so there is nothing here to change when a weapon is
+            // added - which is the whole of #49's acceptance.
+            var weapon = root.AddComponent<Weapon>();
+            weapon.Configure(weapons, inventory, aimOrigin);
 
             var taserWeapon = root.AddComponent<TaserWeapon>();
             SetFields(taserWeapon, so =>
@@ -302,7 +301,7 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_health").objectReferenceValue = health;
                 so.FindProperty("_ragdoll").objectReferenceValue = ragdoll;
                 so.FindProperty("_input").objectReferenceValue = inputReader;
-                so.FindProperty("_melee").objectReferenceValue = melee;
+                so.FindProperty("_weapon").objectReferenceValue = weapon;
                 so.FindProperty("_carry").objectReferenceValue = carrySystem;
                 so.FindProperty("_interactor").objectReferenceValue = interactor;
             });
@@ -314,7 +313,7 @@ namespace EscapeWithYourFriends.EditorTools
             SetFields(combatInput, so =>
             {
                 so.FindProperty("_input").objectReferenceValue = inputReader;
-                so.FindProperty("_melee").objectReferenceValue = melee;
+                so.FindProperty("_weapon").objectReferenceValue = weapon;
                 so.FindProperty("_taser").objectReferenceValue = taserWeapon;
                 so.FindProperty("_carry").objectReferenceValue = carrySystem;
                 so.FindProperty("_interactor").objectReferenceValue = interactor;

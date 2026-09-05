@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b81482618dd810141af52ce8f2208db6, type: 3}
+  m_Name: hatchet
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.WeaponDef
+  _id: hatchet
+  _displayName: Hatchet
+  _description: Chops trees, chops friends. Slow enough that missing costs you.
+  _kind: 0
+  _item: {fileID: 11400000, guid: 242440bf7bf9196499fa8d68fe099d1e, type: 2}
+  _hit:
+    _damage: 34
+    _damageType: 0
+    _knockback: 9
+    _upwardBias: 0.28
+    _stunDuration: 1.6
+  _cooldown: 0.75
+  _windup: 0.2
+  _range: 2.2
+  _radius: 0.5
+  _coneHalfAngle: 50
+  _maxTargets: 2
+  _shotRange: 60
+  _pellets: 1
+  _spread: 0
+  _recoil: 0
+  _roundsPerMinute: 1
+  _magazine: 0
+  _reloadSeconds: 1.8
+  _ammo: {fileID: 0}
+  _viewPrefab: {fileID: 6763438946834142648, guid: 2a6c2ebce9902ae478e2f70a9f2f0da1, type: 3}
+  _tier: 1
+  _upgradesTo: {fileID: 0}

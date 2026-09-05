@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b81482618dd810141af52ce8f2208db6, type: 3}
+  m_Name: knife
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.WeaponDef
+  _id: knife
+  _displayName: Knife
+  _description: Fast and narrow. Hits one person properly instead of four badly.
+  _kind: 0
+  _item: {fileID: 11400000, guid: 26b6cba5de2aae54a85162c70fad7849, type: 2}
+  _hit:
+    _damage: 22
+    _damageType: 0
+    _knockback: 3
+    _upwardBias: 0.15
+    _stunDuration: 0.8
+  _cooldown: 0.35
+  _windup: 0.08
+  _range: 1.8
+  _radius: 0.35
+  _coneHalfAngle: 35
+  _maxTargets: 1
+  _shotRange: 60
+  _pellets: 1
+  _spread: 0
+  _recoil: 0
+  _roundsPerMinute: 1
+  _magazine: 0
+  _reloadSeconds: 1.8
+  _ammo: {fileID: 0}
+  _viewPrefab: {fileID: 3384278013064512093, guid: 912c1624aaebd034288c1840e788b456, type: 3}
+  _tier: 1
+  _upgradesTo: {fileID: 0}

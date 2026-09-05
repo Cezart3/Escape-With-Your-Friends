@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b81482618dd810141af52ce8f2208db6, type: 3}
+  m_Name: machete
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.WeaponDef
+  _id: machete
+  _displayName: Machete
+  _description: Long, wide, and it launches people. The tier-two answer to a crowd.
+  _kind: 0
+  _item: {fileID: 11400000, guid: 6396132b9743971449dfd22df3684777, type: 2}
+  _hit:
+    _damage: 40
+    _damageType: 0
+    _knockback: 11
+    _upwardBias: 0.35
+    _stunDuration: 1.8
+  _cooldown: 0.6
+  _windup: 0.16
+  _range: 2.6
+  _radius: 0.55
+  _coneHalfAngle: 70
+  _maxTargets: 3
+  _shotRange: 60
+  _pellets: 1
+  _spread: 0
+  _recoil: 0
+  _roundsPerMinute: 1
+  _magazine: 0
+  _reloadSeconds: 1.8
+  _ammo: {fileID: 0}
+  _viewPrefab: {fileID: 8057041688959961865, guid: 7edce5eb8acc51545946183d94e45985, type: 3}
+  _tier: 2
+  _upgradesTo: {fileID: 0}

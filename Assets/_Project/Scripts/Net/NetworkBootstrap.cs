@@ -265,6 +265,7 @@ namespace EscapeWithYourFriends.Net
             UI.UiTest.Begin();
             Economy.MoneyTest.Begin();
             Economy.ShopTest.Begin();
+            Combat.WeaponTest.Begin();
             Player.SurvivalTest.Begin();
             Player.BuffTest.Begin();
         }

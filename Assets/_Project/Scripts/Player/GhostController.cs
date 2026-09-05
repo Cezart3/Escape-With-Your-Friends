@@ -39,7 +39,7 @@ namespace EscapeWithYourFriends.Player
     ///
     /// The "cannot deal damage or pick up items" half of the acceptance criteria needed no code at
     /// all: every combat verb already re-checks <see cref="Health.IsIncapacitated"/> *inside* its
-    /// ServerRpc — <c>MeleeAttack.ServerAttack</c>, <c>TaserWeapon</c>, <c>CarrySystem.ServerPickup</c>,
+    /// ServerRpc — <c>Weapon.ServerAttack</c>, <c>TaserWeapon</c>, <c>CarrySystem.ServerPickup</c>,
     /// <c>PlayerInteractor.ServerInteract</c>, <c>PlayerMotor</c> — so a dead client that calls them
     /// anyway is refused by the server, not merely by its own UI. The <c>-ghostTest</c> hook below
     /// calls all three on purpose, from a corpse, to keep that true.
@@ -53,7 +53,7 @@ namespace EscapeWithYourFriends.Player
 
         [Header("Test targets")]
         [Tooltip("Only used by -ghostTest, which tries to use them from beyond the grave.")]
-        [SerializeField] MeleeAttack _melee;
+        [SerializeField] Combat.Weapon _weapon;
         [SerializeField] CarrySystem _carry;
         [SerializeField] PlayerInteractor _interactor;
 
@@ -333,7 +333,7 @@ namespace EscapeWithYourFriends.Player
             {
                 ParkBehindCorpse();
 
-                if (_melee != null) _melee.RequestAttack();
+                if (_weapon != null) _weapon.RequestAttack();
                 if (_carry != null) _carry.RequestPickupOrDrop();
                 bool interacted = _interactor != null && _interactor.RequestInteract();
 

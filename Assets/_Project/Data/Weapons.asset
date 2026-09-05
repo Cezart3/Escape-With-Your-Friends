@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1079c7507c0ea314d8199a6d60b1988c, type: 3}
+  m_Name: Weapons
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.WeaponCatalog
+  _weapons:
+  - {fileID: 11400000, guid: de3925d7e971f894ba8b002cd7e18ef2, type: 2}
+  - {fileID: 11400000, guid: 704c7d99c16acc341bf3dee3517c7b8e, type: 2}
+  - {fileID: 11400000, guid: 6dd4254067d4a34479add77a7215d4db, type: 2}
+  - {fileID: 11400000, guid: 951655de66e88a84b9c368c59f2aa404, type: 2}
+  - {fileID: 11400000, guid: 739816abd9f33fe4591d6e783d5084f9, type: 2}
+  _fists: {fileID: 11400000, guid: de3925d7e971f894ba8b002cd7e18ef2, type: 2}
