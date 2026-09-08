@@ -13,9 +13,11 @@ MonoBehaviour:
   m_Name: Weapons
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.WeaponCatalog
   _weapons:
-  - {fileID: 11400000, guid: de3925d7e971f894ba8b002cd7e18ef2, type: 2}
-  - {fileID: 11400000, guid: 704c7d99c16acc341bf3dee3517c7b8e, type: 2}
-  - {fileID: 11400000, guid: 6dd4254067d4a34479add77a7215d4db, type: 2}
-  - {fileID: 11400000, guid: 951655de66e88a84b9c368c59f2aa404, type: 2}
-  - {fileID: 11400000, guid: 739816abd9f33fe4591d6e783d5084f9, type: 2}
-  _fists: {fileID: 11400000, guid: de3925d7e971f894ba8b002cd7e18ef2, type: 2}
+  - {fileID: 11400000, guid: d9be24296b840af4c8708893e2244df4, type: 2}
+  - {fileID: 11400000, guid: 4142f3d48b3d1074ea5a1962ed098886, type: 2}
+  - {fileID: 11400000, guid: c2d2a4971b9cbbb4c9fcd0a17cef362a, type: 2}
+  - {fileID: 11400000, guid: 852984e1da6a38e4d9dc0754738be976, type: 2}
+  - {fileID: 11400000, guid: ae964519933c88b4594874a27e870f0b, type: 2}
+  - {fileID: 11400000, guid: 286b3a76005d457409c852194e37b19c, type: 2}
+  - {fileID: 11400000, guid: 6c64b08533731514388bd735b11d306d, type: 2}
+  _fists: {fileID: 11400000, guid: 4142f3d48b3d1074ea5a1962ed098886, type: 2}

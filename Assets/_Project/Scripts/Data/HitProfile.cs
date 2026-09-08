@@ -19,8 +19,11 @@ namespace EscapeWithYourFriends.Data
         [SerializeField] float _damage = 10f;
         [SerializeField] DamageType _damageType = DamageType.Blunt;
 
-        [Tooltip("Impulse along the hit direction. Fists ~4, bat ~10, shotgun ~30, sniper ~45.")]
-        [SerializeField] float _knockback = 4f;
+        [Tooltip("Impulse along the hit direction, in newton-seconds. A body weighs 56kg and keeps "
+                 + "about 70% of this (RagdollController splits the rest into the bone that was hit), "
+                 + "so 80 is a stumble, 200 is off your feet, and 400 is into the sea. Knife ~90, "
+                 + "fists ~120, hatchet ~210, machete ~260, shovel ~300, bat ~400.")]
+        [SerializeField] float _knockback = 120f;
 
         [Tooltip("How much of the knockback is redirected upward, so victims arc instead of sliding.")]
         [Range(0f, 1f)]

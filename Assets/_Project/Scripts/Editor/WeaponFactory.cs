@@ -23,9 +23,8 @@ namespace EscapeWithYourFriends.EditorTools
     /// number somebody tuned in the inspector survives the next run; the catalog and the prefab links
     /// are structural and are re-applied every time.
     ///
-    /// #49 seeds five: fists, two melee weapons off items that already exist, one new melee weapon,
-    /// and one gun - enough that both branches of <c>Weapon.ServerResolve</c> are real and tested.
-    /// #50 and #51 add the rest of the arsenal, and by then adding one is a row in this table.
+    /// #49 seeded five, and #50 added two more by writing two rows here and nothing else, which is
+    /// the acceptance of #49 being cashed in rather than argued about. #51 adds the guns the same way.
     /// </summary>
     public static class WeaponFactory
     {
@@ -92,7 +91,7 @@ namespace EscapeWithYourFriends.EditorTools
             // Bare hands. Weak, fast, wide, and the only weapon nobody can be disarmed of. The stun is
             // what matters here, not the damage: punching a friend off a ledge is the whole game.
             new("fists", "Fists", null, WeaponKind.Melee, 1,
-                damage: 10f, knockback: 4f, upwardBias: 0.30f, stun: 1.5f,
+                damage: 10f, knockback: 120f, upwardBias: 0.30f, stun: 1.5f,
                 cooldown: 0.50f, windup: 0.12f, range: 2.0f, radius: 0.60f, cone: 60f, maxTargets: 4,
                 pellets: 1, spread: 0f, recoil: 0f, rpm: 0f, magazine: 0, ammo: null,
                 size: Vector3.zero, colour: default,
@@ -100,14 +99,14 @@ namespace EscapeWithYourFriends.EditorTools
 
             // Already in the bag from M3, so these two cost one row each and no new items.
             new("knife", "Knife", "knife", WeaponKind.Melee, 1,
-                damage: 22f, knockback: 3f, upwardBias: 0.15f, stun: 0.8f,
+                damage: 22f, knockback: 90f, upwardBias: 0.15f, stun: 0.8f,
                 cooldown: 0.35f, windup: 0.08f, range: 1.8f, radius: 0.35f, cone: 35f, maxTargets: 1,
                 pellets: 1, spread: 0f, recoil: 0f, rpm: 0f, magazine: 0, ammo: null,
                 size: new Vector3(0.05f, 0.05f, 0.35f), colour: new Color(0.72f, 0.74f, 0.78f),
                 description: "Fast and narrow. Hits one person properly instead of four badly."),
 
             new("hatchet", "Hatchet", "hatchet", WeaponKind.Melee, 1,
-                damage: 34f, knockback: 9f, upwardBias: 0.28f, stun: 1.6f,
+                damage: 34f, knockback: 210f, upwardBias: 0.28f, stun: 1.6f,
                 cooldown: 0.75f, windup: 0.20f, range: 2.2f, radius: 0.50f, cone: 50f, maxTargets: 2,
                 pellets: 1, spread: 0f, recoil: 0f, rpm: 0f, magazine: 0, ammo: null,
                 size: new Vector3(0.08f, 0.10f, 0.45f), colour: new Color(0.55f, 0.42f, 0.28f),
@@ -116,15 +115,33 @@ namespace EscapeWithYourFriends.EditorTools
             // The one weapon #49 adds an item for, so the "new weapon = new asset" claim is tested by
             // a weapon that did not exist in any form before this issue.
             new("machete", "Machete", "machete", WeaponKind.Melee, 2,
-                damage: 40f, knockback: 11f, upwardBias: 0.35f, stun: 1.8f,
+                damage: 40f, knockback: 260f, upwardBias: 0.35f, stun: 1.8f,
                 cooldown: 0.60f, windup: 0.16f, range: 2.6f, radius: 0.55f, cone: 70f, maxTargets: 3,
                 pellets: 1, spread: 0f, recoil: 0f, rpm: 0f, magazine: 0, ammo: null,
                 size: new Vector3(0.06f, 0.14f, 0.70f), colour: new Color(0.66f, 0.68f, 0.72f),
                 description: "Long, wide, and it launches people. The tier-two answer to a crowd."),
 
+            // #50's two. The bat is the thesis of the whole game: it barely hurts anybody and it puts
+            // them in the sea, so the funniest weapon and the strongest weapon are different objects
+            // and picking the funny one costs you something real.
+            new("bat", "Baseball Bat", "bat", WeaponKind.Melee, 1,
+                damage: 14f, knockback: 400f, upwardBias: 0.55f, stun: 2.6f,
+                cooldown: 0.55f, windup: 0.18f, range: 2.4f, radius: 0.60f, cone: 65f, maxTargets: 3,
+                pellets: 1, spread: 0f, recoil: 0f, rpm: 0f, magazine: 0, ammo: null,
+                size: new Vector3(0.07f, 0.07f, 0.85f), colour: new Color(0.78f, 0.62f, 0.36f),
+                description: "Barely hurts. Sends people over the horizon, which is the point."),
+
+            // The compromise: hits properly and still launches. What you actually carry.
+            new("shovel", "Shovel", "shovel", WeaponKind.Melee, 1,
+                damage: 28f, knockback: 300f, upwardBias: 0.42f, stun: 2.0f,
+                cooldown: 0.70f, windup: 0.22f, range: 2.5f, radius: 0.55f, cone: 60f, maxTargets: 3,
+                pellets: 1, spread: 0f, recoil: 0f, rpm: 0f, magazine: 0, ammo: null,
+                size: new Vector3(0.22f, 0.05f, 0.90f), colour: new Color(0.46f, 0.48f, 0.52f),
+                description: "Digs, buries, and settles the argument in between."),
+
             // The proof that the other branch is real. Balance is #51's problem, not this issue's.
             new("pistol", "Pistol", "pistol", WeaponKind.Hitscan, 1,
-                damage: 26f, knockback: 6f, upwardBias: 0.10f, stun: 0.6f,
+                damage: 26f, knockback: 100f, upwardBias: 0.10f, stun: 0.6f,
                 cooldown: 0f, windup: 0f, range: 60f, radius: 0f, cone: 0f, maxTargets: 1,
                 pellets: 1, spread: 1.5f, recoil: 1.2f, rpm: 300f, magazine: 12, ammo: "pistol_ammo",
                 size: new Vector3(0.07f, 0.16f, 0.24f), colour: new Color(0.22f, 0.22f, 0.24f),

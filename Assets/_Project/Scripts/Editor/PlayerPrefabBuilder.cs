@@ -343,6 +343,7 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_ragdoll").objectReferenceValue = ragdoll;
                 so.FindProperty("_shock").objectReferenceValue = shock;
                 so.FindProperty("_health").objectReferenceValue = health;
+                so.FindProperty("_weapon").objectReferenceValue = weapon;
                 so.FindProperty("_headBone").objectReferenceValue = bones["Head"];
                 so.FindProperty("_aimOrigin").objectReferenceValue = aimOrigin;
             });

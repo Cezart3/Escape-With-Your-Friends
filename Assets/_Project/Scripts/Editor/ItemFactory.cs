@@ -78,6 +78,8 @@ namespace EscapeWithYourFriends.EditorTools
             // Weapons are items like any other: what makes them weapons is a WeaponDef pointing back
             // at them, not a category. The category is what the shop and the tooltip read.
             new("machete", "Machete", ItemCategory.Weapon, 1, 1.8f, 55, "Long, heavy, and it sends people over ledges."),
+            new("bat", "Baseball Bat", ItemCategory.Weapon, 1, 1.2f, 30, "Barely hurts. Sends people into the sea."),
+            new("shovel", "Shovel", ItemCategory.Weapon, 1, 2.4f, 45, "Digs, buries, and settles the argument in between."),
             new("pistol", "Pistol", ItemCategory.Weapon, 1, 1.1f, 120, "Settles an argument from across the clearing."),
             new("pistol_ammo", "Pistol Rounds", ItemCategory.Material, 60, 0.02f, 2, "Small, heavy in bulk, gone in seconds."),
 

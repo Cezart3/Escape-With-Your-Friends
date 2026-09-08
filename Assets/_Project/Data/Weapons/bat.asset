@@ -10,25 +10,25 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b81482618dd810141af52ce8f2208db6, type: 3}
-  m_Name: hatchet
+  m_Name: bat
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.WeaponDef
-  _id: hatchet
-  _displayName: Hatchet
-  _description: Chops trees, chops friends. Slow enough that missing costs you.
+  _id: bat
+  _displayName: Baseball Bat
+  _description: Barely hurts. Sends people over the horizon, which is the point.
   _kind: 0
-  _item: {fileID: 11400000, guid: 242440bf7bf9196499fa8d68fe099d1e, type: 2}
+  _item: {fileID: 11400000, guid: d63758aec8be21e4187e94ef47391954, type: 2}
   _hit:
-    _damage: 34
+    _damage: 14
     _damageType: 0
-    _knockback: 210
-    _upwardBias: 0.28
-    _stunDuration: 1.6
-  _cooldown: 0.75
-  _windup: 0.2
-  _range: 2.2
-  _radius: 0.5
-  _coneHalfAngle: 50
-  _maxTargets: 2
+    _knockback: 400
+    _upwardBias: 0.55
+    _stunDuration: 2.6
+  _cooldown: 0.55
+  _windup: 0.18
+  _range: 2.4
+  _radius: 0.6
+  _coneHalfAngle: 65
+  _maxTargets: 3
   _shotRange: 60
   _pellets: 1
   _spread: 0
@@ -37,6 +37,6 @@ MonoBehaviour:
   _magazine: 0
   _reloadSeconds: 1.8
   _ammo: {fileID: 0}
-  _viewPrefab: {fileID: 6763438946834142648, guid: 2a6c2ebce9902ae478e2f70a9f2f0da1, type: 3}
+  _viewPrefab: {fileID: 9201182856593475334, guid: a890a081760e30347a96abc494885684, type: 3}
   _tier: 1
   _upgradesTo: {fileID: 0}

@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.ItemCatalog
   _items:
   - {fileID: 11400000, guid: 824f7266f5cf17145ae427803853352d, type: 2}
+  - {fileID: 11400000, guid: d63758aec8be21e4187e94ef47391954, type: 2}
   - {fileID: 11400000, guid: 43200af100ee5ae44884e6b2ea684b1c, type: 2}
   - {fileID: 11400000, guid: 102f3a04d85440748b6620ef0043bc6d, type: 2}
   - {fileID: 11400000, guid: b8f1a12a98416a44998536741bdd05a4, type: 2}
@@ -30,6 +31,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c087966ca235c4a4889ec3bd5626d9e8, type: 2}
   - {fileID: 11400000, guid: f35703f74c122f84da9933e3ffcfda78, type: 2}
   - {fileID: 11400000, guid: b0a65aa3f09b4b540a2e8537c53cde48, type: 2}
+  - {fileID: 11400000, guid: ddfb8bf6b00160a48bd0b1172a278601, type: 2}
   - {fileID: 11400000, guid: 4ba4d009695ab274daa659c36125f37e, type: 2}
   - {fileID: 11400000, guid: c41224b3da827e24ba7a88c05331258d, type: 2}
   _worldItemPrefab: {fileID: 532363243377734599, guid: 3baee3b3442dc5d4db6a78075e7f587f, type: 3}

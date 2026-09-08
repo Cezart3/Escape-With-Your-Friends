@@ -1,5 +1,6 @@
 using EscapeWithYourFriends.Combat;
 using EscapeWithYourFriends.Core;
+using EscapeWithYourFriends.Data;
 using FishNet.Object;
 using Unity.Cinemachine;
 using UnityEngine;
@@ -32,6 +33,9 @@ namespace EscapeWithYourFriends.Player
         [SerializeField] RagdollController _ragdoll;
         [SerializeField] ShockState _shock;
         [SerializeField] Health _health;
+
+        [Tooltip("The weapon whose landed hits kick this camera. Assigned at bake time.")]
+        [SerializeField] Weapon _weapon;
 
         [Tooltip("Followed while limp, because the body root stops moving when the ragdoll takes over.")]
         [SerializeField] Transform _headBone;
@@ -80,6 +84,15 @@ namespace EscapeWithYourFriends.Player
 
         [Tooltip("Trauma from a hit that takes all of your health. Scaled down for smaller hits.")]
         [SerializeField] float _hitShake = 1.2f;
+
+        [Tooltip("Trauma from a hit you *landed*, per unit of the weapon's knockback. #50's whole "
+                 + "'chunky' requirement is this line: without it a swing that connects feels "
+                 + "identical to one that whiffs.")]
+        [SerializeField] float _landedShakePerKnockback = 0.012f;
+
+        [Tooltip("Ceiling on the kick from landing a hit, so a bat does not blind you.")]
+        [Range(0f, 1f)]
+        [SerializeField] float _maxLandedShake = 0.28f;
 
         // Created at runtime, owner only. Building these into the prefab would put four cameras in one
         // process during a local four-player test, all fighting the same brain.
@@ -137,6 +150,7 @@ namespace EscapeWithYourFriends.Player
             _nextLogAt = Time.time + LogIntervalSeconds;
 
             if (_health != null) _health.Changed += OnHealthChanged;
+            if (_weapon != null) _weapon.HitLanded += OnHitLanded;
 
             Debug.Log($"[PlayerCameraRig] Owner {OwnerId} camera live at fov {_baseFov}.");
         }
@@ -146,6 +160,7 @@ namespace EscapeWithYourFriends.Player
             base.OnStopClient();
 
             if (_health != null) _health.Changed -= OnHealthChanged;
+            if (_weapon != null) _weapon.HitLanded -= OnHitLanded;
 
             // The camera is not parented to the body, so despawning the body would otherwise leave it
             // hanging in the scene, still the highest-priority view of nothing.
@@ -339,6 +354,24 @@ namespace EscapeWithYourFriends.Player
 
             _healthEvents++;
             AddShake(lost / _health.Max * _hitShake);
+        }
+
+        /// <summary>
+        /// A kick for a hit you landed, scaled by the weapon's knockback so a bat feels like a bat and
+        /// a knife feels like a knife.
+        ///
+        /// This is the difference between a swing that connected and one that did not, and until #50
+        /// there was none: the camera shook when you were hit and stayed perfectly still when you hit
+        /// somebody. That is the whole of "melee hits feel chunky" - the victim's ragdoll is feedback
+        /// for everybody *except* the person who swung, who is usually staring at the back of their
+        /// own arm.
+        /// </summary>
+        void OnHitLanded(Vector3 contact)
+        {
+            WeaponDef weapon = _weapon != null ? _weapon.Equipped : null;
+            if (weapon == null) return;
+
+            AddShake(Mathf.Min(_maxLandedShake, weapon.Hit.Knockback * _landedShakePerKnockback));
         }
 
         /// <summary>

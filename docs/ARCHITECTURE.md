@@ -107,9 +107,9 @@ build that can only be started by clicking a button cannot be tested from one. `
 reads `-host` / `-server` / `-client`, plus `-address`, `-port`, `-quitAfter`, and the test flags
 `-latency`, `-botMove`, `-motorLog`, `-clockLog`, `-navWalk`, `-quality`, `-perfLog`, `-invTest`,
 `-itemTest`, `-statTest`, `-statLog`, `-buffTest`, `-craftTest`, `-chestTest`, `-uiTest`,
-`-moneyTest`, `-shopTest`, `-weaponTest` and `-weaponLog` described under movement, the day/night
-cycle, navigation, performance, the inventory, loot, survival, consumables, crafting, storage, the
-bag screen, money, the shop and weapons below:
+`-moneyTest`, `-shopTest`, `-weaponTest`, `-weaponLog`, `-meleeTest` and `-meleeLog` described under
+movement, the day/night cycle, navigation, performance, the inventory, loot, survival, consumables,
+crafting, storage, the bag screen, money, the shop, weapons and melee below:
 
 ```
 Unity.exe -quit -batchmode -nographics -projectPath .   -executeMethod EscapeWithYourFriends.EditorTools.BuildTool.PerformBuild   -buildOutput D:/Builds/EWYF-dev -development -scriptingBackend mono
@@ -3357,9 +3357,11 @@ projectiles: a projectile is a networked object with a position to reconcile, an
 are slow enough for anyone to see the difference. Where the tracer is drawn is a lie the client tells;
 where the damage landed is the server's raycast.
 
-`WeaponFactory` seeds five - fists, knife and hatchet off items that already existed, a machete that
-needed a new one, and a pistol - which is enough that both branches are real and tested. #50 and #51
-add the rest of the arsenal, and by then adding one is a row in a table.
+`WeaponFactory` seeds seven. Five came with #49 - fists, knife and hatchet off items that already
+existed, a machete that needed a new one, and a pistol - which is enough that both branches are real
+and tested. #50 added the bat and the shovel, and the whole cost of doing so was two rows in
+`Seeds` and two rows in `ItemFactory`: no component was edited, and the acceptance of #49 was
+cashed rather than argued about. #51 adds the guns the same way.
 
 `-weaponTest` is the harness, and it needs two processes. It never names a weapon: it walks the
 catalog by index, puts each one in the hand, and asserts the damage that landed equals what *that
@@ -3398,6 +3400,74 @@ reports how many it took - four, in the run above.
 
 **Not done here:** ammunition and reloading are defined as data and consumed by nothing (#51), the
 recoil number is read by no camera yet (#51), and `UpgradesTo` is a link nothing follows (#52).
+
+### Melee, and where people land
+
+#50 asked for two things: melee that feels chunky, and melee that still ragdolls people. The second
+one turned out not to be true, and had not been true since M1.
+
+**The impulse went into one bone.** `RagdollController.EnableRagdoll` found the bone nearest the
+contact point and gave it the entire blow. A 2 kg forearm took 200 newton-seconds, whipped
+spectacularly, and dragged the other 54 kg along by the joints - which is to say the victim flailed
+and stayed almost exactly where they were standing. It reads as a hit and it is not one. It now
+splits: `_localImpulseShare` (0.3) goes into the struck bone so the hit *reads*, and the remaining
+0.7 is spread across every bone in proportion to its mass so the body *travels* as one piece rather
+than being torn apart by its own joints.
+
+That changed what the knockback number means, so the whole melee column was rescaled with it. The
+unit is now plainly newton-seconds against a 56 kg body: 90 is a stumble, 400 is into the sea.
+
+**The bones were never put back.** This one was hiding behind the first. Physics writes bone
+transforms in world space, so a body that has been thrown leaves its skeleton splayed in *local*
+coordinates too - and `DisableRagdoll` moved the root back under the hips without ever restoring the
+pose. An Animator running a clip overwrites bone transforms every frame, so with animation the bug is
+invisible. The greybox player has no clips. The symptom was memorable: **the first throw of a session
+worked perfectly and every one after it did nothing**, because the root was standing at z=7 while the
+skeleton lay knotted at z=12, and the next hit went into a pile of bones interpenetrating each other
+and the floor, where depenetration ate it. `SetRagdollInternal` now restores the rest pose captured in
+`Awake` whenever the body stands up. This was a real bug for every character without animation, which
+is every character until the art pass.
+
+**Nothing listened for a landed hit.** `PlayerCameraRig` shook on `OnHealthChanged` - when you *took*
+damage. Connecting with a swing felt identical to whiffing one. The rig now subscribes to
+`Weapon.HitLanded` and kicks by `weapon.Hit.Knockback * _landedShakePerKnockback`, capped, so a bat
+shoves the camera and a knife barely moves it. That is the half of "chunky" that is code; the rest is
+wind-up, stun and animation, and belongs to a playtest.
+
+`-meleeTest` is the harness, and it needs two processes. It does not assert that an impulse was
+applied - that assertion passed for the whole of M1 while nobody moved. It swings, waits a second for
+the physics to actually happen, and measures how far the hips travelled horizontally, then checks
+that the ordering follows the assets. **25 checks, all passing:**
+
+```
+[MeleeTest] 6 melee weapon(s): bat kb400, fists kb120, hatchet kb210, knife kb90, machete kb260, shovel kb300
+[MeleeTest]   knife    kb    90 -> 1.15m, ragdolled True
+[MeleeTest]   fists    kb   120 -> 1.73m, ragdolled True
+[MeleeTest]   hatchet  kb   210 -> 2.39m, ragdolled True
+[MeleeTest]   machete  kb   260 -> 3.29m, ragdolled True
+[MeleeTest]   shovel   kb   300 -> 3.96m, ragdolled True
+[MeleeTest]   bat      kb   400 -> 5.56m, ragdolled True
+[MeleeTest]   a downed body took a bat and slid 5.28m
+[MeleeTest] 25 passed, 0 failed.
+```
+
+Horizontal distance on purpose: a body knocked upward comes back down, and counting the arc would
+flatter a weapon with a high upward bias for something nobody sees. Where they end up is what the
+table laughs at. The measured curve is monotone in knockback and close to linear at about 1.3 cm per
+newton-second, which is why the seeded numbers were left alone - they were measured, not guessed.
+
+The last check is the one the bat exists for: **hitting somebody who is already down shoves them
+5.28 m and does not hurt them.** `Health.TakeDamage` refuses anything that is not `Alive`, and
+`Weapon.ApplyHit` still routes the impulse through `StunState`, so a downed player waiting on a
+rescue can be punted across the beach without ever being killed a second time.
+
+The comedy invariant is asserted rather than assumed: the biggest launcher and the biggest damage
+must be different weapons. The bat does 14 damage and throws people 5.5 m; the machete does 40 and
+throws them 3.3 m. Picking the funny one has to cost something, or it is not a choice.
+
+**Not done here:** the wind-up is a number the resolver honours but no animation plays into (#M8),
+and active ragdoll - `ConfigurableJoint` drives targeting the animated pose, so a hit makes somebody
+flail *while still standing* - is still the deferred v2 described above.
 
 ---
 

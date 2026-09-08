@@ -20,7 +20,7 @@ MonoBehaviour:
   _hit:
     _damage: 40
     _damageType: 0
-    _knockback: 11
+    _knockback: 260
     _upwardBias: 0.35
     _stunDuration: 1.8
   _cooldown: 0.6

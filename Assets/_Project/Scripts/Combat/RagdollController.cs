@@ -46,6 +46,11 @@ namespace EscapeWithYourFriends.Combat
         readonly List<Rigidbody> _bones = new();
         readonly List<Collider> _boneColliders = new();
 
+        // The pose the skeleton was authored in, captured once, restored every time the body stands
+        // back up. See SetRagdollInternal.
+        readonly List<Vector3> _restPositions = new();
+        readonly List<Quaternion> _restRotations = new();
+
         bool _isRagdolled;
 
         public bool IsRagdolled => _isRagdolled;
@@ -56,6 +61,12 @@ namespace EscapeWithYourFriends.Combat
         /// later explosions — can pick a bone without every one of them re-walking the hierarchy.
         /// </summary>
         public IReadOnlyList<Rigidbody> Bones => _bones;
+
+        [Tooltip("Share of a hit's impulse that goes into the bone that was struck, rather than into "
+                 + "the whole body. High values flail without moving; low values slide without "
+                 + "flailing. See EnableRagdoll.")]
+        [Range(0f, 1f)]
+        [SerializeField] float _localImpulseShare = 0.3f;
 
         /// <summary>The hip rigidbody, which is what carrying and throwing act on.</summary>
         public Rigidbody HipBody { get; private set; }
@@ -88,11 +99,53 @@ namespace EscapeWithYourFriends.Combat
             HipBody = _hipBone.GetComponent<Rigidbody>();
             if (HipBody == null)
                 Debug.LogError($"[RagdollController] {name}: hip bone has no Rigidbody.");
+
+            foreach (Rigidbody bone in _bones)
+            {
+                _restPositions.Add(bone.transform.localPosition);
+                _restRotations.Add(bone.transform.localRotation);
+            }
         }
 
         /// <summary>
-        /// Goes limp and applies an impulse. <paramref name="hitPoint"/> selects which bone takes the
-        /// force, so a punch to the head spins the head rather than shoving the whole body evenly.
+        /// Puts every bone back where the rig had it.
+        ///
+        /// Physics writes bone transforms in world space, so a body that has been thrown leaves its
+        /// skeleton splayed across the arena in *local* coordinates too. An Animator running a clip
+        /// overwrites that on the next frame and nobody notices - which is why this was missing until
+        /// #50, and why the bug it caused was so strange: the first throw of a session worked and
+        /// every one after it did nothing. The root was teleported home while the skeleton stayed five
+        /// metres downrange, still holding the offset, and the next hit went into a knot of bones
+        /// interpenetrating each other and the floor, where the solver's depenetration ate it.
+        ///
+        /// A character with no animation is not a hypothetical here: it is the greybox player the
+        /// headless tests use, and it will be every character during an art pass.
+        /// </summary>
+        void RestoreRestPose()
+        {
+            for (int i = 0; i < _bones.Count && i < _restPositions.Count; i++)
+            {
+                Rigidbody bone = _bones[i];
+                if (bone == null) continue;
+
+                bone.transform.localPosition = _restPositions[i];
+                bone.transform.localRotation = _restRotations[i];
+            }
+        }
+
+        /// <summary>
+        /// Goes limp and applies an impulse, split two ways.
+        ///
+        /// A share goes into the bone nearest <paramref name="hitPoint"/>, which is what makes a hit
+        /// *read* as a hit: a punch to the head spins the head, a bat to the legs takes the legs out.
+        /// The rest is spread across every bone in proportion to its mass, which is what makes the
+        /// body actually *travel*.
+        ///
+        /// Both halves are needed, and #50 is where that became obvious. All of the impulse into one
+        /// bone whips a limb convincingly while the person stays roughly where they were standing -
+        /// a 2 kg forearm takes the whole blow and the other 54 kg get dragged along by joints. All of
+        /// it spread evenly gives a body that slides without flailing, which reads as a bug. The split
+        /// gives a person who flails *and* leaves.
         /// </summary>
         public void EnableRagdoll(Vector3 impulse, Vector3 hitPoint)
         {
@@ -101,10 +154,31 @@ namespace EscapeWithYourFriends.Combat
 
             if (impulse.sqrMagnitude <= 0f) return;
 
-            Rigidbody target = hitPoint == Vector3.zero ? HipBody : ClosestBone(hitPoint);
-            if (target != null)
-                target.AddForceAtPosition(impulse, hitPoint == Vector3.zero ? target.worldCenterOfMass : hitPoint,
-                                          ForceMode.Impulse);
+            Rigidbody local = hitPoint == Vector3.zero ? HipBody : ClosestBone(hitPoint);
+
+            if (local != null)
+            {
+                Vector3 at = hitPoint == Vector3.zero ? local.worldCenterOfMass : hitPoint;
+                local.AddForceAtPosition(impulse * _localImpulseShare, at, ForceMode.Impulse);
+            }
+
+            float spread = 1f - _localImpulseShare;
+            if (spread <= 0f) return;
+
+            // By mass, so every bone comes away at the same speed and the body leaves as one piece
+            // rather than being torn apart by its own joints.
+            float total = 0f;
+            foreach (Rigidbody bone in _bones)
+                if (bone != null) total += bone.mass;
+
+            if (total <= 0f) return;
+
+            foreach (Rigidbody bone in _bones)
+            {
+                if (bone == null) continue;
+
+                bone.AddForce(impulse * (spread * bone.mass / total), ForceMode.Impulse);
+            }
         }
 
         /// <summary>
@@ -141,6 +215,9 @@ namespace EscapeWithYourFriends.Combat
 
                 if (ragdolled) bone.WakeUp();
             }
+
+            // Kinematic again, so writing the transforms is safe and the solver will not fight it.
+            if (!ragdolled) RestoreRestPose();
 
             foreach (Collider boneCollider in _boneColliders)
                 boneCollider.enabled = ragdolled;
