@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using EscapeWithYourFriends.AI;
 using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.World;
 using UnityEditor;
@@ -290,6 +291,13 @@ namespace EscapeWithYourFriends.EditorTools
             // terrain, its collider and the resolved POI positions all to exist first. It puts the
             // buildings in temporarily, bakes around them and takes them out again.
             NavFactory.Bake(profile, spawner);
+
+            // The wildlife, after the NavMesh, because a zone with nowhere to stand is a zone that
+            // silently spawns nothing. Its zone centres hang off the POIs above, so the herds follow
+            // the map when the seed changes instead of ending up in the sea.
+            var animals = new GameObject("Animals");
+            var wildlife = animals.AddComponent<AnimalSpawner>();
+            AnimalFactory.BakeZones(profile, wildlife);
 
             WriteSpawnPoints(profile);
 

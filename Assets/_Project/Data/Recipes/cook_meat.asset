@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b018104493bf5a48bdf1b6c0de4174b, type: 3}
+  m_Name: cook_meat
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.RecipeDef
+  _id: cook_meat
+  _displayName: Roast Meat
+  _description: Raw meat over a fire. The difference is not subtle.
+  _station: 2
+  _seconds: 5
+  _tier: 2
+  _inputs:
+  - Item: {fileID: 11400000, guid: aadaf72418e25a84a92c275a53f5c7e9, type: 2}
+    Count: 1
+  _outputItem: {fileID: 11400000, guid: 701c6d59ec917714b8c0da132e091bc4, type: 2}
+  _outputCount: 1
+  _outputStructure: {fileID: 0}

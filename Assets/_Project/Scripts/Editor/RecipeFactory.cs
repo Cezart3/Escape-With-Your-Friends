@@ -89,6 +89,11 @@ namespace EscapeWithYourFriends.EditorTools
             new("cook_fish", "Cook Fish", "Raw fish is edible. This is better in every way.",
                 CraftStation.Fire, 4f, 2, new[] { ("fish_raw", 1) }, outputItem: "fish_cooked"),
 
+            // Cooking roughly doubles what the trader pays for meat, which is the whole argument for
+            // carrying a kill back to camp instead of selling it raw on the way past the shop.
+            new("cook_meat", "Roast Meat", "Raw meat over a fire. The difference is not subtle.",
+                CraftStation.Fire, 5f, 2, new[] { ("meat_raw", 1) }, outputItem: "meat_cooked"),
+
             // ---- at the bench ---------------------------------------------------------------
             new("hatchet", "Hatchet", "Heavy scrap on a plank haft. Chops wood, settles arguments.",
                 CraftStation.Bench, 6f, 2, new[] { ("scrap_metal", 2), ("plank", 1), ("rope", 1) },

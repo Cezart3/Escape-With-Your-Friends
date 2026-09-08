@@ -3655,6 +3655,144 @@ Distance was never the variable under test.
 the screen is #M8's), the trader does not stock the tier-2 and tier-3 weapons directly - you arrive
 holding the tier below - and whether any of them should ever appear on a shelf is #56's call.
 
+### Wildlife and hunting (#53)
+
+Three species on the island - boar, deer, gull - and **one prefab between them**. The body's size,
+colour, collider, agent radius, health, speeds, reach, temperament and loot table all come from an
+`AnimalDef` picked at spawn time, so a fourth animal is a row in `AnimalFactory`'s seed table or a
+`.asset` file dropped in the folder, and never a new prefab, a new script or a new registration.
+
+That works because of one decision: **which species this is travels as a `SyncVar<ushort>` set
+before `ServerManager.Spawn`.** It rides along inside the spawn message, so a client resolves the
+definition and builds the right shape in the same frame the object appears. Set it after the spawn
+and there is a visible frame of default-sized grey box before it becomes a deer. `AnimalCatalog` is
+the sixth catalog on the same doctrine as `ItemCatalog` and the rest - sorted by `string.CompareOrdinal`,
+index 0 means none, rebuilt whole by the factory, never hand-edited.
+
+**An animal that runs out of health dies; it does not go down.** Rather than a parallel `Health` for
+creatures, `Health` grew one field:
+
+```csharp
+[SerializeField] bool _canBeDowned = true;
+...
+if (_current.Value <= 0f)
+{
+    if (_canBeDowned) ServerDown(info);
+    else ServerKill(info);
+}
+```
+
+A boar has no friend to drag it to the Revive Machine, so the downed state is a state it could never
+leave. Everything else about it - damage, invulnerability, the death event, kill credit - is
+identical to a player's, which is what makes weapons work on animals for free: `Weapon` finds its
+victims through `GetComponentInParent<Health>()`, so anything with a `Health` and a collider takes
+exactly the damage its attacker's asset states. A hatchet does 34 to a boar for the same reason it
+does 34 to a friend.
+
+**The brain is five states and one number.**
+
+```
+Idle   -> stands a few seconds, then wanders
+Wander -> walks somewhere near home, then idles
+Flee   -> runs directly away from the nearest person    (skittish)
+Chase  -> runs at the nearest person                    (aggressive)
+Attack -> in reach, hitting on an interval
+```
+
+The number is the distance to the nearest living player; the transitions read off it against
+`SenseRadius` (aware) and `ReactRadius` (bothered). The one piece of state beyond that is
+`_alarmedUntil`: without it a boar that chases you past its react radius immediately forgets why it
+was running, turns round and wanders home, which reads as a bug rather than as an animal. With it, a
+fright outlasts its cause by `CalmSeconds`. `Flee` re-aims continuously rather than picking one
+destination, so circling a deer does not produce a straight-line sprint past your shoulder.
+
+Sensing reads `NetworkPlayerRegistry.Players` rather than sweeping colliders. Four entries is cheaper
+than any physics query, it cannot be blocked by scenery, and it is the same list the natives in #55
+will want. **The honest cost: there is no line of sight.** An animal hears you through a rock. That
+is a deliberate trade and the place to change it if hunting ever needs stalking.
+
+**The spawner is a top-up loop, not a place-everything-once pass**, because a population is a level
+rather than a placement: something kills a boar and a few minutes later there is another boar. Each
+zone keeps `Population` alive, and a death holds that zone shut for `_respawnSeconds` (45) - without
+that lock, hunting is standing in one place killing the same boar every five seconds, which would
+pass the acceptance criterion while ruining the thing it measures. Spawn points must be
+`_playerClearance` (40 m) from every player: not for fairness, for the illusion. A deer that pops
+into existence eight metres in front of you is a spawner; a deer you find is an animal.
+
+The same loop is also, deliberately, how the NavMesh is waited for. The island is a global scene
+loaded after the server is already running, so at server start there is nowhere to put an animal -
+`NavMesh.SamplePosition` simply fails and the zone tries again five seconds later, which is the same
+code path as a zone that is temporarily crowded. No ordering special case to rot.
+
+Zone centres are **derived from the POIs**, not typed, for the same reason every coordinate here is
+derived: the island moves when the seed changes and a hard-coded herd ends up in the sea.
+
+| Zone | Population | Hangs off | Radius |
+|---|---|---|---|
+| `boar.camp` | 5 boar | `camp.base` | 130 m |
+| `boar.village` | 4 boar | `village` | 110 m |
+| `deer.inland` | 6 deer | `cave` | 160 m |
+| `deer.village` | 4 deer | `village` | 140 m |
+| `gull.shore` | 5 gull | `wreck` | 120 m |
+
+Boars are the animal near camp on purpose. They are the aggressive species, they carry the most
+valuable hide, and putting them where a new player already stands is what makes hunting the first
+thing you do rather than something you unlock by walking. `-noAnimals` empties the island, which is
+what every other harness wants - a boar wandering through a melee test is a variable nobody asked
+for.
+
+**The loot lands on the ground.** `Animal.ServerDropLoot` rolls the table on death and drops real
+`WorldItem`s through the same door `ItemDropper` uses, spread on a small spiral around the carcass so
+the whole kill is not one pile of colliders resolving itself into the sky. It is never pushed into
+the killer's bag. That is the difference between hunting and a kill counter: the meat has weight,
+somebody has to walk over and pick it up, and whoever gets there first is a conversation four players
+can have.
+
+Four new items pay for all of it - `hide` (26), `feather` (7), `meat_raw` (14), `meat_cooked` (30) -
+plus the `cook_meat` recipe at a fire and a `roast` buff worth 48 hunger and 10 health.
+
+**Is it worth it? The comparison is per kilogram, not per kill.** Twenty slots and a forty-kilo carry
+limit mean weight is the real constraint on a trip back to the counter, so the question is not "what
+is a boar worth" but "is a kilo of boar better than a kilo of what I would otherwise be carrying".
+Scrap metal is what they would otherwise be carrying, at **2.7 c/kg**. From the harness's own table:
+
+| Species | Sale | kg | c/kg | Cooked | kg | c/kg |
+|---|---|---|---|---|---|---|
+| boar | 37 | 4.1 | **9.1** | 57 | 3.8 | **15.0** |
+| deer | 41 | 4.7 | **8.8** | 69 | 4.3 | **16.0** |
+| gull | 15 | 0.9 | **16.8** | 21 | 0.8 | **26.6** |
+
+Three to six times scrap raw, and cooking roughly doubles it again - which is what makes the campfire
+worth the walk back rather than a survival chore. Against the boat at 1600 (four parts at 400) a boar
+is 43 kills, about eleven each across four players. Enough to be a real grind, few enough to be a
+plan.
+
+The speeds are tuned against the player's own sprint, read off `PlayerMotor.SprintSpeed` rather than
+copied: both prey animals run *slightly slower* than 7.5 m/s, which is the single decision that makes
+hunting playable with a hatchet on day one. A deer that outran a sprint would be huntable only with
+the guns from #51, and #53's acceptance is about *early* money. The boar charges slower than a sprint
+too, for the mirror-image reason: a charge you cannot escape is not a fight.
+
+`-animalTest` (island scene, alone) checks all of it and passes **91/91**. The data half is
+invariants that would otherwise surface three sections later as "the deer just stands there" -
+index round-trips, ordinal sort, run speed above walk, react radius inside sense, aggressive species
+armed and skittish ones not, every loot item real. The live half spawns a deer twelve metres from the
+player and watches it get to 38 m in four seconds, spawns a boar at the same distance and watches it
+close to 2.8 m and take 100 health off, then runs the whole chain on one boar: a hatchet swing lands
+for exactly 34, the kill drops `3x meat_raw, 2x hide`, two `WorldItem`s appear around the carcass,
+they are carried to the counter and sold for 47 - the number the table predicted, to the coin.
+
+Two things the run showed that no assertion would have: the harness player was killed by boars during
+the charge test because the camp zone's own population joined in, and the `boar.camp` centre landed
+7 m from the spawn point. Both are the feature working.
+
+**Not done here:** no line of sight and no smell, so a boar notices you through a hill; no herd
+behaviour, so five deer flee as five individuals; the greybox bodies are two cubes and the "which
+end is the front" cue is a darker head; nothing eats anything but you; and what the trader pays for
+hide and meat is #56's balance pass to revisit.
+
+---
+
 ---
 
 ## Data-driven content
