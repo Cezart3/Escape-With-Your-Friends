@@ -10,25 +10,26 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b81482618dd810141af52ce8f2208db6, type: 3}
-  m_Name: hatchet
+  m_Name: chainsaw
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.WeaponDef
-  _id: hatchet
-  _displayName: Hatchet
-  _description: Chops trees, chops friends. Slow enough that missing costs you.
+  _id: chainsaw
+  _displayName: Chainsaw
+  _description: Twice a second, four people at a time. Runs on nothing, which is
+    a lie somebody will fix the day fuel is a resource.
   _kind: 0
-  _item: {fileID: 11400000, guid: 242440bf7bf9196499fa8d68fe099d1e, type: 2}
+  _item: {fileID: 11400000, guid: bc736724a6872df4da4ba5b2cdbc3a8e, type: 2}
   _hit:
-    _damage: 34
+    _damage: 55
     _damageType: 0
-    _knockback: 210
-    _upwardBias: 0.28
-    _stunDuration: 1.6
-  _cooldown: 0.75
-  _windup: 0.2
-  _range: 2.2
-  _radius: 0.5
-  _coneHalfAngle: 50
-  _maxTargets: 2
+    _knockback: 280
+    _upwardBias: 0.32
+    _stunDuration: 2.2
+  _cooldown: 0.35
+  _windup: 0.1
+  _range: 2.6
+  _radius: 0.6
+  _coneHalfAngle: 60
+  _maxTargets: 4
   _shotRange: 60
   _pellets: 1
   _spread: 0
@@ -37,6 +38,6 @@ MonoBehaviour:
   _magazine: 0
   _reloadSeconds: 1.8
   _ammo: {fileID: 0}
-  _viewPrefab: {fileID: 6763438946834142648, guid: 2a6c2ebce9902ae478e2f70a9f2f0da1, type: 3}
-  _tier: 1
-  _upgradesTo: {fileID: 11400000, guid: 4c3d9debfc335ba4480a90e8f00d4180, type: 2}
+  _viewPrefab: {fileID: 8777995249575816838, guid: 4785fe669d8058c49b69de2c1ffbbfda, type: 3}
+  _tier: 3
+  _upgradesTo: {fileID: 0}

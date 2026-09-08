@@ -39,4 +39,4 @@ MonoBehaviour:
   _ammo: {fileID: 0}
   _viewPrefab: {fileID: 9201182856593475334, guid: a890a081760e30347a96abc494885684, type: 3}
   _tier: 1
-  _upgradesTo: {fileID: 0}
+  _upgradesTo: {fileID: 11400000, guid: 40ef88b14a012b0408979136d96194f4, type: 2}

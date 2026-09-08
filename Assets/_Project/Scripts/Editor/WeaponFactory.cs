@@ -175,6 +175,68 @@ namespace EscapeWithYourFriends.EditorTools
                 pellets: 1, spread: 1.5f, recoil: 1.2f, rpm: 300f, magazine: 12, ammo: "pistol_ammo",
                 size: new Vector3(0.07f, 0.16f, 0.24f), colour: new Color(0.22f, 0.22f, 0.24f),
                 description: "Reaches across the clearing. Reloading is #51's problem."),
+
+            // #52's six, and they are six rows for the same reason the last five were: a weapon is a
+            // row here, and an upgrade is a row in UpgradeFactory that points at two of them. Three
+            // lines, two steps each, tier 1 to tier 3 - island-one gear at the bottom and what you
+            // carry off island two at the top.
+            //
+            // Every number below is monotone along its line. That is not politeness, it is the
+            // acceptance: UpgradeDef.IsStrictlyBetter is checked on every step at runtime, so a
+            // tier-two weapon that quietly swings slower than the thing it replaced fails the test
+            // rather than the playtest.
+
+            // Blunt: the bat line stays the bat line. Damage triples and it still throws people
+            // further than anything else, because the joke is the point of the weapon.
+            new("bat_nailed", "Nailed Bat", "bat_nailed", WeaponKind.Melee, 2,
+                damage: 26f, knockback: 440f, upwardBias: 0.55f, stun: 2.8f,
+                cooldown: 0.52f, windup: 0.17f, range: 2.45f, radius: 0.62f, cone: 65f, maxTargets: 3,
+                pellets: 1, spread: 0f, recoil: 0f, rpm: 0f, magazine: 0, ammo: null,
+                size: new Vector3(0.09f, 0.09f, 0.88f), colour: new Color(0.72f, 0.55f, 0.32f),
+                description: "Four nails and a bad idea. Hurts now, and still sends people flying."),
+
+            new("bat_shark", "Shark-Tooth Bat", "bat_shark", WeaponKind.Melee, 3,
+                damage: 42f, knockback: 500f, upwardBias: 0.58f, stun: 3.0f,
+                cooldown: 0.48f, windup: 0.16f, range: 2.60f, radius: 0.65f, cone: 70f, maxTargets: 4,
+                pellets: 1, spread: 0f, recoil: 0f, rpm: 0f, magazine: 0, ammo: null,
+                size: new Vector3(0.11f, 0.11f, 0.92f), colour: new Color(0.66f, 0.48f, 0.30f),
+                description: "The second island had sharks. It has fewer now, and you have a bat."),
+
+            // Chopper: the hatchet line trades the bat's arc for damage. The chainsaw is the end of
+            // it and swings twice as fast as the axe, which is the whole reason to want one.
+            new("hatchet_fire", "Fire Axe", "hatchet_fire", WeaponKind.Melee, 2,
+                damage: 52f, knockback: 250f, upwardBias: 0.30f, stun: 1.8f,
+                cooldown: 0.70f, windup: 0.19f, range: 2.50f, radius: 0.55f, cone: 55f, maxTargets: 3,
+                pellets: 1, spread: 0f, recoil: 0f, rpm: 0f, magazine: 0, ammo: null,
+                size: new Vector3(0.10f, 0.16f, 0.80f), colour: new Color(0.72f, 0.18f, 0.14f),
+                description: "Off a wall on the wreck. Heavier, longer, and it goes through people."),
+
+            new("chainsaw", "Chainsaw", "chainsaw", WeaponKind.Melee, 3,
+                damage: 55f, knockback: 280f, upwardBias: 0.32f, stun: 2.2f,
+                cooldown: 0.35f, windup: 0.10f, range: 2.60f, radius: 0.60f, cone: 60f, maxTargets: 4,
+                pellets: 1, spread: 0f, recoil: 0f, rpm: 0f, magazine: 0, ammo: null,
+                size: new Vector3(0.14f, 0.26f, 0.95f), colour: new Color(0.86f, 0.55f, 0.10f),
+                description: "Twice a second, four people at a time. Runs on nothing, which is a lie "
+                             + "somebody will fix the day fuel is a resource."),
+
+            // Sidearm: the only line where an upgrade has a magazine and a recoil to change, which is
+            // the half of #52's brief that a bat cannot demonstrate.
+            new("pistol_mk2", "Tuned Pistol", "pistol_mk2", WeaponKind.Hitscan, 2,
+                damage: 34f, knockback: 110f, upwardBias: 0.10f, stun: 0.6f,
+                cooldown: 0f, windup: 0f, range: 75f, radius: 0f, cone: 0f, maxTargets: 1,
+                pellets: 1, spread: 1.1f, recoil: 0.9f, rpm: 360f, magazine: 18, ammo: "pistol_ammo",
+                reload: 1.6f,
+                size: new Vector3(0.07f, 0.16f, 0.28f), colour: new Color(0.26f, 0.26f, 0.30f),
+                description: "Bored out, ported, and six rounds longer. Eats the same cheap box."),
+
+            new("pistol_auto", "Machine Pistol", "pistol_auto", WeaponKind.Hitscan, 3,
+                damage: 40f, knockback: 130f, upwardBias: 0.12f, stun: 0.7f,
+                cooldown: 0f, windup: 0f, range: 85f, radius: 0f, cone: 0f, maxTargets: 1,
+                pellets: 1, spread: 0.9f, recoil: 0.7f, rpm: 600f, magazine: 30, ammo: "pistol_ammo",
+                reload: 1.5f,
+                size: new Vector3(0.07f, 0.18f, 0.36f), colour: new Color(0.18f, 0.19f, 0.22f),
+                description: "Thirty rounds, ten a second, and it barely moves. The reason to keep "
+                             + "the first pistol you ever bought."),
         };
 
         public static void Build()

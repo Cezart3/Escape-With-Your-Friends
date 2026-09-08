@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 216643c700d026e4397287703817d937, type: 3}
+  m_Name: pistol_tune
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.UpgradeDef
+  _id: pistol_tune
+  _displayName: Tune the Pistol
+  _description: Bored, ported, and a longer magazine. Same box of rounds.
+  _from: {fileID: 11400000, guid: 286b3a76005d457409c852194e37b19c, type: 2}
+  _to: {fileID: 11400000, guid: 7a3d137b30916a7418e69c19bd7a75e4, type: 2}
+  _venue: 1
+  _price: 150
+  _materials:
+  - Item: {fileID: 11400000, guid: b0a65aa3f09b4b540a2e8537c53cde48, type: 2}
+    Count: 3
+  _damageScale: 1.3076923
+  _knockbackScale: 1.1
+  _rangeScale: 1.25
+  _rateScale: 1.1999999
+  _magazineBonus: 6
+  _recoilScale: 0.74999994

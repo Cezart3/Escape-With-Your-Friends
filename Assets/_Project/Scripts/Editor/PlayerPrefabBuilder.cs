@@ -289,6 +289,12 @@ namespace EscapeWithYourFriends.EditorTools
                 color = new Color(1f, 0.85f, 0.45f, 0.9f),
             });
 
+            // Turning the weapon you have into the next one in its line. Added after the weapon it
+            // reads, because an upgrade carries the loaded magazine across, and after the wallet and
+            // the bag because the swap spends both in one server call.
+            var upgrading = root.AddComponent<Upgrading>();
+            upgrading.Configure(UpgradeFactory.Catalog(), inventory, wallet, weapon);
+
             var taserWeapon = root.AddComponent<TaserWeapon>();
             SetFields(taserWeapon, so =>
             {

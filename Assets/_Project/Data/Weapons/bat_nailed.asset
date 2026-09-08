@@ -10,25 +10,25 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b81482618dd810141af52ce8f2208db6, type: 3}
-  m_Name: hatchet
+  m_Name: bat_nailed
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.WeaponDef
-  _id: hatchet
-  _displayName: Hatchet
-  _description: Chops trees, chops friends. Slow enough that missing costs you.
+  _id: bat_nailed
+  _displayName: Nailed Bat
+  _description: Four nails and a bad idea. Hurts now, and still sends people flying.
   _kind: 0
-  _item: {fileID: 11400000, guid: 242440bf7bf9196499fa8d68fe099d1e, type: 2}
+  _item: {fileID: 11400000, guid: 2600fc527065ca84980dbc10c5f35603, type: 2}
   _hit:
-    _damage: 34
+    _damage: 26
     _damageType: 0
-    _knockback: 210
-    _upwardBias: 0.28
-    _stunDuration: 1.6
-  _cooldown: 0.75
-  _windup: 0.2
-  _range: 2.2
-  _radius: 0.5
-  _coneHalfAngle: 50
-  _maxTargets: 2
+    _knockback: 440
+    _upwardBias: 0.55
+    _stunDuration: 2.8
+  _cooldown: 0.52
+  _windup: 0.17
+  _range: 2.45
+  _radius: 0.62
+  _coneHalfAngle: 65
+  _maxTargets: 3
   _shotRange: 60
   _pellets: 1
   _spread: 0
@@ -37,6 +37,6 @@ MonoBehaviour:
   _magazine: 0
   _reloadSeconds: 1.8
   _ammo: {fileID: 0}
-  _viewPrefab: {fileID: 6763438946834142648, guid: 2a6c2ebce9902ae478e2f70a9f2f0da1, type: 3}
-  _tier: 1
-  _upgradesTo: {fileID: 11400000, guid: 4c3d9debfc335ba4480a90e8f00d4180, type: 2}
+  _viewPrefab: {fileID: 2081617972449799591, guid: 7e7c11f2acd183647a1a4b6299365d80, type: 3}
+  _tier: 2
+  _upgradesTo: {fileID: 11400000, guid: 4e93e7b7dcd7bcd48a0c254015a57df3, type: 2}

@@ -10,25 +10,25 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b81482618dd810141af52ce8f2208db6, type: 3}
-  m_Name: hatchet
+  m_Name: bat_shark
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.WeaponDef
-  _id: hatchet
-  _displayName: Hatchet
-  _description: Chops trees, chops friends. Slow enough that missing costs you.
+  _id: bat_shark
+  _displayName: Shark-Tooth Bat
+  _description: The second island had sharks. It has fewer now, and you have a bat.
   _kind: 0
-  _item: {fileID: 11400000, guid: 242440bf7bf9196499fa8d68fe099d1e, type: 2}
+  _item: {fileID: 11400000, guid: b53ae2ca271462245890cb0b671112fb, type: 2}
   _hit:
-    _damage: 34
+    _damage: 42
     _damageType: 0
-    _knockback: 210
-    _upwardBias: 0.28
-    _stunDuration: 1.6
-  _cooldown: 0.75
-  _windup: 0.2
-  _range: 2.2
-  _radius: 0.5
-  _coneHalfAngle: 50
-  _maxTargets: 2
+    _knockback: 500
+    _upwardBias: 0.58
+    _stunDuration: 3
+  _cooldown: 0.48
+  _windup: 0.16
+  _range: 2.6
+  _radius: 0.65
+  _coneHalfAngle: 70
+  _maxTargets: 4
   _shotRange: 60
   _pellets: 1
   _spread: 0
@@ -37,6 +37,6 @@ MonoBehaviour:
   _magazine: 0
   _reloadSeconds: 1.8
   _ammo: {fileID: 0}
-  _viewPrefab: {fileID: 6763438946834142648, guid: 2a6c2ebce9902ae478e2f70a9f2f0da1, type: 3}
-  _tier: 1
-  _upgradesTo: {fileID: 11400000, guid: 4c3d9debfc335ba4480a90e8f00d4180, type: 2}
+  _viewPrefab: {fileID: 2596348169459141611, guid: 073e1a6f23f3d044da1387787916aecf, type: 3}
+  _tier: 3
+  _upgradesTo: {fileID: 0}

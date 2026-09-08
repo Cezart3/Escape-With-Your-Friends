@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 216643c700d026e4397287703817d937, type: 3}
+  m_Name: bat_nails
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.UpgradeDef
+  _id: bat_nails
+  _displayName: Nail the Bat
+  _description: Four nails through the fat end. Anybody can do this and everybody
+    should.
+  _from: {fileID: 11400000, guid: d9be24296b840af4c8708893e2244df4, type: 2}
+  _to: {fileID: 11400000, guid: 40ef88b14a012b0408979136d96194f4, type: 2}
+  _venue: 0
+  _price: 0
+  _materials:
+  - Item: {fileID: 11400000, guid: b0a65aa3f09b4b540a2e8537c53cde48, type: 2}
+    Count: 4
+  - Item: {fileID: 11400000, guid: c087966ca235c4a4889ec3bd5626d9e8, type: 2}
+    Count: 1
+  _damageScale: 1.8571428
+  _knockbackScale: 1.1
+  _rangeScale: 1.0208333
+  _rateScale: 1.0576924
+  _magazineBonus: 0
+  _recoilScale: 1

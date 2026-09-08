@@ -10,25 +10,25 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b81482618dd810141af52ce8f2208db6, type: 3}
-  m_Name: hatchet
+  m_Name: hatchet_fire
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.WeaponDef
-  _id: hatchet
-  _displayName: Hatchet
-  _description: Chops trees, chops friends. Slow enough that missing costs you.
+  _id: hatchet_fire
+  _displayName: Fire Axe
+  _description: Off a wall on the wreck. Heavier, longer, and it goes through people.
   _kind: 0
-  _item: {fileID: 11400000, guid: 242440bf7bf9196499fa8d68fe099d1e, type: 2}
+  _item: {fileID: 11400000, guid: 11f255b34be69014a99ef3d635c64651, type: 2}
   _hit:
-    _damage: 34
+    _damage: 52
     _damageType: 0
-    _knockback: 210
-    _upwardBias: 0.28
-    _stunDuration: 1.6
-  _cooldown: 0.75
-  _windup: 0.2
-  _range: 2.2
-  _radius: 0.5
-  _coneHalfAngle: 50
-  _maxTargets: 2
+    _knockback: 250
+    _upwardBias: 0.3
+    _stunDuration: 1.8
+  _cooldown: 0.7
+  _windup: 0.19
+  _range: 2.5
+  _radius: 0.55
+  _coneHalfAngle: 55
+  _maxTargets: 3
   _shotRange: 60
   _pellets: 1
   _spread: 0
@@ -37,6 +37,6 @@ MonoBehaviour:
   _magazine: 0
   _reloadSeconds: 1.8
   _ammo: {fileID: 0}
-  _viewPrefab: {fileID: 6763438946834142648, guid: 2a6c2ebce9902ae478e2f70a9f2f0da1, type: 3}
-  _tier: 1
-  _upgradesTo: {fileID: 11400000, guid: 4c3d9debfc335ba4480a90e8f00d4180, type: 2}
+  _viewPrefab: {fileID: 5559397328251780865, guid: 9e31a133420ec444c9a1733cbef0e628, type: 3}
+  _tier: 2
+  _upgradesTo: {fileID: 11400000, guid: 263ba2d4a22686a4583c01a8cbcd8388, type: 2}

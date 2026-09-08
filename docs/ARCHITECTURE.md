@@ -3555,6 +3555,106 @@ all nine carried weapons proving their own damage, and `-meleeTest` is unchanged
 **Not done here:** the shop does not stock the new guns or their ammunition yet - the shelves are a
 balance question and belong to #56 - and nothing plays a muzzle flash or a sound (#M8).
 
+### Weapon upgrades (#52)
+
+`WeaponDef.UpgradesTo` had been a field nobody followed since #49. #52 is what pulls on it.
+
+**An upgrade produces a real weapon asset, not a modifier stack.** This is the decision the whole
+system hangs off, and the alternative was tempting: keep one `pistol` and layer per-player
+"+30% damage" on top of it. It does not work here, twice over. A `ScriptableObject` is a single
+global asset, so mutating one would upgrade *everybody's* pistol, and the moment damage comes from
+`asset + modifiers` rather than from the asset, #49's "what landed is what the server's asset says"
+stops being checkable. So `bat_nailed` is a `WeaponDef` and an `ItemDef` like any other, and an
+upgrade is a **swap**: the old item leaves the bag, the new one arrives.
+
+Three lines, two steps each, tier 1 to tier 3 - island-one gear at the bottom, what you carry off
+island two at the top:
+
+```
+bat     t1 14dmg 1.8/s  ->  bat_nailed   t2 26dmg 1.9/s  ->  bat_shark   t3 42dmg 2.1/s
+hatchet t1 34dmg 1.3/s  ->  hatchet_fire t2 52dmg 1.4/s  ->  chainsaw    t3 55dmg 2.9/s
+pistol  t1 26dmg 5.0/s  ->  pistol_mk2   t2 34dmg 6.0/s  ->  pistol_auto t3 40dmg 10.0/s
+```
+
+**Lines, not trees.** One `UpgradesTo` per weapon, and `UpgradeFactory` fails the build if two
+upgrades share a `From`. A branching tree would need a UI to choose between branches and a reason to
+regret the choice, and neither exists; a line needs neither, and "the next one" is a thing a player
+can hold in their head while being chased.
+
+**The advertised deltas are derived, never typed.** `UpgradeDef` carries `+86% damage, +6 rounds,
+25% less recoil` and so on, but `UpgradeFactory` computes every one of them from the two weapons at
+bake time, and `UpgradeDef.Verify()` recomputes them at runtime. Hand-typed numbers in the seed table
+are one careless edit away from a shop that lies to you, and a shop that lies is a bug players
+report as "the upgrade did nothing". They are **an advertisement, not an instruction** - nothing
+reads them to decide damage; the weapon you receive decides that.
+
+`IsStrictlyBetter` is the other half: a tier higher, and worse at nothing - not damage, not
+knockback, not reach, not rate of fire, not magazine size, and recoil no higher. Six steps all
+satisfying that predicate *is* the power curve, and it is checked on every step of every run.
+
+**Two venues, two currencies.** A bench upgrade costs materials and no money; a trader upgrade costs
+money and a little scrap. A group that has not sold anything yet can still climb both melee lines
+out of what the island gives them, and the guns are what money is *for*. Which venue an upgrade uses
+lives on the asset, so that is a balance decision in a data file rather than a rule in a method.
+
+**The transaction is #44's and #48's, unchanged**: take the weapon, take the materials, take the
+money, then give the new weapon - and if any step disagrees with the check that preceded it, put all
+three back exactly. Money moves through `Wallet.ServerTrySpend` and `ServerRefund`, so #47's ledger
+identity still holds across an upgrade. The request carries **a `ushort` index into the upgrade
+catalog and nothing else**; there is nowhere in the message to put a price, a material list or a
+target weapon, the same way there was nowhere in #48's.
+
+**Loaded rounds follow the weapon.** `Weapon.ServerCarryMagazine` moves what is in the old
+magazine into the new one, clamped to the new capacity and only when the calibre matches. Rounds are
+not in the bag, so without this an upgrade would quietly destroy a magazine you paid for, and
+upgrading would become something you do carefully rather than something you do. Different calibres
+still lose them - the alternative is inventing rounds nobody bought.
+
+`-upgradeTest` needs `-scene island`, because the two venues are a camp workbench and a trader's
+counter 97m apart. **49 checks, all passing:**
+
+```
+[UpgradeTest]   [6] pistol -> pistol_mk2 at the trader: 150c + 3x scrap_metal,
+                    +31% damage, +10% knockback, +25% range, +20% rate, +6 rounds, 25% less recoil
+[Upgrading] Player(Clone) upgraded bat to bat_nailed at the bench.
+[Upgrading] Player(Clone) upgraded bat_nailed to bat_shark at the bench.
+[Wallet]    Player(Clone) -380 (upgraded pistol_mk2 to pistol_auto), now 40.
+[Upgrading] Player(Clone) upgraded pistol_mk2 to pistol_auto at the trader for 380,
+            carrying 7 round(s) across.
+[UpgradeTest]   bat t1: 14 damage a hit ->  bat_nailed t2: 26  ->  bat_shark   t3: 42
+[UpgradeTest]   hatchet t1: 34          ->  hatchet_fire t2: 52 ->  chainsaw    t3: 55
+[UpgradeTest]   pistol t1: 26           ->  pistol_mk2 t2: 34   ->  pistol_auto t3: 40
+[UpgradeTest] 49 passed, 0 failed.
+```
+
+The acceptance asked for a curve that is *visible*, so the curve is measured rather than read off the
+assets: every weapon in every line is equipped in turn, swung at a real second player, and the
+damage that actually came off their health is what gets compared. A tier-two weapon that is only
+better in the inspector fails here. The refusals are checked the same way - no weapon, wrong venue,
+no venue, no materials, no money - and each one has to leave the bag and the wallet exactly as they
+were, because a refusal that half-charges you is the bug players actually notice.
+
+One honest gap: the rollback path is unreachable from a test. `Inventory.Add` fails only when all 20
+slots are full, and the upgrade frees the old weapon's slot before adding the new one, so "your bag
+is full" cannot be provoked. The harness asserts the reachable half - that nothing changed after
+every refusal it *can* cause - and the unreachable branch is reviewed code, not tested code.
+
+**One harness per process.** Running `-weaponTest -meleeTest -gunTest` together produced 37 failures
+and no bugs: they share one victim, one bag and one arena, and since #47 one *static* money ledger,
+so each was reading the state another had just changed. Alone, all four still pass - `-gunTest`
+113/113 (81 before the six new weapons), `-weaponTest` 27/27 over all fifteen carried weapons,
+`-meleeTest` 33/33, `-shopTest` 65/65 and `-moneyTest` 29/29. The flags are deliberately not
+mutually exclusive, because a harness that refuses to run is worse than one you have to run twice.
+
+The first run of the harness failed two checks, and the test was wrong rather than the feature:
+`pistol_auto` has the longest range of the three, so scaling the firing distance by range stood the
+victim 20m out, where the island had something in the way. Every gun now fires from the same 8m.
+Distance was never the variable under test.
+
+**Not done here:** no bench or shop UI lists what is available (the data is on `Upgrading.Available`,
+the screen is #M8's), the trader does not stock the tier-2 and tier-3 weapons directly - you arrive
+holding the tier below - and whether any of them should ever appear on a shelf is #56's call.
+
 ---
 
 ## Data-driven content
