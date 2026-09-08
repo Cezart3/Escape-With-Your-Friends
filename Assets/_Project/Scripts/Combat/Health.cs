@@ -31,6 +31,19 @@ namespace EscapeWithYourFriends.Combat
         [Range(0.05f, 1f)]
         [SerializeField] float _rescueHealthFraction = 0.35f;
 
+        /// <summary>
+        /// Whether zero health means Downed or Dead. On for players, off for animals (#53).
+        ///
+        /// The downed state is a rescue window, and a rescue window only makes sense for something
+        /// that has friends. A boar bleeding out for forty-five seconds while nobody in the world is
+        /// able to pick it up is not a mechanic, it is a carcass that refuses to become loot - so the
+        /// flag lives here rather than in an animal-only copy of this component. Damage, buffs,
+        /// invulnerability and the death event are all the same for a boar as for a player; the only
+        /// thing that differs is what the bottom of the bar means.
+        /// </summary>
+        [Tooltip("Off for anything nobody can revive. Zero health then kills outright.")]
+        [SerializeField] bool _canBeDowned = true;
+
         /// <summary>Grace period after spawning, rescuing or reviving during which damage is ignored.</summary>
         [SerializeField] float _spawnInvulnerability = 2f;
 
@@ -51,6 +64,12 @@ namespace EscapeWithYourFriends.Combat
 
         /// <summary>Server-side memory of the blow that put this character down, for kill attribution.</summary>
         DamageInfo _lastBlow;
+
+        /// <summary>
+        /// ObjectId of whoever landed the blow that put this body down, or 0 for world damage. Kill
+        /// credit, for the loot line an animal writes when it dies and for the scoreboard later.
+        /// </summary>
+        public int LastAttackerId => _lastBlow.AttackerId;
 
         public float Max => _maxHealth;
         public float Current => _current.Value;
@@ -163,7 +182,10 @@ namespace EscapeWithYourFriends.Combat
             _current.Value = Mathf.Max(0f, previous - amount);
 
             if (_current.Value <= 0f)
-                ServerDown(info);
+            {
+                if (_canBeDowned) ServerDown(info);
+                else ServerKill(info);
+            }
 
             return true;
         }
@@ -184,6 +206,24 @@ namespace EscapeWithYourFriends.Combat
         {
             if (!IsServerStarted || _state.Value != LifeState.Alive || amount <= 0f) return;
             _current.Value = Mathf.Min(_maxHealth, _current.Value + amount);
+        }
+
+        /// <summary>
+        /// Sets the two things a shared prefab cannot know about itself: how much health this
+        /// particular body has, and whether it can be helped up.
+        ///
+        /// Call it after Instantiate and **before** ServerManager.Spawn. That order matters:
+        /// <see cref="OnStartServer"/> fills the health bar from <c>_maxHealth</c>, so configuring
+        /// after the spawn would leave a boar with a player's hundred hit points until something hit
+        /// it. Called late anyway, it still refills, because the alternative is a half-configured
+        /// body and no way to notice.
+        /// </summary>
+        public void ServerConfigure(float maxHealth, bool canBeDowned)
+        {
+            _maxHealth = Mathf.Max(1f, maxHealth);
+            _canBeDowned = canBeDowned;
+
+            if (IsServerStarted) _current.Value = _maxHealth;
         }
 
         /// <summary>

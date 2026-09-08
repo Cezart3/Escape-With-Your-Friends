@@ -101,6 +101,13 @@ namespace EscapeWithYourFriends.Player
         [Header("Speed")]
         [SerializeField] float _walkSpeed = 4.5f;
         [SerializeField] float _sprintSpeed = 7.5f;
+
+        /// <summary>
+        /// How fast a player can move on foot. Public because the wildlife in #53 is balanced
+        /// against it - a prey animal faster than this can never be caught - and a number two
+        /// systems have to agree on should be read rather than copied.
+        /// </summary>
+        public float SprintSpeed => _sprintSpeed;
         [SerializeField] float _crouchSpeed = 2.2f;
 
         [Header("Acceleration")]

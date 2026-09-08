@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 97bf2813582055649a8d3d9d465530db, type: 3}
+  m_Name: deer
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.AnimalDef
+  _id: deer
+  _displayName: Deer
+  _description: Nervous, quick, and carrying most of the island's money on its back.
+  _temperament: 0
+  _maxHealth: 40
+  _walkSpeed: 2.4
+  _runSpeed: 7
+  _wanderRadius: 45
+  _idleSeconds: {x: 2, y: 6}
+  _senseRadius: 34
+  _reactRadius: 20
+  _calmSeconds: 7
+  _attackDamage: 0
+  _attackRange: 1
+  _attackInterval: 2
+  _attackStun: 0
+  _attackKnockback: 0
+  _bodySize: {x: 0.7, y: 1.35, z: 1.8}
+  _colour: {r: 0.56, g: 0.41, b: 0.26, a: 1}
+  _agentRadius: 0.5
+  _loot:
+  - Item: {fileID: 11400000, guid: aadaf72418e25a84a92c275a53f5c7e9, type: 2}
+    Min: 3
+    Max: 4
+    Chance: 1
+  - Item: {fileID: 11400000, guid: 44d7ece014ee47d4487c3aa022dc80be, type: 2}
+    Min: 1
+    Max: 2
+    Chance: 0.85

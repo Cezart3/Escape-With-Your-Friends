@@ -37,7 +37,7 @@ RenderSettings:
   m_ReflectionBounces: 1
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
-  m_Sun: {fileID: 1543784504}
+  m_Sun: {fileID: 1901559686}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &257847126
+--- !u!1 &63572477
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -127,111 +127,79 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 257847130}
-  - component: {fileID: 257847129}
-  - component: {fileID: 257847128}
-  - component: {fileID: 257847127}
+  - component: {fileID: 63572478}
   m_Layer: 0
-  m_Name: Island
+  m_Name: SpawnPoint.0
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &257847127
+--- !u!4 &63572478
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 63572477}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: 1, z: -0, w: 0}
+  m_LocalPosition: {x: -84, y: 6.1107206, z: -40.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1464886246}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &147390912
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 147390914}
+  - component: {fileID: 147390913}
+  m_Layer: 0
+  m_Name: NavCheck
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &147390913
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 257847126}
+  m_GameObject: {fileID: 147390912}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9ea2192e2645a2b4695b1cdfe4c0bee2, type: 3}
+  m_Script: {fileID: 11500000, guid: 187ed45edb6c5e947bfb19ef8dbf3521, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.TerrainQuality
-  _terrain: {fileID: 257847129}
-  _treeDistance: 320
-  _detailDistance: 85
-  _detailDensity: 0.8
-  _billboardDistance: 90
---- !u!154 &257847128
-TerrainCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 257847126}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_TerrainData: {fileID: 15600000, guid: c7eafc3ade55e334389d9866e4c53b0a, type: 2}
-  m_EnableTreeColliders: 1
---- !u!218 &257847129
-Terrain:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 257847126}
-  m_Enabled: 1
-  serializedVersion: 6
-  m_TerrainData: {fileID: 15600000, guid: c7eafc3ade55e334389d9866e4c53b0a, type: 2}
-  m_TreeDistance: 320
-  m_TreeBillboardDistance: 90
-  m_TreeCrossFadeLength: 25
-  m_TreeMaximumFullLODCount: 60
-  m_DetailObjectDistance: 85
-  m_DetailObjectDensity: 0.8
-  m_HeightmapPixelError: 5
-  m_SplatMapDistance: 400
-  m_HeightmapMinimumLODSimplification: 0
-  m_HeightmapMaximumLOD: 0
-  m_ShadowCastingMode: 2
-  m_DrawHeightmap: 1
-  m_DrawInstanced: 0
-  m_DrawTreesAndFoliage: 1
-  m_StaticShadowCaster: 0
-  m_IgnoreQualitySettings: 0
-  m_ReflectionProbeUsage: 1
-  m_MaterialTemplate: {fileID: 0}
-  m_BakeLightProbesForTrees: 1
-  m_PreserveTreePrototypeLayers: 0
-  m_DeringLightProbesForTrees: 1
-  m_ReceiveGI: 1
-  m_ScaleInLightmap: 1
-  m_LightmapParameters: {fileID: 15203, guid: 0000000000000000f000000000000000, type: 0}
-  m_GroupingID: 0
-  m_RenderingLayerMask: 1
-  m_AllowAutoConnect: 0
-  m_EnableHeightmapRayTracing: 1
-  m_EnableTreesAndDetailsRayTracing: 0
-  m_EnableHeightmapLODFrustumCulling: 1
-  m_TreeMotionVectorModeOverride: 3
---- !u!4 &257847130
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.NavWalk
+  _speed: 6
+  _timeout: 180
+  _stallWindow: 4
+  _stallDistance: 0.6
+  _logEvery: 5
+--- !u!4 &147390914
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 257847126}
+  m_GameObject: {fileID: 147390912}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -512, y: -40, z: -512}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &258071037
+--- !u!1 &578887624
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -239,30 +207,89 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 258071038}
+  - component: {fileID: 578887626}
+  - component: {fileID: 578887625}
   m_Layer: 0
-  m_Name: SpawnPoint.3
+  m_Name: POIs
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &258071038
+--- !u!114 &578887625
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 578887624}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c129bd828c53ac14395cb03f266af936, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.POISpawner
+  _placements:
+  - Id: camp.base
+    Prefab: {fileID: 6263055462330699957, guid: 5126e6a3d6e4dff44a57236180dcfa51, type: 3}
+    Position: {x: -84, y: 4.9107203, z: -47}
+    Euler: {x: 0, y: 61, z: 0}
+  - Id: camp.revive
+    Prefab: {fileID: 1273783363121690521, guid: 33ab89d3c6fc9ce4984f59d2b10e0176, type: 3}
+    Position: {x: -76, y: 4.9107203, z: -43}
+    Euler: {x: 0, y: 241, z: 0}
+  - Id: camp.bench
+    Prefab: {fileID: 7147793677435025715, guid: e77d1e96bf3419c49aed550588400808, type: 3}
+    Position: {x: -78, y: 4.9107203, z: -52}
+    Euler: {x: 0, y: 311, z: 0}
+  - Id: camp.chest.a
+    Prefab: {fileID: 7902103712135646924, guid: ee59a999da722d04fa7015287a126772, type: 3}
+    Position: {x: -87, y: 4.9107203, z: -54}
+    Euler: {x: 0, y: 381, z: 0}
+  - Id: camp.chest.b
+    Prefab: {fileID: 7902103712135646924, guid: ee59a999da722d04fa7015287a126772, type: 3}
+    Position: {x: -89, y: 4.9107203, z: -53}
+    Euler: {x: 0, y: 396, z: 0}
+  - Id: shop
+    Prefab: {fileID: 7430790008593953652, guid: 3fd66ce5418d54247b982a16e7068391, type: 3}
+    Position: {x: -177, y: 8.307549, z: -28}
+    Euler: {x: 0, y: 102, z: 0}
+  - Id: shop.counter
+    Prefab: {fileID: 3004684559259621037, guid: 32d43c24f0c56734aac3fb0cb215ea26, type: 3}
+    Position: {x: -172, y: 8.307549, z: -29}
+    Euler: {x: 0, y: 282, z: 0}
+  - Id: casino
+    Prefab: {fileID: 738940233283173273, guid: bb10a2b0ee65d4c45bc2c2b603fd371f, type: 3}
+    Position: {x: -270, y: 6.2800655, z: -74}
+    Euler: {x: 0, y: 82, z: 0}
+  - Id: village
+    Prefab: {fileID: 8665099786978586152, guid: 4b44a8357ecf59d49b2070e6faf69fdf, type: 3}
+    Position: {x: 130, y: 10.2429905, z: 205}
+    Euler: {x: 0, y: -140, z: 0}
+  - Id: wreck
+    Prefab: {fileID: 6864973059503036892, guid: ff368d683922b9f468df813b468ac4fa, type: 3}
+    Position: {x: 9, y: 0.31938165, z: -47}
+    Euler: {x: 0, y: -90, z: 0}
+  - Id: cave
+    Prefab: {fileID: 3147191381890212601, guid: d509fb77476f79a488a7804df1809d97, type: 3}
+    Position: {x: -9, y: 34.213005, z: 149}
+    Euler: {x: 0, y: -159, z: 0}
+  _catalog: {fileID: 11400000, guid: 5de992fcce44e734d888a225d71cb91f, type: 2}
+--- !u!4 &578887626
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 258071037}
+  m_GameObject: {fileID: 578887624}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: 0.7071068, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: -90.5, y: 6.1107206, z: -47}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 2035062783}
+  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &575308339
+--- !u!1001 &734098042
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -319,7 +346,7 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: dfa256f5f9bbadd4bb9c51fb3c393f7a, type: 3}
---- !u!1 &785668969
+--- !u!1 &933581299
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -327,7 +354,7 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 785668970}
+  - component: {fileID: 933581300}
   m_Layer: 0
   m_Name: SpawnPoint.2
   m_TagString: Untagged
@@ -335,22 +362,22 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &785668970
+--- !u!4 &933581300
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 785668969}
+  m_GameObject: {fileID: 933581299}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -84, y: 6.1107206, z: -53.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 2035062783}
+  m_Father: {fileID: 1464886246}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1543784502
+--- !u!1 &1061110721
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -358,9 +385,282 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1543784505}
-  - component: {fileID: 1543784504}
-  - component: {fileID: 1543784503}
+  - component: {fileID: 1061110725}
+  - component: {fileID: 1061110724}
+  - component: {fileID: 1061110723}
+  - component: {fileID: 1061110722}
+  m_Layer: 0
+  m_Name: Island
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1061110722
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1061110721}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ea2192e2645a2b4695b1cdfe4c0bee2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.TerrainQuality
+  _terrain: {fileID: 1061110724}
+  _treeDistance: 320
+  _detailDistance: 85
+  _detailDensity: 0.8
+  _billboardDistance: 90
+--- !u!154 &1061110723
+TerrainCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1061110721}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_TerrainData: {fileID: 15600000, guid: c7eafc3ade55e334389d9866e4c53b0a, type: 2}
+  m_EnableTreeColliders: 1
+--- !u!218 &1061110724
+Terrain:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1061110721}
+  m_Enabled: 1
+  serializedVersion: 6
+  m_TerrainData: {fileID: 15600000, guid: c7eafc3ade55e334389d9866e4c53b0a, type: 2}
+  m_TreeDistance: 320
+  m_TreeBillboardDistance: 90
+  m_TreeCrossFadeLength: 25
+  m_TreeMaximumFullLODCount: 60
+  m_DetailObjectDistance: 85
+  m_DetailObjectDensity: 0.8
+  m_HeightmapPixelError: 5
+  m_SplatMapDistance: 400
+  m_HeightmapMinimumLODSimplification: 0
+  m_HeightmapMaximumLOD: 0
+  m_ShadowCastingMode: 2
+  m_DrawHeightmap: 1
+  m_DrawInstanced: 0
+  m_DrawTreesAndFoliage: 1
+  m_StaticShadowCaster: 0
+  m_IgnoreQualitySettings: 0
+  m_ReflectionProbeUsage: 1
+  m_MaterialTemplate: {fileID: 0}
+  m_BakeLightProbesForTrees: 1
+  m_PreserveTreePrototypeLayers: 0
+  m_DeringLightProbesForTrees: 1
+  m_ReceiveGI: 1
+  m_ScaleInLightmap: 1
+  m_LightmapParameters: {fileID: 15203, guid: 0000000000000000f000000000000000, type: 0}
+  m_GroupingID: 0
+  m_RenderingLayerMask: 1
+  m_AllowAutoConnect: 0
+  m_EnableHeightmapRayTracing: 1
+  m_EnableTreesAndDetailsRayTracing: 0
+  m_EnableHeightmapLODFrustumCulling: 1
+  m_TreeMotionVectorModeOverride: 3
+--- !u!4 &1061110725
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1061110721}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -512, y: -40, z: -512}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1464886244
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1464886246}
+  - component: {fileID: 1464886245}
+  m_Layer: 0
+  m_Name: SpawnPoints
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1464886245
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1464886244}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0ba0978a71780894f9684282611b6bab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.SceneSpawnPoints
+  _points:
+  - {fileID: 63572478}
+  - {fileID: 1464934321}
+  - {fileID: 933581300}
+  - {fileID: 1998756311}
+--- !u!4 &1464886246
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1464886244}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 63572478}
+  - {fileID: 1464934321}
+  - {fileID: 933581300}
+  - {fileID: 1998756311}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1464934320
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1464934321}
+  m_Layer: 0
+  m_Name: SpawnPoint.1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1464934321
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1464934320}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0.7071068, z: -0, w: 0.7071068}
+  m_LocalPosition: {x: -77.5, y: 6.1107206, z: -47}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1464886246}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1615187067
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1615187069}
+  - component: {fileID: 1615187068}
+  m_Layer: 0
+  m_Name: Animals
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1615187068
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1615187067}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 95a059ae1aba17841ba9198c4a1d7d7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.AI.AnimalSpawner
+  _zones:
+  - Id: boar.camp
+    Species: {fileID: 11400000, guid: 16592ea32bd52a149997429bd8e8f314, type: 2}
+    Centre: {x: -84, y: 4.9107203, z: -47}
+    Radius: 130
+    Population: 5
+  - Id: boar.village
+    Species: {fileID: 11400000, guid: 16592ea32bd52a149997429bd8e8f314, type: 2}
+    Centre: {x: 130, y: 10.2429905, z: 205}
+    Radius: 110
+    Population: 4
+  - Id: deer.inland
+    Species: {fileID: 11400000, guid: 2a805cbc4124a9e4da7f178b69f035c4, type: 2}
+    Centre: {x: -9, y: 34.213005, z: 149}
+    Radius: 160
+    Population: 6
+  - Id: deer.village
+    Species: {fileID: 11400000, guid: 2a805cbc4124a9e4da7f178b69f035c4, type: 2}
+    Centre: {x: 130, y: 10.2429905, z: 205}
+    Radius: 140
+    Population: 4
+  - Id: gull.shore
+    Species: {fileID: 11400000, guid: 773e58647b544e8499de27471a2dcf28, type: 2}
+    Centre: {x: 9, y: 0.31938165, z: -47}
+    Radius: 120
+    Population: 5
+  _prefab: {fileID: 2327327759718728831, guid: 43814f57b9d1bf348879fdb7060ec0a2, type: 3}
+  _catalog: {fileID: 11400000, guid: c5188fe110818f643af51bf0e58c2bb2, type: 2}
+  _tickSeconds: 5
+  _respawnSeconds: 45
+  _playerClearance: 40
+  _attempts: 12
+  _enabled: 1
+--- !u!4 &1615187069
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1615187067}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1901559684
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1901559687}
+  - component: {fileID: 1901559686}
+  - component: {fileID: 1901559685}
   m_Layer: 0
   m_Name: Sun
   m_TagString: Untagged
@@ -368,29 +668,29 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1543784503
+--- !u!114 &1901559685
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1543784502}
+  m_GameObject: {fileID: 1901559684}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ef23b05fba30ee0478adc0258c39cc9b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.DayNightCycle
   Profile: {fileID: 11400000, guid: 75aea82033cf78b49973ca8f38f38900, type: 2}
-  Sun: {fileID: 1543784504}
+  Sun: {fileID: 1901559686}
   Sky: {fileID: 2100000, guid: 3f5d06fa00992b24b911b4251eb879ba, type: 2}
   NightGroundBounce: 0.4
---- !u!108 &1543784504
+--- !u!108 &1901559686
 Light:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1543784502}
+  m_GameObject: {fileID: 1901559684}
   m_Enabled: 1
   serializedVersion: 12
   m_Type: 1
@@ -449,13 +749,13 @@ Light:
   m_LightUnit: 1
   m_LuxAtDistance: 1
   m_EnableSpotReflector: 1
---- !u!4 &1543784505
+--- !u!4 &1901559687
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1543784502}
+  m_GameObject: {fileID: 1901559684}
   serializedVersion: 2
   m_LocalRotation: {x: 0.049473967, y: -0.2687182, z: 0.17449065, w: 0.9459894}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -464,7 +764,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1724616262
+--- !u!1 &1998756310
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -472,80 +772,68 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1724616264}
-  - component: {fileID: 1724616263}
+  - component: {fileID: 1998756311}
   m_Layer: 0
-  m_Name: POIs
+  m_Name: SpawnPoint.3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1724616263
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1724616262}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c129bd828c53ac14395cb03f266af936, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.POISpawner
-  _placements:
-  - Id: camp.base
-    Prefab: {fileID: 6263055462330699957, guid: 5126e6a3d6e4dff44a57236180dcfa51, type: 3}
-    Position: {x: -84, y: 4.9107203, z: -47}
-    Euler: {x: 0, y: 61, z: 0}
-  - Id: camp.revive
-    Prefab: {fileID: 1273783363121690521, guid: 33ab89d3c6fc9ce4984f59d2b10e0176, type: 3}
-    Position: {x: -76, y: 4.9107203, z: -43}
-    Euler: {x: 0, y: 241, z: 0}
-  - Id: camp.bench
-    Prefab: {fileID: 7147793677435025715, guid: e77d1e96bf3419c49aed550588400808, type: 3}
-    Position: {x: -78, y: 4.9107203, z: -52}
-    Euler: {x: 0, y: 311, z: 0}
-  - Id: camp.chest.a
-    Prefab: {fileID: 7902103712135646924, guid: ee59a999da722d04fa7015287a126772, type: 3}
-    Position: {x: -87, y: 4.9107203, z: -54}
-    Euler: {x: 0, y: 381, z: 0}
-  - Id: camp.chest.b
-    Prefab: {fileID: 7902103712135646924, guid: ee59a999da722d04fa7015287a126772, type: 3}
-    Position: {x: -89, y: 4.9107203, z: -53}
-    Euler: {x: 0, y: 396, z: 0}
-  - Id: shop
-    Prefab: {fileID: 7430790008593953652, guid: 3fd66ce5418d54247b982a16e7068391, type: 3}
-    Position: {x: -177, y: 8.307549, z: -28}
-    Euler: {x: 0, y: 102, z: 0}
-  - Id: shop.counter
-    Prefab: {fileID: 3004684559259621037, guid: 32d43c24f0c56734aac3fb0cb215ea26, type: 3}
-    Position: {x: -172, y: 8.307549, z: -29}
-    Euler: {x: 0, y: 282, z: 0}
-  - Id: casino
-    Prefab: {fileID: 738940233283173273, guid: bb10a2b0ee65d4c45bc2c2b603fd371f, type: 3}
-    Position: {x: -270, y: 6.2800655, z: -74}
-    Euler: {x: 0, y: 82, z: 0}
-  - Id: village
-    Prefab: {fileID: 8665099786978586152, guid: 4b44a8357ecf59d49b2070e6faf69fdf, type: 3}
-    Position: {x: 130, y: 10.2429905, z: 205}
-    Euler: {x: 0, y: -140, z: 0}
-  - Id: wreck
-    Prefab: {fileID: 6864973059503036892, guid: ff368d683922b9f468df813b468ac4fa, type: 3}
-    Position: {x: 9, y: 0.31938165, z: -47}
-    Euler: {x: 0, y: -90, z: 0}
-  - Id: cave
-    Prefab: {fileID: 3147191381890212601, guid: d509fb77476f79a488a7804df1809d97, type: 3}
-    Position: {x: -9, y: 34.213005, z: 149}
-    Euler: {x: 0, y: -159, z: 0}
-  _catalog: {fileID: 11400000, guid: 5de992fcce44e734d888a225d71cb91f, type: 2}
---- !u!4 &1724616264
+--- !u!4 &1998756311
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1724616262}
+  m_GameObject: {fileID: 1998756310}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: 0.7071068, z: -0, w: 0.7071068}
+  m_LocalPosition: {x: -90.5, y: 6.1107206, z: -47}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1464886246}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2016609515
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2016609517}
+  - component: {fileID: 2016609516}
+  m_Layer: 0
+  m_Name: Intro
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2016609516
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2016609515}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 652584ffc69e5ca47ab533af4120bdb6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.IslandIntro
+  _firstTarget: wreck
+  _firstObjective: Search the wreck on the beach
+  _patience: 20
+--- !u!4 &2016609517
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2016609515}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -554,7 +842,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1791532901
+--- !u!1 &2104632137
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -562,8 +850,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1791532903}
-  - component: {fileID: 1791532902}
+  - component: {fileID: 2104632139}
+  - component: {fileID: 2104632138}
   m_Layer: 0
   m_Name: NavMesh
   m_TagString: Untagged
@@ -571,13 +859,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1791532902
+--- !u!114 &2104632138
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1791532901}
+  m_GameObject: {fileID: 2104632137}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7a5ac11cc976e418e8d13136b07e1f52, type: 3}
@@ -603,224 +891,13 @@ MonoBehaviour:
   m_MinRegionArea: 6
   m_NavMeshData: {fileID: 23800000, guid: 4d30116459ab1564d8e8a3e2a5470332, type: 2}
   m_BuildHeightMesh: 0
---- !u!4 &1791532903
+--- !u!4 &2104632139
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1791532901}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1793477729
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1793477731}
-  - component: {fileID: 1793477730}
-  m_Layer: 0
-  m_Name: Intro
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1793477730
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1793477729}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 652584ffc69e5ca47ab533af4120bdb6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.IslandIntro
-  _firstTarget: wreck
-  _firstObjective: Search the wreck on the beach
-  _patience: 20
---- !u!4 &1793477731
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1793477729}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1801915845
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1801915846}
-  m_Layer: 0
-  m_Name: SpawnPoint.0
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1801915846
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1801915845}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: 1, z: -0, w: 0}
-  m_LocalPosition: {x: -84, y: 6.1107206, z: -40.5}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2035062783}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1988726678
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1988726679}
-  m_Layer: 0
-  m_Name: SpawnPoint.1
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1988726679
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1988726678}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0.7071068, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: -77.5, y: 6.1107206, z: -47}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2035062783}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &2035062781
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2035062783}
-  - component: {fileID: 2035062782}
-  m_Layer: 0
-  m_Name: SpawnPoints
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &2035062782
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2035062781}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0ba0978a71780894f9684282611b6bab, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.SceneSpawnPoints
-  _points:
-  - {fileID: 1801915846}
-  - {fileID: 1988726679}
-  - {fileID: 785668970}
-  - {fileID: 258071038}
---- !u!4 &2035062783
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2035062781}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 1801915846}
-  - {fileID: 1988726679}
-  - {fileID: 785668970}
-  - {fileID: 258071038}
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &2121002991
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2121002993}
-  - component: {fileID: 2121002992}
-  m_Layer: 0
-  m_Name: NavCheck
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &2121002992
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2121002991}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 187ed45edb6c5e947bfb19ef8dbf3521, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.NavWalk
-  _speed: 6
-  _timeout: 180
-  _stallWindow: 4
-  _stallDistance: 0.6
-  _logEvery: 5
---- !u!4 &2121002993
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2121002991}
+  m_GameObject: {fileID: 2104632137}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -833,11 +910,12 @@ Transform:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 257847130}
-  - {fileID: 1543784505}
-  - {fileID: 575308339}
-  - {fileID: 1724616264}
-  - {fileID: 1791532903}
-  - {fileID: 2035062783}
-  - {fileID: 1793477731}
-  - {fileID: 2121002993}
+  - {fileID: 1061110725}
+  - {fileID: 1901559687}
+  - {fileID: 734098042}
+  - {fileID: 578887626}
+  - {fileID: 2104632139}
+  - {fileID: 1615187069}
+  - {fileID: 1464886246}
+  - {fileID: 2016609517}
+  - {fileID: 147390914}

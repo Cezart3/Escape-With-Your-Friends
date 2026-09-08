@@ -96,6 +96,12 @@ namespace EscapeWithYourFriends.EditorTools
             new("hydrated", "Hydrated", "Water. The whole point of the filter.",
                 0f, BuffStacking.Refresh, thirst: 45f),
 
+            // The best food in the game, and it comes off an animal somebody had to kill. Bigger than
+            // a cooked fish on every axis, because the fish walks into a hook and the boar fights back.
+            new("roast", "Roast", "Meat, fire, and a very good afternoon.",
+                60f, BuffStacking.Refresh, hunger: 48f, health: 10f, hungerRate: 0.5f,
+                healthRate: 0.4f),
+
             // A coconut is food and drink at once, which is why it is worth carrying two of.
             new("coconut_water", "Coconut Water", "Food and water in one inconvenient shell.",
                 12f, BuffStacking.Refresh, hunger: 12f, thirst: 20f, hungerRate: 0.3f),
@@ -125,6 +131,8 @@ namespace EscapeWithYourFriends.EditorTools
             ("coconut", "coconut_water", 2.5f, null),
             ("fish_raw", "well_fed", 3f, null),
             ("fish_cooked", "cooked_meal", 2.5f, null),
+            ("meat_raw", "well_fed", 3.5f, null),
+            ("meat_cooked", "roast", 3f, null),
             ("water_bottle", "hydrated", 1.5f, "empty_bottle"),
             ("bandage", "bandaged", 3f, null),
         };

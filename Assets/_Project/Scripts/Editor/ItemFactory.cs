@@ -64,9 +64,17 @@ namespace EscapeWithYourFriends.EditorTools
             new("cloth", "Cloth", ItemCategory.Material, 20, 0.3f, 3, "Sailcloth. Bandages, sails, and covering the shame."),
             new("flint", "Flint", ItemCategory.Material, 10, 0.4f, 2, "Strikes a spark. The whole reason you have fire."),
 
+            // Hunting's half of the material list (#53). A hide is the single most valuable thing an
+            // early island gives away, which is the point: it is what makes walking into the trees
+            // with a hatchet a better idea than picking up another plank.
+            new("hide", "Hide", ItemCategory.Material, 10, 1.2f, 26, "Scraped and dried. The trader always wants one."),
+            new("feather", "Feather", ItemCategory.Material, 20, 0.05f, 7, "Light, plentiful, and worth almost nothing individually."),
+
             new("coconut", "Coconut", ItemCategory.Food, 8, 0.8f, 5, "Food and water in one inconvenient shell."),
             new("fish_raw", "Raw Fish", ItemCategory.Food, 5, 1f, 6, "Edible. Not advisable."),
             new("fish_cooked", "Cooked Fish", ItemCategory.Food, 5, 0.9f, 12, "Advisable."),
+            new("meat_raw", "Raw Meat", ItemCategory.Food, 5, 0.9f, 14, "Off the bone. Somebody has to cook it."),
+            new("meat_cooked", "Roast Meat", ItemCategory.Food, 5, 0.8f, 30, "The reason the fire was worth building."),
             new("water_bottle", "Water Bottle", ItemCategory.Drink, 1, 1.2f, 10, "Refillable at the filter. Empty it weighs nothing."),
             new("bandage", "Bandage", ItemCategory.Medical, 5, 0.2f, 15, "Stops the bleeding. Does not stop the shouting."),
 
