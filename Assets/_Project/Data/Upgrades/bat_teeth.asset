@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 216643c700d026e4397287703817d937, type: 3}
+  m_Name: bat_teeth
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.UpgradeDef
+  _id: bat_teeth
+  _displayName: Set the Teeth
+  _description: Flint and wire down both sides. Looks unhinged, works.
+  _from: {fileID: 11400000, guid: 40ef88b14a012b0408979136d96194f4, type: 2}
+  _to: {fileID: 11400000, guid: 4e93e7b7dcd7bcd48a0c254015a57df3, type: 2}
+  _venue: 0
+  _price: 0
+  _materials:
+  - Item: {fileID: 11400000, guid: b0a65aa3f09b4b540a2e8537c53cde48, type: 2}
+    Count: 6
+  - Item: {fileID: 11400000, guid: f35703f74c122f84da9933e3ffcfda78, type: 2}
+    Count: 2
+  - Item: {fileID: 11400000, guid: 44dc35f5974ecd4408e030cbe34bc31f, type: 2}
+    Count: 4
+  _damageScale: 1.6153846
+  _knockbackScale: 1.1363636
+  _rangeScale: 1.0612245
+  _rateScale: 1.0833334
+  _magazineBonus: 0
+  _recoilScale: 1

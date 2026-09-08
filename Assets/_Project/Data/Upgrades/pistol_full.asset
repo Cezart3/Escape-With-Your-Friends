@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 216643c700d026e4397287703817d937, type: 3}
+  m_Name: pistol_full
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.UpgradeDef
+  _id: pistol_full
+  _displayName: Go Automatic
+  _description: Ten rounds a second out of a pistol. The trader is very clear that
+    this is illegal.
+  _from: {fileID: 11400000, guid: 7a3d137b30916a7418e69c19bd7a75e4, type: 2}
+  _to: {fileID: 11400000, guid: 1343442111d05a547911a7687b7a922b, type: 2}
+  _venue: 1
+  _price: 380
+  _materials:
+  - Item: {fileID: 11400000, guid: b0a65aa3f09b4b540a2e8537c53cde48, type: 2}
+    Count: 6
+  - Item: {fileID: 11400000, guid: f35703f74c122f84da9933e3ffcfda78, type: 2}
+    Count: 1
+  _damageScale: 1.1764706
+  _knockbackScale: 1.1818181
+  _rangeScale: 1.1333333
+  _rateScale: 1.6666667
+  _magazineBonus: 12
+  _recoilScale: 0.7777778

@@ -92,6 +92,17 @@ namespace EscapeWithYourFriends.EditorTools
             new("shotgun_shell", "Shotgun Shells", ItemCategory.Material, 24, 0.05f, 5, "Fat, heavy, and worth it once."),
             new("rifle_ammo", "Rifle Rounds", ItemCategory.Material, 30, 0.03f, 9, "Expensive per shot, which is the point of aiming."),
 
+            // #52's upgrade targets. Each one is the far end of a swap rather than something the
+            // shop stocks: you arrive holding the tier below it. Prices are here anyway, because an
+            // item with no value is an item the trader will not buy back, and selling the chainsaw
+            // you no longer want is a decision worth having.
+            new("bat_nailed", "Nailed Bat", ItemCategory.Weapon, 1, 1.5f, 70, "A bat, plus nails. The nails are the upgrade."),
+            new("bat_shark", "Shark-Tooth Bat", ItemCategory.Weapon, 1, 1.7f, 150, "Teeth set in resin along the barrel. Deeply unhygienic."),
+            new("hatchet_fire", "Fire Axe", ItemCategory.Weapon, 1, 3.2f, 110, "Long handle, heavy head, red paint. Opens doors and arguments."),
+            new("chainsaw", "Chainsaw", ItemCategory.Weapon, 1, 6.5f, 260, "Heavy, loud, and it does not stop when you want it to."),
+            new("pistol_mk2", "Tuned Pistol", ItemCategory.Weapon, 1, 1.2f, 220, "The same pistol after somebody who knew what they were doing had it."),
+            new("pistol_auto", "Machine Pistol", ItemCategory.Weapon, 1, 1.6f, 420, "A pistol that forgot to stop. Empties the box in three seconds."),
+
             new("boat_part", "Boat Part", ItemCategory.Quest, 1, 12f, 0, "One of the pieces that gets you off this island."),
         };
 

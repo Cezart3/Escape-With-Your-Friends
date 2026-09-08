@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a55af287e8050974e90da0319b2b5a2f, type: 3}
+  m_Name: Upgrades
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.UpgradeCatalog
+  _upgrades:
+  - {fileID: 11400000, guid: 9a1579e24ba6e4a4abfc9bddd4b54efb, type: 2}
+  - {fileID: 11400000, guid: 200d6a96a12cc504694b56952e7440e9, type: 2}
+  - {fileID: 11400000, guid: 52133bc0c9f433743b229c83ee4f6ec4, type: 2}
+  - {fileID: 11400000, guid: f9496b65f43465a43805bbc823ce0299, type: 2}
+  - {fileID: 11400000, guid: d09ec2f18c13a114eade5b2e7fe0e4c9, type: 2}
+  - {fileID: 11400000, guid: dd81759e88f52bd45b9e422913df2421, type: 2}

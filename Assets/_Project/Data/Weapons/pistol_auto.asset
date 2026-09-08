@@ -10,33 +10,34 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b81482618dd810141af52ce8f2208db6, type: 3}
-  m_Name: pistol
+  m_Name: pistol_auto
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.WeaponDef
-  _id: pistol
-  _displayName: Pistol
-  _description: Reaches across the clearing. Reloading is #51's problem.
+  _id: pistol_auto
+  _displayName: Machine Pistol
+  _description: Thirty rounds, ten a second, and it barely moves. The reason to keep
+    the first pistol you ever bought.
   _kind: 1
-  _item: {fileID: 11400000, guid: c73b9523f3d4d734387c3549dfd1cbf9, type: 2}
+  _item: {fileID: 11400000, guid: d23cfea44be843744bd7fc98e56e47ba, type: 2}
   _hit:
-    _damage: 26
+    _damage: 40
     _damageType: 0
-    _knockback: 100
-    _upwardBias: 0.1
-    _stunDuration: 0.6
+    _knockback: 130
+    _upwardBias: 0.12
+    _stunDuration: 0.7
   _cooldown: 0
   _windup: 0
-  _range: 60
+  _range: 85
   _radius: 0
   _coneHalfAngle: 5
   _maxTargets: 1
-  _shotRange: 60
+  _shotRange: 85
   _pellets: 1
-  _spread: 1.5
-  _recoil: 1.2
-  _roundsPerMinute: 300
-  _magazine: 12
-  _reloadSeconds: 1.8
+  _spread: 0.9
+  _recoil: 0.7
+  _roundsPerMinute: 600
+  _magazine: 30
+  _reloadSeconds: 1.5
   _ammo: {fileID: 11400000, guid: 68e4e002373b16e4db2bc877a59b00f7, type: 2}
-  _viewPrefab: {fileID: 1874732295560729294, guid: 61e2fc5ffb5bba84f864dc6e7dd1d558, type: 3}
-  _tier: 1
-  _upgradesTo: {fileID: 11400000, guid: 7a3d137b30916a7418e69c19bd7a75e4, type: 2}
+  _viewPrefab: {fileID: 9105784325040695215, guid: 345c42d4945258c44ba3a2720340905f, type: 3}
+  _tier: 3
+  _upgradesTo: {fileID: 0}

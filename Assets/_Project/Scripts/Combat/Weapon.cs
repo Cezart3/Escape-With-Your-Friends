@@ -271,6 +271,34 @@ namespace EscapeWithYourFriends.Combat
         [Server]
         public void ServerLoad(WeaponDef weapon, int rounds) => ServerSetRounds(weapon, rounds);
 
+        /// <summary>
+        /// Moves what is in one weapon's magazine into another's, for #52's upgrades. Returns how
+        /// many rounds made the trip.
+        ///
+        /// Rounds in a magazine are not in the bag, so an upgrade would otherwise destroy them - and
+        /// losing half a magazine to a bench visit would make upgrading a thing you do carefully
+        /// rather than a thing you do. Different calibres still lose them: a pistol magazine does not
+        /// fit a shotgun, and the alternative is inventing rounds of a type nobody paid for. The old
+        /// weapon is emptied either way, because it is the weapon you no longer have.
+        /// </summary>
+        [Server]
+        public int ServerCarryMagazine(WeaponDef from, WeaponDef to)
+        {
+            if (from == null || to == null || from == to) return 0;
+
+            int rounds = ServerRounds(from);
+            ServerSetRounds(from, 0);
+
+            if (rounds <= 0 || from.Ammo == null || from.Ammo != to.Ammo) return 0;
+
+            int room = Mathf.Max(0, to.Magazine - ServerRounds(to));
+            int moved = Mathf.Min(rounds, room);
+            if (moved <= 0) return 0;
+
+            ServerSetRounds(to, ServerRounds(to) + moved);
+            return moved;
+        }
+
         /// <summary>Owner-side entry point. Call from input.</summary>
         public void RequestAttack()
         {
