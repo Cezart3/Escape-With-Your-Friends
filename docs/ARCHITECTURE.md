@@ -3793,6 +3793,108 @@ hide and meat is #56's balance pass to revisit.
 
 ---
 
+### Fishing (#54)
+
+Six things live in the sea - sardine, snapper, tuna, a boot, a bottle and a pearl oyster - and the
+whole of fishing is one component, `Fishing`, with four states: `Idle`, `Waiting`, `Biting`,
+`Fighting`. It is a `NetworkBehaviour` on the player, next to `Weapon` rather than inside it, because
+a rod is not a weapon with a strange swing - it owns the Attack key for as long as a line is in the
+water, and a machete should never have to know that.
+
+`FishCatalog` is the **seventh** catalog on the same doctrine as `ItemCatalog` and the rest: sorted
+by `string.CompareOrdinal`, index 0 means none, rebuilt whole by `FishFactory`, never hand-edited.
+It carries one thing the others do not - the rod itself:
+
+```csharp
+public ItemDef Rod => _rod;
+```
+
+so "what opens this minigame" has exactly one home, and `Fishing.HasRod` is a comparison against the
+selected hotbar slot rather than a string, a tag or a second component.
+
+**Three decisions carry the feature.**
+
+*The species is rolled at the cast, not at the landing.* `ServerCastAt` picks the row before the
+bobber has finished falling and stores it. That is what makes the fight already be that species'
+fight: the bite wait, the hook window, the distance, the pull and the rhythm are all read off the
+definition that is already decided, so nothing has to be retrofitted at the moment of landing and no
+frame of the fight is generic.
+
+*The catch goes into the bag.* Unlike a kill in #53, which leaves a carcass four people can argue
+over, a landed fish is added straight to the angler's inventory and only the overflow hits the
+ground. Hunting is the loud thing you do together; fishing is the quiet thing you do alone, and where
+the item lands is most of that difference.
+
+*Three species share one item.* A sardine is `1x fish_raw`, a snapper is `2x`, a tuna is `3-5x`. Size
+is count. One `cook_fish` recipe from #43 therefore covers the entire table and the trader needs one
+price rather than six.
+
+**The minigame is a rhythm, not a reflex test.** A hooked fish alternates between calm and a *run*,
+and the run sits at the **end** of each struggle period so every fight opens calm - a fish that bolts
+the instant it is hooked reads as the game cheating rather than as a fish:
+
+```csharp
+public bool Running(float fightSeconds)
+{
+    float run = RunSeconds;
+    if (run <= 0f) return false;
+
+    return Mathf.Repeat(fightSeconds, StruggleSeconds) >= StruggleSeconds - run;
+}
+```
+
+Holding the button reels line in and adds tension - a little while it is calm, a great deal during a
+run. Letting go gives line back slowly and lets the tension fall. Tension at 1 snaps the line; line
+out past 1.6× the starting distance means it spooled you; distance at zero is a fish. That is the
+whole of `Fight`, and the entire decision the player makes is *which of the two phases am I in*,
+about ten times per fish.
+
+The numbers are tuned against one claim, and the harness plays both halves of it out for real: **a
+sardine lands in a single unbroken pull and a tuna does not.** Six metres at 2.4 m/s is 2.5 seconds of
+reeling and 0.45 of tension - comfortably under the snap, first time, with no technique. A tuna is
+eighteen metres and runs every three seconds, so holding the button down snaps the line a quarter of
+the way in; reeling in the gaps lands it in about sixteen seconds.
+
+**The cast is validated against the sea, and refuses in three different ways** because they are three
+different mistakes with three different fixes: "you are already in it", "aim at the water", "too far -
+aim steeper or walk in", plus "something is in the way" and "too shallow". The sea has no collider in
+this game - it is a mesh and a function - so depth is asked of the ground instead, with a short ray
+straight down from the float looking for seabed.
+
+`FishingBar` is the only HUD panel in the game that is load-bearing rather than informational. A punch
+has a fist and a gun has a tracer, but a hooked tuna is a number on the server and a bobber thirty
+metres away, so without the two bars the fight is invisible and the minigame does not exist. It sits
+under the crosshair rather than in a corner with the stat meters, and the two bars deliberately mean
+opposite things: line shrinks towards zero as you win, tension grows towards one as you lose.
+
+**Economy.** Priced per kilogram like the hunt, because twenty slots and forty kilos mean weight is
+the real constraint on the walk to the counter. Raw fish pays 6.0 c/kg against scrap metal's 2.7;
+cooking it pays 14.4, which is what makes the walk back to the fire worth making. A pearl is 70 coins
+for fifty grams at 5% of casts, the best ratio in the game and the reason anybody casts a fourth
+time. Averaged over the table a cast is worth 11.2 coins and takes 11.4 seconds - **59 coins per
+minute of fishing**.
+
+A boot is worth **zero**, not one. The trader floors every price they are willing to pay at a coin,
+so a value of one would still be a sale and the joke would be a consolation prize; at zero the counter
+refuses it out loud and a boot is eight hundred grams of carry limit that exists only to be sworn at.
+Twenty-six per cent of casts pull up a boot or a bottle.
+
+**Proof.** `-fishTest` runs the acceptance criterion - "relaxing, slightly stupid, and profitable" -
+as three sets of checks that fail independently, on the island, at real time. It rolls the table
+twenty thousand times and compares every observed frequency against the advertised one; it finds a
+real shoreline by walking outward from the spawn in twenty-four directions and asking
+`ServerWaterHit` itself whether each candidate works; it casts with the actual Attack key through the
+owner RPC; then it plays five whole fights and one deliberate failure, and carries the morning's catch
+to the trader. 167 checks, and the numbers it printed are the numbers the tuning predicted: sardine
+landed in 2.5 s at 0.45 peak tension, tuna snapped at 2.4 s, the same tuna landed in 15.8 s at 0.52,
+oyster in 16.8 s, and the catch sold for exactly what the table said.
+
+**Not done here:** the bobber is a position rather than an object, so there is nothing floating to
+look at yet; no bait, no rod tiers and no line strength, so the only variable is the fish; casting
+distance is a fixed range rather than a charged throw; fish do not exist as creatures, so nothing can
+be seen swimming and nothing can be startled; and whether the shop should stock pearls and refuse
+boots is #56's balance pass to settle.
+
 ---
 
 ## Data-driven content

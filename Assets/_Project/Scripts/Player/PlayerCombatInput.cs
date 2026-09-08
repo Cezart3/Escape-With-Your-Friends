@@ -30,6 +30,7 @@ namespace EscapeWithYourFriends.Player
         [SerializeField] RescueSystem _rescue;
         [SerializeField] ItemDropper _dropper;
         [SerializeField] ItemUse _use;
+        [SerializeField] Fishing _fishing;
         [SerializeField] Inventory _inventory;
 
         // Diagnostics only, behind -cameraLog: a headless run cannot see a punch land, so the count of
@@ -72,15 +73,22 @@ namespace EscapeWithYourFriends.Player
             bool use = _input.ConsumeUse();
             bool reload = _input.ConsumeReload();
 
-            // Attack means two different verbs depending on whether you have a body. The dead get the
-            // shove; routing it through here rather than letting GhostController poll input itself is
-            // the same rule as everything else in this file — two pollers would race for the same
-            // buffered press and one of them would silently lose it.
+            // Attack means three different verbs, and the order is the same rule as everywhere
+            // else in this file: the more specific state wins. A corpse shoves, a rod casts, and
+            // everything left over swings whatever is in your hand. Fishing answers false unless it
+            // is actually holding a rod or already has a line in the water, so a machete never has
+            // to know this branch exists.
             if (attack)
             {
                 if (_ghost != null && _ghost.IsActive) _ghost.RequestNudge();
+                else if (_fishing != null && _fishing.RequestAttack()) { }
                 else if (_weapon != null) _weapon.RequestAttack();
             }
+
+            // The reel. Sent from here rather than polled inside Fishing for the same reason nothing
+            // else polls input: one reader, one owner of the buffer, no two systems racing for the
+            // same key. Fishing only puts it on the wire when it changes and only during a fight.
+            if (_fishing != null) _fishing.NotifyReel(_input.AttackHeld);
 
             if (altAttack && _taser != null) _taser.RequestFire();
 

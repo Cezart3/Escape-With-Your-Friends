@@ -295,6 +295,12 @@ namespace EscapeWithYourFriends.EditorTools
             var upgrading = root.AddComponent<Upgrading>();
             upgrading.Configure(UpgradeFactory.Catalog(), inventory, wallet, weapon);
 
+            // The rod. Added after the bag it fills and after the aim origin it casts from, and kept
+            // separate from Weapon on purpose: a rod is not a weapon with a strange swing, it is a
+            // whole state machine that owns the Attack button for as long as a line is in the water.
+            var fishing = root.AddComponent<Fishing>();
+            fishing.Configure(FishFactory.Catalog(), inventory, aimOrigin);
+
             var taserWeapon = root.AddComponent<TaserWeapon>();
             SetFields(taserWeapon, so =>
             {
@@ -338,6 +344,7 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_dropper").objectReferenceValue = dropper;
                 so.FindProperty("_inventory").objectReferenceValue = inventory;
                 so.FindProperty("_use").objectReferenceValue = itemUse;
+                so.FindProperty("_fishing").objectReferenceValue = fishing;
             });
 
             var motor = root.AddComponent<PlayerMotor>();

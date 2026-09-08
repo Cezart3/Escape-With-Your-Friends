@@ -70,9 +70,23 @@ namespace EscapeWithYourFriends.EditorTools
             new("hide", "Hide", ItemCategory.Material, 10, 1.2f, 26, "Scraped and dried. The trader always wants one."),
             new("feather", "Feather", ItemCategory.Material, 20, 0.05f, 7, "Light, plentiful, and worth almost nothing individually."),
 
+            // Fishing's half (#54). A boot is worth *zero*, not one: the trader floors every price they
+            // are willing to pay at a coin, so one coin would still be a sale and the joke would be a
+            // consolation prize. At zero the counter refuses it out loud, and a boot is eight hundred
+            // grams of your carry limit that exists only to be sworn at. A pearl is the other end -
+            // the best coins-per-kilogram in the game, which is what makes a fourth cast a decision
+            // rather than a habit.
+            new("boot", "Sodden Boot", ItemCategory.Misc, 5, 0.8f, 0, "Full of water and somebody else's history."),
+            new("pearl", "Pearl", ItemCategory.Material, 10, 0.05f, 140, "Small, round, and worth more than the boat you would spend it on."),
+
             new("coconut", "Coconut", ItemCategory.Food, 8, 0.8f, 5, "Food and water in one inconvenient shell."),
-            new("fish_raw", "Raw Fish", ItemCategory.Food, 5, 1f, 6, "Edible. Not advisable."),
-            new("fish_cooked", "Cooked Fish", ItemCategory.Food, 5, 0.9f, 12, "Advisable."),
+
+            // Raw fish was seeded at 6 when nothing could catch one. #54 gave it a minigame that takes
+            // about fifteen seconds a cast, and at 6 a coin the whole loop paid less than picking up
+            // scrap. Twelve puts a kilo of fish just above a kilo of scrap raw, and cooking it - which
+            // is the walk back to the fire the food chain wants you to make - roughly doubles that.
+            new("fish_raw", "Raw Fish", ItemCategory.Food, 5, 1f, 12, "Edible. Not advisable."),
+            new("fish_cooked", "Cooked Fish", ItemCategory.Food, 5, 0.9f, 26, "Advisable."),
             new("meat_raw", "Raw Meat", ItemCategory.Food, 5, 0.9f, 14, "Off the bone. Somebody has to cook it."),
             new("meat_cooked", "Roast Meat", ItemCategory.Food, 5, 0.8f, 30, "The reason the fire was worth building."),
             new("water_bottle", "Water Bottle", ItemCategory.Drink, 1, 1.2f, 10, "Refillable at the filter. Empty it weighs nothing."),

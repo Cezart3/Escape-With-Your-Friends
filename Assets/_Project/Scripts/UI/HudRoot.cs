@@ -41,6 +41,7 @@ namespace EscapeWithYourFriends.UI
         readonly StatBars _stats = new();
         readonly Hotbar _hotbar = new();
         readonly Purse _purse = new();
+        readonly FishingBar _fishing = new();
         readonly InventoryScreen _inventory = new();
 
         Canvas _canvas;
@@ -95,6 +96,7 @@ namespace EscapeWithYourFriends.UI
             _stats.Build(root);
             _hotbar.Build(root);
             _purse.Build(root);
+            _fishing.Build(root);
 
             // Its own canvas, above this one, and the only one in the game with a raycaster on it.
             // See InventoryScreen for why that split is not optional.
@@ -117,6 +119,7 @@ namespace EscapeWithYourFriends.UI
                 _objective.Refresh(SquadModel.FindLocalAnchor());
                 _frames.Refresh();
                 _stats.Refresh(SquadModel.FindLocalStats());
+                _fishing.Refresh(SquadModel.FindLocalFishing());
 
                 InventoryScreen.NetworkObjectHolder local = InventoryScreen.NetworkObjectHolder.FromLocal();
                 _hotbar.Refresh(local.Bag);
