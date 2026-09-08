@@ -10,17 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dec79073e0c5b3d4c932cfd2929ea34d, type: 3}
-  m_Name: fish_cooked
+  m_Name: boot
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.ItemDef
-  _id: fish_cooked
-  _displayName: Cooked Fish
-  _description: Advisable.
-  _category: 1
+  _id: boot
+  _displayName: Sodden Boot
+  _description: Full of water and somebody else's history.
+  _category: 7
   _maxStack: 5
-  _weight: 0.9
+  _weight: 0.8
   _icon: {fileID: 0}
   _worldPrefab: {fileID: 0}
-  _effect: {fileID: 11400000, guid: e332cbc52e1855f4d96f4910ce494c80, type: 2}
-  _useSeconds: 2.5
+  _effect: {fileID: 0}
+  _useSeconds: 1.5
   _leavesBehind: {fileID: 0}
-  _value: 26
+  _value: 0

@@ -155,6 +155,19 @@ namespace EscapeWithYourFriends.UI
         /// than cached on spawn, because which body is "yours" is not fixed for the whole session -
         /// reconnect adoption (#111) hands it to a different object.
         /// </summary>
+        /// <summary>The local player's rod, or null. Same lookup rule as the stats above.</summary>
+        public static Items.Fishing FindLocalFishing()
+        {
+            foreach (NetworkPlayerRegistry.PlayerBody body in NetworkPlayerRegistry.Players)
+            {
+                if (!body.IsValid || !body.Object.IsOwner) continue;
+
+                return body.Object.GetComponent<Items.Fishing>();
+            }
+
+            return null;
+        }
+
         public static FishNet.Object.NetworkObject FindLocalBody()
         {
             foreach (NetworkPlayerRegistry.PlayerBody body in NetworkPlayerRegistry.Players)

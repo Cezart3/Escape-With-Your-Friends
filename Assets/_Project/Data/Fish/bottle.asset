@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c5c264fcd4cc0954c8acf6dc7a4dcd21, type: 3}
+  m_Name: bottle
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.FishDef
+  _id: bottle
+  _displayName: Message in a Bottle
+  _description: The message is a receipt. The bottle is the point.
+  _rarity: 9
+  _catch: {fileID: 11400000, guid: 662efe19d56c0da498bebe063b2acc8a, type: 2}
+  _min: 1
+  _max: 1
+  _biteSeconds: {x: 2, y: 6}
+  _hookSeconds: 1.8
+  _distance: 4
+  _reelSpeed: 2.8
+  _slipSpeed: 0.05
+  _calmPull: 0.04
+  _runPull: 0.04
+  _struggleSeconds: 9
+  _runSeconds: 0

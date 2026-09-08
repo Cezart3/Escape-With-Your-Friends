@@ -23,4 +23,4 @@ MonoBehaviour:
   _effect: {fileID: 11400000, guid: 303523f8585edc54cbc2b5ee87fb423b, type: 2}
   _useSeconds: 3
   _leavesBehind: {fileID: 0}
-  _value: 6
+  _value: 12

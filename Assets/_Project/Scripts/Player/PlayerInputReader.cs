@@ -101,6 +101,14 @@ namespace EscapeWithYourFriends.Player
         /// </summary>
         public bool DropHeld { get; private set; }
 
+        /// <summary>
+        /// Attack held down right now. The third hold in the game and the first one that is a whole
+        /// mechanic: fishing (#54) reels while this is down and gives line while it is up, and the
+        /// rhythm of pressing and letting go *is* the minigame. A buffered press cannot say "still
+        /// pulling".
+        /// </summary>
+        public bool AttackHeld { get; private set; }
+
         /// <summary>True while this reader is driving a body, i.e. we own it.</summary>
         public bool IsBound => _bound;
 
@@ -125,7 +133,7 @@ namespace EscapeWithYourFriends.Player
             {
                 Move = Vector2.zero;
                 Sprint = Crouch = false;
-                InteractHeld = DropHeld = false;
+                InteractHeld = DropHeld = AttackHeld = false;
                 ClearQueued();
             }
 
@@ -198,6 +206,7 @@ namespace EscapeWithYourFriends.Player
 
             Move = Vector2.zero;
             Sprint = Crouch = false;
+            InteractHeld = DropHeld = AttackHeld = false;
             ClearQueued();
 
             ApplyCursorLock(false);
@@ -223,7 +232,7 @@ namespace EscapeWithYourFriends.Player
             {
                 Move = Vector2.zero;
                 Sprint = Crouch = false;
-                InteractHeld = DropHeld = false;
+                InteractHeld = DropHeld = AttackHeld = false;
                 return;
             }
 
@@ -232,6 +241,7 @@ namespace EscapeWithYourFriends.Player
             Crouch = _crouch.IsPressed();
             InteractHeld = _interact.IsPressed();
             DropHeld = _drop.IsPressed();
+            AttackHeld = _attack.IsPressed();
 
             Vector2 look = _look.ReadValue<Vector2>();
             Yaw = Mathf.Repeat(Yaw + look.x * _lookSensitivity, 360f);

@@ -270,6 +270,7 @@ namespace EscapeWithYourFriends.Net
             Combat.GunTest.Begin();
             Economy.UpgradeTest.Begin();
             AI.AnimalTest.Begin();
+            Items.FishTest.Begin();
             Player.SurvivalTest.Begin();
             Player.BuffTest.Begin();
         }
