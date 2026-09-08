@@ -50,6 +50,21 @@ namespace EscapeWithYourFriends.Combat
         /// <summary>What is in the hand, as a catalog index. 0 until the server has decided.</summary>
         readonly SyncVar<ushort> _equippedIndex = new();
 
+        /// <summary>Rounds in the equipped weapon's magazine. Mirrors the server's book-keeping.</summary>
+        readonly SyncVar<int> _loaded = new();
+
+        /// <summary>True while a reload is running. Firing during one is refused rather than queued.</summary>
+        readonly SyncVar<bool> _reloading = new();
+
+        /// <summary>
+        /// Rounds left in every gun this player has loaded, on the server only.
+        ///
+        /// Per weapon rather than one counter, because otherwise swapping to the shotgun and back
+        /// would refill the pistol, and the shop sells ammunition. Guns start empty: the magazine you
+        /// are carrying is one you paid for and put in yourself.
+        /// </summary>
+        readonly Dictionary<WeaponDef, int> _magazines = new();
+
         Health _health;
         StunState _stun;
 
@@ -68,9 +83,15 @@ namespace EscapeWithYourFriends.Combat
 
         /// <summary>
         /// Raised on every peer for a shot that was fired, with where it started and where each ray
-        /// ended. Tracers and muzzle flashes hang off this in #51; nothing in #49 listens.
+        /// ended. Tracers, muzzle flashes and recoil hang off this.
         /// </summary>
         public event Action<Vector3, Vector3[]> Fired;
+
+        /// <summary>Raised on every peer when the trigger was pulled on an empty magazine.</summary>
+        public event Action<WeaponDef> DryFired;
+
+        /// <summary>Raised on every peer when a reload starts, and again when it ends.</summary>
+        public event Action<WeaponDef, bool> Reloading;
 
         /// <summary>
         /// What this player is holding. Falls back to fists, which is a real asset with real numbers
@@ -84,6 +105,24 @@ namespace EscapeWithYourFriends.Combat
                 if (catalog == null) return null;
 
                 return catalog.At(_equippedIndex.Value) ?? catalog.Fists;
+            }
+        }
+
+        /// <summary>Rounds in the equipped magazine. Zero for anything that does not take ammunition.</summary>
+        public int Loaded => _loaded.Value;
+
+        /// <summary>True while a reload is in progress, on every peer.</summary>
+        public bool IsReloading => _reloading.Value;
+
+        /// <summary>Ammunition in the bag for what is equipped. What the HUD shows after the slash.</summary>
+        public int Reserve
+        {
+            get
+            {
+                WeaponDef weapon = Equipped;
+                if (weapon == null || weapon.Ammo == null || _inventory == null) return 0;
+
+                return _inventory.CountOf(weapon.Ammo);
             }
         }
 
@@ -126,7 +165,111 @@ namespace EscapeWithYourFriends.Combat
             ushort index = catalog.IndexOf(weapon);
 
             if (_equippedIndex.Value != index) _equippedIndex.Value = index;
+
+            int rounds = ServerRounds(weapon);
+            if (_loaded.Value != rounds) _loaded.Value = rounds;
         }
+
+        // ---------------------------------------------------------------- ammunition
+
+        [Server]
+        int ServerRounds(WeaponDef weapon)
+            => weapon != null && _magazines.TryGetValue(weapon, out int rounds) ? rounds : 0;
+
+        [Server]
+        void ServerSetRounds(WeaponDef weapon, int rounds)
+        {
+            if (weapon == null) return;
+
+            _magazines[weapon] = Mathf.Clamp(rounds, 0, weapon.Magazine);
+            if (Equipped == weapon) _loaded.Value = _magazines[weapon];
+        }
+
+        /// <summary>
+        /// Takes one round for a shot, or refuses the shot.
+        ///
+        /// One round per *shot*, never per pellet - a shotgun blast is eight rays and one shell, and
+        /// the day somebody writes a twenty-pellet weapon is not the day the ammunition economy
+        /// should change. Anything with no magazine at all - every melee weapon - is waved through.
+        /// </summary>
+        [Server]
+        bool ServerSpendRound(WeaponDef weapon)
+        {
+            if (weapon.Magazine <= 0) return true;
+            if (_reloading.Value) return false;
+
+            int rounds = ServerRounds(weapon);
+            if (rounds <= 0)
+            {
+                ObserversDryFired();
+                return false;
+            }
+
+            ServerSetRounds(weapon, rounds - 1);
+            return true;
+        }
+
+        /// <summary>Owner-side entry point. Call from input.</summary>
+        public void RequestReload()
+        {
+            if (!IsOwner) return;
+
+            ServerReloadRpc();
+        }
+
+        [ServerRpc]
+        void ServerReloadRpc() => ServerReload();
+
+        /// <summary>
+        /// Starts a reload if there is anything to reload with. Returns whether one started, which is
+        /// what the harness reads; a client learns the same thing from <see cref="IsReloading"/>.
+        ///
+        /// Rounds come out of the bag and go into the magazine, so ammunition is an item with a
+        /// weight and a price the whole way through rather than a counter that appears on the HUD.
+        /// </summary>
+        [Server]
+        public bool ServerReload()
+        {
+            WeaponDef weapon = Equipped;
+
+            if (weapon == null || weapon.Magazine <= 0 || weapon.Ammo == null) return false;
+            if (_reloading.Value || !CanAct()) return false;
+            if (ServerRounds(weapon) >= weapon.Magazine) return false;
+            if (_inventory == null || _inventory.CountOf(weapon.Ammo) <= 0) return false;
+
+            StartCoroutine(RunReload(weapon));
+            return true;
+        }
+
+        IEnumerator RunReload(WeaponDef weapon)
+        {
+            _reloading.Value = true;
+            ObserversReloading(true);
+
+            yield return new WaitForSeconds(weapon.ReloadSeconds);
+
+            _reloading.Value = false;
+            ObserversReloading(false);
+
+            // Swapping weapons mid-reload cancels it. The rounds were never taken out of the bag, so
+            // there is nothing to give back and no way to duplicate anything by swapping quickly.
+            if (Equipped != weapon || !CanAct()) yield break;
+
+            int room = weapon.Magazine - ServerRounds(weapon);
+            if (room <= 0) yield break;
+
+            int taken = _inventory.Remove(weapon.Ammo, room);
+            if (taken > 0) ServerSetRounds(weapon, ServerRounds(weapon) + taken);
+
+            if (CommandLine.HasFlag("-weaponLog"))
+                Debug.Log($"[Weapon] {ObjectId} reloaded {weapon.Id} with {taken} round(s), "
+                          + $"magazine {_loaded.Value}/{weapon.Magazine}, "
+                          + $"{_inventory.CountOf(weapon.Ammo)} left in the bag.");
+        }
+
+        /// <summary>Server only. Loads a magazine outright, for tests and for anything that grants gear.</summary>
+        [Server]
+        public void ServerLoad(WeaponDef weapon, int rounds) => ServerSetRounds(weapon, rounds);
 
         /// <summary>Owner-side entry point. Call from input.</summary>
         public void RequestAttack()
@@ -167,7 +310,13 @@ namespace EscapeWithYourFriends.Combat
             if (!AimValidation.IsFacing(transform, aimDirection, _maxAimDeviation)) return;
 
             Vector3 direction = aimDirection.normalized;
+
+            // The cooldown is taken before the magazine is checked, so a client that spams the RPC at
+            // an empty gun is rate-limited by the same clock as one that is actually shooting.
             _serverNextAttackAt = Time.time + weapon.Cooldown;
+
+            if (!ServerSpendRound(weapon)) return;
+
             ObserversAttack();
 
             if (weapon.Windup > 0f) StartCoroutine(ResolveAfterWindup(weapon, direction));
@@ -327,18 +476,28 @@ namespace EscapeWithYourFriends.Combat
         [ObserversRpc(RunLocally = true)]
         void ObserversFired(Vector3 origin, Vector3[] ends) => Fired?.Invoke(origin, ends);
 
+        [ObserversRpc(RunLocally = true)]
+        void ObserversDryFired() => DryFired?.Invoke(Equipped);
+
+        [ObserversRpc(RunLocally = true)]
+        void ObserversReloading(bool started) => Reloading?.Invoke(Equipped, started);
+
         // ---------------------------------------------------------------- the harness's door
 
         /// <summary>
         /// Server-side attack with no client and no cooldown, for headless tests. Not a back door for
         /// gameplay: nothing calls it except the harness, and it still resolves through the same
         /// <see cref="ServerResolve"/> everything else uses, so what it proves is what players get.
+        ///
+        /// The cooldown and the aim check are skipped; **the magazine is not.** A door that handed out
+        /// free ammunition would make every test of the ammunition economy a test of the door.
         /// </summary>
         [Server]
         public int ServerAttackNow(Vector3 direction)
         {
             WeaponDef weapon = Equipped;
             if (weapon == null || direction.sqrMagnitude < 0.001f) return 0;
+            if (!ServerSpendRound(weapon)) return 0;
 
             ServerResolve(weapon, direction.normalized);
             return _lastHitCount;

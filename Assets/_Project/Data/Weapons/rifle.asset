@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b81482618dd810141af52ce8f2208db6, type: 3}
+  m_Name: rifle
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.WeaponDef
+  _id: rifle
+  _displayName: Hunting Rifle
+  _description: One round, a long way, and a long wait before the next one.
+  _kind: 1
+  _item: {fileID: 11400000, guid: a6ca572a0d4fd9445b9c26591d5087ed, type: 2}
+  _hit:
+    _damage: 65
+    _damageType: 0
+    _knockback: 90
+    _upwardBias: 0.1
+    _stunDuration: 0.7
+  _cooldown: 0
+  _windup: 0
+  _range: 150
+  _radius: 0
+  _coneHalfAngle: 5
+  _maxTargets: 1
+  _shotRange: 150
+  _pellets: 1
+  _spread: 0.2
+  _recoil: 6.5
+  _roundsPerMinute: 45
+  _magazine: 5
+  _reloadSeconds: 2.2
+  _ammo: {fileID: 11400000, guid: bca846cb3a39c9d4cb5289bde5b78b74, type: 2}
+  _viewPrefab: {fileID: 4969491374451115428, guid: 57cee4d748a5b95499ab6b8e4c7882d0, type: 3}
+  _tier: 2
+  _upgradesTo: {fileID: 0}

@@ -41,6 +41,7 @@ namespace EscapeWithYourFriends.Player
 
         InputAction _move, _look, _jump, _sprint, _crouch, _interact, _attack, _altAttack, _drop;
         InputAction _use;
+        InputAction _reload;
         InputAction _hotbarScroll;
         InputAction _toggleInventory;
         readonly InputAction[] _hotbar = new InputAction[Items.Inventory.HotbarSlots];
@@ -51,7 +52,8 @@ namespace EscapeWithYourFriends.Player
 
         // One-shot presses, buffered until whoever cares consumes them. A key tapped between two
         // ticks would otherwise be dropped entirely: at 30Hz that is a third of a second of taps.
-        bool _jumpQueued, _interactQueued, _attackQueued, _altAttackQueued, _dropQueued, _useQueued;
+        bool _jumpQueued, _interactQueued, _attackQueued, _altAttackQueued, _dropQueued;
+        bool _useQueued, _reloadQueued;
         bool _toggleInventoryQueued;
 
         // Hotbar selection is two inputs for one value. -1 means no number key was pressed; the
@@ -68,6 +70,17 @@ namespace EscapeWithYourFriends.Player
 
         /// <summary>Where the camera looks vertically, in degrees. Never replicated — see #17.</summary>
         public float Pitch { get; private set; }
+
+        /// <summary>
+        /// Kicks the view up by <paramref name="degrees"/>, for weapon recoil.
+        ///
+        /// It goes through here rather than being added in the camera rig so that recoil moves the
+        /// *aim*, not just the picture: the rig and the aim origin both read this one number, and the
+        /// shot after the kick genuinely goes higher. It is also the only place the pitch clamp lives,
+        /// so a burst from the SMG cannot walk the camera past vertical.
+        /// </summary>
+        public void AddRecoil(float degrees)
+            => Pitch = Mathf.Clamp(Pitch - degrees, _minPitch, _maxPitch);
 
         public bool Sprint { get; private set; }
 
@@ -156,6 +169,7 @@ namespace EscapeWithYourFriends.Player
             // Optional, so an action asset generated before #42 still binds everything else rather
             // than throwing and leaving the player unable to move at all.
             _use = _map.FindAction("Use", throwIfNotFound: false);
+            _reload = _map.FindAction("Reload", throwIfNotFound: false);
             _hotbarScroll = _map.FindAction("HotbarScroll", throwIfNotFound: false);
             _toggleInventory = _map.FindAction("ToggleInventory", throwIfNotFound: false);
             for (int i = 0; i < _hotbar.Length; i++)
@@ -231,6 +245,7 @@ namespace EscapeWithYourFriends.Player
             _altAttackQueued |= _altAttack.WasPressedThisFrame();
             _dropQueued |= _drop.WasPressedThisFrame();
             if (_use != null) _useQueued |= _use.WasPressedThisFrame();
+            if (_reload != null) _reloadQueued |= _reload.WasPressedThisFrame();
 
             ReadHotbar();
         }
@@ -319,6 +334,8 @@ namespace EscapeWithYourFriends.Player
 
         public bool ConsumeUse() => Consume(ref _useQueued);
 
+        public bool ConsumeReload() => Consume(ref _reloadQueued);
+
         public bool ConsumeToggleInventory() => Consume(ref _toggleInventoryQueued);
 
         /// <summary>The hotbar slot a number key asked for, or -1. Cleared by reading.</summary>
@@ -347,7 +364,7 @@ namespace EscapeWithYourFriends.Player
         void ClearQueued()
         {
             _jumpQueued = _interactQueued = _attackQueued = _altAttackQueued = _dropQueued = false;
-            _useQueued = false;
+            _useQueued = _reloadQueued = false;
             _hotbarQueued = -1;
             _hotbarSteps = 0;
             _scrollRemainder = 0f;

@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b81482618dd810141af52ce8f2208db6, type: 3}
+  m_Name: shotgun
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.WeaponDef
+  _id: shotgun
+  _displayName: Shotgun
+  _description: Eight pellets at once. All eight land at three metres and one lands
+    at thirty.
+  _kind: 1
+  _item: {fileID: 11400000, guid: b7d2dbaf3d619984ebbf99433b2e72b5, type: 2}
+  _hit:
+    _damage: 11
+    _damageType: 0
+    _knockback: 70
+    _upwardBias: 0.22
+    _stunDuration: 0.9
+  _cooldown: 0
+  _windup: 0
+  _range: 35
+  _radius: 0
+  _coneHalfAngle: 5
+  _maxTargets: 1
+  _shotRange: 35
+  _pellets: 8
+  _spread: 6.5
+  _recoil: 5
+  _roundsPerMinute: 70
+  _magazine: 6
+  _reloadSeconds: 2.6
+  _ammo: {fileID: 11400000, guid: 3cc8b0b26e9839c4d9cd8a7c71d93e87, type: 2}
+  _viewPrefab: {fileID: 5708676297218836568, guid: 65d41adc684fdbe429de1fa4c08d611d, type: 3}
+  _tier: 1
+  _upgradesTo: {fileID: 0}

@@ -182,7 +182,6 @@ namespace EscapeWithYourFriends.Combat
 
             Debug.Log($"[WeaponTest] clear lane {lane} from {attacker.transform.position}.");
 
-            Stand(other, attacker, 1.2f, lane);
             bag.SelectSlot(SlotOf(bag, anyMelee.Item));
 
             yield return Settled();
@@ -196,7 +195,14 @@ namespace EscapeWithYourFriends.Combat
 
             while (Time.time < giveUpAt)
             {
+                // Stood up, then put back, then swung at - in that order. Clearing a stun after a
+                // teleport drags the body back to wherever the ragdoll came to rest, and since #50 a
+                // landed swing sends people metres rather than centimetres, so a victim who is not
+                // replaced between swings is a victim the next swing misses.
                 Reset(victimHealth, victimStun);
+                Stand(other, attacker, 1.2f, lane);
+
+                yield return new WaitForSeconds(0.1f);
 
                 if (attacker.ServerAttackNow(Toward(attacker, other)) > 0
                     && victimHealth.Current < victimHealth.Max) break;
@@ -205,6 +211,10 @@ namespace EscapeWithYourFriends.Combat
             }
 
             Reset(victimHealth, victimStun);
+            Stand(other, attacker, 1.2f, lane);
+
+            yield return Settled();
+
             float before = victimHealth.Current;
             Vector3 at = Toward(attacker, other);
 
@@ -228,11 +238,13 @@ namespace EscapeWithYourFriends.Combat
                   anyMelee.Hit.StunDuration <= 0f || victimStun == null || victimStun.IsStunned);
 
             // Behind you is not in front of you. The cone is the reach check, and it is server-side.
-            Stand(other, attacker, 1.2f, lane, behind: true);
+            Reset(victimHealth, victimStun);
 
             yield return Settled();
 
-            Reset(victimHealth, victimStun);
+            Stand(other, attacker, 1.2f, lane, behind: true);
+
+            yield return Settled();
             before = victimHealth.Current;
 
             Check("swinging forwards misses somebody standing behind you",
@@ -240,11 +252,13 @@ namespace EscapeWithYourFriends.Combat
                   || Mathf.Approximately(before, victimHealth.Current));
 
             // Out of reach is out of reach, however hard you swing.
-            Stand(other, attacker, anyMelee.Range + 6f, lane);
+            Reset(victimHealth, victimStun);
 
             yield return Settled();
 
-            Reset(victimHealth, victimStun);
+            Stand(other, attacker, anyMelee.Range + 6f, lane);
+
+            yield return Settled();
             before = victimHealth.Current;
             attacker.ServerAttackNow(Toward(attacker, other));
 
@@ -254,11 +268,13 @@ namespace EscapeWithYourFriends.Combat
             // ---------------------------------------------------------------- a shot
 
             bag.SelectSlot(SlotOf(bag, anyGun.Item));
-            Stand(other, attacker, 30f, lane);
+            Reset(victimHealth, victimStun);
 
             yield return Settled();
 
-            Reset(victimHealth, victimStun);
+            Stand(other, attacker, 30f, lane);
+
+            yield return Settled();
             before = victimHealth.Current;
 
             // Fired until one lands rather than once. A 1.5-degree spread throws a single pellet about
@@ -268,7 +284,10 @@ namespace EscapeWithYourFriends.Combat
             int shots = 0;
 
             for (hits = 0; shots < 20 && hits == 0; shots++)
+            {
+                attacker.ServerLoad(anyGun, anyGun.Magazine);
                 hits = attacker.ServerAttackNow(Toward(attacker, other));
+            }
 
             float dealtByShot = before - victimHealth.Current;
 
@@ -281,14 +300,21 @@ namespace EscapeWithYourFriends.Combat
                   Mathf.Abs(dealtByShot - anyGun.Hit.Damage * hits) < 0.01f);
 
             // Past its range it stops, which is the difference between a pistol and a rifle.
-            Stand(other, attacker, anyGun.Range + 25f, lane);
+            Reset(victimHealth, victimStun);
 
             yield return Settled();
 
-            Reset(victimHealth, victimStun);
+            Stand(other, attacker, anyGun.Range + 25f, lane);
+
+            yield return Settled();
             before = victimHealth.Current;
 
-            for (int i = 0; i < 20; i++) attacker.ServerAttackNow(Toward(attacker, other));
+            // Reloaded every shot, so that "nothing landed" cannot quietly mean "nothing was fired".
+            for (int i = 0; i < 20; i++)
+            {
+                attacker.ServerLoad(anyGun, anyGun.Magazine);
+                attacker.ServerAttackNow(Toward(attacker, other));
+            }
 
             Check($"and twenty shots do not reach past {anyGun.Range:F0}m",
                   Mathf.Approximately(before, victimHealth.Current));
@@ -329,29 +355,58 @@ namespace EscapeWithYourFriends.Combat
                     continue;
                 }
 
-                float reach = def.Kind == WeaponKind.Hitscan ? 20f : def.Range * 0.5f;
+                // Close enough that spread is not the thing under test. A shotgun at thirty metres
+                // is a coin toss by design; what this loop is checking is that the numbers come off
+                // the asset, and it should not be re-testing #51's spread cone to do it.
+                float reach = def.Kind == WeaponKind.Hitscan
+                    ? Mathf.Clamp(def.Range * 0.25f, 3f, 20f)
+                    : def.Range * 0.5f;
+                Reset(victimHealth, victimStun);
+
+                yield return Settled();
+
                 Stand(other, attacker, reach, lane);
 
                 yield return Settled();
 
-                Reset(victimHealth, victimStun);
+                // Until damage lands, not until a ray connects. Two things make the difference real:
+                // a rescue grants two seconds of invulnerability, and since #50 a hit that lands moves
+                // the victim far enough that the next one misses. So the victim is stood up and put
+                // back on every attempt, and the loop only stops when health actually changed.
+                int landed = 0;
+                float dealt = 0f;
                 float start = victimHealth.Current;
 
-                int landed = 0;
-                for (int shot = 0; shot < 20 && landed == 0; shot++)
-                    landed = attacker.ServerAttackNow(Toward(attacker, other));
-
-                if (landed < 1) continue;
-
-                float dealt = start - victimHealth.Current;
-                if (Mathf.Abs(dealt - def.Hit.Damage) > 0.01f)
+                for (int shot = 0; shot < 20 && dealt <= 0f; shot++)
                 {
-                    Debug.LogError($"[WeaponTest] {def.Id} dealt {dealt}, its asset says "
-                                   + $"{def.Hit.Damage}.");
+                    // Guns start empty - a magazine is something you buy and load, see #51 - so the
+                    // harness keeps this one topped up rather than testing the ammunition economy by
+                    // accident. Melee weapons have no magazine and this does nothing to them.
+                    if (def.Magazine > 0) attacker.ServerLoad(def, def.Magazine);
+
+                    Reset(victimHealth, victimStun);
+                    Stand(other, attacker, reach, lane);
+
+                    yield return new WaitForSeconds(0.15f);
+
+                    start = victimHealth.Current;
+                    landed = attacker.ServerAttackNow(Toward(attacker, other));
+                    dealt = start - victimHealth.Current;
+                }
+
+                if (landed < 1 || dealt <= 0f) continue;
+
+                // Per hit, not per shot: a shotgun blast is eight rays and every one that connects is
+                // meant to hurt, so what the asset promises is the damage of a single pellet.
+                if (Mathf.Abs(dealt - def.Hit.Damage * landed) > 0.01f)
+                {
+                    Debug.LogError($"[WeaponTest] {def.Id} dealt {dealt} across {landed} hit(s), "
+                                   + $"its asset says {def.Hit.Damage} each.");
                     continue;
                 }
 
-                Debug.Log($"[WeaponTest]   {def.Describe()} -> {dealt:F0} damage at {reach:F1}m");
+                Debug.Log($"[WeaponTest]   {def.Describe()} -> {dealt:F0} damage "
+                          + $"in {landed} hit(s) at {reach:F1}m");
                 drivenByData++;
             }
 
@@ -382,6 +437,16 @@ namespace EscapeWithYourFriends.Combat
         /// </summary>
         static void Reset(Health health, StunState stun)
         {
+            // Revived first: Health.Heal refuses anything that is not Alive, and a corpse stays
+            // ragdolled through ServerClearStun - so a victim killed by one weapon would still be
+            // lying in a heap when the next one is measured, and every weapon after it would report
+            // itself broken. A rifle magazine is 325 damage; this is not hypothetical.
+            if (health != null)
+            {
+                if (health.IsDead) health.ServerRevive(1f);
+                else if (health.IsDowned) health.ServerRescue();
+            }
+
             if (stun != null) stun.ServerClearStun();
             if (health != null) health.Heal(health.Max);
         }

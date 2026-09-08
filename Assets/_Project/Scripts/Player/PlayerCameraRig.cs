@@ -94,6 +94,13 @@ namespace EscapeWithYourFriends.Player
         [Range(0f, 1f)]
         [SerializeField] float _maxLandedShake = 0.28f;
 
+        [Tooltip("Camera shake per degree of a weapon's recoil, on the shooter. The kick to the aim "
+                 + "itself is the recoil number; this is only the rattle on top of it.")]
+        [SerializeField] float _firedShakePerRecoilDegree = 0.03f;
+
+        [Range(0f, 1f)]
+        [SerializeField] float _maxFiredShake = 0.25f;
+
         // Created at runtime, owner only. Building these into the prefab would put four cameras in one
         // process during a local four-player test, all fighting the same brain.
         Transform _target;
@@ -150,7 +157,11 @@ namespace EscapeWithYourFriends.Player
             _nextLogAt = Time.time + LogIntervalSeconds;
 
             if (_health != null) _health.Changed += OnHealthChanged;
-            if (_weapon != null) _weapon.HitLanded += OnHitLanded;
+            if (_weapon != null)
+            {
+                _weapon.HitLanded += OnHitLanded;
+                _weapon.Fired += OnFired;
+            }
 
             Debug.Log($"[PlayerCameraRig] Owner {OwnerId} camera live at fov {_baseFov}.");
         }
@@ -160,7 +171,11 @@ namespace EscapeWithYourFriends.Player
             base.OnStopClient();
 
             if (_health != null) _health.Changed -= OnHealthChanged;
-            if (_weapon != null) _weapon.HitLanded -= OnHitLanded;
+            if (_weapon != null)
+            {
+                _weapon.HitLanded -= OnHitLanded;
+                _weapon.Fired -= OnFired;
+            }
 
             // The camera is not parented to the body, so despawning the body would otherwise leave it
             // hanging in the scene, still the highest-priority view of nothing.
@@ -372,6 +387,26 @@ namespace EscapeWithYourFriends.Player
             if (weapon == null) return;
 
             AddShake(Mathf.Min(_maxLandedShake, weapon.Hit.Knockback * _landedShakePerKnockback));
+        }
+
+        /// <summary>
+        /// The kick from firing, on the shooter only.
+        ///
+        /// Everybody hears the shot - <c>Fired</c> is an observers event, because tracers have to be
+        /// drawn on every screen - but only the person holding the gun gets shoved by it. Recoil goes
+        /// into the input reader rather than into this rig's pitch, so the next shot really does go
+        /// higher instead of merely looking like it did.
+        /// </summary>
+        void OnFired(Vector3 origin, Vector3[] ends)
+        {
+            if (!IsOwner) return;
+
+            WeaponDef weapon = _weapon != null ? _weapon.Equipped : null;
+            if (weapon == null || weapon.Recoil <= 0f) return;
+
+            if (_input != null) _input.AddRecoil(weapon.Recoil);
+
+            AddShake(Mathf.Min(_maxFiredShake, weapon.Recoil * _firedShakePerRecoilDegree));
         }
 
         /// <summary>

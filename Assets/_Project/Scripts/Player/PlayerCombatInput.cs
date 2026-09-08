@@ -70,6 +70,7 @@ namespace EscapeWithYourFriends.Player
             bool interact = _input.ConsumeInteract();
             bool drop = _input.ConsumeDrop();
             bool use = _input.ConsumeUse();
+            bool reload = _input.ConsumeReload();
 
             // Attack means two different verbs depending on whether you have a body. The dead get the
             // shove; routing it through here rather than letting GhostController poll input itself is
@@ -116,6 +117,10 @@ namespace EscapeWithYourFriends.Player
             }
 
             if (use && _use != null) _use.RequestUse();
+
+            // Harmless on a bat: the server refuses a reload for anything with no magazine, so the
+            // key does not need to know what is in your hand.
+            if (reload && _weapon != null) _weapon.RequestReload();
 
             // Hotbar. Sent straight through rather than buffered per tick: selection is idempotent,
             // so the last one to arrive wins and a lost packet costs nothing.

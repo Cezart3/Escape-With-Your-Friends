@@ -279,6 +279,16 @@ namespace EscapeWithYourFriends.EditorTools
             var weapon = root.AddComponent<Weapon>();
             weapon.Configure(weapons, inventory, aimOrigin);
 
+            // Tracers are drawn from what the server already resolved, so this is a listener and
+            // never a source of truth. Unlit and additive-ish: a bullet trail that takes lighting
+            // disappears at night, which is the half of the day it matters most.
+            var tracers = root.AddComponent<TracerEffect>();
+            tracers.Configure(weapon, new Material(Shader.Find("Universal Render Pipeline/Unlit"))
+            {
+                name = "Tracer",
+                color = new Color(1f, 0.85f, 0.45f, 0.9f),
+            });
+
             var taserWeapon = root.AddComponent<TaserWeapon>();
             SetFields(taserWeapon, so =>
             {

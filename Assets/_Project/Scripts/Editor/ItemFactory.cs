@@ -83,6 +83,15 @@ namespace EscapeWithYourFriends.EditorTools
             new("pistol", "Pistol", ItemCategory.Weapon, 1, 1.1f, 120, "Settles an argument from across the clearing."),
             new("pistol_ammo", "Pistol Rounds", ItemCategory.Material, 60, 0.02f, 2, "Small, heavy in bulk, gone in seconds."),
 
+            // The rest of #51's arsenal. The SMG deliberately eats pistol rounds: one fewer ammunition
+            // type is one fewer thing to carry, one fewer shelf in the shop, and a real reason to keep
+            // buying the cheap box.
+            new("shotgun", "Shotgun", ItemCategory.Weapon, 1, 3.2f, 200, "Eight pellets and an apology. Devastating up close, useless across a field."),
+            new("rifle", "Hunting Rifle", ItemCategory.Weapon, 1, 4.1f, 320, "One round, one animal, a long walk to collect it."),
+            new("smg", "Submachine Gun", ItemCategory.Weapon, 1, 2.6f, 260, "Empties a magazine faster than you can decide whether you meant to."),
+            new("shotgun_shell", "Shotgun Shells", ItemCategory.Material, 24, 0.05f, 5, "Fat, heavy, and worth it once."),
+            new("rifle_ammo", "Rifle Rounds", ItemCategory.Material, 30, 0.03f, 9, "Expensive per shot, which is the point of aiming."),
+
             new("boat_part", "Boat Part", ItemCategory.Quest, 1, 12f, 0, "One of the pieces that gets you off this island."),
         };
 

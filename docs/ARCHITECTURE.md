@@ -107,9 +107,10 @@ build that can only be started by clicking a button cannot be tested from one. `
 reads `-host` / `-server` / `-client`, plus `-address`, `-port`, `-quitAfter`, and the test flags
 `-latency`, `-botMove`, `-motorLog`, `-clockLog`, `-navWalk`, `-quality`, `-perfLog`, `-invTest`,
 `-itemTest`, `-statTest`, `-statLog`, `-buffTest`, `-craftTest`, `-chestTest`, `-uiTest`,
-`-moneyTest`, `-shopTest`, `-weaponTest`, `-weaponLog`, `-meleeTest` and `-meleeLog` described under
-movement, the day/night cycle, navigation, performance, the inventory, loot, survival, consumables,
-crafting, storage, the bag screen, money, the shop, weapons and melee below:
+`-moneyTest`, `-shopTest`, `-weaponTest`, `-weaponLog`, `-meleeTest`, `-meleeLog` and `-gunTest`
+described under movement, the day/night cycle, navigation, performance, the inventory, loot,
+survival, consumables, crafting, storage, the bag screen, money, the shop, weapons, melee and
+firearms below:
 
 ```
 Unity.exe -quit -batchmode -nographics -projectPath .   -executeMethod EscapeWithYourFriends.EditorTools.BuildTool.PerformBuild   -buildOutput D:/Builds/EWYF-dev -development -scriptingBackend mono
@@ -3398,8 +3399,8 @@ at thirty metres, which is wider than the person being shot at. One shot missing
 the gun. Asserting on one shot is asserting on a dice roll, so the test fires until one connects and
 reports how many it took - four, in the run above.
 
-**Not done here:** ammunition and reloading are defined as data and consumed by nothing (#51), the
-recoil number is read by no camera yet (#51), and `UpgradesTo` is a link nothing follows (#52).
+**Not done here:** `UpgradesTo` is a link nothing follows (#52). Ammunition, reloading, recoil and
+tracers arrived in #51, below.
 
 ### Melee, and where people land
 
@@ -3468,6 +3469,91 @@ throws them 3.3 m. Picking the funny one has to cost something, or it is not a c
 **Not done here:** the wind-up is a number the resolver honours but no animation plays into (#M8),
 and active ragdoll - `ConfigurableJoint` drives targeting the animated pose, so a hit makes somebody
 flail *while still standing* - is still the deferred v2 described above.
+
+### Firearms
+
+#51 added the shotgun, the hunting rifle and the SMG next to #49's pistol, and with them the three
+things a gun needs that a bat does not: **ammunition, a reload, and a kick.** Adding the guns
+themselves cost three rows in `WeaponFactory.Seeds` and five in `ItemFactory` - no component was
+touched, which is the third time #49's acceptance has been cashed rather than argued about.
+
+**Magazines live on the player, per weapon.** `Weapon` keeps a server-side
+`Dictionary<WeaponDef, int>` and mirrors the equipped weapon's count into a `SyncVar` for the HUD.
+Per weapon rather than one counter, because a single counter would refill the pistol every time you
+swapped to the shotgun and back, and the shop sells ammunition by the box. **Guns start empty**: the
+magazine you are carrying is one you paid for and loaded. A reload takes rounds *out of the bag* -
+they are `ItemDef`s with a weight and a price the whole way through, never a number that appears on
+a HUD - and takes the weapon's own `ReloadSeconds` to do it. Swapping weapons mid-reload cancels it,
+and since the rounds were never removed from the bag there is nothing to give back and no way to
+duplicate anything by swapping quickly.
+
+**One round per shot, never per pellet.** A shotgun blast is eight rays and one shell. The day
+somebody writes a twenty-pellet weapon is not the day the ammunition economy should change.
+
+**Recoil moves the aim, not the picture.** `PlayerCameraRig` subscribes to `Weapon.Fired` and calls
+`PlayerInputReader.AddRecoil`, so the kick goes into the same pitch value the camera *and* the aim
+origin both read - the shot after the kick genuinely goes higher. Putting it anywhere else would
+have produced a camera that jumps while the bullets carry on going exactly where they were. The
+pitch clamp stays in one place, so a burst from the SMG cannot walk the view past vertical. Everyone
+hears a shot, because `Fired` is an observers event and tracers must be drawn on every screen, but
+only the owner gets shoved by it.
+
+**Tracers are a listener and never a source of truth.** `TracerEffect` draws one pooled
+`LineRenderer` per pellet from the origin and endpoints `Weapon.Fired` carries - and those endpoints
+are produced *after* the server's raycast. So a tracer can only ever draw something that has already
+been decided. Where the tracer is drawn is a lie the client tells; where the damage landed is the
+server's raycast.
+
+`-gunTest` is the harness, and it runs both processes under `-latency 100` because that is the
+condition the acceptance is written against - so the test reads the latency the bootstrap applied
+and **fails if nobody asked for any**, rather than quietly passing a test of nothing. **81 checks,
+all passing:**
+
+```
+[GunTest] running at 100 ms of simulated latency, victim is owned by connection 1.
+[GunTest] 4 gun(s): pistol 26dmg 300rpm 1x1.5deg 60m mag 12, rifle 65dmg 45rpm 1x0.2deg 150m mag 5,
+          shotgun 11dmg 70rpm 8x6.5deg 35m mag 6, smg 14dmg 800rpm 1x3.0deg 45m mag 30
+[GunTest]   pistol  -> reload 2.10s, 12 shot(s), 12 round(s) left in the bag
+[GunTest]   rifle   -> reload 2.50s,  5 shot(s),  5 round(s) left in the bag
+[GunTest]   shotgun -> reload 2.90s,  6 shot(s),  6 round(s) left in the bag
+[GunTest]   smg     -> reload 2.30s, 30 shot(s), 30 round(s) left in the bag
+[GunTest] shotgun at 2.5m landed 5 pellet(s) in one shot.
+[GunTest] 81 passed, 0 failed.
+```
+
+The ammunition economy is checked the way the shop was in #48 - as a conservation argument. Rounds
+do not appear: a gun out of the shop is empty, an empty bag reloads nothing, a full magazine refuses
+to top up, a reload of a magazine of *n* removes exactly *n* from a bag stocked with 2*n*, one
+trigger pull spends exactly one round whatever it throws, and a magazine of *n* lasts exactly *n*
+shots and then hits nobody.
+
+**"No client-trusted damage" cannot be proved by a test that only calls server methods**, and
+pretending otherwise would be worse than not testing it. What the harness checks is the shape that
+makes it true: the client's only contribution to a shot is a direction, `AimValidation` rejects one
+aimed at somebody standing behind the shooter, and what landed equals what the *server's* asset says
+rather than any number a caller passed in. The four guns are also checked for being four answers
+rather than four skins - distinct rates of fire, distinct ranges, a magazine spread of at least 5x -
+and the shotgun has to land more than one of its eight pellets on one person at close range, which
+is both the reason it exists and the thing the melee dedupe would have silently destroyed.
+
+Two harness bugs found here were worth more than the feature, because both were the *test* lying:
+
+- **A victim must be stood up before being moved, not after.** `DisableRagdoll` repositions the root
+  under wherever the hips came to rest, so clearing a stun after a teleport drags the body straight
+  back to where it was lying. Since #50 a landed hit moves people metres, so the previous weapon left
+  them in a heap downrange and the next one was shooting at empty arena and reporting itself broken.
+- **`Health.Heal` refuses anything that is not `Alive`.** One rifle magazine is 325 damage. A victim
+  killed partway through stayed a corpse for the rest of the run, and a corpse stays ragdolled
+  through `ServerClearStun`, so every later teleport moved a root while the colliders stayed where
+  they fell. `Reset` now revives before it heals - and because a rescue grants two seconds of
+  invulnerability, the damage loops now run until health actually *changes* rather than until a ray
+  connects.
+
+Both bugs were in `WeaponTest` too, where the growing arsenal exposed them; it is back to 27/27 with
+all nine carried weapons proving their own damage, and `-meleeTest` is unchanged at 25/25.
+
+**Not done here:** the shop does not stock the new guns or their ammunition yet - the shelves are a
+balance question and belong to #56 - and nothing plays a muzzle flash or a sound (#M8).
 
 ---
 

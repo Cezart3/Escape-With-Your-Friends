@@ -90,6 +90,13 @@ namespace EscapeWithYourFriends.EditorTools
             use.AddBinding("<Keyboard>/f");
             use.AddBinding("<Gamepad>/buttonSouth");
 
+            // Reload is its own key rather than an automatic consequence of an empty magazine,
+            // because the moment worth having is the one where you decide to spend three seconds
+            // now instead of finding out later that you had two rounds left.
+            InputAction reload = map.AddAction("Reload", InputActionType.Button);
+            reload.AddBinding("<Keyboard>/r");
+            reload.AddBinding("<Gamepad>/buttonWest");
+
             // Hotbar selection. Five slots is what fits across a screen without a second row, and it
             // is what the drop key acts on until the real hotbar UI lands in #46.
             for (int slot = 1; slot <= HotbarSlots; slot++)

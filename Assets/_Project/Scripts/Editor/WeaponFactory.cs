@@ -23,8 +23,8 @@ namespace EscapeWithYourFriends.EditorTools
     /// number somebody tuned in the inspector survives the next run; the catalog and the prefab links
     /// are structural and are re-applied every time.
     ///
-    /// #49 seeded five, and #50 added two more by writing two rows here and nothing else, which is
-    /// the acceptance of #49 being cashed in rather than argued about. #51 adds the guns the same way.
+    /// #49 seeded five, #50 added two more and #51 another three, each of them a row here and nothing
+    /// else - which is the acceptance of #49 being cashed in three times rather than argued about.
     /// </summary>
     public static class WeaponFactory
     {
@@ -65,6 +65,7 @@ namespace EscapeWithYourFriends.EditorTools
             public readonly float Rpm;
             public readonly int Magazine;
             public readonly string Ammo;
+            public readonly float Reload;
 
             // Model
             public readonly Vector3 Size;
@@ -75,13 +76,14 @@ namespace EscapeWithYourFriends.EditorTools
                         float damage, float knockback, float upwardBias, float stun,
                         float cooldown, float windup, float range, float radius, float cone,
                         int maxTargets, int pellets, float spread, float recoil, float rpm,
-                        int magazine, string ammo, Vector3 size, Color colour, string description)
+                        int magazine, string ammo, Vector3 size, Color colour, string description,
+                        float reload = 1.8f)
             {
                 Id = id; Name = name; Item = item; Kind = kind; Tier = tier;
                 Damage = damage; Knockback = knockback; UpwardBias = upwardBias; Stun = stun;
                 Cooldown = cooldown; Windup = windup; Range = range; Radius = radius; Cone = cone;
                 MaxTargets = maxTargets; Pellets = pellets; Spread = spread; Recoil = recoil;
-                Rpm = rpm; Magazine = magazine; Ammo = ammo;
+                Rpm = rpm; Magazine = magazine; Ammo = ammo; Reload = reload;
                 Size = size; Colour = colour; Description = description;
             }
         }
@@ -138,6 +140,33 @@ namespace EscapeWithYourFriends.EditorTools
                 pellets: 1, spread: 0f, recoil: 0f, rpm: 0f, magazine: 0, ammo: null,
                 size: new Vector3(0.22f, 0.05f, 0.90f), colour: new Color(0.46f, 0.48f, 0.52f),
                 description: "Digs, buries, and settles the argument in between."),
+
+            // #51's three, and between them they cover the whole shape of the Ranged block. The
+            // shotgun is spread and pellets, the rifle is range and damage, the SMG is rate of fire -
+            // so any number in WeaponDef that a gun could care about is now cared about by something.
+            new("shotgun", "Shotgun", "shotgun", WeaponKind.Hitscan, 1,
+                damage: 11f, knockback: 70f, upwardBias: 0.22f, stun: 0.9f,
+                cooldown: 0f, windup: 0f, range: 35f, radius: 0f, cone: 0f, maxTargets: 1,
+                pellets: 8, spread: 6.5f, recoil: 5.0f, rpm: 70f, magazine: 6, ammo: "shotgun_shell",
+                reload: 2.6f,
+                size: new Vector3(0.08f, 0.10f, 1.05f), colour: new Color(0.32f, 0.26f, 0.22f),
+                description: "Eight pellets at once. All eight land at three metres and one lands at thirty."),
+
+            new("rifle", "Hunting Rifle", "rifle", WeaponKind.Hitscan, 2,
+                damage: 65f, knockback: 90f, upwardBias: 0.10f, stun: 0.7f,
+                cooldown: 0f, windup: 0f, range: 150f, radius: 0f, cone: 0f, maxTargets: 1,
+                pellets: 1, spread: 0.2f, recoil: 6.5f, rpm: 45f, magazine: 5, ammo: "rifle_ammo",
+                reload: 2.2f,
+                size: new Vector3(0.06f, 0.09f, 1.25f), colour: new Color(0.38f, 0.30f, 0.24f),
+                description: "One round, a long way, and a long wait before the next one."),
+
+            new("smg", "Submachine Gun", "smg", WeaponKind.Hitscan, 2,
+                damage: 14f, knockback: 45f, upwardBias: 0.08f, stun: 0.4f,
+                cooldown: 0f, windup: 0f, range: 45f, radius: 0f, cone: 0f, maxTargets: 1,
+                pellets: 1, spread: 3.0f, recoil: 0.9f, rpm: 800f, magazine: 30, ammo: "pistol_ammo",
+                reload: 2.0f,
+                size: new Vector3(0.06f, 0.14f, 0.48f), colour: new Color(0.22f, 0.23f, 0.25f),
+                description: "Thirty rounds in two seconds, most of them somewhere near the target."),
 
             // The proof that the other branch is real. Balance is #51's problem, not this issue's.
             new("pistol", "Pistol", "pistol", WeaponKind.Hitscan, 1,
@@ -227,6 +256,7 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_recoil").floatValue = seed.Recoil;
                 so.FindProperty("_roundsPerMinute").floatValue = Mathf.Max(1f, seed.Rpm);
                 so.FindProperty("_magazine").intValue = seed.Magazine;
+                so.FindProperty("_reloadSeconds").floatValue = seed.Reload;
             }
 
             so.FindProperty("_item").objectReferenceValue = Item(seed.Item, seed.Id);

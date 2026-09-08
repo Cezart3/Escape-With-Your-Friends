@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b81482618dd810141af52ce8f2208db6, type: 3}
+  m_Name: smg
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.WeaponDef
+  _id: smg
+  _displayName: Submachine Gun
+  _description: Thirty rounds in two seconds, most of them somewhere near the target.
+  _kind: 1
+  _item: {fileID: 11400000, guid: 7c465c52da8661545a7b20dfdfb75222, type: 2}
+  _hit:
+    _damage: 14
+    _damageType: 0
+    _knockback: 45
+    _upwardBias: 0.08
+    _stunDuration: 0.4
+  _cooldown: 0
+  _windup: 0
+  _range: 45
+  _radius: 0
+  _coneHalfAngle: 5
+  _maxTargets: 1
+  _shotRange: 45
+  _pellets: 1
+  _spread: 3
+  _recoil: 0.9
+  _roundsPerMinute: 800
+  _magazine: 30
+  _reloadSeconds: 2
+  _ammo: {fileID: 11400000, guid: 68e4e002373b16e4db2bc877a59b00f7, type: 2}
+  _viewPrefab: {fileID: 1689862693492388445, guid: d5a8b3528399b9a4a9035e0e32839eec, type: 3}
+  _tier: 2
+  _upgradesTo: {fileID: 0}
