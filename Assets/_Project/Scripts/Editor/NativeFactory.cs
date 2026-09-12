@@ -184,6 +184,29 @@ namespace EscapeWithYourFriends.EditorTools
             ("blowgunner", "flint", 2, 3, 1f),
         };
 
+        /// <summary>
+        /// Who drags a downed player home, how far they will come for one, and how fast they walk
+        /// while carrying them. Structure rather than tuning, so it is re-applied every run: which
+        /// role does this is a statement about what the three roles are *for*, and a rebuild that
+        /// silently left a camp with no kidnapper in it would take #107 out of the game without
+        /// anybody noticing.
+        ///
+        /// **The spearman and the scout take you; the blowgunner does not.** That is the fight #107
+        /// is after - one body walking away with your friend, one keeping its distance and shooting
+        /// whoever runs after it. If every role abducted, the answer would always be the same fight.
+        ///
+        /// **Half speed, always.** A spearman hauls at 3.3 m/s and a scout at 3.5 against a player's
+        /// 7.5 sprint, so catching a kidnapper is never in doubt - what the haul costs you is the
+        /// time, the distance back, and whatever is between you and it. The same lever that makes
+        /// running away work makes running after them work.
+        /// </summary>
+        static readonly (string Native, bool Abducts, float Radius, float HaulFraction)[] Abduction =
+        {
+            ("scout", true, 20f, 0.5f),
+            ("spearman", true, 24f, 0.5f),
+            ("blowgunner", false, 0f, 0.5f),
+        };
+
         public static void Build()
         {
             Directory.CreateDirectory(Folder);
@@ -217,6 +240,7 @@ namespace EscapeWithYourFriends.EditorTools
             all.Sort((a, b) => string.CompareOrdinal(a.Id, b.Id));
 
             int links = ApplyLoot(all.ToArray());
+            int haulers = ApplyAbduction(all.ToArray());
 
             NativeCatalog catalog = EnsureCatalog();
             catalog.Configure(all.ToArray());
@@ -230,7 +254,7 @@ namespace EscapeWithYourFriends.EditorTools
             GameObject prefab = EnsurePrefab(catalog);
 
             Debug.Log($"[NativeFactory] {all.Count} role(s) ({made} new), {links} loot link(s), "
-                      + $"prefab {(prefab != null ? "ok" : "MISSING")}.");
+                      + $"{haulers} of them take prisoners, prefab {(prefab != null ? "ok" : "MISSING")}.");
 
             foreach (NativeDef def in all) Debug.Log($"[NativeFactory]   {Describe(def)}");
         }
@@ -239,7 +263,30 @@ namespace EscapeWithYourFriends.EditorTools
             => $"{def.Id,-11} {def.MaxHealth,4:0} hp  {def.AttackDamage,3:0} dmg/{def.AttackInterval:0.0}s "
                + $"({def.DamagePerSecond,4:0.0} dps)  notices {def.DayNotice:0}m by day / "
                + $"{def.NightNotice:0}m at night  leash {def.DayLeash:0}/{def.NightLeash:0}m  "
-               + $"drops {def.ExpectedLootValue:0.0}c";
+               + $"drops {def.ExpectedLootValue:0.0}c"
+               + (def.Abducts ? $"  hauls at {def.HaulSpeed:0.0} m/s from {def.AbductRadius:0}m" : "");
+
+        static int ApplyAbduction(NativeDef[] all)
+        {
+            var byId = all.Where(d => d != null).ToDictionary(d => d.Id, d => d);
+            int haulers = 0;
+
+            foreach ((string native, bool abducts, float radius, float fraction) in Abduction)
+            {
+                if (!byId.TryGetValue(native, out NativeDef def))
+                {
+                    Debug.LogWarning($"[NativeFactory] abduction for unknown role {native}; skipped.");
+                    continue;
+                }
+
+                def.SetAbduction(abducts, radius, fraction);
+                EditorUtility.SetDirty(def);
+
+                if (abducts) haulers++;
+            }
+
+            return haulers;
+        }
 
         static int ApplyLoot(NativeDef[] all)
         {
@@ -375,6 +422,12 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_maxHealth").floatValue = 70f;
             });
 
+            // Over the shoulder and slightly forward, which is where a body ends up when somebody
+            // who is not being careful with it decides to move it. Carryable parents the hips here.
+            var socket = new GameObject("CarrySocket");
+            socket.transform.SetParent(root.transform, false);
+            socket.transform.localPosition = new Vector3(0f, 1.45f, 0.3f);
+
             var native = root.AddComponent<Native>();
             SetFields(native, so =>
             {
@@ -382,6 +435,7 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_body").objectReferenceValue = body.transform;
                 so.FindProperty("_head").objectReferenceValue = head.transform;
                 so.FindProperty("_collider").objectReferenceValue = collider;
+                so.FindProperty("_carrySocket").objectReferenceValue = socket.transform;
             });
 
             return root;

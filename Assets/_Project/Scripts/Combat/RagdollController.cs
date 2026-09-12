@@ -279,11 +279,27 @@ namespace EscapeWithYourFriends.Combat
             return closest;
         }
 
-        /// <summary>Server-side helper so carrying can freeze the body without disabling physics.</summary>
+        /// <summary>
+        /// Freezes the skeleton without disabling physics, which is what carrying needs: the bones
+        /// stop solving but the colliders stay in the world.
+        ///
+        /// Interpolation goes off with it, and that is not a detail. Every bone is an interpolated
+        /// rigidbody so a ragdoll does not step at 50 Hz on a 144 Hz screen - but interpolation
+        /// writes the transform from the *last two physics poses*, which overwrites the position a
+        /// parent transform just gave it. A body carried on somebody's shoulder therefore trails
+        /// behind the carrier instead of riding it: #107 measured a native hauling at 3.3 m/s and the
+        /// body it was carrying moving at 0.8, and putting it down seven metres behind where the
+        /// native was standing. While something else owns the pose, nothing here may interpolate it.
+        /// </summary>
         public void SetBonesKinematic(bool kinematic)
         {
             foreach (Rigidbody bone in _bones)
+            {
                 bone.isKinematic = kinematic;
+                bone.interpolation = kinematic
+                    ? RigidbodyInterpolation.None
+                    : RigidbodyInterpolation.Interpolate;
+            }
         }
 
         /// <summary>

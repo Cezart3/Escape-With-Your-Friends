@@ -126,6 +126,11 @@ namespace EscapeWithYourFriends.Combat
             hip.localPosition = Vector3.zero;
             hip.localRotation = Quaternion.identity;
 
+            // Same reason as the detach: until this runs, anything that asks physics where the body
+            // is - a shot at somebody being carried off, the next frame's depenetration - is told
+            // where it used to be lying.
+            Physics.SyncTransforms();
+
             IgnoreCollisionsWith(carrier, true);
         }
 
@@ -133,6 +138,13 @@ namespace EscapeWithYourFriends.Combat
         {
             Transform hip = _ragdoll.HipBone;
             hip.SetParent(transform, worldPositionStays: true);
+
+            // Physics does not follow a reparenting on its own: autoSyncTransforms is off in this
+            // project, so PhysX still has every bone where it last saw it - at the spot the body was
+            // picked up from. Going dynamic there means the solver's pose wins and the body snaps
+            // back across the map, which is how #107 found this: a native carried somebody the
+            // length of a village and put them down ten metres from where it was standing.
+            Physics.SyncTransforms();
 
             // Back to limp so it falls naturally, and the root follows the body down.
             _ragdoll.SetBonesKinematic(false);

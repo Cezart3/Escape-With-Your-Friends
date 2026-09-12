@@ -4106,6 +4106,132 @@ question nobody has asked; deaths cost a revive that the model knows nothing abo
 thing assumes the trader is the only buyer, which stops being true the moment there is a second
 island.
 
+### Abduction (#107)
+
+**A downed player is not safe on the floor.** Until #107 a body that went down in front of a native
+camp stayed exactly where it landed, bleeding out on a timer while the natives went back to
+patrolling around it. Now the nearest native that is in the business of it breaks off, walks over,
+puts your friend on its shoulder and carries them home. The timer does not stop while this happens.
+Being carried off is not a reprieve; it is the same forty-five seconds, spent somewhere worse.
+
+**The hook is `Health.ServerStateChanged`, and that choice is the whole design.** There is a
+replicated `StateChanged` too, but it fires after the SyncVar is published and after the ragdoll has
+launched, which would mean a window where every client has watched somebody hit the floor and the
+server has not yet decided who is coming for them. The server-side event fires first, on the same
+frame as the down, from the authoritative side. Everything after the claim is unhurried - the native
+walks, and re-checks its own state every tick on the way - but *who claimed this body* is settled
+once, immediately, and never re-opened.
+
+**One watcher, not one subscription per native.** `AbductionWatch` is a static server-side class that
+hooks each player's `Health` exactly once, keyed by the `Health` itself, and re-hooks on join through
+`NetworkPlayerRegistry.PlayerAdded`. The alternative - every native subscribing to every player -
+is N x M subscriptions that all have to be unwound correctly when either side despawns, and it makes
+a body that goes down alone in the jungle cost a dozen distance checks instead of one dictionary
+lookup. `Native.OnStartServer` calls `AbductionWatch.Arm()`, which is idempotent: an island with
+nobody on it who takes prisoners never arms at all.
+
+**The claim is exclusive by construction rather than by a registry.** A native holds exactly one
+`Haul`, and `Native.ServerOffer` sweeps the live list skipping any body somebody already holds, then
+picks the nearest eligible native inside its own `AbductRadius`. Two natives arriving at the same
+body is a thing that should look like a scuffle one day; two natives each believing they are carrying
+it is a bug today.
+
+**`Carryable` did not need changing to make this work, and that is the point.** It only ever required
+a `CarrySystem` on the carrier in the sense of asking *can this thing hold a body* - so the native
+implements `ICarryHolder`, gets a `CarrySocket` over its shoulder from the factory, and calls the
+same `ServerCanBeCarriedBy` / `ServerAttach` / `ServerDetach` that a player calls. A native carrying
+you and a friend carrying you are the same code path with a different holder.
+
+**One state, four ways out.** `NativeState.Abduct` covers both halves of the job - walk to the body,
+then walk it home - because from the player's side they are one event, *somebody is taking your
+friend away*, and splitting them would produce two states that drop the body for the same four
+reasons. Those four reasons are the counter-play, and every one of them is something the other three
+players can cause:
+
+| Counter-play | What it costs you | What happens to the body |
+|---|---|---|
+| Kill the carrier | a fight, and the camp refills a dead native | dropped where it fell, which may be nowhere useful |
+| Hurt it past its `FleeHealth` | a few hits, and the native lives | dropped, and the carrier runs for camp |
+| Get a hand on the body first | you are now the one carrying somebody, slowly | yours |
+| Revive them mid-haul | the revive itself | they stand up next to an angry native |
+
+`Release()` is the single path out of a haul - death, flee, rescue, timeout and despawn all come
+through it - so there is exactly one place in the code that can leave a body attached to nothing.
+
+**A kidnapper is committed.** `OnHealthChanged` returns early for a native in `Abduct`: shooting it
+in the back does not make it turn round and fight you, it makes it keep walking towards the thing you
+do not want it to reach. The way to stop it is to put it down or break it, and both of those drop the
+body. The flee check still runs first, which is what makes "hurt it enough" a real answer rather than
+a worse version of "kill it".
+
+**Haul speed is the fairness lever.** A spearman hauls at **3.3 m/s** and a scout at **3.5**, against
+a player's **7.5 m/s** sprint - half the native's own run speed, by the `_haulFraction` on
+`NativeDef`. Catching a kidnapper is therefore never in doubt; what the haul costs you is the time,
+the distance, and whatever is standing between you and it. The same lever that makes a native running
+away work makes running after one work. `HaulSeconds` (90) is a safety valve rather than a mechanic:
+a delivery point that can never be reached should end with a body on the floor, not with somebody
+spending the rest of the run on a shoulder.
+
+**The blowgunner does not do this.** `NativeFactory` carries an `Abduction` table next to the loot
+table - scout 20 m, spearman 24 m, blowgunner never - and re-applies it on every run, because which
+role takes prisoners is a statement about what the three roles are *for*, not a tuning number. A
+rebuild that silently left a camp with no kidnapper in it would take #107 out of the game without
+anybody noticing. It also makes the fight legible: one body walking away with your friend, one
+keeping its distance and shooting whoever runs after it. If every role abducted, the answer would
+always be the same fight.
+
+`-abductTest` runs the whole thing headless on the island with the natives and animals switched off,
+placing its own spearmen where it wants them:
+
+```
+[AbductionTest] a player went down with four natives watching: 1 claimed the body; the one 8m away got it.
+[AbductionTest] 4s of being carried: 11.1m closer to camp (44m -> 33m) and 4.0s of bleed-out gone (44s -> 40s left).
+[AbductionTest] the haul moved at 2.8 m/s against a 7.5 m/s sprint.
+[AbductionTest] the carrier was killed 56m short of camp at (-83.93, 5.08, -35.56); the body landed 1.5m from there, at (-83.93, 6.53, -35.26).
+[AbductionTest] the carrier was hurt to 12/85 hp (it breaks under 15 %): carried=False, it is now Flee.
+[AbductionTest] a player helped up mid-haul: carried=False, the native is now Chase.
+[AbductionTest] a body was carried to the camp in 4.3s and put down 2.6m from the middle of it at (-84.32, 6.59, -30.67) (the carrier stopped at (-84.37, 5.14, -30.97)), with 41s left on the timer.
+[AbductionTest] 40 passed, 0 failed.
+```
+
+`-nativeTest` still passes 125/125 on top of it.
+
+#### Two physics bugs the haul found
+
+Neither of these was #107's own code, and both of them had been wrong in player carrying (#24) since
+it was written. A native walking a body sixty metres is simply the first thing that moved a carried
+body far enough for anybody to see it.
+
+**Interpolation overwrites a parented pose.** Every ragdoll bone is a `Rigidbody` with
+`RigidbodyInterpolation.Interpolate`, which is right while the body is dynamic and actively wrong
+while it is kinematic and parented to somebody's shoulder: interpolation writes the transform from
+the last two *physics* poses, so it happily undoes the position the socket just gave it. The measured
+symptom was a native hauling at 3.3 m/s with the body it was carrying moving at 0.8, trailing seven
+metres behind. `RagdollController.SetBonesKinematic` now turns interpolation off whenever it turns
+kinematic on, matching the convention `SetRagdollInternal` already used:
+
+```csharp
+bone.isKinematic = kinematic;
+bone.interpolation = kinematic
+    ? RigidbodyInterpolation.None
+    : RigidbodyInterpolation.Interpolate;
+```
+
+**`autoSyncTransforms` is off in this project.** `Physics.autoSyncTransforms` is `false`
+(`DynamicsManager.asset`), so PhysX does not learn about a reparenting until something syncs. Putting
+a body down after carrying it meant going dynamic on bones PhysX still believed were back at the
+pick-up point, the solver's pose won, and the body snapped across the map - a native carried somebody
+the length of a village and put them down ten metres from where it was standing. `Carryable` now
+calls `Physics.SyncTransforms()` after the reparent in both `AttachVisual` and `DetachVisual`.
+
+**Not done here:** the delivery point is the camp centre, because there is nothing in a camp yet to
+hang a body on - #108 puts hang points there, a rescue interaction on them, and guards that object to
+you walking up to one. A body that dies *while* being carried is not released; the journey continues
+and the corpse arrives, which is the worst outcome in the game and the one worth playing to avoid,
+but what a village does with a corpse is also #108's. Natives do not fight each other over a body,
+do not pick one back up after being made to drop it, and do not react at all to watching a player
+carry a downed friend past them.
+
 ---
 
 ## Data-driven content
