@@ -341,6 +341,7 @@ namespace EscapeWithYourFriends.AI
             if (Time.time >= _nextSense)
             {
                 _nextSense = Time.time + _senseInterval;
+                UpdateGuard();
                 Sense();
             }
 
@@ -359,6 +360,33 @@ namespace EscapeWithYourFriends.AI
         /// <summary>How dark it is where this native is standing. 0 by day, 1 at midnight.</summary>
         public static float Night => WorldClock.Night01;
 
+        /// <summary>How far from camp a strung-up body counts as this native's problem.</summary>
+        const float GuardRadius = 45f;
+
+        /// <summary>
+        /// Whether this camp currently has somebody hanging in it (#108). Recomputed on the sense
+        /// tick rather than per frame, because it is a sweep of a list that is never longer than the
+        /// number of hooks on the island.
+        ///
+        /// **A guarded camp behaves as if it were midnight, whatever the sun is doing.** That is the
+        /// whole of "a rescue is a raid, not a stealth run", and it is deliberately expressed with
+        /// #55's existing two levers rather than new ones: the night notice radius and no requirement
+        /// to actually see you, plus the night leash so they follow you off the hill. Nothing about
+        /// the daylight contract changes for a camp that is not holding anybody - walking past an
+        /// empty village at noon is still a thing cover and distance can solve.
+        /// </summary>
+        public bool Guarding { get; private set; }
+
+        void UpdateGuard()
+            => Guarding = HangPoint.ServerAnyOccupiedNear(_camp, GuardRadius);
+
+        /// <summary>
+        /// How alert this native is, 0 to 1. The sun, unless the camp is holding somebody - then it
+        /// is midnight regardless. Everything the day/night contract turns on reads this rather than
+        /// <see cref="Night"/>, which is what makes a guarded village play like a night raid.
+        /// </summary>
+        public float Alertness => Guarding ? 1f : Night;
+
         /// <summary>
         /// Looks for somebody to be angry about.
         ///
@@ -375,7 +403,7 @@ namespace EscapeWithYourFriends.AI
             // time somebody walked past, which is a mechanic nobody can read.
             if (_state == NativeState.Flee || _state == NativeState.Abduct) return;
 
-            float night = Night;
+            float night = Alertness;
             float notice = _def.NoticeRadius(night);
             bool needsSight = _def.NeedsSight(night);
 
@@ -508,7 +536,7 @@ namespace EscapeWithYourFriends.AI
         /// </summary>
         bool Leashed()
         {
-            float leash = _def.LeashRange(Night);
+            float leash = _def.LeashRange(Alertness);
             if (Vector3.Distance(transform.position, _camp) <= leash) return false;
 
             Give();
@@ -797,15 +825,33 @@ namespace EscapeWithYourFriends.AI
                       + $"{transform.position}; {Vector3.Distance(transform.position, _delivery):F0}m to go.");
         }
 
+        /// <summary>
+        /// Arrived. The body goes on a hook if the village has a free one, and on the ground if it
+        /// does not - a camp with no prison in it still gets to take you there, it just has nothing
+        /// to hang you on. The order matters: <see cref="Release"/> first, because
+        /// <see cref="Carryable.ServerAttach"/> refuses a body somebody else is still holding, and
+        /// taking it off this native behind its own back is how it would end up convinced it is
+        /// carrying something it is not.
+        /// </summary>
         void Deliver()
         {
             Health victim = _hauled;
+            Carryable body = _haul;
+
+            // Measured from the delivery point rather than from where this native happens to be
+            // standing: the agent stops short of the middle of the camp by a metre or two, and a hook
+            // chosen from there is whichever one the pathfinder happened to leave it nearest. A hook
+            // belongs to the camp.
+            HangPoint hook = HangPoint.ServerFree(_delivery);
+
+            Release();
+
+            bool hung = hook != null && body != null && hook.ServerHang(body);
 
             Debug.Log($"[Native] {_def.Id} {ObjectId} delivered {(victim != null ? victim.ObjectId : 0)} "
                       + $"to {transform.position}; {(victim != null ? victim.BleedOutRemaining : 0f):F0}s "
-                      + "of bleed-out left.");
+                      + $"of bleed-out left; {(hung ? "on a hook" : "on the ground")}.");
 
-            Release();
             Stop();
             EnterIdle();
         }
