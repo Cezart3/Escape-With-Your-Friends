@@ -3763,9 +3763,9 @@ Scrap metal is what they would otherwise be carrying, at **2.7 c/kg**. From the 
 | gull | 15 | 0.9 | **16.8** | 21 | 0.8 | **26.6** |
 
 Three to six times scrap raw, and cooking roughly doubles it again - which is what makes the campfire
-worth the walk back rather than a survival chore. Against the boat at 1600 (four parts at 400) a boar
-is 43 kills, about eleven each across four players. Enough to be a real grind, few enough to be a
-plan.
+worth the walk back rather than a survival chore. Against the boat as #56 repriced it - 5600, four
+parts at 1400 - a boar is 151 kills, which is nobody's plan: hunting is one of three ways to earn and
+four people who did nothing else would take about two and a half hours. See *The economy, priced*.
 
 The speeds are tuned against the player's own sprint, read off `PlayerMotor.SprintSpeed` rather than
 copied: both prey animals run *slightly slower* than 7.5 m/s, which is the single decision that makes
@@ -3788,8 +3788,8 @@ the charge test because the camp zone's own population joined in, and the `boar.
 
 **Not done here:** no line of sight and no smell, so a boar notices you through a hill; no herd
 behaviour, so five deer flee as five individuals; the greybox bodies are two cubes and the "which
-end is the front" cue is a darker head; nothing eats anything but you; and what the trader pays for
-hide and meat is #56's balance pass to revisit.
+end is the front" cue is a darker head; and nothing eats anything but you. What the trader pays for
+hide and meat was #56's to revisit and now has a model behind it.
 
 ---
 
@@ -3871,8 +3871,9 @@ opposite things: line shrinks towards zero as you win, tension grows towards one
 the real constraint on the walk to the counter. Raw fish pays 6.0 c/kg against scrap metal's 2.7;
 cooking it pays 14.4, which is what makes the walk back to the fire worth making. A pearl is 70 coins
 for fifty grams at 5% of casts, the best ratio in the game and the reason anybody casts a fourth
-time. Averaged over the table a cast is worth 11.2 coins and takes 11.4 seconds - **59 coins per
-minute of fishing**.
+time. Averaged over the table a cast is worth 11.2 coins and takes 11.4 seconds. Per *minute* it depends
+on the bag rather than on the rod: forty kilograms is twenty-eight casts and then a walk to the
+counter, which is **41 coins a minute** once the walk is counted. See *The economy, priced*.
 
 A boot is worth **zero**, not one. The trader floors every price they are willing to pay at a coin,
 so a value of one would still be a sale and the joke would be a consolation prize; at zero the counter
@@ -3891,9 +3892,9 @@ oyster in 16.8 s, and the catch sold for exactly what the table said.
 
 **Not done here:** the bobber is a position rather than an object, so there is nothing floating to
 look at yet; no bait, no rod tiers and no line strength, so the only variable is the fish; casting
-distance is a fixed range rather than a charged throw; fish do not exist as creatures, so nothing can
-be seen swimming and nothing can be startled; and whether the shop should stock pearls and refuse
-boots is #56's balance pass to settle.
+distance is a fixed range rather than a charged throw; and fish do not exist as creatures, so nothing
+can be seen swimming and nothing can be startled. Whether the trader stocks pearls and refuses boots
+was #56's to settle: it does neither, and both are now checks rather than habits.
 
 ---
 
@@ -3973,9 +3974,11 @@ numbers in this document stay true. The island holds **six natives by day and te
 factory warns at bake time if any camp lands within 150 m of the players' own fire. The nearest camp
 is 206 m out, which is 54 m further than its own night leash can reach.
 
-**Economy.** A body leaves rope, hide, flint or feathers - 16 to 29 coins' worth, deliberately less
-than a deer. Killing people is not a living; it is the toll on the road to the cave. What those four
-items are actually worth on the shelf is #56's balance pass to settle.
+**Economy.** A body leaves rope, hide, flint or feathers. #56 priced a camp sweep against a bag of
+fish and found raiding paying a quarter of what fishing paid, which made the most dangerous thing on
+the island the least worthwhile, so the quantities went up: a body is now worth about two thirds of
+an animal. Killing people is still not a living - it is the toll on the road to the cave - but it is
+no longer a mistake.
 
 **Proof.** `-nativeTest` runs the acceptance criterion as a measurement rather than an assertion. It
 sweeps a player in from beyond the night radius in two metre steps with a fresh native at every step,
@@ -4011,6 +4014,97 @@ something they have rather than something you can take; camps are spawn volumes 
 so there is nothing to burn down and no huts to hide in; natives do not fight the wildlife and the
 wildlife does not fear them; there is no reputation, no trade and no non-hostile native; and they do
 not open doors, use the shop, or notice that you have stolen anything.
+
+---
+
+### The economy, priced (#56)
+
+Every number in this game lives in an asset, and until now nothing had ever asked what they add up
+to. They added up to this: a cast was worth eleven coins and took eleven seconds, a boat cost sixteen
+hundred, and four people therefore reached the boat in **two thirds of one evening**. The entire
+middle of the game - the guns, the upgrades, the second trip to the cave - was priced out of
+existence by a fishing rod.
+
+`EconomyModel` is the one place that does the arithmetic. **Nothing in it is a constant that could
+have been read from an asset**: values come from `ShopDef.PriceFor` - what the trader actually pays,
+not what the item claims to be worth - weights from `ItemDef.Weight`, odds from the catalogs' own
+tables, the boat's price from the shelf. The only hand-written numbers are the ones no asset knows,
+and they are declared together at the top with the reasoning attached, so that when the answer is
+wrong it is obvious which assumption to argue with: two minutes to walk a bag to the counter, a
+minute to find an animal, `Attention = 0.55` for the fraction of an evening actually spent earning
+rather than eating, walking, dying, and carrying somebody who is dead, and `GearShare = 0.45` for the
+income that never reaches the boat fund because it was spent on a gun and the bandages that follow
+one.
+
+**Everything is modelled as a trip, not as a rate**, because you cannot carry more than forty
+kilograms. Income is not "coins per minute of fishing" but "a bag's worth of fish, divided by the
+time it took to fill it *and* walk it to the counter". That single distinction is the difference
+between fishing paying sixty-seven coins a minute and paying forty-one, and it is why a pearl -
+seventy coins at fifty grams - is worth more than its price says: it rides home free.
+
+The model as it stands, printed by the harness from the live catalogs:
+
+```
+[EconomyTest] one player, a 40 kg bag, and a 2 minute walk to the counter:
+[EconomyTest]   fishing      40.8 c/min     2449 c/h  (313 coins per 7.7 min trip, 40.0 kg)  28 casts at 11.2 c and 12.1 s each
+[EconomyTest]   hunting      16.9 c/min     1015 c/h  (386 coins per 22.8 min trip, 40.0 kg)  13 kills at 31 c and 100 s each
+[EconomyTest]   raiding      16.7 c/min     1003 c/h  (117 coins per 7.0 min trip, 12.5 kg)  6 bodies at 20 c each
+[EconomyTest]   foraging      0.0 c/min        0 c/h  nothing on the island is worth money yet
+[EconomyTest]   gambling      0.0 c/min        0 c/h  negative by construction; the wheel is #M6
+[EconomyTest] the spread is 2.44x: fishing at 40.8 c/min against raiding at 16.7.
+[EconomyTest] the boat costs 5600 coins.
+[EconomyTest] 4 players average 24.8 c/min each at 55 % attention: 55 c/min as a group, 30 of it after gear.
+[EconomyTest] a 90 minute session puts 2702 coins in the boat fund.
+[EconomyTest] the boat is 2.07 session(s) away.
+```
+
+**Three things were wrong, and the model is how they were found.**
+
+*The boat was two thirds of an evening away.* A part went from **400 to 1400**, so the boat is 5600
+and lands at **2.07 sessions** - a band of one and a half to three evenings, which the test asserts.
+Under one and a half the island's middle never happens because the boat arrives first; over three it
+stops being a goal and becomes a shift.
+
+*Raiding paid a quarter of what fishing paid*, which made the most dangerous thing on the island the
+least worthwhile. Native drop quantities went up until a body was worth about two thirds of an
+animal - a spearman now leaves 1-2 hide, 2-3 rope and 1-2 flint - and the spread closed from **4.46x
+to 2.44x**. Three is the cap the test enforces, because two activities within three times of each
+other are a choice - one is safer, one is faster, one is what you do while it rains - and four people
+all doing the one thing that pays five times the others are not playing a co-op game.
+
+*Flint paid less per kilogram than the scrap metal it displaced in the bag*, which made carrying it
+home a mistake. It went from **2 to 4**. Scrap at 2.7 c/kg is the floor of the whole economy - it is
+what you would otherwise be carrying - and the test now walks the full spoils list past it.
+
+The rest of the shelf was already right and is now checked rather than assumed: **a boot is worth
+zero, not one** (the trader floors what it pays at a coin, so one would still be a sale and the joke
+would be a consolation prize); **a pearl sells but cannot be bought**, because fishing's best outcome
+must never be a purchase; and **a boat part cannot be sold back**, which is what stops four parts and
+a refund from being a money printer.
+
+Two activities pay nothing, and both are stated rather than omitted, because a zero that is written
+down is a gap somebody can decide to fill. **Foraging** pays nothing because nothing on the island
+can be picked up and sold - coconuts are food, driftwood is scenery, and the crafting materials are
+bought rather than found. **Gambling** pays nothing because the wheel is #M6 and will be negative on
+average when it exists; a house edge is the only thing that makes a casino a casino. It is a way to
+turn an evening's income into two evenings' income or into nothing, which is a different feature from
+a way to earn.
+
+**Proof.** `-economyTest` prints the table above and passes **26/26**, and the last check is the one
+that stops the model from being a spreadsheet agreeing with itself: a bag with one animal's drops and
+one native's drops in it is carried to the real counter and sold through `ShopCounter.ServerSell`,
+and the coins have to match what the model predicted - *"a bag of boar and blowgunner drops sold for
+56 coins (model said 56)"*. `-animalTest` (91/91), `-fishTest` (167/167) and `-nativeTest` (125/125)
+all still pass against the new prices; hunting's own boat check was retargeted at the model rather
+than at a boar count, because nobody buys a boat with venison alone - what it asserts now is that
+four people who hunted and did nothing else would get there in **2.5 hours**.
+
+**Not done here:** the model prices an activity, not a player, so it has nothing to say about four
+people doing four different things at once or about one of them being bad at fishing; the gear share
+is a single fraction rather than a shopping list, so "how much of a session is a rifle" is still a
+question nobody has asked; deaths cost a revive that the model knows nothing about; and the whole
+thing assumes the trader is the only buyer, which stops being true the moment there is a second
+island.
 
 ---
 

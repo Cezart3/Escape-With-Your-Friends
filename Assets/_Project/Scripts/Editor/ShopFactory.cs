@@ -54,7 +54,7 @@ namespace EscapeWithYourFriends.EditorTools
             ("hatchet", 90, 1),
 
             // The reason anybody is saving. Worth nothing to the trader, so it cannot be flipped back.
-            ("boat_part", 400, 4),
+            ("boat_part", 1400, 4),
         };
 
         public static void Build()

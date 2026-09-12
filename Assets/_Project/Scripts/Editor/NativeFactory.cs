@@ -165,22 +165,23 @@ namespace EscapeWithYourFriends.EditorTools
         /// <summary>
         /// What a body is carrying. Structure, so it is re-applied every run.
         ///
-        /// Deliberately small. A native is not a boar with a spear - the reason to fight one is that
-        /// it is already fighting you - so the loot is a consolation, not an income. The best line in
-        /// the table is a spearman's hide at 26, which is one animal's worth for a fight that can
-        /// easily cost you a revive.
+        /// Modest, but not a consolation prize. #56 priced a camp sweep against a bag of fish and a
+        /// bag of venison and found raiding paying a quarter of what fishing paid, which made the
+        /// most dangerous thing on the island the least worthwhile - so the quantities went up until
+        /// a body was worth about two thirds of an animal. The best line is still a spearman's hide:
+        /// one deer's worth of leather for a fight that can cost you a revive.
         /// </summary>
         static readonly (string Native, string Item, int Min, int Max, float Chance)[] Loot =
         {
-            ("scout", "rope", 1, 2, 1f),
-            ("scout", "feather", 1, 3, 0.7f),
+            ("scout", "rope", 2, 3, 1f),
+            ("scout", "feather", 2, 4, 1f),
 
-            ("spearman", "hide", 1, 1, 0.8f),
-            ("spearman", "rope", 1, 2, 1f),
-            ("spearman", "flint", 1, 2, 0.6f),
+            ("spearman", "hide", 1, 2, 1f),
+            ("spearman", "rope", 2, 3, 1f),
+            ("spearman", "flint", 1, 2, 1f),
 
-            ("blowgunner", "feather", 2, 4, 1f),
-            ("blowgunner", "flint", 1, 2, 1f),
+            ("blowgunner", "feather", 3, 5, 1f),
+            ("blowgunner", "flint", 2, 3, 1f),
         };
 
         public static void Build()
