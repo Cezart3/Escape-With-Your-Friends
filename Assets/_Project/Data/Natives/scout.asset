@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 133f7abde04ef8c489a7702ce097278e, type: 3}
+  m_Name: scout
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.NativeDef
+  _id: scout
+  _displayName: Lookout
+  _description: Sees you first, hits you least, and tells everybody.
+  _role: 0
+  _maxHealth: 45
+  _walkSpeed: 2.3
+  _runSpeed: 7
+  _patrolRadius: 30
+  _idleSeconds: {x: 2, y: 5}
+  _dayNotice: 24
+  _visionAngle: 70
+  _earshot: 7
+  _nightNotice: 36
+  _memorySeconds: 10
+  _investigateSeconds: 7
+  _alarmRadius: 45
+  _dayLeash: 45
+  _nightLeash: 130
+  _fleeHealth: 0.35
+  _attackDamage: 12
+  _attackRange: 2.2
+  _attackInterval: 1.5
+  _attackStun: 0.5
+  _attackKnockback: 600
+  _windupSeconds: 0.3
+  _ranged: 0
+  _standoff: 2.2
+  _spreadDegrees: 0
+  _bodySize: {x: 0.5, y: 1.7, z: 0.35}
+  _colour: {r: 0.42, g: 0.31, b: 0.24, a: 1}
+  _markColour: {r: 0.95, g: 0.8, b: 0.25, a: 1}
+  _agentRadius: 0.38
+  _loot:
+  - Item: {fileID: 11400000, guid: f35703f74c122f84da9933e3ffcfda78, type: 2}
+    Min: 1
+    Max: 2
+    Chance: 1
+  - Item: {fileID: 11400000, guid: b52201feb5380bf44bb982e34d2a60a0, type: 2}
+    Min: 1
+    Max: 3
+    Chance: 0.7

@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 133f7abde04ef8c489a7702ce097278e, type: 3}
+  m_Name: spearman
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.NativeDef
+  _id: spearman
+  _displayName: Spearman
+  _description: The reason you do not simply walk into the village.
+  _role: 1
+  _maxHealth: 85
+  _walkSpeed: 2
+  _runSpeed: 6.6
+  _patrolRadius: 22
+  _idleSeconds: {x: 2, y: 6}
+  _dayNotice: 18
+  _visionAngle: 60
+  _earshot: 8
+  _nightNotice: 30
+  _memorySeconds: 9
+  _investigateSeconds: 6
+  _alarmRadius: 30
+  _dayLeash: 40
+  _nightLeash: 130
+  _fleeHealth: 0.15
+  _attackDamage: 22
+  _attackRange: 2.6
+  _attackInterval: 1.8
+  _attackStun: 1
+  _attackKnockback: 1000
+  _windupSeconds: 0.4
+  _ranged: 0
+  _standoff: 2.6
+  _spreadDegrees: 0
+  _bodySize: {x: 0.6, y: 1.8, z: 0.42}
+  _colour: {r: 0.38, g: 0.27, b: 0.21, a: 1}
+  _markColour: {r: 0.85, g: 0.22, b: 0.18, a: 1}
+  _agentRadius: 0.42
+  _loot:
+  - Item: {fileID: 11400000, guid: 44d7ece014ee47d4487c3aa022dc80be, type: 2}
+    Min: 1
+    Max: 1
+    Chance: 0.8
+  - Item: {fileID: 11400000, guid: f35703f74c122f84da9933e3ffcfda78, type: 2}
+    Min: 1
+    Max: 2
+    Chance: 1
+  - Item: {fileID: 11400000, guid: 44dc35f5974ecd4408e030cbe34bc31f, type: 2}
+    Min: 1
+    Max: 2
+    Chance: 0.6

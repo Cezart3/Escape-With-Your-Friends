@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -298,6 +298,14 @@ namespace EscapeWithYourFriends.EditorTools
             var animals = new GameObject("Animals");
             var wildlife = animals.AddComponent<AnimalSpawner>();
             AnimalFactory.BakeZones(profile, wildlife);
+
+            // The people, after the wildlife and for the same reason: their camps hang off the POIs
+            // and their bodies need somewhere to stand. Separate object from the animals because the
+            // two spawners have separate off-switches - -noAnimals and -noNatives - and most tests
+            // want exactly one of the two.
+            var natives = new GameObject("Natives");
+            var village = natives.AddComponent<NativeSpawner>();
+            NativeFactory.BakeCamps(profile, village);
 
             WriteSpawnPoints(profile);
 
