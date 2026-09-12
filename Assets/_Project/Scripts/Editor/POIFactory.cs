@@ -25,6 +25,7 @@ namespace EscapeWithYourFriends.EditorTools
         public const string CatalogPath = "Assets/_Project/Data/POIs.asset";
 
         const string ReviveMachinePrefabPath = "Assets/_Project/Prefabs/ReviveMachine.prefab";
+        const string HangPointPrefabPath = "Assets/_Project/Prefabs/HangPoint.prefab";
 
         /// <summary>
         /// The catalog, created from the defaults below the first time. Created once and then left
@@ -256,6 +257,7 @@ namespace EscapeWithYourFriends.EditorTools
 
             float campFacing = Facing(camp, Vector2.zero);
             float shopFacing = Facing(shop, camp);
+            float villageFacing = Facing(village, camp);
 
             return new[]
             {
@@ -301,8 +303,30 @@ namespace EscapeWithYourFriends.EditorTools
                 Entry("casino", GreyboxDir + "/Casino.prefab", casino, Facing(casino, camp),
                       pad: 14f, falloff: 12f, raise: 0.4f, maxSlope: 0.3f),
 
-                Entry("village", GreyboxDir + "/NativeVillage.prefab", village, Facing(village, camp),
+                Entry("village", GreyboxDir + "/NativeVillage.prefab", village, villageFacing,
                       pad: 24f, falloff: 20f, raise: 0.3f, maxSlope: 0.32f),
+
+                // #108's prison, on the village's own pad at the PrisonSite the greybox already
+                // marked. Six metres behind the totem, which is the *far* side from base camp -
+                // because the village faces the way you come from, getting to the hooks means going
+                // through the huts rather than round them, and a rescue that could be done from the
+                // treeline would not be a raid.
+                //
+                // Three of them, in a row, three metres apart. Three because a four-player game can
+                // lose three people and still have somebody left to come and get them, and because
+                // a village with one hook would silently drop the second body on the ground; the
+                // fourth is deliberately missing, since a wipe is a wipe and does not need scenery.
+                Entry("village.prison.a", HangPointPrefabPath,
+                      village + Offset(villageFacing + 180f, 6f) + Offset(villageFacing + 90f, -3f),
+                      villageFacing, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.35f),
+
+                Entry("village.prison.b", HangPointPrefabPath,
+                      village + Offset(villageFacing + 180f, 6f),
+                      villageFacing, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.35f),
+
+                Entry("village.prison.c", HangPointPrefabPath,
+                      village + Offset(villageFacing + 180f, 6f) + Offset(villageFacing + 90f, 3f),
+                      villageFacing, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.35f),
 
                 Entry("wreck", GreyboxDir + "/Wreck.prefab", wreck, Facing(wreck, camp),
                       pad: 10f, falloff: 14f, raise: 0f, maxSlope: 0.5f, allowUnderwater: true),

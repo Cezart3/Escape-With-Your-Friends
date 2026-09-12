@@ -4232,6 +4232,105 @@ but what a village does with a corpse is also #108's. Natives do not fight each 
 do not pick one back up after being made to drop it, and do not react at all to watching a player
 carry a downed friend past them.
 
+### The village prison (#108)
+
+#107 ended with a native walking your friend out of sight. This is what is at the other end of that
+walk: three frames with hooks on them, behind the totem in the native village, on the far side from
+base camp. A haul that finished with a body dumped somewhere in a village would be a disappearance.
+A body hanging upside down in the open, in a fixed place, with a clock on it, is a kidnapping.
+
+**A hook holds a body the same way everything else does.** `HangPoint` is an `ICarryHolder` with a
+socket, exactly like a player's shoulder, a native's shoulder and the Revive Machine's intake - so
+there is no fourth attach path, no special case in `Carryable`, and a body on a hook is in the same
+replicated state as a body on somebody's back. That the socket is rotated 180° about Z is the entire
+difference between being carried and being strung up. Occupancy is a SyncVar, so a late joiner
+walking into the village sees the body, and the crosshair prompt is answered client-side for free.
+
+**Arriving is not a reprieve either.** The bleed-out timer that kept running through the haul keeps
+running on the hook. A hung player is still `Downed`, still rescuable by a friend who can reach them,
+and `Rescuable`'s prompt is still the one that matters most to whoever gets there. What the village
+has bought itself is the walk - the distance between where you went down and where you are now, with
+a camp in between.
+
+#### Cutting somebody down is the start of the rescue, not the end of it
+
+`ServerCutDown` frees the body and does nothing else. It falls, it is still downed, it is still on
+the clock, and somebody now has to carry it out at carry speed through a village that is fully awake.
+The measured line is the point:
+
+```
+[PrisonTest] a body was cut down with 44s left (it had 44s on the hook): carried=False, downed=True, the hook is free=True.
+```
+
+The hook offers nothing at all while it is free - `Prompt` is empty, because Interact is a shared key
+and a component that always answers swallows every other gesture within reach of it. Nobody can cut
+themselves down; `ServerCanInteract` refuses the occupant, and refuses anything without a
+`CarrySystem`, so a native cannot free the prisoner it just delivered.
+
+#### A guarded camp plays like a night raid
+
+This is the one rule that changes how the village fights, and it is deliberately built out of #55's
+existing two levers rather than new ones. `Native.Alertness` is the sun - *unless* the camp is holding
+somebody, in which case it is 1.0 whatever time it is. Everything the day/night contract turns on
+reads `Alertness` instead of `Night`: the notice radius, whether they still have to actually see you,
+and the leash they will follow you out to.
+
+```
+[PrisonTest] at noon a native at the prison went from alertness 0.00 (notice 18m, sight required) to
+1.00 (notice 30m, sight not needed) with somebody on the hook, and back to 0.00 once they were cut down.
+```
+
+So a rescue is a raid: the cover and the angles that get you past an empty village at noon do not work
+on a village that is holding your friend. And the daylight contract is untouched everywhere else -
+walking past a prison with nobody in it is still a problem that distance and a hill can solve. The
+flag clears the moment the last prisoner comes down, which is what makes cutting somebody loose worth
+doing even if you cannot carry them yet.
+
+#### If the clock runs out up there, they die up there
+
+Nothing releases a body on death. The corpse stays on the hook, in the middle of a native camp, and
+getting it back is now a carry-out plus a Revive Machine bill (#25) - the worst outcome in the game,
+and the one the haul is worth racing.
+
+```
+[PrisonTest] the clock ran out on a hung player: dead=True, still on the hook=True, hips 0.00m from the socket, death 1.
+```
+
+Corpses hang exactly like downed players do: the village does not check for a pulse, and a corpse can
+be cut down and carried off with the same gesture.
+
+#### Where the hooks come from
+
+Three of them, spawned as their own POI entries (`village.prison.a/b/c`) rather than baked into
+`NativeVillage.prefab`, for the reason the Revive Machine is: a thing with behaviour and a replicated
+occupant is a machine, not scenery, and its position belongs in a text file. They sit six metres
+behind the totem on the village's own pad, which is the *far* side from base camp - the village faces
+the way you come from, so reaching the hooks means going through the huts rather than round them.
+
+Three, because a four-player game can lose three people and still have somebody left to come and get
+them; the fourth hook is deliberately missing, since a wipe is a wipe and does not need scenery.
+
+`Native.Deliver` asks `HangPoint.ServerFree(_delivery)` - measured from the delivery point rather than
+from wherever the agent happened to stop, because a hook belongs to the camp and not to whichever
+carrier got nearest to it. A full prison, or a camp with no prison in it at all (the cave outpost, and
+every improvised delivery), is answered with `null`, and the body goes on the ground. That is an
+outcome, not an error, and `-abductTest` measures that end of it in full.
+
+```
+[PrisonTest] a haul ended at the prison: the body went to HangPoint (village.prison.a), hips 0.00m from its socket, and the player has 40s left on the timer.
+[PrisonTest] 3 hook(s) are within reach of this delivery point; with one of them full the next haul is offered HangPoint (village.prison.b).
+[PrisonTest] 44 passed, 0 failed.
+```
+
+Regressions: `-abductTest` 40/40, `-nativeTest` 125/125.
+
+**Not done here:** the hooks are greybox posts and the hanging pose is a socket rotation rather than an
+animation, so "suitably undignified" is currently a physics accident rather than a decision. A body
+cut down inside the village is not something the natives react to - they aggro on the rescuer, not on
+the empty hook. Nobody re-hangs a body that was cut down and then dropped on the way out, which is a
+funnier outcome than it has any right to be and is left alone until somebody has played it. And there
+is no loot in the village yet; that is #109.
+
 ---
 
 ## Data-driven content

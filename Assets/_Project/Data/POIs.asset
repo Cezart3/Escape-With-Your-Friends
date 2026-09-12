@@ -112,6 +112,39 @@ MonoBehaviour:
     PadRaise: 0.3
     MaxSlope: 0.32
     AllowUnderwater: 0
+  - Id: village.prison.a
+    PrefabPath: Assets/_Project/Prefabs/HangPoint.prefab
+    Position: {x: 136, y: 208}
+    Yaw: -140
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 0
+    PadFalloff: 0
+    PadRaise: 0
+    MaxSlope: 0.35
+    AllowUnderwater: 0
+  - Id: village.prison.b
+    PrefabPath: Assets/_Project/Prefabs/HangPoint.prefab
+    Position: {x: 134, y: 210}
+    Yaw: -140
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 0
+    PadFalloff: 0
+    PadRaise: 0
+    MaxSlope: 0.35
+    AllowUnderwater: 0
+  - Id: village.prison.c
+    PrefabPath: Assets/_Project/Prefabs/HangPoint.prefab
+    Position: {x: 132, y: 212}
+    Yaw: -140
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 0
+    PadFalloff: 0
+    PadRaise: 0
+    MaxSlope: 0.35
+    AllowUnderwater: 0
   - Id: wreck
     PrefabPath: Assets/_Project/Prefabs/World/Wreck.prefab
     Position: {x: 9, y: -47}

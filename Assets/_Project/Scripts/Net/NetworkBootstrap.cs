@@ -272,6 +272,7 @@ namespace EscapeWithYourFriends.Net
             AI.AnimalTest.Begin();
             AI.NativeTest.Begin();
             AI.AbductionTest.Begin();
+            AI.PrisonTest.Begin();
             Items.FishTest.Begin();
             Economy.EconomyTest.Begin();
             Player.SurvivalTest.Begin();
