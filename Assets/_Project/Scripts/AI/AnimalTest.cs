@@ -347,10 +347,21 @@ namespace EscapeWithYourFriends.AI
                           + $"a boar is worth {perBoar:0}, so {kills:0} kills - "
                           + $"{kills / 4f:0} each across four players.");
 
-                // Enough to be a real grind, few enough to be a plan. Outside that band it is either
-                // trivial or it is the whole game.
-                Check($"the boat is {kills:0} boars away, which is a weekend and not a career",
-                      kills >= 20f && kills <= 120f);
+                // #56 repriced the boat against every way of earning at once, so a boar count on its
+                // own is no longer the measure - nobody buys a boat with venison alone. What hunting
+                // still has to be is a credible way to spend an evening: four people who did nothing
+                // but hunt should get there in a few hours of actual hunting, which is long enough to
+                // want the other activities and short enough that the choice to hunt is not a
+                // mistake.
+                float hours = boat.Price * parts
+                              / Mathf.Max(0.01f, Economy.EconomyModel.Hunting(animals, shop, 40f).CoinsPerMinute
+                                                 * Economy.EconomyModel.Players
+                                                 * Economy.EconomyModel.Attention * 60f);
+
+                Debug.Log($"[AnimalTest] four people hunting and nothing else reach it in {hours:0.0} hours.");
+
+                Check($"hunting alone would get there eventually ({hours:0.0} hours)",
+                      hours >= 1.5f && hours <= 6f);
             }
         }
 

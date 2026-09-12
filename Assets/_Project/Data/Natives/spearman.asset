@@ -47,13 +47,13 @@ MonoBehaviour:
   _loot:
   - Item: {fileID: 11400000, guid: 44d7ece014ee47d4487c3aa022dc80be, type: 2}
     Min: 1
-    Max: 1
-    Chance: 0.8
-  - Item: {fileID: 11400000, guid: f35703f74c122f84da9933e3ffcfda78, type: 2}
-    Min: 1
     Max: 2
+    Chance: 1
+  - Item: {fileID: 11400000, guid: f35703f74c122f84da9933e3ffcfda78, type: 2}
+    Min: 2
+    Max: 3
     Chance: 1
   - Item: {fileID: 11400000, guid: 44dc35f5974ecd4408e030cbe34bc31f, type: 2}
     Min: 1
     Max: 2
-    Chance: 0.6
+    Chance: 1

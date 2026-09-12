@@ -46,10 +46,10 @@ MonoBehaviour:
   _agentRadius: 0.38
   _loot:
   - Item: {fileID: 11400000, guid: f35703f74c122f84da9933e3ffcfda78, type: 2}
-    Min: 1
-    Max: 2
+    Min: 2
+    Max: 3
     Chance: 1
   - Item: {fileID: 11400000, guid: b52201feb5380bf44bb982e34d2a60a0, type: 2}
-    Min: 1
-    Max: 3
-    Chance: 0.7
+    Min: 2
+    Max: 4
+    Chance: 1

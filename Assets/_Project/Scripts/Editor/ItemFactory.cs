@@ -62,7 +62,9 @@ namespace EscapeWithYourFriends.EditorTools
             new("plank", "Plank", ItemCategory.Material, 20, 2f, 3, "Cut from a trunk. The bulk of anything you build."),
             new("scrap_metal", "Scrap Metal", ItemCategory.Material, 20, 1.5f, 8, "Torn off the wreck. Sharp, useful, worth money."),
             new("cloth", "Cloth", ItemCategory.Material, 20, 0.3f, 3, "Sailcloth. Bandages, sails, and covering the shame."),
-            new("flint", "Flint", ItemCategory.Material, 10, 0.4f, 2, "Strikes a spark. The whole reason you have fire."),
+            // Flint was 2 until #56 priced everything per kilogram and found it paying less than the
+            // scrap metal it would be displacing in the bag - which made carrying it home a mistake.
+            new("flint", "Flint", ItemCategory.Material, 10, 0.4f, 4, "Strikes a spark. The whole reason you have fire."),
 
             // Hunting's half of the material list (#53). A hide is the single most valuable thing an
             // early island gives away, which is the point: it is what makes walking into the trees
