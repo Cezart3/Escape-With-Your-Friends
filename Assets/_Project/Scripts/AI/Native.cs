@@ -20,6 +20,10 @@ namespace EscapeWithYourFriends.AI
         Investigate,
         Chase,
         Attack,
+
+        /// <summary>Carrying a downed player home. See <see cref="Native.TickAbduct"/>.</summary>
+        Abduct,
+
         Flee,
         Dead,
     }
@@ -55,7 +59,7 @@ namespace EscapeWithYourFriends.AI
     /// the sun's actual height, so dusk is a slope rather than a switch.
     /// </summary>
     [RequireComponent(typeof(Health))]
-    public class Native : NetworkBehaviour
+    public class Native : NetworkBehaviour, ICarryHolder
     {
         [Header("Data")]
         [Tooltip("Every role. The prefab holds it so the index in the SyncVar can be resolved.")]
@@ -72,6 +76,9 @@ namespace EscapeWithYourFriends.AI
         [SerializeField] Transform _head;
 
         [SerializeField] CapsuleCollider _collider;
+
+        [Tooltip("Where an abducted body's hips are parented. Over the shoulder, roughly.")]
+        [SerializeField] Transform _carrySocket;
 
         [Header("Behaviour")]
         [Tooltip("Seconds between sweeps for players. Cheap, and still instant to a human.")]
@@ -102,6 +109,21 @@ namespace EscapeWithYourFriends.AI
 
         Health _target;
 
+        /// <summary>The body being dragged home, or null. Server-only; the claim lives here.</summary>
+        Carryable _haul;
+
+        /// <summary>The abductee's health, kept so the haul can end when they are helped up.</summary>
+        Health _hauled;
+
+        /// <summary>
+        /// The abductee's hips. A limp body is not where its root transform says it is, and walking
+        /// to the root means walking to where they were standing when they went down.
+        /// </summary>
+        Transform _hips;
+
+        /// <summary>Where the body is being taken. The camp, until #108 puts hooks in it.</summary>
+        Vector3 _delivery;
+
         /// <summary>Where the target was last actually perceived. What Investigate walks to.</summary>
         Vector3 _suspect;
         bool _hasSuspect;
@@ -126,6 +148,15 @@ namespace EscapeWithYourFriends.AI
         public Vector3 Suspect => _suspect;
 
         public bool HasSuspect => _hasSuspect;
+
+        /// <inheritdoc />
+        public Transform CarrySocket => _carrySocket;
+
+        /// <summary>The body this one has claimed, or null. Server-side truth.</summary>
+        public Carryable Haul => _haul;
+
+        /// <summary>Whether the body is actually on its shoulder rather than merely claimed.</summary>
+        public bool IsHauling => _haul != null && _haul.IsCarried && _haul.Carrier == NetworkObject;
 
         /// <summary>Raised on the server for every blow that lands, with the victim and the damage.</summary>
         public event System.Action<Native, Health, float> Struck;
@@ -172,6 +203,10 @@ namespace EscapeWithYourFriends.AI
             _health.ServerStateChanged += OnServerStateChanged;
             _health.Changed += OnHealthChanged;
 
+            // Idempotent, and armed from here rather than from a bootstrap because an island with
+            // nobody on it to drag you anywhere does not need to be listening for bodies.
+            AbductionWatch.Arm();
+
             EnterIdle();
         }
 
@@ -181,6 +216,9 @@ namespace EscapeWithYourFriends.AI
 
             _health.ServerStateChanged -= OnServerStateChanged;
             _health.Changed -= OnHealthChanged;
+
+            // A despawn mid-haul must not leave a body welded to an object that no longer exists.
+            Release();
         }
 
         public override void OnStartClient()
@@ -313,6 +351,7 @@ namespace EscapeWithYourFriends.AI
                 case NativeState.Investigate: TickInvestigate(); break;
                 case NativeState.Chase: TickChase(); break;
                 case NativeState.Attack: TickAttack(); break;
+                case NativeState.Abduct: TickAbduct(); break;
                 case NativeState.Flee: TickFlee(); break;
             }
         }
@@ -331,7 +370,10 @@ namespace EscapeWithYourFriends.AI
         /// </summary>
         void Sense()
         {
-            if (_state == NativeState.Flee) return;
+            // Fleeing has stopped caring and a haul has already decided. A native with somebody over
+            // its shoulder that still went looking for a second victim would drop the first one every
+            // time somebody walked past, which is a mechanic nobody can read.
+            if (_state == NativeState.Flee || _state == NativeState.Abduct) return;
 
             float night = Night;
             float notice = _def.NoticeRadius(night);
@@ -443,6 +485,9 @@ namespace EscapeWithYourFriends.AI
                 if (other == caller || other == null || other._def == null) continue;
                 if (!other.IsServerStarted || other._state == NativeState.Dead) continue;
                 if (other._state == NativeState.Chase || other._state == NativeState.Attack) continue;
+
+                // Already carrying somebody. The shout is a call for help, not a change of orders.
+                if (other._state == NativeState.Abduct) continue;
                 if (Vector3.Distance(other.transform.position, caller.transform.position) > radius) continue;
 
                 other._target = about;
@@ -587,6 +632,198 @@ namespace EscapeWithYourFriends.AI
             if (Arrived()) Go(_camp, _def.RunSpeed);
         }
 
+        // ---------------------------------------------------------------- abduction
+
+        /// <summary>Metres from the body it has to be before it can get a hand under it.</summary>
+        const float GrabRange = 2f;
+
+        /// <summary>Metres from the delivery point that count as arrived. The agent stops short.</summary>
+        const float DeliveryRange = 2.5f;
+
+        /// <summary>
+        /// Seconds a haul is allowed to take before the body is dumped where it stands. A door that
+        /// never opens is worse than a body on the floor: without this, one unreachable delivery
+        /// point means somebody spends the rest of the run on a shoulder.
+        /// </summary>
+        const float HaulSeconds = 90f;
+
+        /// <summary>
+        /// Server only. Somebody just went down. Offers the body to the nearest native that is in the
+        /// business of taking it, and returns whoever claimed it - or null, which is the ordinary
+        /// answer and means nothing was close enough.
+        ///
+        /// The claim is exclusive by construction rather than by a registry: a native holds exactly
+        /// one <see cref="Haul"/>, and the sweep skips a body somebody already holds. Two natives
+        /// arriving at the same body is a thing that should look like a scuffle later; two natives
+        /// each believing they are carrying it is a bug now.
+        /// </summary>
+        public static Native ServerOffer(Carryable body, Health victim)
+        {
+            if (body == null || victim == null) return null;
+            if (Claimed(body)) return null;
+
+            Native best = null;
+            float bestDistance = float.MaxValue;
+
+            foreach (Native native in _live)
+            {
+                if (native == null || native._def == null || !native.IsServerStarted) continue;
+                if (!native._def.Abducts || native._haul != null) continue;
+                if (native._state == NativeState.Dead || native._state == NativeState.Flee) continue;
+
+                float distance = Vector3.Distance(native.transform.position, body.transform.position);
+                if (distance > native._def.AbductRadius || distance >= bestDistance) continue;
+
+                best = native;
+                bestDistance = distance;
+            }
+
+            if (best == null) return null;
+
+            best.EnterAbduct(body, victim);
+
+            Debug.Log($"[Native] {best._def.Id} {best.ObjectId} claimed {victim.ObjectId} "
+                      + $"{bestDistance:F1}m away; hauling to {best._delivery}.");
+
+            return best;
+        }
+
+        /// <summary>Whether somebody already has a hand on this body. Cheap: there are never many.</summary>
+        static bool Claimed(Carryable body)
+        {
+            foreach (Native native in _live)
+                if (native != null && native._haul == body) return true;
+
+            return false;
+        }
+
+        void EnterAbduct(Carryable body, Health victim)
+        {
+            _state = NativeState.Abduct;
+            _haul = body;
+            _hauled = victim;
+            _swingAt = 0f;
+            _target = null;
+            _hasSuspect = false;
+            _stateUntil = Time.time + HaulSeconds;
+
+            var ragdoll = body.GetComponent<RagdollController>();
+            _hips = ragdoll != null ? ragdoll.HipBone : body.transform;
+
+            // The camp, until #108 puts something in it to hang them on.
+            _delivery = _camp;
+        }
+
+        /// <summary>
+        /// Fetch, then carry, then let go. Both halves are in one state because from the player's
+        /// side they are one event - *somebody is taking your friend away* - and splitting them would
+        /// mean two states that drop the body for the same four reasons.
+        ///
+        /// Those four reasons are the counter-play, and every one of them is something the other
+        /// three players can cause: kill the carrier, hurt it enough to break it, get to the body
+        /// first, or pick your friend up off the floor before it arrives.
+        /// </summary>
+        void TickAbduct()
+        {
+            if (_haul == null || _hauled == null)
+            {
+                Release();
+                EnterPatrol();
+                return;
+            }
+
+            // Helped up, and no longer a parcel. Whoever did that is now standing next to a native
+            // that is about to be very interested in them, which is the intended reward.
+            if (_hauled.IsAlive)
+            {
+                Release();
+                EnterChase();
+                return;
+            }
+
+            if (Time.time >= _stateUntil)
+            {
+                Debug.LogWarning($"[Native] {_def.Id} {ObjectId} gave up hauling {_hauled.ObjectId} "
+                                 + $"after {HaulSeconds:0}s; dropped at {transform.position}.");
+
+                Release();
+                EnterPatrol();
+                return;
+            }
+
+            if (!IsHauling)
+            {
+                // Somebody else got a hand on it first - another native, or a player carrying their
+                // friend out of trouble. Either way this one has lost the argument.
+                if (_haul.IsCarried)
+                {
+                    Release();
+                    EnterPatrol();
+                    return;
+                }
+
+                Vector3 where = _hips != null ? _hips.position : _haul.transform.position;
+
+                if (Vector3.Distance(transform.position, where) <= GrabRange) Grab();
+                else Go(where, _def.RunSpeed);
+
+                return;
+            }
+
+            if (Vector3.Distance(transform.position, _delivery) <= DeliveryRange)
+            {
+                Deliver();
+                return;
+            }
+
+            // Slow on purpose. The haul is the window the other three players get, and a kidnapper
+            // that moved at a run would close it before anybody had finished shouting about it.
+            if (!Go(_delivery, _def.HaulSpeed))
+            {
+                Release();
+                EnterPatrol();
+            }
+        }
+
+        void Grab()
+        {
+            if (!_haul.ServerCanBeCarriedBy(NetworkObject)) return;
+
+            _haul.ServerAttach(NetworkObject);
+
+            if (!IsHauling) return;
+
+            Debug.Log($"[Native] {_def.Id} {ObjectId} picked up {_hauled.ObjectId} at "
+                      + $"{transform.position}; {Vector3.Distance(transform.position, _delivery):F0}m to go.");
+        }
+
+        void Deliver()
+        {
+            Health victim = _hauled;
+
+            Debug.Log($"[Native] {_def.Id} {ObjectId} delivered {(victim != null ? victim.ObjectId : 0)} "
+                      + $"to {transform.position}; {(victim != null ? victim.BleedOutRemaining : 0f):F0}s "
+                      + "of bleed-out left.");
+
+            Release();
+            Stop();
+            EnterIdle();
+        }
+
+        /// <summary>
+        /// Puts the body down wherever this native happens to be and forgets about it. The one path
+        /// out of a haul: death, flee, rescue, timeout and despawn all come through here, so there is
+        /// exactly one place that can leave a body attached to nothing.
+        /// </summary>
+        void Release()
+        {
+            if (_haul != null && _haul.Carrier == NetworkObject) _haul.ServerDetach();
+
+            _haul = null;
+            _hauled = null;
+            _hips = null;
+        }
+
         // ---------------------------------------------------------------- violence
 
         void Strike(Health victim, Vector3 toTarget)
@@ -703,6 +940,11 @@ namespace EscapeWithYourFriends.AI
                 return;
             }
 
+            // Committed. Shooting a kidnapper in the back does not make it turn round - it makes it
+            // keep walking towards the thing you do not want it to reach, and the way to stop it is
+            // to put it down or break it, both of which drop the body.
+            if (_state == NativeState.Abduct) return;
+
             Health attacker = FindPlayer(_health.LastAttackerId);
             if (attacker == null || !attacker.IsAlive) return;
 
@@ -790,6 +1032,11 @@ namespace EscapeWithYourFriends.AI
 
             _state = NativeState.Flee;
             _stateUntil = Time.time + 12f;
+
+            // Broken, and not carrying anybody home. This is the cheapest rescue in the game: hurt
+            // the carrier enough and it drops your friend and runs.
+            Release();
+
             _target = null;
             _hasSuspect = false;
             _swingAt = 0f;
@@ -849,6 +1096,10 @@ namespace EscapeWithYourFriends.AI
             _target = null;
             _hasSuspect = false;
             _despawnAt = Time.time + _corpseSeconds;
+
+            // Dropped where it fell, which is the point: the friend you were trying to save is now
+            // wherever the fight happened rather than wherever the camp is.
+            Release();
 
             Stop();
             if (_agent != null) _agent.enabled = false;

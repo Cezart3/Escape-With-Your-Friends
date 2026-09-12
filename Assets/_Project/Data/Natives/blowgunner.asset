@@ -40,6 +40,9 @@ MonoBehaviour:
   _ranged: 1
   _standoff: 12
   _spreadDegrees: 4
+  _abducts: 0
+  _abductRadius: 0
+  _haulFraction: 0.5
   _bodySize: {x: 0.5, y: 1.7, z: 0.35}
   _colour: {r: 0.45, g: 0.34, b: 0.26, a: 1}
   _markColour: {r: 0.9, g: 0.88, b: 0.8, a: 1}

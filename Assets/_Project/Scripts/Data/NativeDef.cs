@@ -126,6 +126,16 @@ namespace EscapeWithYourFriends.Data
         [Tooltip("Degrees of spread. A blowgun that never misses is a sniper with a straw.")]
         [SerializeField] float _spreadDegrees = 4f;
 
+        [Header("Abduction")]
+        [Tooltip("Drags a downed player back to camp instead of standing over the body.")]
+        [SerializeField] bool _abducts;
+
+        [Tooltip("Metres from a body it will come for it. Zero for anything that does not abduct.")]
+        [SerializeField] float _abductRadius = 22f;
+
+        [Tooltip("Fraction of the run speed while carrying somebody. A haul nobody can catch is not a rescue.")]
+        [Range(0.1f, 1f), SerializeField] float _haulFraction = 0.5f;
+
         [Header("Greybox")]
         [SerializeField] Vector3 _bodySize = new(0.55f, 1.75f, 0.4f);
 
@@ -170,6 +180,25 @@ namespace EscapeWithYourFriends.Data
         public float AttackStun => Mathf.Max(0f, _attackStun);
         public float AttackKnockback => Mathf.Max(0f, _attackKnockback);
         public float WindupSeconds => Mathf.Max(0f, _windupSeconds);
+
+        /// <summary>
+        /// Whether this one drags a downed player home rather than standing over the body.
+        ///
+        /// A role, not a difficulty knob. The spearman does it because it is the one with the free
+        /// hands and the reason to; the blowgunner does not, because the fight #107 wants is one
+        /// where somebody is being carried off *while* somebody else keeps shooting at whoever is
+        /// running after them.
+        /// </summary>
+        public bool Abducts => _abducts;
+
+        /// <summary>Metres from a fresh body this one will come for it. Zero when it will not.</summary>
+        public float AbductRadius => _abducts ? Mathf.Max(0f, _abductRadius) : 0f;
+
+        /// <summary>
+        /// Metres a second while carrying a body. Well under a sprint on purpose: the same promise
+        /// that makes running away always work makes chasing a kidnapper always work.
+        /// </summary>
+        public float HaulSpeed => RunSpeed * Mathf.Clamp(_haulFraction, 0.1f, 1f);
 
         public bool IsRanged => _ranged;
         public float Standoff => Mathf.Clamp(_standoff, 1f, AttackRange);
@@ -266,5 +295,17 @@ namespace EscapeWithYourFriends.Data
         }
 
         public void SetLoot(LootDrop[] loot) => _loot = loot ?? Array.Empty<LootDrop>();
+
+        /// <summary>
+        /// Bake time only. Who drags bodies off is a decision about what the three roles are *for*
+        /// rather than a number somebody tunes in an inspector, so - like the loot table - it is
+        /// re-applied on every factory run instead of being seeded once and left alone.
+        /// </summary>
+        public void SetAbduction(bool abducts, float radius, float haulFraction)
+        {
+            _abducts = abducts;
+            _abductRadius = radius;
+            _haulFraction = haulFraction;
+        }
     }
 }
