@@ -84,6 +84,28 @@ namespace EscapeWithYourFriends.World
             }
         }
 
+        /// <summary>
+        /// Where the sun is, -1 at midnight and 1 at noon. The same curve <c>DayNightProfile</c>
+        /// drives the light rig from, so anything that reads this agrees with what the sky is doing
+        /// rather than with a number somebody picked.
+        /// </summary>
+        public static float SunHeight => Mathf.Sin((Normalized - 0.25f) * Mathf.PI * 2f);
+
+        /// <summary>
+        /// How dark it is, 0 in daylight and 1 in the dead of night, ramping across dusk and dawn.
+        ///
+        /// **This is the difficulty dial for anything that hunts you.** The natives in #55 blend
+        /// every sense they have across it, so the island gets more dangerous exactly as fast as the
+        /// light goes away - a slope you can watch happening rather than a switch thrown at a
+        /// particular clock reading. The band is deliberately narrow, around the horizon itself: the
+        /// twenty minutes of a night in this game are short enough that a long twilight would mean
+        /// there was never really a night at all.
+        /// </summary>
+        public static float Night01 => Mathf.Clamp01(Mathf.InverseLerp(0.12f, -0.06f, SunHeight));
+
+        /// <summary>The blunt version, for logs and for anything that only wants a yes or a no.</summary>
+        public static bool IsDark => Night01 >= 0.5f;
+
         /// <summary>Freezes the clock, for tests and for the editor. Negative resumes it.</summary>
         public static void Freeze(float timeOfDay)
         {

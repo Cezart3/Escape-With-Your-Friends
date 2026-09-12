@@ -3897,6 +3897,123 @@ boots is #56's balance pass to settle.
 
 ---
 
+### Natives (#55)
+
+Three roles live in the two POIs that were always going to be somebody's: the **scout** (45 hp, sees
+furthest, hits least, shouts loudest), the **spearman** (85 hp, 22 damage a blow, the reason you do
+not simply walk into the village) and the **blowgunner** (55 hp, nine damage and a 1.6 second stun
+from twenty-four metres). `Native` is one `NetworkBehaviour` with a six-state machine - `Idle`,
+`Patrol`, `Investigate`, `Chase`, `Attack`, `Flee` - and it runs on the host only, like every other
+brain in the game.
+
+`NativeCatalog` is the **eighth** catalog on the same doctrine as `ItemCatalog` and the rest: sorted
+by `string.CompareOrdinal`, index 0 means none, rebuilt whole by `NativeFactory`, never hand-edited.
+`NativeSpawner` is the wildlife spawner's sibling rather than its subclass, because the two have
+separate off-switches - `-noAnimals` and `-noNatives` - and most tests want exactly one of them.
+
+**The acceptance criterion is "a real threat at night but not unfair in daylight", and it is carried
+by three numbers and one behaviour rather than by an aggression setting.**
+
+*One: by day they have to actually see you.* Daylight notice is a radius **and** a vision cone **and**
+an unblocked ray, which is three conditions the player can break on purpose. After dark the cone and
+the ray are dropped and only the radius is left, grown by a third, because they are listening:
+
+```csharp
+public float NoticeRadius(float night01) => Mathf.Lerp(DayNotice, NightNotice, Mathf.Clamp01(night01));
+public bool  NeedsSight(float night01)   => night01 < 0.5f;
+```
+
+`night01` is `WorldClock.Night01`, a function of the sun's actual height rather than of the clock, so
+dusk is a slope and not a switch - the cone fades out somewhere in the last half hour of light and
+nobody has to be told when.
+
+*Two: by day the chase ends.* Every native is leashed to its camp, at 38-45 m in daylight and 120-130
+at night. A daylight chase you run away from is a chase you win in four seconds; the same chase at
+midnight follows you the better part of the way home.
+
+*Three: nothing outruns a sprint.* The fastest role is the scout at 7 m/s against the player's 7.5,
+and the test asserts that rather than trusting it. Running is always an answer. It is just an answer
+that costs stamina and leaves you somewhere you did not plan to be.
+
+**And the behaviour: they shout.** A native that notices calls `Alarm`, and every other native inside
+its `AlarmRadius` that is not already busy walks to *where the player was*:
+
+```csharp
+static void Alarm(Native caller, Health about, Vector3 where)
+```
+
+`where` is the caller's last known position for the target, not the target's current one. That is the
+difference between a camp that reacts and a camp that cheats - three natives converging on the bush
+you have already left is a fight you can win, and three natives converging on you is not.
+
+Underneath all of it sits `Earshot`, six to eight metres depending on the role: walk into somebody and
+it does not matter what the sun is doing.
+
+**Attacks have a tell.** `WindupSeconds` is 0.3-0.6 s between the decision to swing and the damage
+landing, so a blow you lose to is a blow you could have stepped out of. A dart is hitscan for the same
+reason `Weapon` is - the server decides on the frame it fires, so there is no in-flight object for a
+laggy client to argue about - with a four degree cone that makes it miss about two shots in three at
+eight metres. The cone is built in the aim's own frame:
+
+```csharp
+Vector3 shot = Quaternion.LookRotation(line)
+               * (Quaternion.Euler(Random.Range(-spread, spread), Random.Range(-spread, spread), 0f)
+                  * Vector3.forward);
+```
+
+rather than by rotating the direction with a world-space Euler, which would collapse the spread to
+nothing whenever the shot happened to run along the axis it pitched about.
+
+Below `FleeHealth` - 15% for a spearman, 40% for a blowgunner - a native breaks and runs for its camp.
+A wounded spearman that keeps coming is a health bar; one that turns round is a person.
+
+**Camps hang off the POIs, not off coordinates.** `NativeFactory.BakeCamps` reads the island profile
+and pins five camp lines to the village and the cave, so moving a POI moves its garrison and the
+numbers in this document stay true. The island holds **six natives by day and ten at night**, and the
+factory warns at bake time if any camp lands within 150 m of the players' own fire. The nearest camp
+is 206 m out, which is 54 m further than its own night leash can reach.
+
+**Economy.** A body leaves rope, hide, flint or feathers - 16 to 29 coins' worth, deliberately less
+than a deer. Killing people is not a living; it is the toll on the road to the cave. What those four
+items are actually worth on the shelf is #56's balance pass to settle.
+
+**Proof.** `-nativeTest` runs the acceptance criterion as a measurement rather than an assertion. It
+sweeps a player in from beyond the night radius in two metre steps with a fresh native at every step,
+three ways - in the open, turned away, and behind a wall the test builds itself - at noon and again at
+midnight, and reads the boundary off the result:
+
+```
+[NativeTest] spearman in the open at noon: noticed at 16m.
+[NativeTest] spearman turned away at noon: never noticed.
+[NativeTest] spearman behind a wall at noon: never noticed.
+[NativeTest] spearman in the open at midnight: noticed at 28m.
+[NativeTest] spearman turned away at midnight: noticed at 28m.
+[NativeTest] spearman behind a wall at midnight: noticed at 28m.
+[NativeTest] the sun is worth 12m of notice: a spearman sees 16m at noon and 28m at midnight.
+[NativeTest] spearman dragged 45m from camp at noon (leash 40m): gave up.
+[NativeTest] spearman dragged 45m from camp at midnight (leash 130m): still hunting.
+[NativeTest] a spearman in reach: 4 blow(s), 88 health, first one 0.40s after it noticed (wind-up 0.40s).
+[NativeTest] a blowgunner at 8.0m: 11 dart(s), 4 hit, 36 health and a stun.
+[NativeTest] one spearman shouted at noon: 2 of 2 out of earshot came looking, within 0.0m of where the player actually was.
+[NativeTest] a scout at 14/45 hp (breaks under 35%) is Flee.
+[NativeTest] 121 passed, 0 failed.
+```
+
+Two things worth writing down for the next harness. `Physics.autoSyncTransforms` is off in this
+project, so a collider created and then moved in the same statement is, as far as the physics world is
+concerned, still sitting on the map origin until the next `FixedUpdate` - the wall the sweep builds
+needs an explicit `Physics.SyncTransforms()` or the native looks straight through it. And an immobile
+test body should be grounded with a ray straight down rather than with `NavMesh.SamplePosition`, which
+will happily drag it twenty metres sideways and quietly ruin a test whose entire output is a distance.
+
+**Not done here:** no weapons on the ground and no bodies to loot beyond the drop table, so a spear is
+something they have rather than something you can take; camps are spawn volumes rather than structures,
+so there is nothing to burn down and no huts to hide in; natives do not fight the wildlife and the
+wildlife does not fear them; there is no reputation, no trade and no non-hostile native; and they do
+not open doors, use the shop, or notice that you have stolen anything.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**

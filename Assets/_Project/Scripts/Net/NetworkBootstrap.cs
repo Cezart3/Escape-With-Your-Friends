@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.World;
 using FishNet;
@@ -270,6 +270,7 @@ namespace EscapeWithYourFriends.Net
             Combat.GunTest.Begin();
             Economy.UpgradeTest.Begin();
             AI.AnimalTest.Begin();
+            AI.NativeTest.Begin();
             Items.FishTest.Begin();
             Player.SurvivalTest.Begin();
             Player.BuffTest.Begin();
