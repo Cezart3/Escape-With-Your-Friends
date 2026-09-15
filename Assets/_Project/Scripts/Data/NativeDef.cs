@@ -147,8 +147,12 @@ namespace EscapeWithYourFriends.Data
         [SerializeField] float _agentRadius = 0.4f;
 
         [Header("Loot")]
-        [Tooltip("Dropped on the ground where they fall, same as an animal. Structure; rebuilt by the factory.")]
+        [Tooltip("What any of this role is carrying. Dropped where they fall. Structure; rebuilt by the factory.")]
         [SerializeField] LootDrop[] _loot = Array.Empty<LootDrop>();
+
+        [Tooltip("What this role drops when it was manning a camp with stores in it. The same lines "
+                 + "plus the camp's own. Structure; rebuilt by the factory.")]
+        [SerializeField] LootDrop[] _villageLoot = Array.Empty<LootDrop>();
 
         public string Id => _id;
         public string DisplayName => string.IsNullOrEmpty(_displayName) ? _id : _displayName;
@@ -211,7 +215,29 @@ namespace EscapeWithYourFriends.Data
         public Color MarkColour => _markColour;
         public float AgentRadius => Mathf.Max(0.1f, _agentRadius);
 
+        /// <summary>What a wandering body carries: what was on it when it walked out.</summary>
         public LootDrop[] Loot => _loot;
+
+        /// <summary>
+        /// What a body manning a stocked camp carries: the same lines plus the camp's own stores.
+        ///
+        /// A superset rather than a replacement, on purpose. The difference between the two tables is
+        /// the *reason to go there*, and a village table that dropped different things instead of more
+        /// things would make the wild table a separate economy rather than the poor end of one.
+        /// </summary>
+        public LootDrop[] VillageLoot => _villageLoot == null || _villageLoot.Length == 0
+                                         ? _loot
+                                         : _villageLoot;
+
+        /// <summary>
+        /// The table a particular body rolls, given where it was standing when it died.
+        ///
+        /// The whole of #109's "better drops from village natives than wandering ones" is this one
+        /// bool, and it is decided at spawn by <see cref="AI.NativeSpawner.Camp.Stocked"/> rather
+        /// than by geometry: a spearman that chased you two hundred metres out of the village is
+        /// still a village spearman, because what it is carrying left the village with it.
+        /// </summary>
+        public LootDrop[] LootFor(bool stocked) => stocked ? VillageLoot : Loot;
 
         // ---------------------------------------------------------------- the sun
 
@@ -235,19 +261,21 @@ namespace EscapeWithYourFriends.Data
         /// <summary>Damage per second if every swing lands. What the balance pass will argue about.</summary>
         public float DamagePerSecond => AttackDamage / AttackInterval;
 
-        /// <summary>What a body is worth on the ground, at full price rather than what a trader pays.</summary>
-        public float ExpectedLootValue
+        /// <summary>What a wandering body is worth on the ground, at full price rather than trade.</summary>
+        public float ExpectedLootValue => Worth(_loot);
+
+        /// <summary>What a body off a stocked camp is worth. The number the raid is priced against.</summary>
+        public float ExpectedVillageLootValue => Worth(VillageLoot);
+
+        static float Worth(LootDrop[] table)
         {
-            get
-            {
-                if (_loot == null) return 0f;
+            if (table == null) return 0f;
 
-                float total = 0f;
-                foreach (LootDrop drop in _loot)
-                    if (drop != null) total += drop.ExpectedValue;
+            float total = 0f;
+            foreach (LootDrop drop in table)
+                if (drop != null) total += drop.ExpectedValue;
 
-                return total;
-            }
+            return total;
         }
 
         /// <summary>Bake time only. Everything structural is re-applied; nothing tuned is overwritten.</summary>
@@ -294,7 +322,16 @@ namespace EscapeWithYourFriends.Data
             _agentRadius = agentRadius;
         }
 
-        public void SetLoot(LootDrop[] loot) => _loot = loot ?? Array.Empty<LootDrop>();
+        /// <summary>
+        /// Bake time only, and both tables at once, because they are one decision. A rebuild that set
+        /// one and left the other would leave a village dropping last week's table, which is exactly
+        /// the kind of silent half-change the structure/tuning split exists to prevent.
+        /// </summary>
+        public void SetLoot(LootDrop[] loot, LootDrop[] villageLoot)
+        {
+            _loot = loot ?? Array.Empty<LootDrop>();
+            _villageLoot = villageLoot ?? Array.Empty<LootDrop>();
+        }
 
         /// <summary>
         /// Bake time only. Who drags bodies off is a decision about what the three roles are *for*

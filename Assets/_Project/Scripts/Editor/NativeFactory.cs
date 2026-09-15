@@ -163,25 +163,67 @@ namespace EscapeWithYourFriends.EditorTools
         };
 
         /// <summary>
-        /// What a body is carrying. Structure, so it is re-applied every run.
+        /// What is on a body that was walking around out there. Structure, so it is re-applied every run.
         ///
         /// Modest, but not a consolation prize. #56 priced a camp sweep against a bag of fish and a
         /// bag of venison and found raiding paying a quarter of what fishing paid, which made the
         /// most dangerous thing on the island the least worthwhile - so the quantities went up until
         /// a body was worth about two thirds of an animal. The best line is still a spearman's hide:
         /// one deer's worth of leather for a fight that can cost you a revive.
+        ///
+        /// #109 added the food. Every role carries something to eat, because a native crossing the
+        /// island is a native who packed lunch, and because the one thing a raid could not previously
+        /// do was feed you - which made a fight you won still cost you a meal.
         /// </summary>
         static readonly (string Native, string Item, int Min, int Max, float Chance)[] Loot =
         {
             ("scout", "rope", 2, 3, 1f),
             ("scout", "feather", 2, 4, 1f),
+            ("scout", "coconut", 1, 2, 0.5f),
 
             ("spearman", "hide", 1, 2, 1f),
             ("spearman", "rope", 2, 3, 1f),
             ("spearman", "flint", 1, 2, 1f),
+            ("spearman", "meat_cooked", 1, 1, 0.4f),
 
             ("blowgunner", "feather", 3, 5, 1f),
             ("blowgunner", "flint", 2, 3, 1f),
+            ("blowgunner", "coconut", 1, 2, 0.5f),
+        };
+
+        /// <summary>
+        /// What a camp with stores in it adds on top, per role. #109's whole answer to "make the raid
+        /// worth it", and structure for the same reason the wild table is.
+        ///
+        /// **Added to the wild table, never replacing it.** A village spearman drops its hide *and*
+        /// the shells it was sitting on; a village table that swapped the lines out would make the two
+        /// kinds of native two separate economies rather than the poor and rich ends of one.
+        ///
+        /// **The ammunition is the point.** #51 gave the island four guns and no way to feed them
+        /// except the trader, which made every firefight a bill. A village sweep now returns more
+        /// rounds than it costs for the pistol, the shotgun and the rifle - measured in
+        /// <c>-lootTest</c> against the camp populations as baked, with a third of your shots missing.
+        /// The SMG is the deliberate exception: eight hundred rounds a minute is not a gun a raid can
+        /// pay for, and that is what makes choosing it a decision.
+        ///
+        /// **Nothing here repeats an item on the wild table.** Two lines for the same item would mean
+        /// two rolls of it, which reads as a bug in a log and makes "the village table contains the
+        /// wild one" impossible to state, so the village food is a different meal.
+        /// </summary>
+        static readonly (string Native, string Item, int Min, int Max, float Chance)[] VillageLoot =
+        {
+            ("scout", "pistol_ammo", 8, 14, 1f),
+            ("scout", "cloth", 1, 3, 0.6f),
+            ("scout", "fish_cooked", 1, 2, 0.5f),
+
+            ("spearman", "shotgun_shell", 2, 5, 0.8f),
+            ("spearman", "rifle_ammo", 2, 5, 0.8f),
+            ("spearman", "scrap_metal", 1, 2, 0.7f),
+            ("spearman", "bandage", 1, 1, 0.35f),
+
+            ("blowgunner", "pistol_ammo", 6, 12, 0.9f),
+            ("blowgunner", "rifle_ammo", 1, 3, 0.7f),
+            ("blowgunner", "meat_cooked", 1, 2, 0.6f),
         };
 
         /// <summary>
@@ -263,7 +305,7 @@ namespace EscapeWithYourFriends.EditorTools
             => $"{def.Id,-11} {def.MaxHealth,4:0} hp  {def.AttackDamage,3:0} dmg/{def.AttackInterval:0.0}s "
                + $"({def.DamagePerSecond,4:0.0} dps)  notices {def.DayNotice:0}m by day / "
                + $"{def.NightNotice:0}m at night  leash {def.DayLeash:0}/{def.NightLeash:0}m  "
-               + $"drops {def.ExpectedLootValue:0.0}c"
+               + $"drops {def.ExpectedLootValue:0.0}c wild / {def.ExpectedVillageLootValue:0.0}c village"
                + (def.Abducts ? $"  hauls at {def.HaulSpeed:0.0} m/s from {def.AbductRadius:0}m" : "");
 
         static int ApplyAbduction(NativeDef[] all)
@@ -291,10 +333,41 @@ namespace EscapeWithYourFriends.EditorTools
         static int ApplyLoot(NativeDef[] all)
         {
             var byId = all.Where(d => d != null).ToDictionary(d => d.Id, d => d);
-            var lines = new Dictionary<string, List<LootDrop>>();
-            int links = 0;
 
-            foreach ((string native, string item, int min, int max, float chance) in Loot)
+            Dictionary<string, List<LootDrop>> wild = Resolve(Loot, out int links);
+            Dictionary<string, List<LootDrop>> stores = Resolve(VillageLoot, out int extra);
+
+            foreach (KeyValuePair<string, List<LootDrop>> pair in wild)
+            {
+                if (!byId.TryGetValue(pair.Key, out NativeDef def))
+                {
+                    Debug.LogWarning($"[NativeFactory] loot for unknown role {pair.Key}; skipped.");
+                    continue;
+                }
+
+                // The village table is the wild one plus the camp's stores, built here rather than
+                // written out twice, so a line added to the wild table cannot fall off the village.
+                var village = new List<LootDrop>(pair.Value);
+                if (stores.TryGetValue(pair.Key, out List<LootDrop> own)) village.AddRange(own);
+
+                def.SetLoot(pair.Value.ToArray(), village.ToArray());
+                EditorUtility.SetDirty(def);
+            }
+
+            foreach (string role in stores.Keys.Where(r => !wild.ContainsKey(r)))
+                Debug.LogWarning($"[NativeFactory] {role} has camp stores but no loot table; skipped.");
+
+            return links + extra;
+        }
+
+        /// <summary>One of the two tables above, turned into loot lines per role.</summary>
+        static Dictionary<string, List<LootDrop>> Resolve(
+            (string Native, string Item, int Min, int Max, float Chance)[] table, out int links)
+        {
+            var lines = new Dictionary<string, List<LootDrop>>();
+            links = 0;
+
+            foreach ((string native, string item, int min, int max, float chance) in table)
             {
                 var def = AssetDatabase.LoadAssetAtPath<ItemDef>($"{ItemFolder}/{item}.asset");
                 if (def == null)
@@ -313,19 +386,7 @@ namespace EscapeWithYourFriends.EditorTools
                 links++;
             }
 
-            foreach (KeyValuePair<string, List<LootDrop>> pair in lines)
-            {
-                if (!byId.TryGetValue(pair.Key, out NativeDef def))
-                {
-                    Debug.LogWarning($"[NativeFactory] loot for unknown role {pair.Key}; skipped.");
-                    continue;
-                }
-
-                def.SetLoot(pair.Value.ToArray());
-                EditorUtility.SetDirty(def);
-            }
-
-            return links;
+            return lines;
         }
 
         static NativeCatalog EnsureCatalog()
@@ -515,14 +576,17 @@ namespace EscapeWithYourFriends.EditorTools
             Vector2 village = At(pois, "village", home);
             Vector2 cave = At(pois, "cave", home);
 
+            // Stocked is the village and only the village. The cave is an outpost - somewhere they
+            // sleep on the way round the island - and a second pile of ammunition half the distance
+            // from base camp would make the raid #109 is about the second-best place to go.
             var camps = new List<NativeSpawner.Camp>
             {
-                Camp("village.spearman", catalog.Find("spearman"), village, 24f, 2, 1, shape),
-                Camp("village.blowgun", catalog.Find("blowgunner"), village, 26f, 1, 1, shape),
-                Camp("village.scout", catalog.Find("scout"), village, 34f, 1, 1, shape),
+                Camp("village.spearman", catalog.Find("spearman"), village, 24f, 2, 1, shape, stocked: true),
+                Camp("village.blowgun", catalog.Find("blowgunner"), village, 26f, 1, 1, shape, stocked: true),
+                Camp("village.scout", catalog.Find("scout"), village, 34f, 1, 1, shape, stocked: true),
 
-                Camp("cave.spearman", catalog.Find("spearman"), cave, 20f, 1, 1, shape),
-                Camp("cave.scout", catalog.Find("scout"), cave, 26f, 1, 0, shape),
+                Camp("cave.spearman", catalog.Find("spearman"), cave, 20f, 1, 1, shape, stocked: false),
+                Camp("cave.scout", catalog.Find("scout"), cave, 26f, 1, 0, shape, stocked: false),
             };
 
             camps.RemoveAll(c => c.Role == null);
@@ -541,7 +605,7 @@ namespace EscapeWithYourFriends.EditorTools
 
                 Debug.Log($"[NativeFactory]   {camp.Id,-18} {camp.Population}(+{camp.NightExtra})x "
                           + $"{camp.Role.Id,-11} within {camp.Radius:0}m of {camp.Centre}, "
-                          + $"{toHome:0}m from base.");
+                          + $"{toHome:0}m from base, {(camp.Stocked ? "stocked" : "no stores")}.");
 
                 if (toHome < 150f)
                     Debug.LogWarning($"[NativeFactory] {camp.Id} is {toHome:0}m from camp.base - close "
@@ -550,7 +614,7 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         static NativeSpawner.Camp Camp(string id, NativeDef role, Vector2 centre, float radius,
-                                       int population, int nightExtra, IslandShape shape)
+                                       int population, int nightExtra, IslandShape shape, bool stocked)
             => new()
             {
                 Id = id,
@@ -559,6 +623,7 @@ namespace EscapeWithYourFriends.EditorTools
                 Radius = radius,
                 Population = population,
                 NightExtra = nightExtra,
+                Stocked = stocked,
             };
 
         static Vector2 At(POICatalog pois, string id, Vector2 fallback)

@@ -4331,6 +4331,106 @@ the empty hook. Nobody re-hangs a body that was cut down and then dropped on the
 funnier outcome than it has any right to be and is left alone until somebody has played it. And there
 is no loot in the village yet; that is #109.
 
+### Loot worth the walk (#109)
+
+#107 walks your friend to the village and #108 hangs them there. This is the other half of the
+reason to go: a village body is carrying something, and what it is carrying is different from what
+the one you jumped on the ridge was carrying.
+
+**A role has two loot tables, and a body rolls whichever one its camp says.** `NativeDef.Loot` is
+what was on the body; `NativeDef.VillageLoot` is that plus the stores of the camp it was manning.
+The choice between them is a single bool decided at spawn - `NativeSpawner.Camp.Stocked`, passed
+through `ServerConfigure` - and never by geometry, so a spearman that chased you two hundred metres
+out of the village is still a village spearman. What it is carrying left the village with it.
+
+The village is stocked and the cave outpost is not. That is the whole map-level statement: a second
+pile of ammunition at half the distance from base camp would make the raid the second-best place to
+go, and #107's and #108's entire premise is that the village is where you have to go.
+
+```
+[LootTest] 3 stocked camp(s) (village.spearman, village.blowgun, village.scout) against 2 without (cave.spearman, cave.scout).
+```
+
+#### The village table contains the wild one
+
+Added to, never swapped out. Two disjoint tables would make the wanderer a separate economy rather
+than the poor end of one; a superset makes "go where they keep things" a sentence about quantity,
+which is the sentence a raid can be priced against.
+
+```
+[LootTest] role         wild                                         value   village adds
+[LootTest]   blowgunner 3-5 feather, 2-3 flint, 1-2 coconut @50%       41.8c  6-12 pistol_ammo @90%, 1-3 rifle_ammo @70%, 1-2 meat_cooked @60%
+[LootTest]   scout      2-3 rope, 2-4 feather, 1-2 coconut @50%        34.8c  8-14 pistol_ammo, 1-3 cloth @60%, 1-2 fish_cooked @50%
+[LootTest]   spearman   1-2 hide, 2-3 rope, 1-2 flint, 1 meat_cooked @40%  67.0c  2-5 shotgun_shell @80%, 2-5 rifle_ammo @80%, 1-2 scrap_metal @70%, 1 bandage @35%
+```
+
+Roughly twice the value out of the village - 79.9c against 34.8 for a scout, 119.9 against 67.0 for a
+spearman - and no item appears on both halves, because two lines for the same item would mean two
+rolls of it and would read as a bug in a log.
+
+The wild table gained food at the same time. Every role now carries something to eat, because a
+native crossing the island packed lunch, and because the one thing a won fight could not previously
+do was feed you.
+
+#### The ammunition is the point, and it is arithmetic
+
+#51 put four guns on the island and exactly one way to feed them: the trader. That made every
+firefight a bill, and made the most dangerous place on the island the worst possible thing to spend
+ammunition on. So the claim #109 is built to make is a sum, and `-lootTest` does the sum against the
+village *as baked* - the camp populations, the roles' own health, each gun's own damage - with a
+third of the shots missing.
+
+```
+[LootTest] gun         ammo            day: dropped/needed        night: dropped/needed
+[LootTest]   pistol       pistol_ammo      19.1 /  15.6             38.2 /  26.3   pays for itself
+[LootTest]   pistol_auto  pistol_ammo      19.1 /  10.1             38.2 /  17.1   pays for itself
+[LootTest]   pistol_mk2   pistol_ammo      19.1 /  11.9             38.2 /  20.1   pays for itself
+[LootTest]   rifle        rifle_ammo        7.0 /   6.2             11.2 /  10.5   pays for itself
+[LootTest]   shotgun      shotgun_shell     5.6 /   4.6              8.4 /   7.8   pays for itself
+[LootTest]   smg          pistol_ammo      19.1 /  28.9             38.2 /  48.8   costs more than it takes
+```
+
+Run at both populations, because the village is not one place at two times of day; the night raid is
+bigger and longer, and the rifle's margin is the thin one there (11.2 against 10.5). The assertion is
+made per *calibre* rather than per gun: one gun of each kind coming out ahead is what makes bringing
+the right one a decision. **The SMG is the deliberate exception.** Eight hundred rounds a minute is
+not a gun a raid can pay for, and that is the trade the SMG exists to offer.
+
+#### What the raid is worth at the counter
+
+`EconomyModel.Raiding` now prices the village table rather than the wild one, because the village is
+the camp worth sweeping. A sweep still is not weight-limited - six village bodies come to about
+twenty-four kilos against a forty kilo bag - so the trip is as long as the bodies take plus the walk.
+Picking off wanderers is deliberately not modelled as its own activity: it is the same row with a
+worse table, for about half the money.
+
+```
+[EconomyTest]   raiding      40.0 c/min     2402 c/h  (280 coins per 7.0 min trip, 23.6 kg)  6 bodies at 47 c each
+[EconomyTest] the spread is 2.41x: fishing at 40.8 c/min against hunting at 16.9.
+```
+
+#### Rolled on the host, dropped on the floor
+
+Nothing about this is new plumbing: `Native.ServerDropLoot` already ran server-side only and already
+fanned its stacks into `WorldItemSpawner.Drop`, which is #42's pipeline and the same one an animal
+uses. #109 changed which array it reads and nothing else about the path, which is why the live half
+of the harness is six kills per role per table rather than an elaborate set-up.
+
+```
+[LootTest] 6 village spearman(s) left 11x hide, 14x rope, 8x flint, 19x shotgun_shell, 11x scrap_metal, 3x meat_cooked, 15x rifle_ammo, 1x bandage; 17 stack(s) off the camp's stores, 0 off the table.
+[LootTest] 6 wandering spearman(s) left 9x hide, 16x rope, 9x flint, 1x meat_cooked; 0 stack(s) off the camp's stores, 0 off the table.
+[LootTest] 290 passed, 0 failed.
+```
+
+Regressions: `-nativeTest` 136/136, `-abductTest` 40/40, `-prisonTest` 44/44, `-economyTest` 27/27.
+
+**Not done here:** natives do not carry the guns they are dropping ammunition for, which is a fiction
+the village gets away with only because nobody has asked yet - the honest fix is a native that shoots
+back, and that is a bigger issue than this one. A body's drops land on the ground rather than in a
+searchable corpse, so a raid still ends with four people crouching over the same pile. And the cave
+outpost now has a reason to feel like a waste of time, which it should eventually answer with
+something other than loot.
+
 ---
 
 ## Data-driven content
