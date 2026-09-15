@@ -276,14 +276,33 @@ namespace EscapeWithYourFriends.Vehicles
         // ---------------------------------------------------------------- the ride
 
         /// <summary>
-        /// Drives it. The buggy is kinematic in #57 and there is no engine yet, so the harness moves
-        /// it - which is fine, because what is under test is whether four bodies stay where they were
-        /// put while the transform underneath them changes every frame.
+        /// Drives it, by hand. This is the seat glue under test and nothing else, so the vehicle is
+        /// pinned kinematic and slid along a straight line: four bodies staying where they were put
+        /// while the transform underneath them changes every frame, with no suspension, no terrain
+        /// and no engine in the measurement. <c>-carTest</c> is where a real physics body does it.
         /// </summary>
         IEnumerator Driving(Vehicle buggy)
         {
             Vector3 start = buggy.transform.position;
             Vector3 heading = buggy.transform.forward;
+
+            // #58 made the buggy dynamic. Writing transform.position on a body PhysX is stepping
+            // would be a fight this test does not want to referee, so it is held still first.
+            // Interpolation has to go with it. A Rigidbody set to interpolate writes the transform
+            // every frame from its own pose buffer, kinematic or not, and it does it after this
+            // coroutine has written a new position - which is why the first run of this against a
+            // dynamic buggy travelled 59 of the 180 metres it thought it had.
+            var body = buggy.GetComponent<Rigidbody>();
+            bool wasKinematic = body != null && body.isKinematic;
+            RigidbodyInterpolation wasInterpolated = body != null
+                ? body.interpolation
+                : RigidbodyInterpolation.None;
+
+            if (body != null)
+            {
+                body.isKinematic = true;
+                body.interpolation = RigidbodyInterpolation.None;
+            }
 
             float worst = 0f;
             int worstSeat = -1;
@@ -330,6 +349,12 @@ namespace EscapeWithYourFriends.Vehicles
 
             Debug.Log($"[VehicleTest] {moved:0}m at {DriveSpeed:0} m/s with four aboard: "
                       + $"worst drift {worst:0.000}m over {samples} sample(s).");
+
+            if (body != null)
+            {
+                body.isKinematic = wasKinematic;
+                body.interpolation = wasInterpolated;
+            }
         }
 
         // ---------------------------------------------------------------- getting out

@@ -24,9 +24,12 @@ namespace EscapeWithYourFriends.EditorTools
     /// than outward, because a passenger looking sideways at speed is a passenger who cannot see the
     /// tree. Exits alternate sides so four people leaving at once do not land inside each other.
     ///
-    /// The Rigidbody is kinematic and there is no engine: #57 is the seat, the door and the question
-    /// of who is driving. #58 puts WheelColliders on this same prefab and takes the kinematic flag
-    /// off, and nothing above it has to change.
+    /// Each wheel is two objects: the cylinder you see, rolled onto its side, and a WheelCollider
+    /// standing upright beside it. They cannot share a transform — a WheelCollider suspends along its
+    /// own local Y, and the visual's local Y points out of the hub.
+    ///
+    /// The tuning lives in <see cref="Wheel"/> and in <see cref="Vehicles.CarController"/>; the shape
+    /// here only decides where the wheels are and therefore how easily the thing trips over.
     /// </summary>
     public static class VehicleBuilder
     {
@@ -38,6 +41,9 @@ namespace EscapeWithYourFriends.EditorTools
 
         /// <summary>Half the track width. Seats and wheels are both placed off it.</summary>
         const float HalfWidth = 0.78f;
+
+        /// <summary>Wheel radius, which is also the height the axles sit at.</summary>
+        const float WheelRadius = 0.45f;
 
         public static void Build()
         {
@@ -62,6 +68,7 @@ namespace EscapeWithYourFriends.EditorTools
 
             var vehicle = saved.GetComponent<Vehicle>();
             Debug.Log($"[VehicleBuilder] Built {BuggyPath}: {vehicle.SeatCount} seat(s), "
+                      + $"{saved.GetComponentsInChildren<WheelCollider>().Length} wheel(s), "
                       + $"cargo socket {(vehicle.CarrySocket != null ? "wired" : "MISSING")}.");
 
             if (Application.isBatchMode) EditorApplication.Exit(0);
@@ -81,6 +88,9 @@ namespace EscapeWithYourFriends.EditorTools
             Primitive(root.transform, "Bar", PrimitiveType.Cube,
                       new Vector3(0f, 1.75f, -0.3f), new Vector3(1.7f, 0.12f, 0.12f), collider: false);
 
+            var wheels = new List<WheelCollider>();
+            var visuals = new List<Transform>();
+
             foreach ((string name, float x, float z) in Wheels())
             {
                 GameObject wheel = Primitive(root.transform, name, PrimitiveType.Cylinder,
@@ -89,6 +99,9 @@ namespace EscapeWithYourFriends.EditorTools
 
                 // Cylinders stand up by default and a wheel does not.
                 wheel.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+
+                visuals.Add(wheel.transform);
+                wheels.Add(Wheel(root.transform, name + ".Collider", new Vector3(x, WheelRadius, z)));
             }
 
             var seats = new List<Vehicle.Seat>();
@@ -120,14 +133,67 @@ namespace EscapeWithYourFriends.EditorTools
             var body = root.AddComponent<Rigidbody>();
             body.mass = 900f;
 
-            // No engine yet. Kinematic keeps it exactly where the world put it while #57 is about
-            // getting in and out of it; #58 clears this flag on the same prefab.
-            body.isKinematic = true;
+            // The chassis is drawn every frame and stepped every fixed update, and four riders are
+            // glued to it. Without interpolation the seats stutter at whatever the physics rate is,
+            // and the stutter is much easier to see on a passenger's head than on the car.
+            body.interpolation = RigidbodyInterpolation.Interpolate;
 
             var vehicle = root.AddComponent<Vehicle>();
             vehicle.Configure(seats.ToArray(), cargo, "buggy");
 
+            var car = root.AddComponent<CarController>();
+            car.Configure(wheels.ToArray(), visuals.ToArray());
+
             return root;
+        }
+
+        /// <summary>
+        /// One WheelCollider. Separate from the cylinder you can see, because the visual is rolled
+        /// ninety degrees onto its side and a WheelCollider's suspension runs down its own local Y —
+        /// putting both on one transform would suspend the car sideways.
+        ///
+        /// The tuning is the arcade brief in five numbers. Soft, long suspension so it wallows and
+        /// leans; stiffness well above 1 on both friction curves so it grips like a go-kart and turns
+        /// far sharper than its mass deserves. The combination is a car that corners flat out and
+        /// then trips over itself on a rock, which is the joke.
+        /// </summary>
+        static WheelCollider Wheel(Transform parent, string name, Vector3 localPosition)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPosition;
+
+            var wheel = go.AddComponent<WheelCollider>();
+            wheel.radius = WheelRadius;
+            wheel.mass = 30f;
+            wheel.wheelDampingRate = 0.5f;
+
+            wheel.suspensionDistance = 0.3f;
+            wheel.forceAppPointDistance = 0.15f;
+
+            JointSpring spring = wheel.suspensionSpring;
+            spring.spring = 32000f;
+            spring.damper = 4200f;
+            spring.targetPosition = 0.5f;
+            wheel.suspensionSpring = spring;
+
+            WheelFrictionCurve forward = wheel.forwardFriction;
+            forward.extremumSlip = 0.4f;
+            forward.extremumValue = 1f;
+            forward.asymptoteSlip = 0.8f;
+            forward.asymptoteValue = 0.6f;
+            forward.stiffness = 2.2f;
+            wheel.forwardFriction = forward;
+
+            WheelFrictionCurve sideways = wheel.sidewaysFriction;
+            sideways.extremumSlip = 0.25f;
+            sideways.extremumValue = 1f;
+            sideways.asymptoteSlip = 0.6f;
+            sideways.asymptoteValue = 0.75f;
+            sideways.stiffness = 2.6f;
+            wheel.sidewaysFriction = sideways;
+
+            return wheel;
         }
 
         static IEnumerable<(string Name, float X, float Z)> Wheels()

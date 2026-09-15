@@ -179,7 +179,10 @@ Shader "EWYF/Water"
 
                 // Two scrolling samples of the same ripple tile at different scales, which is the
                 // cheapest thing that stops a tiling normal map from looking like a tiling normal
-                // map. Both fade out with the waves, so the far ring stays mirror flat and free.
+                // map. Unlike the waves these do NOT fade at the patch edge: they are per-pixel
+                // normals, so they cannot crack the geometry, and fading them left a mirror-flat
+                // ring sitting against a rippled sea - a square seam you could see from any hill.
+                // Distance detail costs nothing to drop: the sampler's mips already do it.
                 float tiling = max(0.01, _NormalTiling);
                 float2 baseUV = IN.positionWS.xz / tiling;
                 float2 uv1 = baseUV + _NormalScroll.xy * _WaterTime / tiling;
@@ -187,7 +190,7 @@ Shader "EWYF/Water"
 
                 float3 n1 = UnpackNormal(SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, uv1));
                 float3 n2 = UnpackNormal(SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, uv2));
-                float2 ripple = (n1.xy + n2.xy) * _NormalStrength * IN.fade;
+                float2 ripple = (n1.xy + n2.xy) * _NormalStrength;
 
                 float3 normalWS = normalize(IN.normalWS + float3(ripple.x, 0.0, ripple.y));
 

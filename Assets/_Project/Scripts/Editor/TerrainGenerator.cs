@@ -35,6 +35,7 @@ namespace EscapeWithYourFriends.EditorTools
     {
         const string ProfilePath = "Assets/_Project/Data/Island.asset";
         const string TerrainDataPath = "Assets/_Project/Data/IslandTerrain.asset";
+        const string TerrainMaterialPath = "Assets/_Project/Data/IslandTerrain.mat";
         const string ScenePath = "Assets/_Project/Scenes/Island.unity";
         const string TerrainObjectName = "Island";
         const string TerrainArtFolder = "Assets/_Project/Art/Terrain";
@@ -221,8 +222,11 @@ namespace EscapeWithYourFriends.EditorTools
             var terrain = island.AddComponent<Terrain>();
             terrain.terrainData = data;
 
-            // No material assigned: URP hands the terrain its own default, which reads the layers
-            // and the alphamap written above.
+            // The terrain gets its material spelled out rather than left null. A null template falls
+            // back to the built-in Nature/Terrain/Standard shader, which does not exist under URP -
+            // and a terrain with no shader is a kilometre of magenta.
+            terrain.materialTemplate = EnsureTerrainMaterial();
+
             terrain.heightmapPixelError = 5f;
             terrain.basemapDistance = 400f;
 
@@ -514,6 +518,35 @@ namespace EscapeWithYourFriends.EditorTools
         /// so the terrain keeps pointing at the same GUIDs across a regeneration, and so an art pass
         /// that replaces a texture is not undone the next time somebody rerolls the seed.
         /// </summary>
+        /// <summary>
+        /// The URP terrain material, created once and reused so its GUID survives a regeneration.
+        /// </summary>
+        static Material EnsureTerrainMaterial()
+        {
+            var material = AssetDatabase.LoadAssetAtPath<Material>(TerrainMaterialPath);
+            Shader shader = Shader.Find("Universal Render Pipeline/Terrain/Lit");
+
+            if (shader == null)
+            {
+                Debug.LogError("[TerrainGenerator] URP terrain shader missing; terrain will render magenta.");
+                return material;
+            }
+
+            if (material == null)
+            {
+                material = new Material(shader);
+                Directory.CreateDirectory(Path.GetDirectoryName(TerrainMaterialPath));
+                AssetDatabase.CreateAsset(material, TerrainMaterialPath);
+            }
+            else
+            {
+                material.shader = shader;
+                EditorUtility.SetDirty(material);
+            }
+
+            return material;
+        }
+
         static TerrainLayer[] EnsureLayers(IslandProfile profile)
         {
             Directory.CreateDirectory(TerrainArtFolder);
