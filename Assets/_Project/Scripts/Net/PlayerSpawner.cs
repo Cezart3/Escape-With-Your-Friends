@@ -46,6 +46,13 @@ namespace EscapeWithYourFriends.Net
         /// </summary>
         public static PlayerSpawner Instance { get; private set; }
 
+        /// <summary>
+        /// The body every player wears. Public for the same reason <see cref="AI.NativeSpawner"/>'s
+        /// spawn is: a test that needs four bodies in a car cannot wait for four people to join, and
+        /// a harness that builds its own approximation of a player measures the approximation.
+        /// </summary>
+        public NetworkObject PlayerPrefab => _playerPrefab;
+
         /// <summary>Palette slots in use, by owner id. Freed on disconnect so slot 0 can be reused.</summary>
         readonly Dictionary<int, byte> _colorByOwner = new();
 

@@ -32,6 +32,7 @@ namespace EscapeWithYourFriends.Player
         [SerializeField] ItemUse _use;
         [SerializeField] Fishing _fishing;
         [SerializeField] Inventory _inventory;
+        [SerializeField] Vehicles.VehicleRider _rider;
 
         // Diagnostics only, behind -cameraLog: a headless run cannot see a punch land, so the count of
         // verbs actually issued is the difference between "combat is wired" and "combat is silent".
@@ -99,7 +100,14 @@ namespace EscapeWithYourFriends.Player
             // shoulder itself, so nothing is unreachable.
             if (interact)
             {
-                bool used = _interactor != null && _interactor.RequestInteract();
+                // Top of the list, and only while actually sitting in something. Getting out is the
+                // only verb a passenger has, and routing it through the interactor instead would mean
+                // aiming at the car you are inside - a sphere cast from a seat hits the chassis, the
+                // dashboard or nothing at all depending on which way your head is turned, and "I
+                // cannot get out of the boat" is not a bug anybody should have to report.
+                bool left = _rider != null && _rider.RequestExit();
+
+                bool used = left || (_interactor != null && _interactor.RequestInteract());
                 if (!used && _carry != null) _carry.RequestPickupOrDrop();
             }
             // Drop is the same priority list as Interact, one step down. A body on your shoulder is

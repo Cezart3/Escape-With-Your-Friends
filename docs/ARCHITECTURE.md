@@ -4431,6 +4431,108 @@ searchable corpse, so a raid still ends with four people crouching over the same
 outpost now has a reason to feel like a waste of time, which it should eventually answer with
 something other than loot.
 
+### A seat, a door, and who is driving (#57)
+
+M5 is four vehicles that agree about almost nothing. A car has wheels on the ground, a boat has a
+hull in the water, a plane has neither and an opinion about angle of attack. What they do agree on is
+the twenty seconds either side of the driving: somebody presses Interact, ends up in a seat, stops
+being a pedestrian, and eventually gets out somewhere. Writing that four times is how you end up with
+four different answers to "what happens if the driver bleeds out at speed", so it is written once.
+
+`Vehicle` is that once. It holds the seats, the doors and the ownership, and knows nothing at all
+about motion — the buggy this ships is kinematic and does not move unless something else moves it.
+#58 bolts WheelColliders onto the same prefab and clears the flag; nothing above has to change.
+
+**Seating is a `SyncList<int>` of object ids, not of NetworkObjects.** A reference to a spawned
+object only resolves if that object already arrived on that peer, and the case this has to survive is
+exactly the one where it has not: somebody joining a session where the buggy is already full. Ids
+always deserialise. `Apply` resolves what it can, marks the rest, and retries next frame — which is
+what stops a late joiner from seeing four empty seats and four people standing on the roof. The list
+is sized once on the server and then only ever written *by index*, because an add or a remove would
+renumber every seat behind it and seat 0 means "driver" to the ownership code.
+
+`VehicleRider`, the component on the body, holds **no networked state at all**. Who is sitting where
+is one fact, and a second SyncVar claiming it is a second fact that disagrees the first time a packet
+is dropped. The seat list is authoritative; `Vehicle.Apply` tells each body what it is, on every peer.
+
+**Riders are glued, not parented.** `LateUpdate` writes each occupant's transform straight onto its
+seat anchor, on every peer, after everything else has had its turn — the motor on the owner, the
+NetworkTransform on a spectator. FishNet has networked parenting and it would be the tidier answer on
+paper; it is also a great deal more machinery to be wrong about, on a body already running client
+prediction underneath a server-authoritative NetworkTransform that deliberately excludes its owner.
+The glue is four lines and cannot desync, because every peer is copying a transform it can already
+see.
+
+Sitting down is three switches, and the first one is the one that matters:
+
+- **The CharacterController is disabled.** It caches its own position and would drag a body straight
+  back out of a moving car — the same fact that makes `PlayerMotor.ServerTeleport` switch it off
+  before writing a transform.
+- **The reconcile stops writing position.** The motor already refuses to run its replicate with the
+  controller off; the reconcile needed telling separately, because it would keep writing a world
+  position a round trip behind the car and the glue would keep putting it back, which is a
+  description of jitter.
+- **Collisions with the vehicle are ignored**, so a chassis cannot punt its own passengers. The
+  controller is skipped when the pairs are set: it is switched off for the whole ride, and Unity logs
+  an error rather than shrugging when asked to ignore a disabled collider.
+
+Getting out puts all three back and the server teleports the body to *its own* door, dropped onto
+whatever ground is under it. Four doors rather than one, because four people leaving at once through
+the same square metre is how depenetration fires them across the island.
+
+**Ownership follows the wheel.** Taking seat 0 hands the vehicle's `NetworkObject` to that connection
+and leaving it takes the ownership back. Nothing in #57 reads it — the thing is kinematic and the
+host moves it. It is here because #58's input has to arrive from a connection that owns something,
+and who owns a car is not a question worth answering twice.
+
+**Exit is the only verb a passenger has.** Interact is a shared key with a priority list in
+`PlayerCombatInput`, and getting out goes on top of it, but only while actually seated. The obvious
+alternative — routing it through `PlayerInteractor` like everything else — means aiming at the car
+you are already inside: a sphere cast from a seat hits the chassis, the dashboard or nothing at all
+depending on which way your head is turned. "I cannot get out of the boat" is not a bug anybody
+should have to report.
+
+**A vehicle is an `ICarryHolder`.** That interface was written during the carry rework with a note
+naming the back of a truck and a boat, and this is the truck. A body rides in the cargo socket rather
+than in a chair, because a corpse occupying a seat somebody could have used would be the single most
+annoying object in the game. `ServerSweep` is the other half of that: a rider who goes down or
+vanishes mid-ride is dumped out rather than carried around as a statue.
+
+The buggy itself is generated — `VehicleBuilder` writes four cylinders, a box and, the part that
+actually matters, eight transforms: where four people sit and which patch of ground each of them is
+put down on. Those are numbers that get moved by feel the first time somebody drives with a friend's
+head in the way, and moving them in a generator produces a diff rather than a binary. The island's
+own POI bake parks one at base camp.
+
+`-vehicleTest` runs against that parked buggy. Four bodies means four bodies: the harness spawns
+three more from the same prefab the player spawner uses, ownerless, which is exactly what a body
+whose player is still loading looks like.
+
+```
+[VehicleTest] one buggy at (-86.00, 4.91, -38.00), 4 seat(s), cargo socket wired.
+[Vehicle] buggy refused Player(Clone): the buggy is full.
+[VehicleTest] 180m at 30 m/s with four aboard: worst drift 0.000m over 11976 sample(s).
+[Vehicle] Player(Clone) went down in seat 0 of the buggy; dumped on the ground.
+[VehicleTest] 79 passed, 0 failed.
+```
+
+The drift number is the whole design in one line. It is measured per rider against *its own anchor*
+rather than against the vehicle, which would pass even if all four were stacked in the driver's seat.
+
+Refusals are checked by their reason, not just by their refusal, and the order of the checks is load
+bearing: a carried body is always also incapacitated, so "somebody is carrying them" has to be asked
+before "they are on the floor" or the message is technically true and useless.
+
+Regressions: `-nativeTest` 134/134, `-lootTest` 285/285, `-abductTest` 40/40, `-prisonTest` 44/44,
+`-economyTest` 27/27.
+
+**Not done here:** the buggy does not move on its own, which makes "without desync" a claim about a
+transform the harness drives rather than about a physics body four clients are predicting — #58 is
+where that gets hard. Nobody can shoot from a passenger seat, and a seated body is invisible to the
+interactor, so a passenger cannot open a chest they are parked next to either. And a vehicle that
+despawns with people inside empties itself politely rather than throwing them, which is the less
+funny of the two options and stays that way until somebody asks.
+
 ---
 
 ## Data-driven content
@@ -4454,9 +4556,10 @@ decision that lets content scale without the editor becoming a bottleneck.
 | Boat | Custom buoyancy: 4–8 sample points applying Archimedes force plus drag against the water plane |
 | Plane | Arcade flight model. Lift as a function of speed and angle of attack, forgiving stall. Learnable in minutes, landable with difficulty |
 
-All vehicles share one framework: seat definitions, enter/exit interaction, passenger parenting, and
-driver ownership transfer validated by the host. Vehicle-versus-ragdoll collisions launch players with
-force proportional to impact speed — this is a required feature, not a side effect.
+All three sit on the one framework shipped in #57 — seat definitions, enter/exit interaction, rider
+attachment and driver ownership transfer, all validated by the host. Vehicle-versus-ragdoll collisions
+launch players with force proportional to impact speed; this is a required feature, not a side
+effect.
 
 ---
 

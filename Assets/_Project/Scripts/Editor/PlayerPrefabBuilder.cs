@@ -331,6 +331,9 @@ namespace EscapeWithYourFriends.EditorTools
             // Nothing else calls the combat systems: they all expose an owner-side Request method and
             // none of them poll input themselves, so without this component punching, tasing, carrying
             // and throwing are unreachable from a keyboard.
+            // Before the input component, which holds a reference to it.
+            var rider = root.AddComponent<Vehicles.VehicleRider>();
+
             var combatInput = root.AddComponent<PlayerCombatInput>();
             SetFields(combatInput, so =>
             {
@@ -345,6 +348,7 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_inventory").objectReferenceValue = inventory;
                 so.FindProperty("_use").objectReferenceValue = itemUse;
                 so.FindProperty("_fishing").objectReferenceValue = fishing;
+                so.FindProperty("_rider").objectReferenceValue = rider;
             });
 
             var motor = root.AddComponent<PlayerMotor>();
