@@ -276,6 +276,7 @@ namespace EscapeWithYourFriends.Net
             AI.LootTest.Begin();
             Items.FishTest.Begin();
             Economy.EconomyTest.Begin();
+            Vehicles.VehicleTest.Begin();
             Player.SurvivalTest.Begin();
             Player.BuffTest.Begin();
         }

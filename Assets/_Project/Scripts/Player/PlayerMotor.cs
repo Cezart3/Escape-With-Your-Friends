@@ -157,6 +157,7 @@ namespace EscapeWithYourFriends.Player
         bool _sprinting;
         Carryable _carryable;
         RagdollController _ragdoll;
+        Vehicles.VehicleRider _rider;
 
         Vector3 _velocity;
         byte _ticksSinceGrounded;
@@ -203,6 +204,7 @@ namespace EscapeWithYourFriends.Player
             _buffs = GetComponent<BuffState>();
             _carryable = GetComponent<Carryable>();
             _ragdoll = GetComponent<RagdollController>();
+            _rider = GetComponent<Vehicles.VehicleRider>();
 
             if (_input == null) _input = GetComponent<PlayerInputReader>();
 
@@ -386,6 +388,12 @@ namespace EscapeWithYourFriends.Player
             ApplyHeight(!state.Crouching);
             _crouching = state.Crouching;
 
+            // A seated body's position belongs to the seat, and the seat is a transform every peer can
+            // already see. Writing the server's world position here would drag it a round trip behind
+            // the vehicle for one frame, every tick, until the glue in Vehicle.LateUpdate put it back
+            // - which is a description of jitter. Everything else in the state still applies.
+            if (_rider != null && _rider.IsSeated) return;
+
             // The controller caches its own position and will overwrite a transform written behind its
             // back. Disabling it for the assignment is the documented way to teleport one.
             bool wasEnabled = _controller.enabled;
@@ -471,6 +479,7 @@ namespace EscapeWithYourFriends.Player
             if (_stun != null && _stun.IsStunned) return true;
             if (_carryable != null && _carryable.IsCarried) return true;
             if (_ragdoll != null && _ragdoll.IsRagdolled) return true;
+            if (_rider != null && _rider.IsSeated) return true;
 
             return false;
         }

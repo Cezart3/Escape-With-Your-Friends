@@ -291,6 +291,14 @@ namespace EscapeWithYourFriends.EditorTools
                       camp + Offset(campFacing + 155f, 8f), campFacing + 335f,
                       pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
 
+                // #57's buggy. Parked at the camp rather than found somewhere, because the thing
+                // M5 has to prove first is that four people can get into one vehicle - and a vehicle
+                // you have to walk half the island to reach is a vehicle three of them never see.
+                // Off to the side, clear of the spawn ring and of the chests behind it.
+                Entry("camp.buggy", VehicleBuilder.BuggyPath,
+                      camp + Offset(campFacing - 75f, 9f), campFacing + 90f,
+                      pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
+
                 Entry("shop", GreyboxDir + "/Shop.prefab", shop, shopFacing,
                       pad: 12f, falloff: 12f, raise: 0.4f, maxSlope: 0.3f),
 

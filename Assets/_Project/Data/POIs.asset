@@ -68,6 +68,17 @@ MonoBehaviour:
     PadRaise: 0
     MaxSlope: 0.3
     AllowUnderwater: 0
+  - Id: camp.buggy
+    PrefabPath: Assets/_Project/Prefabs/Buggy.prefab
+    Position: {x: -86, y: -38}
+    Yaw: 151
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 0
+    PadFalloff: 0
+    PadRaise: 0
+    MaxSlope: 0.3
+    AllowUnderwater: 0
   - Id: shop
     PrefabPath: Assets/_Project/Prefabs/World/Shop.prefab
     Position: {x: -177, y: -28}
