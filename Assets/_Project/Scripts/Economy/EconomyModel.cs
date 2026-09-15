@@ -220,8 +220,14 @@ namespace EscapeWithYourFriends.Economy
         // ------------------------------------------------------------ raiding a camp
 
         /// <summary>
-        /// A sweep of a camp. Never weight-limited - a native carries rope and flint, not four kilos
-        /// of venison - so the trip is as long as the bodies take plus the walk there and back.
+        /// A sweep of the village, which is the camp worth sweeping: #109 put the ammunition and the
+        /// food in the one place that is three hundred metres from the fire, so this is priced off
+        /// <see cref="NativeDef.VillageLoot"/> rather than off what a wanderer has in its hands.
+        ///
+        /// Still not weight-limited - six village bodies come to about twenty-four kilos against a
+        /// forty kilo bag - so the trip is as long as the bodies take plus the walk there and back.
+        /// Picking off wanderers is the same fight for roughly half the money, and is deliberately
+        /// not modelled as its own activity: it is the same row with a worse table.
         /// </summary>
         public static Rate Raiding(NativeCatalog natives, ShopDef shop)
         {
@@ -233,10 +239,10 @@ namespace EscapeWithYourFriends.Economy
 
             foreach (NativeDef def in natives.Natives)
             {
-                if (def == null || def.Loot == null) continue;
+                if (def == null || def.VillageLoot == null) continue;
 
-                coins += Paid(def.Loot, shop);
-                kilos += Carried(def.Loot);
+                coins += Paid(def.VillageLoot, shop);
+                kilos += Carried(def.VillageLoot);
                 counted++;
             }
 
@@ -357,6 +363,42 @@ namespace EscapeWithYourFriends.Economy
             }
 
             return total;
+        }
+
+        // ------------------------------------------------------------ ammunition
+
+        /// <summary>
+        /// How much of what you fire misses. A third, which is generous to the island and unkind to
+        /// the player: every claim about a raid paying for its own ammunition is made against a
+        /// shooter who wastes one round in three.
+        /// </summary>
+        public const float MissAllowance = 1.5f;
+
+        /// <summary>Expected rounds of one kind of ammunition off one body, odds included.</summary>
+        public static float Rounds(LootDrop[] loot, ItemDef ammo)
+        {
+            if (loot == null || ammo == null) return 0f;
+
+            float total = 0f;
+
+            foreach (LootDrop drop in loot)
+                if (drop != null && drop.Item == ammo) total += drop.Expected;
+
+            return total;
+        }
+
+        /// <summary>
+        /// Rounds to put one native down with one gun, misses included. A shotgun shell is counted as
+        /// all eight pellets landing, which is the friendly reading for the gun and therefore the
+        /// hard one for the claim this number is used to make.
+        /// </summary>
+        public static float RoundsToKill(NativeDef native, WeaponDef gun)
+        {
+            if (native == null || gun == null || gun.Hit == null) return 0f;
+
+            float perShot = Mathf.Max(0.01f, gun.Hit.Damage * gun.Pellets);
+
+            return native.MaxHealth / perShot * MissAllowance;
         }
 
         /// <summary>Coins per kilogram, which is the only honest way to compare two bags.</summary>

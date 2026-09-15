@@ -56,6 +56,10 @@ namespace EscapeWithYourFriends.AI
             [Tooltip("How many more it keeps once it is dark.")]
             public int NightExtra = 1;
 
+            [Tooltip("Whether this camp has stores in it. Village yes, cave outpost no; decides which "
+                     + "of a role's two loot tables its bodies roll.")]
+            public bool Stocked;
+
             /// <summary>What this line is trying to hold right now, given how dark it is.</summary>
             public int Wanted(float night01) => Population + Mathf.RoundToInt(NightExtra * Mathf.Clamp01(night01));
         }
@@ -162,7 +166,7 @@ namespace EscapeWithYourFriends.AI
 
             if (!Ground(camp, out Vector3 position)) return;
 
-            Native native = ServerSpawn(camp.Role, position, camp.Centre);
+            Native native = ServerSpawn(camp.Role, position, camp.Centre, camp.Stocked);
             if (native == null) return;
 
             live.Add(native);
@@ -176,7 +180,7 @@ namespace EscapeWithYourFriends.AI
         /// only, and public for the same reason the wildlife's version is: a test that waits for a
         /// village to notice it is a test that measures the weather.
         /// </summary>
-        public Native ServerSpawn(NativeDef role, Vector3 position, Vector3 camp)
+        public Native ServerSpawn(NativeDef role, Vector3 position, Vector3 camp, bool stocked = false)
         {
             if (role == null || _prefab == null) return null;
             if (_manager == null || !_manager.ServerManager.Started) return null;
@@ -198,7 +202,7 @@ namespace EscapeWithYourFriends.AI
 
             // Before the spawn, so the role index rides along in the spawn message and no client ever
             // sees an unpainted body.
-            native.ServerConfigure(role, camp);
+            native.ServerConfigure(role, camp, stocked);
 
             _manager.ServerManager.Spawn(instance);
             _spawnedTotal++;

@@ -60,3 +60,40 @@ MonoBehaviour:
     Min: 1
     Max: 2
     Chance: 1
+  - Item: {fileID: 11400000, guid: 701c6d59ec917714b8c0da132e091bc4, type: 2}
+    Min: 1
+    Max: 1
+    Chance: 0.4
+  _villageLoot:
+  - Item: {fileID: 11400000, guid: 44d7ece014ee47d4487c3aa022dc80be, type: 2}
+    Min: 1
+    Max: 2
+    Chance: 1
+  - Item: {fileID: 11400000, guid: f35703f74c122f84da9933e3ffcfda78, type: 2}
+    Min: 2
+    Max: 3
+    Chance: 1
+  - Item: {fileID: 11400000, guid: 44dc35f5974ecd4408e030cbe34bc31f, type: 2}
+    Min: 1
+    Max: 2
+    Chance: 1
+  - Item: {fileID: 11400000, guid: 701c6d59ec917714b8c0da132e091bc4, type: 2}
+    Min: 1
+    Max: 1
+    Chance: 0.4
+  - Item: {fileID: 11400000, guid: 3cc8b0b26e9839c4d9cd8a7c71d93e87, type: 2}
+    Min: 2
+    Max: 5
+    Chance: 0.8
+  - Item: {fileID: 11400000, guid: bca846cb3a39c9d4cb5289bde5b78b74, type: 2}
+    Min: 2
+    Max: 5
+    Chance: 0.8
+  - Item: {fileID: 11400000, guid: b0a65aa3f09b4b540a2e8537c53cde48, type: 2}
+    Min: 1
+    Max: 2
+    Chance: 0.7
+  - Item: {fileID: 11400000, guid: 824f7266f5cf17145ae427803853352d, type: 2}
+    Min: 1
+    Max: 1
+    Chance: 0.35

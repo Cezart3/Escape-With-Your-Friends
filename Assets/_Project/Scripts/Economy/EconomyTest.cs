@@ -300,8 +300,25 @@ namespace EscapeWithYourFriends.Economy
 
             bag.ServerClear();
 
-            // Standing at the counter is the player's job and teleporting is the harness's.
-            bag.transform.position = counter.transform.position + counter.transform.forward * 2f;
+            // Standing at the counter is the player's job and teleporting is the harness's. Through
+            // the motor rather than by writing the transform: a CharacterController owns its own
+            // position and will put a body straight back where it was, which showed up here as a
+            // trader who sold nothing and said nothing about why.
+            Vector3 spot = counter.transform.position + counter.transform.forward * 2f;
+            var motor = bag.GetComponent<PlayerMotor>();
+
+            if (motor != null) motor.ServerTeleport(spot, counter.transform.eulerAngles.y + 180f);
+            else bag.transform.position = spot;
+
+            // And waited on rather than slept off, because the arrival is the precondition for every
+            // number below it.
+            float arrival = Time.time + 5f;
+            while (Time.time < arrival && !counter.InReach(bag.transform.position))
+                yield return null;
+
+            Check($"the player reached the counter ({Vector3.Distance(bag.transform.position, counter.transform.position):0.0}m)",
+                  counter.InReach(bag.transform.position));
+
             yield return new WaitForSeconds(0.3f);
 
             int expected = Stock(bag, shop, animal != null ? animal.Loot : null)
@@ -316,7 +333,15 @@ namespace EscapeWithYourFriends.Economy
                 ItemStack stack = bag[slot];
                 if (stack.IsEmpty) continue;
 
-                paid += counter.ServerSell(bag, wallet, slot, stack.Count, out string _);
+                int got = counter.ServerSell(bag, wallet, slot, stack.Count, out string why);
+
+                // The refusal is the whole diagnosis when this case fails, and a harness that throws
+                // it away is a harness whose only output is a number that disagrees with another.
+                if (got <= 0)
+                    Debug.LogWarning($"[EconomyTest] the trader refused {stack.Count}x "
+                                     + $"{(stack.Def != null ? stack.Def.Id : "?")}: {why}.");
+
+                paid += got;
             }
 
             int banked = wallet.Balance - before;

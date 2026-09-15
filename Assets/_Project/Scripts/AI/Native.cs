@@ -99,6 +99,9 @@ namespace EscapeWithYourFriends.AI
 
         NativeState _state = NativeState.Idle;
         Vector3 _camp;
+
+        /// <summary>Whether this body came out of a camp with stores in it. Decides its loot table.</summary>
+        bool _stocked;
         float _stateUntil;
         float _nextSense;
         float _nextAttack;
@@ -143,6 +146,12 @@ namespace EscapeWithYourFriends.AI
 
         /// <summary>Where it belongs. Leashes measure from here, and a flee runs to it.</summary>
         public Vector3 Camp => _camp;
+
+        /// <summary>
+        /// Whether this one was manning a stocked camp. Server-side only - it is an input to the
+        /// loot roll, which is a host decision, and a client has no use for it.
+        /// </summary>
+        public bool Stocked => _stocked;
 
         /// <summary>Where it thinks you are. Only meaningful while it has lost sight of you.</summary>
         public Vector3 Suspect => _suspect;
@@ -231,15 +240,17 @@ namespace EscapeWithYourFriends.AI
         }
 
         /// <summary>
-        /// Server only, and **before** <c>ServerManager.Spawn</c>. Says what this body is and which
-        /// camp it belongs to - the two things a shared prefab cannot know about itself.
+        /// Server only, and **before** <c>ServerManager.Spawn</c>. Says what this body is, which camp
+        /// it belongs to and whether that camp has stores in it - the three things a shared prefab
+        /// cannot know about itself.
         /// </summary>
-        public void ServerConfigure(NativeDef def, Vector3 camp)
+        public void ServerConfigure(NativeDef def, Vector3 camp, bool stocked = false)
         {
             if (def == null) return;
 
             _def = def;
             _camp = camp;
+            _stocked = stocked;
 
             NativeCatalog catalog = _catalog != null ? _catalog : NativeCatalog.Active;
             if (catalog != null) _role.Value = catalog.IndexOf(def);
@@ -1160,12 +1171,15 @@ namespace EscapeWithYourFriends.AI
         /// </summary>
         void ServerDropLoot()
         {
-            if (_def == null || _def.Loot == null) return;
+            if (_def == null) return;
+
+            LootDrop[] table = _def.LootFor(_stocked);
+            if (table == null) return;
 
             var dropped = new List<ItemStack>();
             int lines = 0;
 
-            foreach (LootDrop drop in _def.Loot)
+            foreach (LootDrop drop in table)
             {
                 if (drop == null || drop.Item == null) continue;
                 if (Random.value > Mathf.Clamp01(drop.Chance)) continue;
@@ -1193,7 +1207,8 @@ namespace EscapeWithYourFriends.AI
                 lines++;
             }
 
-            Debug.Log($"[Native] {_def.Id} killed by {_health.LastAttackerId}; dropped {Describe(dropped)}.");
+            Debug.Log($"[Native] {(_stocked ? "village" : "wandering")} {_def.Id} killed by "
+                      + $"{_health.LastAttackerId}; dropped {Describe(dropped)}.");
 
             Looted?.Invoke(this, dropped);
         }
