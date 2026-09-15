@@ -4533,6 +4533,99 @@ interactor, so a passenger cannot open a chest they are parked next to either. A
 despawns with people inside empties itself politely rather than throwing them, which is the less
 funny of the two options and stays that way until somebody asks.
 
+### The buggy drives (#58)
+
+The brief for the car is one sentence — *fun to drive badly* — and the tuning that gets there is not
+the tuning a simulator would pick. High grip, soft suspension, a centre of mass at axle height, and a
+top speed low enough that hitting it feels like an achievement. `CarController` is four WheelColliders
+and about two hundred lines; everything interesting in it is a number that was moved until something
+stopped being annoying.
+
+**The rear wheels drive and the front wheels steer, and they do not share the job.** The first version
+put motor torque on all four, which is the obvious thing to do and made the car refuse to turn: at
+full lock the front tyres spent their entire friction budget dragging themselves forwards and had
+nothing left to point the car with. A tyre has one friction budget, not one per direction. Splitting
+the jobs also hands the buggy a tail that steps out under power, which is the entire reason it exists.
+
+**Steering lock falls off with speed**, 34° at rest down to 11° at 22 m/s. Without that, full lock at
+80 km/h is not a corner, it is a barrel roll, and one that happens faster than a player can react to.
+The visual wheels turn from a `SyncVar` rather than from the collider, because the collider only runs
+on the host — everywhere else the chassis is kinematic and its wheels are switched off.
+
+**Throttle against motion is a brake, not reverse.** Tapping S at 20 m/s without this puts the wheels
+in reverse under a car still doing 20 m/s, which locks them and turns a stop into a slide into
+whatever is ahead. Reverse only engages once the car is nearly stopped.
+
+**Motor torque does not wake a sleeping Rigidbody.** PhysX parks the chassis after a few seconds
+standing still; the wheels then keep spinning against a body nobody is integrating, and the car sits
+there with all four tyres turning and slipping and going nowhere. Anything that asks the car to move
+has to `WakeUp()` it first. This one cost a full diagnostic cycle to find and is two lines to fix.
+
+**It rights itself, but only once the joke is over.** `Right` fires when the car is both upside down
+*and* going nowhere, so a barrel roll still in progress is left alone to finish. The heading is kept
+and only the roll and pitch are thrown away, because the way the car was pointing is usually the way
+out of wherever it landed. Position and rotation are assigned rather than moved: `MovePosition` is an
+interpolated sweep meant for kinematic bodies and would drag the chassis through whatever it is lying
+against on the way up.
+
+**Input is quantised to a tenth and sent only when it changes**, so holding W costs one packet instead
+of thirty a second. A keyboard produces about four distinct values per axis anyway. Ownership is the
+permission check and there is no second one: seat 0 takes ownership of the vehicle, so a passenger
+calling `OwnerDrive` is refused by FishNet before it reaches any code here.
+
+#### The harness needed a floor before it could measure anything
+
+Five runs of `-carTest` reported that the buggy would not move, would not turn, or both. All five were
+correct and none of them were about the car.
+
+The buggy is parked by the island's POI bake, and the first run found it wedged against `Shelter.Post2`
+at ten kilonewtons — a static collider, which PhysX treats as infinitely heavy, so a 900 kg car pushing
+eight thousand newtons against one can spin its wheels forever. Moving it took the peak speed from
+3.3 m/s to 5.7. The second run had it nose-first into a bank: same symptom, and only the *direction* of
+the contact impulse could tell the two apart. Giving it a terrain pad of its own reproduced the same
+geometry 0.63 m higher up. Making the harness hunt for level ground got one honest acceleration number
+and then reported 13° of yaw in seven seconds of full lock — because the flat patch it found had a
+building on it, and `Terrain.SampleHeight` cannot see walls.
+
+The answer was to stop testing on the island. `Recentre` drops a 1200 m slab of collider at
+(4000, 100, 4000) and puts the buggy in the middle of it before every section that drives. It is
+twelve lines, it replaced eighty, it gives the same answer every run, and the numbers that come off it
+are about the car, not about the island. The suite puts the buggy back where the bake parked it on
+the way out, because it borrowed the only car in the world. It also has to have the process to itself:
+`-carTest` and `-vehicleTest` both drive that one car, and run together the first one to reach 30 m/s
+makes a liar out of the other's "the parked buggy stays parked".
+
+The diagnostics that found all of this are still in the code, because the next report of "the car is
+stuck" will need them. `WheelReport` reads torque and steering angle back *off the colliders* rather
+than trusting the fields written to them — "the motor is at 900 Nm" is a statement about intent, and
+what PhysX integrates is whatever is on the WheelCollider at the end of the step. `OnCollisionStay`
+records the hardest real contact and its impulse vector; an earlier version used `Physics.OverlapBox`
+on the chassis bounds and confidently named objects the car was nowhere near, because the AABB of a
+rotated 1.9 × 3.6 box is about half again too big.
+
+```
+[CarTest] 9s of throttle: peak 22.1 m/s (80 km/h), 0-10 m/s in 2.4s.
+[CarTest] braking from 22.0 m/s: stopped in 15.0m.
+[CarTest] full lock at throttle 0.7: 446 degrees over 7s (64 deg/s).
+[CarTest] 12s of real driving with four aboard, peaking at 22.1 m/s: worst drift 0.064m over 23964 sample(s).
+[CarTest] flipped, then righted itself after 0.8s on its roof.
+[CarTest] driver ejected at 5.0 m/s; the buggy braked itself to a stop.
+```
+
+Sixty-four degrees a second at full lock is a ten metre circle at 11 m/s, which is a go-kart, not a
+car — deliberately. The drift line is the #57 seat glue still holding at four times the speed it was
+written against; its budget went from 2 cm to 15 cm because at 22 m/s the chassis is interpolated
+between physics steps and the riders are placed on a different beat, and three centimetres of that is
+not a passenger coming loose.
+
+Regressions: `-vehicleTest` 79/79.
+
+**Not done here:** the car is driven by exactly one person and predicted by nobody — the chassis is a
+server-authoritative NetworkTransform, so a driver on 100 ms sees their own steering 100 ms late.
+That is the hard part of M5 and it is deliberately not in this issue. Hitting a player does nothing
+yet (#60). There is no engine sound, no skid, no damage and no fuel, and the buggy respawns nowhere if
+somebody drives it into the sea.
+
 ---
 
 ## Data-driven content

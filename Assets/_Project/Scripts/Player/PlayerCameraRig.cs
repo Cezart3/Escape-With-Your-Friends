@@ -4,6 +4,7 @@ using EscapeWithYourFriends.Data;
 using FishNet.Object;
 using Unity.Cinemachine;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace EscapeWithYourFriends.Player
 {
@@ -229,6 +230,14 @@ namespace EscapeWithYourFriends.Player
 
             go.AddComponent<CinemachineHardLockToTarget>();
             go.AddComponent<CinemachineRotateWithFollowTarget>();
+
+            // Your own body is not drawn for you. The motor steps at the network tick rate and the
+            // eye is smoothed to match, so the camera rides about one tick behind the head - far
+            // enough at a run that the near plane ends up inside your own skull, which is what
+            // "the camera comes out of the player" looks like. Shadows stay, so you still see
+            // yourself on the ground and everyone else still sees all of you.
+            foreach (Renderer own in GetComponentsInChildren<Renderer>(true))
+                own.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
         }
 
         void LateUpdate()

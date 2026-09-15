@@ -70,13 +70,13 @@ MonoBehaviour:
     AllowUnderwater: 0
   - Id: camp.buggy
     PrefabPath: Assets/_Project/Prefabs/Buggy.prefab
-    Position: {x: -86, y: -38}
-    Yaw: 151
+    Position: {x: -95, y: -50}
+    Yaw: 256
     YOffset: 0
     SnapToGround: 1
-    PadRadius: 0
-    PadFalloff: 0
-    PadRaise: 0
+    PadRadius: 10
+    PadFalloff: 6
+    PadRaise: 0.5
     MaxSlope: 0.3
     AllowUnderwater: 0
   - Id: shop

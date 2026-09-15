@@ -34,6 +34,9 @@ namespace EscapeWithYourFriends.Vehicles
         CharacterController _controller;
         bool _controllerWasEnabled;
 
+        /// <summary>The engine of whatever we are sitting in, if it has one. Cached on the way in.</summary>
+        CarController _car;
+
         readonly List<Collider> _ignoredWith = new();
 
         /// <summary>The vehicle this body is sitting in, or null.</summary>
@@ -44,8 +47,23 @@ namespace EscapeWithYourFriends.Vehicles
 
         public bool IsSeated => _vehicle != null;
 
-        /// <summary>Seat 0. The one whose input will move the thing once #58 exists.</summary>
+        /// <summary>Seat 0. The one whose input moves the thing.</summary>
         public bool IsDriving => _vehicle != null && _seat == 0;
+
+        /// <summary>
+        /// Owner side, every frame while driving. Forwarded rather than read here, because
+        /// <see cref="Player.PlayerCombatInput"/> is the one file that decides which button means
+        /// which verb and a second opinion on that is how a remap goes half-applied.
+        ///
+        /// Steering a vehicle that has no engine is not an error: a boat and a plane will answer the
+        /// same two axes with their own components, and a trailer will answer with nothing.
+        /// </summary>
+        public void Drive(Vector2 move, bool handbrake)
+        {
+            if (_car == null || !IsDriving) return;
+
+            _car.OwnerDrive(move.y, move.x, handbrake);
+        }
 
         void Awake() => _controller = GetComponent<CharacterController>();
 
@@ -85,6 +103,7 @@ namespace EscapeWithYourFriends.Vehicles
 
             _vehicle = vehicle;
             _seat = seat;
+            _car = vehicle.GetComponent<CarController>();
 
             if (_controller != null)
             {
@@ -112,6 +131,7 @@ namespace EscapeWithYourFriends.Vehicles
 
             _vehicle = null;
             _seat = -1;
+            _car = null;
 
             IgnoreVehicle(vehicle, false);
 

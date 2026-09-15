@@ -294,10 +294,22 @@ namespace EscapeWithYourFriends.EditorTools
                 // #57's buggy. Parked at the camp rather than found somewhere, because the thing
                 // M5 has to prove first is that four people can get into one vehicle - and a vehicle
                 // you have to walk half the island to reach is a vehicle three of them never see.
-                // Off to the side, clear of the spawn ring and of the chests behind it.
+                // Behind the camp and nose-out, which is the only arc nothing else claims: the
+                // revive machine is dead ahead, the bench at +70, the chests at +140 and +155, and
+                // the shelter fills the quarter around -90. It was parked at -75 and spent every
+                // physics step of the first harness run wedged against Shelter.Post2 with ten
+                // kilonewtons of contact, spinning all four wheels and going nowhere - a car cannot
+                // push a static collider, and every prop in this camp is static.
+                //
+                // It gets a pad of its own, unlike everything else on the camp's. The camp's pad is
+                // 22m wide with 16m of falloff, so its flat core is only about 6m - and 6m is inside
+                // the spawn ring. Anything parked outside that ring is standing on the ramp, which
+                // for a 3.6m car with 0.5m of belly clearance means one end is in a hillside: the
+                // second harness run had it pushing 7kN of terrain sideways at chassis height and
+                // going nowhere. The raise matches the camp's so the two pads do not make a step.
                 Entry("camp.buggy", VehicleBuilder.BuggyPath,
-                      camp + Offset(campFacing - 75f, 9f), campFacing + 90f,
-                      pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
+                      camp + Offset(campFacing + 195f, 11f), campFacing + 195f,
+                      pad: 10f, falloff: 6f, raise: 0.5f, maxSlope: 0.3f),
 
                 Entry("shop", GreyboxDir + "/Shop.prefab", shop, shopFacing,
                       pad: 12f, falloff: 12f, raise: 0.4f, maxSlope: 0.3f),
