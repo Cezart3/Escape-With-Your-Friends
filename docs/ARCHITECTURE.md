@@ -5308,6 +5308,46 @@ randomised reward behind a paid door. Adding a second game to the casino is fine
 to the door is not.
 
 
+### CI is one build, and it sits out until it is paid for (#10)
+
+`.github/workflows/compile.yml` runs on every push to `main` and on every pull request. It is a
+real player build rather than a script-only pass, because Unity refuses to run `-executeMethod`
+at all when compilation fails: a build that finishes is proof the code compiles, and it proves
+the three enabled scenes still load on the way past. It is the same entry point a person runs
+locally - `BuildTool.PerformBuild` with `-scriptingBackend mono` - so there is no CI-only path
+that can rot without anybody noticing. Mono because it builds in about a minute against IL2CPP's
+ten, and compiling is the whole point; `BuildTool` puts the project's own backend back afterwards.
+
+The job is gated on a `UNITY_LICENSE` secret and **skips, green, when there is none**. A runner
+cannot start Unity unactivated, and a workflow that fails red on every push until somebody does
+paperwork gets muted inside a week, which is worse than having no workflow at all. #10 itself says
+to defer if the licence flow is painful, so the deferral is built into the file: it ships ready and
+costs nothing until the secret appears.
+
+To turn it on, add three repository secrets (Settings -> Secrets and variables -> Actions):
+
+| Secret | What goes in it |
+|---|---|
+| `UNITY_LICENSE` | the full contents of a `Unity_lic.ulf` file, obtained by running [game-ci's activation](https://game.ci/docs/github/activation) once: it emits a `.alf`, which `license.unity3d.com/manual` trades for the `.ulf` |
+| `UNITY_EMAIL` | the Unity account the licence belongs to |
+| `UNITY_PASSWORD` | that account's password |
+
+Two things about the file that look like mistakes and are not. The licence check is a shell step
+writing to `$GITHUB_OUTPUT` rather than an `if:` on the job, because the `secrets` context is not
+available in any `if:` expression - `env` is, which is why the three secrets are lifted into `env`
+at the top. And the `Library` cache key hashes `Assets/**`, which is slow to compute and still
+cheaper than a cold asset import, which takes longer than the build.
+
+What CI deliberately does not do is run the headless harnesses. Those need a *Windows* player plus
+a second process on a chosen port, and the assertions live in a loaded scene; reproducing that on a
+Linux runner means wine and a display, for tests that already run locally in under a minute. CI is
+the compile gate. Testing stays on the machine that can play the game.
+
+One known way for this to fail through no fault of ours: game-ci publishes its editor images per
+Unity version, and a brand-new version can be missing for a while. If the job dies pulling
+`unityci/editor:ubuntu-6000.3.23f1-windows-mono-3`, the fix is to wait or to pin `unityVersion` to
+the nearest published one, not to go looking through the C#.
+
 ---
 
 ## Data-driven content
