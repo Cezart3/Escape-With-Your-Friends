@@ -289,6 +289,7 @@ namespace EscapeWithYourFriends.Net
             Player.SurvivalTest.Begin();
             Player.BuffTest.Begin();
             World.Island2Test.Begin();
+            Vehicles.VoyageTest.Begin();
         }
 
         void OnClientConnectionState(ClientConnectionStateArgs args)

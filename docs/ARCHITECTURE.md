@@ -5439,6 +5439,106 @@ It cannot check whether the island *feels* worse. That is the playtest.
 
 Nothing sails there yet - the boat and the crossing are #69, and the reason to go is #70.
 
+### The boat is a gate, a scene swap and a tow (#69)
+
+Three sentences, and each one is a different part of the code.
+
+**The gate is four parts, and they belong to the group.** A boat part in your hand is the fourth
+thing the interact key can mean on a vehicle, after a ride, a can of fuel and a piece of scrap -
+`Vehicle.ServiceLabel` already had the shape and `BoatVoyage` only had to answer it. That is the
+whole of the interface: no new key, no new screen, nothing else standing on the mooring competing
+for the same press. Until the fourth part goes in, the hull refuses the *seat* rather than the
+throttle, which is why nothing that could make a boat move needed a check adding to it, and why the
+refusal is legible standing next to the thing: *"the boat is 2 part(s) short of finished"*.
+
+What is fitted is counted in a static, because the hull at the far island's mooring is a different
+`NetworkObject` in a different scene, and asking a group that has already bought a boat to buy the
+second island's one as well would be a bug that looks like a design.
+
+**Travel is a scene swap, not streaming.** The islands are two scenes and nothing on one is ever
+visible from the other, so loading both to slide between them would be paying for a view nobody
+gets. Sail past the edge of the map, hold it for four seconds with somebody at the wheel, and
+`GameSceneLoader.ServerTravel` moves the session. Three things make that work and none of them is
+mine:
+
+* **`MovedNetworkObjects`** carries the player bodies into the new scene before the old one goes.
+  Without it they are despawned with it, because `PlayerSpawner` deliberately puts each body in the
+  island scene so its owner observes it - the comment that says so is the reason this was the first
+  thing to get right rather than the last thing to discover.
+* **`ReplaceOption.OnlineOnly`** unloads what FishNet loaded and leaves Bootstrap alone, which is
+  where the NetworkManager, the spawner and the scene loader live.
+* **the boat is a scene object, and scene objects cannot be moved between scenes.** That is not a
+  limitation worked around here, it is the design: each island keeps its own hull at its own
+  mooring, so wherever you land there is something tied up waiting.
+
+Where the edge is comes from the terrain itself - its own half-extent plus sixty metres - so there
+is no marker to place, and the second island gets a smaller crossing for free because it is a
+smaller island. Anybody still sitting in a vehicle is put out of it first: you cannot take the boat
+with you, and a rider glued to an anchor in a scene that no longer exists is a body nobody can move.
+
+Arrivals are put on the destination's spawn points, read out of the scene that just loaded rather
+than out of `PlayerSpawner`'s registry. The old island's `SceneSpawnPoints` hands the spawner a null
+on its way out, the new one hands it an array on its way in, and the order of those two against each
+other during a swap is not a thing worth depending on.
+
+**Losing the boat is a tow, not a respawn.** A hull that cannot drive - wrecked on a rock, or run
+dry halfway across - waits forty-five seconds and then turns up at its mooring, repaired and
+fuelled, with the crew still standing on it, because riders are glued to their anchors and a
+teleport takes them along. It costs the crossing, which is a punishment, rather than the run, which
+on an island with no shop and no fuel would be a soft lock. The condition it triggers on is
+`VehicleCondition.CanDrive`, so wrecked and dry are the same code path and neither needed a second
+one.
+
+#### The bug underneath, which was never about boats
+
+The first crossing that worked left the first island loaded. Everything on it - the shop, the
+casino, twenty points of interest and the boat you had just sailed away from - was still standing,
+in world space, on top of the second island. The scene unloaded; its contents did not, because they
+were never in it.
+
+Unity puts an `Instantiate` with no parent into whatever scene is **active**, and the active scene
+was Bootstrap: the map is loaded additively and nothing had ever asked for it to be made active,
+because until something unloaded a map it made no difference. `POISpawner`, `WorldSpawner` and the
+item spawners all build their world at runtime with a parentless `Instantiate`, so all of it
+belonged to the one scene that never goes away.
+
+The fix is in two places, because the world is built at two different times. Everything spawned
+*during play* - a dropped item, a corpse, an animal - is covered by making the island the active
+scene when it loads, which is one field on the load: `PreferredActiveScene`. Everything spawned
+*during the load* is not, because `POISpawner` runs while the scene is still coming up and the
+active scene has not changed yet, so it moves each instance into its own scene by hand. Both, or
+the boat stays afloat on the wrong island.
+
+Worth writing down because the symptom named a boat and the cause named every spawner in the
+project, and because none of it was visible until something finally unloaded a scene.
+
+#### What the harness measures
+
+`-voyageTest` starts on the first island and refuses to run anywhere else. The acceptance - *"travel
+both ways works, and losing the boat is recoverable"* - is unusually checkable for this project, so
+it is checked directly, in the order a group meets it: the gate, the sinking, the crossing out, and
+the crossing back.
+
+One decision in it is worth writing down. Arrival is confirmed by **measuring the ground under the
+player's feet**, not by reading `GameSceneLoader.Current`: that string is set by the same code the
+test is testing, and it would happily say `Island2` on a session where nothing loaded. The first
+island is 1024m square and the second is 512, so the terrain says where you are and cannot be talked
+into lying about it. Same lesson as #66's sixty shots at the sky and #68's fog read back out of
+`RenderSettings`.
+
+```
+[VoyageTest] the boat went from "the boat is 4 part(s) short of finished" to seaworthy on 4 press(es)
+             of the same key that pours fuel in.
+[VoyageTest] wrecked 643m from the mooring, back alongside it 0.0m out in 6s, 120.0/120L, 140/140 integrity.
+[VoyageTest] Island -> Island2: ashore on 512m of terrain, 72m from the hull moored there, which is seaworthy.
+[VoyageTest] Island2 -> Island: ashore on 1024m of terrain, 98m from the hull moored there, which is seaworthy.
+[VoyageTest] 29 passed, 0 failed.
+```
+
+What it cannot check is whether four parts at 1400 coins feels earned rather than grindy. That is
+`EconomyTest`'s arithmetic - the boat is deliberately one and a half to three sessions away - and
+then the playtest.
+
 ---
 
 ## Data-driven content

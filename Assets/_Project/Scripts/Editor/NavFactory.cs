@@ -328,6 +328,12 @@ namespace EscapeWithYourFriends.EditorTools
             foreach (POISpawner.Placement placement in spawner.Placements)
             {
                 if (placement == null || placement.Id == "camp.base") continue;
+
+                // A boat is moored in the sea, so no agent will ever walk to it and the check would
+                // shout about that on every bake of every island forever. Anything under the
+                // waterline is exempt; anything standing on the beach is not.
+                if (placement.Position.y < WaterSurface.SeaLevel) continue;
+
                 PathTo(placement.Id, placement.Position, camp);
             }
         }

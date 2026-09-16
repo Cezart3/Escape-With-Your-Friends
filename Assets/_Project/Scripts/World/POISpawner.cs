@@ -120,6 +120,13 @@ namespace EscapeWithYourFriends.World
                                                      Quaternion.Euler(placement.Euler));
                 instance.name = placement.Prefab.name + " (" + placement.Id + ")";
 
+                // Into this island's scene, explicitly. A parentless Instantiate lands in whatever
+                // scene is active, which during a load is still Bootstrap - the scene that never
+                // unloads - so without this the whole island stays standing after you have sailed
+                // away from it, boat included. #69 found that the hard way.
+                UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(
+                    instance.gameObject, gameObject.scene);
+
                 // The catalog id wins over whatever the prefab was built with. The prefab is a kind
                 // of place; the catalog entry is this particular one, and everything that looks a
                 // landmark up - objectives, the HUD, the abduction target in #107 - means that one.

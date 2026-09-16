@@ -121,6 +121,13 @@ namespace EscapeWithYourFriends.Vehicles
                 yield break;
             }
 
+            // #69 changed what a boat is when nobody has paid for it. This suite measures a hull in
+            // clean water two kilometres out, which is both a boat that cannot be boarded and a boat
+            // that is well past the edge of the map, so: hand it its parts, and hold the crossing.
+            BoatVoyage.Sailing = false;
+            var voyage = hull.GetComponent<BoatVoyage>();
+            if (voyage != null) voyage.ServerGrant();
+
             Shape(boat, body, hull);
 
             // From the mooring first, because "it floats up off the seabed it was baked onto" is the
@@ -144,6 +151,8 @@ namespace EscapeWithYourFriends.Vehicles
             yield return Driverless(boat, hull, motor);
 
             Cleanup(hull, boat, body);
+
+            BoatVoyage.Sailing = true;
 
             Report();
         }
