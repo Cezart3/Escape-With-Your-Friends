@@ -282,6 +282,7 @@ namespace EscapeWithYourFriends.Net
             Vehicles.ImpactTest.Begin();
             Vehicles.ConditionTest.Begin();
             Vehicles.VehicleUpgradeTest.Begin();
+            Casino.ChipsTest.Begin();
             Player.SurvivalTest.Begin();
             Player.BuffTest.Begin();
         }
