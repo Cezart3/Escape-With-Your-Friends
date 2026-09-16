@@ -19,10 +19,21 @@ namespace EscapeWithYourFriends.EditorTools
     {
         public const string WaterFolder = "Assets/_Project/Art/Water";
         public const string ShaderPath = WaterFolder + "/Water.shader";
-        public const string MaterialPath = WaterFolder + "/Water.mat";
+        /// <summary>
+        /// Suffix on the three assets that describe *this* island's sea: the depth mask is baked
+        /// from its coastline, the material carries its size, and the prefab points at both. The
+        /// meshes and the ripple texture are shape-independent and stay shared.
+        ///
+        /// ponytail: a static set at the top of <see cref="EnsureWater"/>, for the same reason
+        /// NavFactory has one. Without it, baking the second island silently repaints the first
+        /// island's surf line - which is how #68 found out this file was island-specific at all.
+        /// </summary>
+        static string _suffix = "";
+
+        public static string MaterialPath => WaterFolder + $"/Water{_suffix}.mat";
         public const string NormalPath = WaterFolder + "/WaterRipples.png";
-        public const string DepthMaskPath = WaterFolder + "/WaterDepth.png";
-        public const string PrefabPath = WaterFolder + "/Water.prefab";
+        public static string DepthMaskPath => WaterFolder + $"/WaterDepth{_suffix}.png";
+        public static string PrefabPath => WaterFolder + $"/Water{_suffix}.prefab";
         public const string PatchMeshPath = WaterFolder + "/WaterPatch.asset";
         public const string RingMeshPath = WaterFolder + "/WaterHorizon.asset";
 
@@ -39,6 +50,8 @@ namespace EscapeWithYourFriends.EditorTools
         /// </summary>
         public static GameObject EnsureWater(IslandProfile profile)
         {
+            _suffix = profile != null && profile.Id == POIFactory.SecondIslandId ? "2" : "";
+
             Directory.CreateDirectory(WaterFolder);
 
             Texture2D depth = BakeDepthMask(profile);

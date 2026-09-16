@@ -17,6 +17,9 @@ namespace EscapeWithYourFriends.World
     public class IslandProfile : ScriptableObject
     {
         [Header("Identity")]
+        [Tooltip("Asset basename for everything this island owns: profile, terrain, scene, POI catalog, NavMesh and sky. \"Island\" is the first one, \"Island2\" the second.")]
+        public string Id = "Island";
+
         [Tooltip("Everything derives from this. Same seed plus same parameters means the same island, byte for byte.")]
         public int Seed = 20260830;
 
@@ -219,6 +222,10 @@ namespace EscapeWithYourFriends.World
 
         [Tooltip("Global multiplier on grass density, 0 to 1. The min-spec escape hatch.")]
         public float DetailDensity = 0.8f;
+
+        [Header("Weather")]
+        [Tooltip("Multiplier on the day/night profile's fog. One island, one climate; 2 is the second island's murk.")]
+        public float FogScale = 1f;
 
         [Header("Points of interest")]
         [Tooltip("Where the camps, the shop and the village stand. Their pads are part of the height function, so changing this changes the island.")]

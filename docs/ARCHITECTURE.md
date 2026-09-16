@@ -5348,6 +5348,97 @@ Unity version, and a brand-new version can be missing for a while. If the job di
 `unityci/editor:ubuntu-6000.3.23f1-windows-mono-3`, the fix is to wait or to pin `unityVersion` to
 the nearest published one, not to go looking through the C#.
 
+### The second island is a second set of numbers (#68)
+
+There is no second generator. `TerrainGenerator` takes `-island 2`, which points its five asset
+paths at a second set - `Island2.asset`, `Island2Terrain.asset`, `POIs2.asset`,
+`Island2NavMesh.asset`, `Scenes/Island2.unity` - and everything downstream reads the new
+`IslandProfile.Id` instead, because the profile was already threaded through every factory. The
+first island keeps the names it has always had, so its GUIDs and every scene reference to them
+survive this change untouched.
+
+```
+Unity.exe -quit -batchmode -nographics -projectPath . \
+  -executeMethod EscapeWithYourFriends.EditorTools.TerrainGenerator.GenerateIsland \
+  -island 2 -rebuildPois -logFile island2.log
+```
+
+The whole feature is: five paths, two branches and a float. The branches are the POI catalog and the
+camp list; the float is fog.
+
+#### Hostile in three parts, none of them new machinery
+
+**Shape.** `Harden()` writes the second island's parameters once, when the asset is created, and
+after that the YAML is the truth like everywhere else. Half the size on each axis with the sample
+grids halved to match, so the metres per sample never change. Taller and choppier relief out of less
+ground, a coast of headlands instead of a ring of sand, the beach band cut from five metres to 1.6
+and the shore left at its natural slope, rock from 26 degrees and from 40m up, and no palms at all -
+a palm reads as holiday. What comes out is 512m square, a fifth of it dry, averaging
+**23.2 degrees of slope**, with **2% sand against 37% bare rock** where the first island has beaches
+and jungle.
+
+**Weather.** `DayNightCycle.FogScale` multiplies the fog density the shared sky profile asks for,
+and the second island asks for two. That is the whole of "worse weather": one climate, turned
+murkier. It cuts the sight line from 285m to **142m**, so a headhunter with 75m of vision sees you
+at nearer the distance you see it. A second `DayNightProfile` with its own gradients was the
+alternative, and would have been fifty lines to say the same thing twice.
+
+**People.** The `headhunter` is a spearman by behaviour - #68 adds no AI - and everything else about
+it is worse: 140 health against 85, 34 damage against 22, a scout's eyes, and `fleeAt 0`, so it
+never runs. It is also worth taking: about 153 coins on a wild body against a spearman's 67, and it
+can be carrying a pearl. Five camp lines put nine of them out by day against the first island's
+five, on a quarter of the ground.
+
+#### Two bugs the bake found that the code review would not have
+
+**Baking the second island repainted the first island's sea.** `WaterFactory` bakes a depth mask
+from the coastline it is given and writes it, the material that samples it and the prefab that
+carries the material to three fixed paths. Generating island 2 therefore silently gave island 1 a
+surf line drawn round a different island - a difference nobody would see in a diff and everybody
+would see standing on the beach. Those three paths now carry the island's suffix; the meshes and
+the ripple texture are shape-independent and stay shared.
+
+**`NavFactory` caught a cave that `POIFactory` said was fine.** The first bake put the cave mouth
+at 54m up a slope. POIFactory's own reachability check walks a coarse grid and reported all five
+landmarks reachable; NavFactory asks the actual NavMesh for a path and found the cave sitting on its
+own disconnected island, with two camps of natives on it that could never reach anybody. The pad
+flattens the ground a building stands on, which is exactly what hides this: the mouth is walkable
+and nothing around it is. The site wish now asks for 30m and weights flatness at 0.85, which moved the mouth to (23, -98)
+and turned the verdict into `cave -> camp.base: PathComplete, 214m over 9 corners`. The check that
+matters is the one that runs a pathfind.
+
+#### What the harness measures, and what it refuses to
+
+`-island2Test` wants `-scene island2`, and fails loudly on any other map rather than passing
+vacuously. The acceptance is "visibly and mechanically more hostile than island 1 within 30 seconds
+of landing", and none of those words is assertable, so what is checked is the arithmetic each one
+rests on, read off the island that was actually baked:
+
+* the terrain, sampled 96x96: size, mean slope, and the sand and rock fractions of the dry land;
+* the fog, read back from **`RenderSettings.fogDensity`** and divided by what the sky profile asked
+  for. Asserting `FogScale` on the component would pass on a build where nothing multiplies it
+  through, which is the bug worth catching - the same lesson as #66's sixty shots at the sky;
+* the headhunter against **the spearman in the same catalog**, so there is no number in the test to
+  go stale. Make the spearman as tough as the headhunter and this fails, which is correct;
+* what a body is worth, as every drop line's chance times its average count times the trader's
+  price, for both roles;
+* the distance from the beachhead to the nearest camp, in metres and in seconds of walking.
+
+It cannot check whether the island *feels* worse. That is the playtest.
+
+```
+[Island2Test] 1831 of 9216 samples are dry land: 23.2° average slope, 2% sand, 37% bare rock.
+[Island2Test] fog 0.0139 against the climate's 0.0069 (2.00x), so you can see about 142m instead of 285m.
+[Island2Test] 5 camp line(s): 9 by day, 14 at night, roles headhunter, blowgunner, scout.
+[Island2Test] headhunter 140hp / 34 damage / flees at 0.00, against the spearman's 85hp / 22 / 0.15.
+[Island2Test] a headhunter carries about 153.0 coins' worth, a spearman about 67.0.
+[Island2Test] the nearest camp is village.headhunter (headhunter) 176m from the landing; 9 native(s)
+              live within 220m of it, which is 35 seconds of walking.
+[Island2Test] 20 passed, 0 failed.
+```
+
+Nothing sails there yet - the boat and the crossing are #69, and the reason to go is #70.
+
 ---
 
 ## Data-driven content

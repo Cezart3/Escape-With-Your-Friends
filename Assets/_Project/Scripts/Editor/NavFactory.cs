@@ -36,7 +36,14 @@ namespace EscapeWithYourFriends.EditorTools
     /// </summary>
     internal static class NavFactory
     {
-        const string DataPath = "Assets/_Project/Data/IslandNavMesh.asset";
+        const string FirstDataPath = "Assets/_Project/Data/IslandNavMesh.asset";
+
+        /// <summary>
+        /// Where this bake lands. ponytail: a static set at the top of <see cref="Bake"/>, because
+        /// the writer four calls down has a surface and no profile, and one batchmode process bakes
+        /// one island. The first island keeps its old path, so its GUID and scene reference survive.
+        /// </summary>
+        static string DataPath = FirstDataPath;
 
         // The humanoid agent from ProjectSettings/NavMeshAreas.asset: radius 0.5, height 2, slope 45,
         // climb 0.75. Natives and animals are people-sized for now, so one agent type is enough; a
@@ -50,6 +57,10 @@ namespace EscapeWithYourFriends.EditorTools
         /// </summary>
         internal static void Bake(IslandProfile profile, POISpawner spawner)
         {
+            DataPath = profile != null && profile.Id == POIFactory.SecondIslandId
+                ? "Assets/_Project/Data/Island2NavMesh.asset"
+                : FirstDataPath;
+
             var root = new GameObject("NavMesh");
             var surface = root.AddComponent<NavMeshSurface>();
 

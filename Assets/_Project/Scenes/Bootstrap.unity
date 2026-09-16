@@ -165,6 +165,7 @@ MonoBehaviour:
   _known:
   - Island
   - Arena
+  - Island2
 --- !u!114 &524634787
 MonoBehaviour:
   m_ObjectHideFlags: 0

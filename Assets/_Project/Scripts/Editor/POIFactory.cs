@@ -22,7 +22,17 @@ namespace EscapeWithYourFriends.EditorTools
     /// </summary>
     public static class POIFactory
     {
-        public const string CatalogPath = "Assets/_Project/Data/POIs.asset";
+        /// <summary>Profile id of the second island; the first one is anything else. See #68.</summary>
+        internal const string SecondIslandId = "Island2";
+
+        /// <summary>
+        /// Where an island keeps its catalog. The first island keeps the name it has always had, so
+        /// its asset, its GUID and every scene reference to it survive this becoming a function.
+        /// </summary>
+        public static string CatalogPathFor(IslandProfile profile)
+            => profile != null && profile.Id == SecondIslandId
+                ? "Assets/_Project/Data/POIs2.asset"
+                : "Assets/_Project/Data/POIs.asset";
 
         const string ReviveMachinePrefabPath = "Assets/_Project/Prefabs/ReviveMachine.prefab";
         const string HangPointPrefabPath = "Assets/_Project/Prefabs/HangPoint.prefab";
@@ -34,22 +44,23 @@ namespace EscapeWithYourFriends.EditorTools
         public static POICatalog EnsureCatalog(IslandProfile profile)
         {
             bool rebuild = CommandLine.HasFlag("-rebuildPois");
-            var catalog = AssetDatabase.LoadAssetAtPath<POICatalog>(CatalogPath);
+            string path = CatalogPathFor(profile);
+            var catalog = AssetDatabase.LoadAssetAtPath<POICatalog>(path);
 
             if (catalog == null)
             {
                 catalog = ScriptableObject.CreateInstance<POICatalog>();
                 catalog.Entries = DefaultEntries(profile);
 
-                Directory.CreateDirectory(Path.GetDirectoryName(CatalogPath));
-                AssetDatabase.CreateAsset(catalog, CatalogPath);
-                Debug.Log($"[POIFactory] Generated {CatalogPath} with {catalog.Entries.Length} entries.");
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                AssetDatabase.CreateAsset(catalog, path);
+                Debug.Log($"[POIFactory] Generated {path} with {catalog.Entries.Length} entries.");
             }
             else if (rebuild)
             {
                 catalog.Entries = DefaultEntries(profile);
                 EditorUtility.SetDirty(catalog);
-                Debug.Log($"[POIFactory] Rebuilt {CatalogPath} from code, hand edits discarded (-rebuildPois).");
+                Debug.Log($"[POIFactory] Rebuilt {path} from code, hand edits discarded (-rebuildPois).");
             }
 
             // Attaching it to the profile is what puts the pads into the height function. Done here
@@ -203,6 +214,8 @@ namespace EscapeWithYourFriends.EditorTools
             var bare = ScriptableObject.CreateInstance<IslandProfile>();
             EditorUtility.CopySerialized(profile, bare);
             bare.Pois = null;
+
+            if (profile.Id == SecondIslandId) return SecondIslandEntries(bare);
 
             var shape = new IslandShape(bare);
             var taken = new List<Vector2>();
@@ -395,6 +408,83 @@ namespace EscapeWithYourFriends.EditorTools
                 // the beach.
                 Entry("boat", BoatBuilder.BoatPath, mooring, Facing(mooring, camp) + 180f,
                       pad: 12f, falloff: 10f, raise: 0f, maxSlope: 0.3f, allowUnderwater: true)
+            };
+        }
+
+        /// <summary>
+        /// The second island's catalog: five entries against the first island's twenty.
+        ///
+        /// That is the design and not a shortcut. The first island is where the game is played -
+        /// a shop, a casino, a bench, a buggy, somewhere to sleep - and the second is somewhere you
+        /// go to take something and leave. What stands on it is a beachhead, the machine that undoes
+        /// a death, and three places that want you dead. Everything that makes a landing worthwhile
+        /// belongs to the issues that come after this one: the boat that gets you there (#69) and the
+        /// plane parts that are the reason to go (#70).
+        ///
+        /// The ids are deliberately the ones the first island uses. <c>NativeFactory</c>,
+        /// <c>AnimalFactory</c> and the spawn-point writer all look landmarks up by name, and giving
+        /// this island its own names would mean teaching each of them which island it is on.
+        /// </summary>
+        static POIEntry[] SecondIslandEntries(IslandProfile bare)
+        {
+            var shape = new IslandShape(bare);
+            var taken = new List<Vector2>();
+
+            // The beachhead, and the only flat thing on the island. Low and near the water because
+            // this is where the boat ties up, and everything else is placed as a walk from here.
+            Vector2 camp = Site(shape, bare, taken, new SiteWish
+            {
+                WantedHeight = 3.5f, MinHeight = 1f, MaxHeight = 9f,
+                MaxFromReference = 0f, FlatWeight = 0.75f, FootprintRadius = 11f
+            }, "camp");
+
+            // Half the island means half the distances. A hundred metres here is what two hundred is
+            // over there: far enough to be a decision, close enough that it finds you first.
+            Vector2 village = Site(shape, bare, taken, new SiteWish
+            {
+                WantedHeight = 24f, MinHeight = 6f, MaxHeight = 60f, Reference = camp,
+                MinFromReference = 110f, MaxFromReference = 220f,
+                FlatWeight = 0.85f, Separation = 70f, FootprintRadius = 18f
+            }, "village");
+
+            // Uphill, but on a shelf. The first pass asked for 55m with a low flatness weight and
+            // got a mouth halfway up a cliff: the pad flattened the ground it stands on and nothing
+            // could walk to it, which NavFactory caught and the grid-based reachability check did
+            // not. Height is worth less than being connected to the rest of the island.
+            Vector2 cave = Site(shape, bare, taken, new SiteWish
+            {
+                WantedHeight = 30f, MinHeight = 12f, MaxHeight = 60f, Reference = camp,
+                MinFromReference = 90f, MaxFromReference = 200f,
+                FlatWeight = 0.85f, Separation = 60f, FootprintRadius = 12f
+            }, "cave");
+
+            Vector2 wreck = Site(shape, bare, taken, new SiteWish
+            {
+                WantedHeight = 0.3f, MinHeight = -1.5f, MaxHeight = 2f, Reference = camp,
+                MinFromReference = 60f, MaxFromReference = 200f,
+                FlatWeight = 0.4f, Separation = 50f, FootprintRadius = 10f
+            }, "wreck");
+
+            float campFacing = Facing(camp, village);
+
+            return new[]
+            {
+                Entry("camp.base", GreyboxDir + "/BaseCamp.prefab", camp, campFacing,
+                      pad: 12f, falloff: 16f, raise: 0.2f, maxSlope: 0.3f),
+
+                // A death on the far island with no way back up is a run ended by a boat ride, so
+                // the machine comes ashore with you. It costs what it costs on the first island.
+                Entry("camp.revive", ReviveMachinePrefabPath, camp + Offset(campFacing, 9f),
+                      campFacing + 180f, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
+
+                Entry("village", GreyboxDir + "/NativeVillage.prefab", village, Facing(village, camp),
+                      pad: 24f, falloff: 20f, raise: 0.3f, maxSlope: 0.32f),
+
+                Entry("cave", GreyboxDir + "/Cave.prefab", cave, Facing(cave, camp),
+                      pad: 13f, falloff: 16f, raise: 0.2f, maxSlope: 0.45f),
+
+                Entry("wreck", GreyboxDir + "/Wreck.prefab", wreck, Facing(wreck, camp),
+                      pad: 10f, falloff: 14f, raise: 0f, maxSlope: 0.5f, allowUnderwater: true),
             };
         }
 

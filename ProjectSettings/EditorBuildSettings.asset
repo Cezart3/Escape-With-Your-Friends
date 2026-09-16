@@ -14,5 +14,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Project/Scenes/Island.unity
     guid: e8efe4fc509fdf24db83a2cd0a4876d5
+  - enabled: 1
+    path: Assets/_Project/Scenes/Island2.unity
+    guid: 43bf25a99a13e9441888ec72e196e479
   m_configObjects: {}
   m_UseUCBPForAssetBundles: 0

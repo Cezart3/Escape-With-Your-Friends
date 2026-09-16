@@ -25,6 +25,9 @@ namespace EscapeWithYourFriends.EditorTools
     /// </summary>
     public static class NativeFactory
     {
+        /// <summary>Profile id of the second island. See <c>TerrainGenerator</c> and #68.</summary>
+        internal const string SecondIslandId = "Island2";
+
         const string Folder = "Assets/_Project/Data/Natives";
         const string CatalogPath = "Assets/_Project/Data/Natives.asset";
         const string ItemFolder = "Assets/_Project/Data/Items";
@@ -152,6 +155,20 @@ namespace EscapeWithYourFriends.EditorTools
                 body: new Vector3(0.6f, 1.8f, 0.42f), colour: new Color(0.38f, 0.27f, 0.21f),
                 mark: new Color(0.85f, 0.22f, 0.18f), agentRadius: 0.42f),
 
+            // The second island's answer to a player who cleared the first one. It is a spearman by
+            // behaviour - #68 adds no AI - and everything else about it is worse: two and a half
+            // times the health, half again the damage, sight and memory of a scout, and it does not
+            // run away at all. Meeting one on the beach is the thirty-second version of "this island
+            // is not the other island".
+            new("headhunter", "Headhunter", "Does not flee, does not tire, and has done this before.",
+                NativeRole.Spearman, health: 140f, walk: 2.2f, run: 7.4f, patrol: 26f, idle: new Vector2(2f, 4f),
+                dayNotice: 26f, nightNotice: 40f, vision: 75f, earshot: 10f,
+                memory: 14f, investigate: 8f, alarm: 60f, dayLeash: 70f, nightLeash: 170f, fleeAt: 0f,
+                damage: 34f, reach: 2.8f, interval: 1.6f, stun: 1.2f, knockback: 1300f, windup: 0.35f,
+                ranged: false, standoff: 2.8f, spread: 0f,
+                body: new Vector3(0.68f, 1.92f, 0.46f), colour: new Color(0.24f, 0.19f, 0.18f),
+                mark: new Color(0.78f, 0.10f, 0.12f), agentRadius: 0.46f),
+
             new("blowgunner", "Blowgunner", "Nine damage and a nap. The nap is the problem.",
                 NativeRole.Blowgunner, health: 55f, walk: 2f, run: 6f, patrol: 24f, idle: new Vector2(3f, 7f),
                 dayNotice: 26f, nightNotice: 34f, vision: 65f, earshot: 6f,
@@ -185,6 +202,13 @@ namespace EscapeWithYourFriends.EditorTools
             ("spearman", "rope", 2, 3, 1f),
             ("spearman", "flint", 1, 2, 1f),
             ("spearman", "meat_cooked", 1, 1, 0.4f),
+
+            // The pearl is the second island's whole pitch in one line: a body there is worth more
+            // than a body here, and worth the trip back across the water to sell.
+            ("headhunter", "hide", 2, 3, 1f),
+            ("headhunter", "flint", 2, 4, 1f),
+            ("headhunter", "pearl", 1, 1, 0.35f),
+            ("headhunter", "meat_cooked", 1, 2, 0.6f),
 
             ("blowgunner", "feather", 3, 5, 1f),
             ("blowgunner", "flint", 2, 3, 1f),
@@ -221,6 +245,11 @@ namespace EscapeWithYourFriends.EditorTools
             ("spearman", "scrap_metal", 1, 2, 0.7f),
             ("spearman", "bandage", 1, 1, 0.35f),
 
+            ("headhunter", "rifle_ammo", 4, 8, 0.9f),
+            ("headhunter", "shotgun_shell", 3, 6, 0.9f),
+            ("headhunter", "scrap_metal", 2, 4, 0.8f),
+            ("headhunter", "bandage", 1, 2, 0.5f),
+
             ("blowgunner", "pistol_ammo", 6, 12, 0.9f),
             ("blowgunner", "rifle_ammo", 1, 3, 0.7f),
             ("blowgunner", "meat_cooked", 1, 2, 0.6f),
@@ -247,6 +276,8 @@ namespace EscapeWithYourFriends.EditorTools
             ("scout", true, 20f, 0.5f),
             ("spearman", true, 24f, 0.5f),
             ("blowgunner", false, 0f, 0.5f),
+            ("headhunter", true, 30f, 0.5f),
+
         };
 
         public static void Build()
@@ -579,15 +610,32 @@ namespace EscapeWithYourFriends.EditorTools
             // Stocked is the village and only the village. The cave is an outpost - somewhere they
             // sleep on the way round the island - and a second pile of ammunition half the distance
             // from base camp would make the raid #109 is about the second-best place to go.
-            var camps = new List<NativeSpawner.Camp>
-            {
-                Camp("village.spearman", catalog.Find("spearman"), village, 24f, 2, 1, shape, stocked: true),
-                Camp("village.blowgun", catalog.Find("blowgunner"), village, 26f, 1, 1, shape, stocked: true),
-                Camp("village.scout", catalog.Find("scout"), village, 34f, 1, 1, shape, stocked: true),
+            // The second island is the same five lines with worse numbers in them: eight bodies by
+            // day against five, headhunters where the first island has spearmen, and both camps
+            // stocked because there is no friendly half of that island to balance against. The ids
+            // are the same on purpose - its catalog names its village "village" too, so nothing
+            // below this point needs to know which island it is standing on.
+            bool second = profile != null && profile.Id == SecondIslandId;
 
-                Camp("cave.spearman", catalog.Find("spearman"), cave, 20f, 1, 1, shape, stocked: false),
-                Camp("cave.scout", catalog.Find("scout"), cave, 26f, 1, 0, shape, stocked: false),
-            };
+            var camps = second
+                ? new List<NativeSpawner.Camp>
+                {
+                    Camp("village.headhunter", catalog.Find("headhunter"), village, 26f, 3, 1, shape, stocked: true),
+                    Camp("village.blowgun", catalog.Find("blowgunner"), village, 30f, 2, 1, shape, stocked: true),
+                    Camp("village.scout", catalog.Find("scout"), village, 38f, 1, 1, shape, stocked: true),
+
+                    Camp("cave.headhunter", catalog.Find("headhunter"), cave, 22f, 2, 1, shape, stocked: true),
+                    Camp("cave.scout", catalog.Find("scout"), cave, 28f, 1, 1, shape, stocked: false),
+                }
+                : new List<NativeSpawner.Camp>
+                {
+                    Camp("village.spearman", catalog.Find("spearman"), village, 24f, 2, 1, shape, stocked: true),
+                    Camp("village.blowgun", catalog.Find("blowgunner"), village, 26f, 1, 1, shape, stocked: true),
+                    Camp("village.scout", catalog.Find("scout"), village, 34f, 1, 1, shape, stocked: true),
+
+                    Camp("cave.spearman", catalog.Find("spearman"), cave, 20f, 1, 1, shape, stocked: false),
+                    Camp("cave.scout", catalog.Find("scout"), cave, 26f, 1, 0, shape, stocked: false),
+                };
 
             camps.RemoveAll(c => c.Role == null);
 
