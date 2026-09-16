@@ -156,6 +156,10 @@ namespace EscapeWithYourFriends.EditorTools
             // is one across, so a tank is a day out rather than an errand.
             root.AddComponent<VehicleCondition>().Configure(tank: 60f, integrity: 100f);
 
+            // #62. What the trader can bolt to it. The list is the permission: tyres are here and
+            // not on the boat, so a hull cannot be given grip it has no wheels to use.
+            root.AddComponent<VehicleUpgrades>().Configure(VehicleUpgradeFactory.Land());
+
             return root;
         }
 

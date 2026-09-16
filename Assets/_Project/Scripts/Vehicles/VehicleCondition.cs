@@ -82,6 +82,36 @@ namespace EscapeWithYourFriends.Vehicles
         {
             _body = GetComponent<Rigidbody>();
             _vehicle = GetComponent<Vehicle>();
+
+            // #62. The baked capacities, so a fitted part is a multiple of the vehicle as found.
+            _stockTank = _tank;
+            _stockIntegrity = _integrityMax;
+        }
+
+        float _stockTank;
+        float _stockIntegrity;
+
+        /// <summary>
+        /// Server only. Bigger tank, thicker panels, from #62.
+        ///
+        /// Armour hands the extra integrity over as well as raising the ceiling: a player who bolts
+        /// plate to a dented car has made it tougher, and a version of this that only moved the
+        /// maximum would leave them looking at a car that got *more* broken the moment they paid.
+        /// Fuel is not given away the same way - the tank gets bigger, filling it is still the
+        /// trader's business.
+        /// </summary>
+        public void ServerTune(float tank, float armour)
+        {
+            if (!IsServerStarted) return;
+
+            _tank = _stockTank * tank;
+
+            float wasMax = _integrityMax;
+            _integrityMax = _stockIntegrity * armour;
+
+            _fuel.Value = Mathf.Min(_fuel.Value, _tank);
+            _integrity.Value = Mathf.Min(_integrityMax,
+                                         _integrity.Value + Mathf.Max(0f, _integrityMax - wasMax));
         }
 
         public override void OnStartServer()

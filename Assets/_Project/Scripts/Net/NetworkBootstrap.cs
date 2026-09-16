@@ -281,6 +281,7 @@ namespace EscapeWithYourFriends.Net
             Vehicles.BoatTest.Begin();
             Vehicles.ImpactTest.Begin();
             Vehicles.ConditionTest.Begin();
+            Vehicles.VehicleUpgradeTest.Begin();
             Player.SurvivalTest.Begin();
             Player.BuffTest.Begin();
         }

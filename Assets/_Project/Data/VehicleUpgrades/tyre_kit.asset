@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f953e08c0af22bd40b7664391704c7a9, type: 3}
+  m_Name: tyre_kit
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.VehicleUpgradeDef
+  _itemId: tyre_kit
+  _displayName: Grippy Tyres
+  _description: A third more grip. Corners you used to slide through, you now turn.
+  _part: 1
+  _tier: 1
+  _multiplier: 1.35

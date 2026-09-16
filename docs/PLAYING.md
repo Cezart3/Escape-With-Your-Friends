@@ -71,7 +71,10 @@ Driving reuses the movement keys: **W/S** throttle and reverse, **A/D** steer, *
 
 - The **buggy** is parked about eight metres away. Press **E** to get in — the first person in drives.
   W to go. It is tuned to be grippy and easy to roll; getting it onto its roof is the point, and it
-  picks itself up after three seconds upside down.
+  picks itself up after three seconds upside down. It burns fuel, dents when you hit things, and
+  both are fixed where it stands: hold a **fuel can** or a piece of **scrap metal** and press E next
+  to it. The trader also sells four parts — engine, tyres, armour, tank — fitted the same way, by
+  holding one and pressing E.
 - The **Revive Machine** is the big noisy box. It is what brings a dead friend back, and it wants the
   corpse carried to it.
 - The **crafting bench** turns what you pick up into things worth having.

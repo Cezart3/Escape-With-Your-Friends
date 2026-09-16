@@ -4896,13 +4896,92 @@ full before handing it to `Servicing`, which then had nothing to mend, so the in
 player instead and the next one threw them back out. A test that repairs the car it is about to test
 the repair on measures nothing.
 
+### Parts you bolt on (#62)
+
+Five things were on the issue's list - engine, tyres, armour, tank, storage - and four of them
+shipped. Each is a **`VehicleUpgradeDef`**: an item id, a slot, a tier and one multiplier over the
+number the prefab was baked with.
+
+**There is no upgrade screen, no workbench and no new key.** #61 had already taught a vehicle to look
+at what is in your hand and do something with it - petrol refuels, scrap repairs - so a part is the
+third answer to that same question. You buy it off the trader's shelf like any other item, carry it
+to the vehicle, stand next to it and press E. The whole of the fitting flow is one extra branch in
+`Vehicle.ServiceLabel`, which is also what draws the crosshair prompt, so the label and the key
+cannot disagree about what the press will do.
+
+**What a vehicle accepts is a list on the vehicle, not a global catalog.** `VehicleUpgrades._fits` is
+serialised onto each prefab by its builder: the buggy is given four parts and the boat three. Fitting
+tyres to a hull is not refused by a check, it is impossible, because the hull has never heard of
+them. That is also why there is no `VehicleUpgradeCatalog` beside the other six - nothing crosses the
+wire but the tier numbers, so there is no index to agree on and no static to keep alive.
+
+**Multipliers are absolute, over stock, never stacked.** A fitted engine means "1.5x the buggy as it
+was baked", not "1.5x whatever is bolted on now". `Apply()` reads the fitted tiers and rewrites every
+affected number from the stock values each controller captured in its own `Awake`, so fitting a part
+twice, applying after a late join, or replaying the list in any order all land on exactly the same
+vehicle. Stacking is how a second fit doubles a number nobody meant to double.
+
+| Part | Price | What actually changes |
+|---|---|---|
+| Tuned Engine | 330 | `CarController._motorTorque` **and** `_topSpeed` (`BoatController._thrust` and its ceiling). Torque alone buys a shorter run-up to the same limit, which is not what anybody paying for an engine means |
+| Grippy Tyres | 240 | `stiffness` on both friction curves of every `WheelCollider`. It is the wheels that let go; a grip upgrade that did not touch them would be a lie told in the UI |
+| Bolt-on Armour | 270 | `VehicleCondition._integrityMax`, **and the extra integrity is handed over**. Plate on a dented car makes it tougher; a version that only moved the maximum would leave a player looking at a car that got more broken the moment they paid |
+| Long-range Tank | 210 | `VehicleCondition._tank`. The tank gets bigger; filling it is still the trader's business |
+
+Against the boat part at 1400, a full set of four is most of a run's savings, which is the intended
+decision: every one of them makes the rest of the run measurably better, and `-vehicleUpgradeTest`
+is where "measurably" is a number rather than a claim.
+
+```
+[VehicleUpgradeTest] stock tyres: 531 degrees of yaw in 6s at 10.0 m/s.
+[VehicleUpgradeTest] grippy tyres: 578 degrees of yaw in 6s at 10.0 m/s (1.09x).
+[VehicleUpgradeTest] stock engine: 117m in 8s, peaked at 22.2 m/s.
+[VehicleUpgradeTest] tuned engine: 175m in 8s (1.50x), peaked at 33.2 m/s.
+[VehicleUpgradeTest] long-range tank: 60.0/90L, 100/100 integrity.
+[VehicleUpgradeTest] bolt-on armour: 60.0/90L, 95/160 integrity.
+[VehicleUpgradeTest] 54 passed, 0 failed.
+```
+
+Every one of those is driven, not read back: the suite puts the part in a player's bag, selects it,
+presses interact next to the buggy, and then drives the same manoeuvre again.
+
+**Two of the measurements were wrong before they were right, and both were the same mistake** - a
+number that moved for a reason other than the thing being measured.
+
+The cornering test first ran at full throttle, and grippier tyres came out *worse*: 425 degrees of
+yaw against 395. Forward grip is grip too, so the fitted car reached a higher speed in the same six
+seconds, and a car going faster on a steering lock that tightens with speed draws a wider circle.
+What looked like a failed upgrade was a measurement of acceleration wearing a cornering costume.
+Held at ten metres per second - both cars far past what their tyres hold at full lock - the same
+upgrade reads 1.09x, and a third assertion now checks that the two runs were driven at the same
+speed before the comparison is allowed to mean anything.
+
+The lateral-velocity number that went with it is logged and no longer graded. Sideways velocity at
+the centre of mass on a circle is mostly kinematic - yaw rate times the distance back to the rear
+axle - so a car that corners tighter reads *higher* on it while gripping better. It stays in the log
+because it is what explains a strange yaw reading, not because it grades one.
+
+The armour test hit a car that was still carrying the fifty points of damage the previous assertion
+had dealt it, then compared what was left against a fraction of the new, larger maximum. Two dents
+are not one crash. It now repairs to full before the yardstick 65-point hit, which is the crash that
+leaves a stock buggy on 35 of 100 and an armoured one on 95 of 160.
+
+**Storage capacity is the one that did not ship.** `Storage` is a working networked container and
+bolting one to the buggy is one line, but it is also an `IInteractable`, and
+`PlayerInteractor.ServerInteract` resolves a target with `GetComponentInChildren<IInteractable>()` -
+the first one on the object, whatever the client was actually aiming at. A vehicle with a boot needs
+the server to disambiguate two interactables on one `NetworkObject`, which is an interactor change
+rather than an upgrade one, and it would have been the larger half of this issue.
+
+
 ---
 
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**
 
-`WeaponDef`, `ItemDef`, `UpgradeDef`, `BuffDef`, `FishDef`, recipes, POI entries, shop inventories.
+`WeaponDef`, `ItemDef`, `UpgradeDef`, `VehicleUpgradeDef`, `BuffDef`, `FishDef`, recipes, POI entries,
+shop inventories.
 These serialise as YAML text, which means they are authorable from a terminal, reviewable in a diff,
 and mergeable in git.
 

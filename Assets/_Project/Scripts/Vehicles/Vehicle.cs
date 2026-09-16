@@ -217,13 +217,16 @@ namespace EscapeWithYourFriends.Vehicles
 
             ItemDef held = bag.Selected.Def;
             var condition = GetComponent<VehicleCondition>();
+            VehicleUpgradeDef part = Part(held);
 
             if (bag.Remove(held, 1) <= 0) return false;
 
-            bool serviced = held.Id == FuelItem ? condition.ServerRefuel() : condition.ServerRepair();
+            bool serviced = part != null ? GetComponent<VehicleUpgrades>().ServerFit(part)
+                          : held.Id == FuelItem ? condition.ServerRefuel()
+                          : condition.ServerRepair();
 
             Debug.Log($"[Vehicle] {Name(actor)} spent one {held.Id} on the {_label}: "
-                      + $"{condition.Report()}.");
+                      + $"{(condition != null ? condition.Report() : "fitted")}.");
 
             return serviced;
         }
@@ -234,16 +237,33 @@ namespace EscapeWithYourFriends.Vehicles
         /// </summary>
         string ServiceLabel(Items.Inventory bag)
         {
-            var condition = GetComponent<VehicleCondition>();
-            if (condition == null || bag == null) return null;
+            if (bag == null) return null;
 
             ItemDef held = bag.Selected.Def;
             if (held == null) return null;
 
-            if (held.Id == FuelItem && condition.NeedsFuel) return $"Refuel the {_label}";
-            if (held.Id == RepairItem && condition.NeedsRepair) return $"Repair the {_label}";
+            var condition = GetComponent<VehicleCondition>();
+
+            if (condition != null)
+            {
+                if (held.Id == FuelItem && condition.NeedsFuel) return $"Refuel the {_label}";
+                if (held.Id == RepairItem && condition.NeedsRepair) return $"Repair the {_label}";
+            }
+
+            // #62. A part in your hand is the third thing the key can mean. Asking the upgrades
+            // component rather than listing part ids here is what lets the boat refuse tyres by
+            // simply never having been given any.
+            VehicleUpgradeDef part = Part(held);
+            if (part != null) return $"Fit the {part.DisplayName} to the {_label}";
 
             return null;
+        }
+
+        /// <summary>The upgrade the held item would fit right now, or null. #62.</summary>
+        VehicleUpgradeDef Part(ItemDef held)
+        {
+            var upgrades = GetComponent<VehicleUpgrades>();
+            return upgrades != null ? upgrades.Fit(held) : null;
         }
 
         /// <summary>

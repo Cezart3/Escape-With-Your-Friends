@@ -51,6 +51,15 @@ namespace EscapeWithYourFriends.EditorTools
             // petrol, so this is the one line on the shelf a driver cannot walk past.
             ("fuel", 45, -1),
 
+            // #62. Vehicle parts, at the trader's usual half-again over what the thing is worth.
+            // They sit between a day's materials and the boat part, which is the right place: an
+            // engine is a real decision against the run's savings, and every one of them makes the
+            // driving the rest of the run measurably better.
+            ("engine_kit", 330, -1),
+            ("tyre_kit", 240, -1),
+            ("armour_kit", 270, -1),
+            ("tank_kit", 210, -1),
+
             // Made things. Craftable too, so the price is the tax on not having walked to the bench.
             ("torch", 25, 5),
             ("bandage", 35, 6),
