@@ -4739,6 +4739,95 @@ running drifts wherever the drag lets it. It does not take damage from anything 
 wake and no engine sound, and #69's unlock gate does not exist yet, so right now it will happily
 carry four people to an island that has nothing on it.
 
+### Running people over (#60)
+
+A vehicle that hits a person hurts them, stuns them and sends them flying, all three scaled by how
+fast it was going. The issue calls it a non-negotiable feature, and it is worth saying what it cost:
+`VehicleImpact` is eighty lines and adds nothing at all to the combat model.
+
+It could not, because the combat model already did the whole job. A spearman's blow builds a
+`DamageInfo`, calls `Health.TakeDamage`, then `StunState.ServerStun(info)`, which ragdolls the victim
+and fans the impulse out to every client through an ObserversRpc. `DamageType.Vehicle` had been
+sitting in the enum since the first damage commit. A car is a spearman with a bigger number, so this
+component's entire job is turning a collision into that number, on the server, in `OnCollisionEnter`.
+
+**Impact speed is the vehicle's own speed, not the relative speed.** A player is a
+`CharacterController`, so how fast they were walking barely shows up in `Collision.relativeVelocity`
+at all - and the more useful half is that sprinting into a parked car should do nothing, which the
+vehicle's speedometer answers for free. Below `_minSpeed` (3.5 m/s) nothing lands, or four people
+standing around a boat at a jetty would be permanently on the floor.
+
+Three things had to be measured rather than reasoned about, and each one cost a build.
+
+**A 900kg chassis at 22 m/s covers 44 centimetres per physics step**, which is wider than the person
+standing in front of it. Discrete collision detection tunnels straight through, and the feature is
+then silently absent rather than broken. The buggy's rigidbody is `ContinuousDynamic` for that reason
+and no other.
+
+**`linearVelocity` read inside `OnCollisionEnter` is a post-solve number, and it spikes.** The first
+run measured a buggy limited to 22 m/s hitting somebody at **57 m/s**, which paid out 200 damage on a
+100hp player and threw the body a hundred and fifty metres into the air - one bug, four red
+assertions, because a victim left Downed then failed the recovery and the parking-speed sections too.
+A chassis sweeping into a CharacterController comes out of PhysX depenetration carrying a velocity
+that never existed. `FixedUpdate` runs *before* the step, so caching the speed there is the speed the
+collision was actually delivered at.
+
+**The car has to stop touching the body it just launched.** With the speed fixed, the numbers were
+honest - 22.1 m/s, 77 damage, 1213 Ns - and the body still went 225 metres and 186 metres *up*, from
+an impulse worth about fifteen metres a second to a 56kg ragdoll, which is four metres of air. The
+launch was not doing it. The car was: still doing 22 m/s, it spends the next second shoving a fresh
+ragdoll along the ground, and PhysX resolves the overlap by firing it out like a bar of soap. So the
+vehicle passes *through* its victim for a second and a half after a hit, using the same
+`Physics.IgnoreCollision` trick `Carryable` already uses to stop a carried body fighting its carrier.
+That gives `_launchPerSpeed` back its meaning: 55 N-s per metre per second, which at full speed is
+1213 N-s, slightly more than a spearman's 1000.
+
+Damage is 3.5hp per m/s, so a full-speed run-over takes 77 of a player's 100 and leaves them standing
+at 23. Surviving being hit by a car at 79 km/h is the correct amount of goofy; dying on the spot is
+not funny even once.
+
+Riders and carried bodies never reach any of this. `VehicleRider` and `Carryable` already put an
+`IgnoreCollision` pair between an occupant and the hull, so PhysX never raises the contact - which
+matters, because otherwise driving with four aboard would kill the car park.
+
+One side effect is worth recording, because it is the sort of thing a new feature is good for.
+`-vehicleTest` went red on a section that had nothing to do with #60, and the cause turned out to be a
+buggy that had been quietly careering across the island for months. `Driving` makes the chassis
+kinematic, slides it 180 metres at 30 m/s and hands it back to physics, which returns that momentum
+the instant it goes dynamic again - and it is handed back a long way from camp, on a slope, with
+nobody at the wheel. Nobody had ever noticed, because until now a runaway car could not do anything
+to anybody. It was flattening the spare bodies parked around it, and the next section then tried to
+seat a heap on the ground.
+
+The suite zeroes the velocity on the way back out, since it teleported the thing and it has not
+earned any. That is not the whole of it - the buggy still rolls down the hill it was left on, and
+still runs people over at 16 m/s on the way, which is the feature working exactly as asked. So the
+section that needs a passenger upright now stands them up first, the same way `Refusals` already did.
+
+#### What `-impactTest` actually measures
+
+```
+[VehicleImpact] Buggy (camp.buggy) hit Player(Clone) at 22.1 m/s: 77 damage, 3.8s stun, 1213 Ns.
+[ImpactTest] run over at 22.1 m/s (79 km/h): 77 damage, 1213 Ns, thrown 58.4m and 6.0m up, 23 hp left.
+[ImpactTest] the victim stood back up after 0.3s on 23 hp.
+[ImpactTest] 5s of creeping throttle peaked at 2.4 m/s and hit nobody.
+[ImpactTest] drove 22.1 m/s with a passenger: 0 hit(s).
+[ImpactTest] 22 passed, 0 failed.
+```
+
+Run on the same twelve hundred metres of flat collider as `-carTest`, for the same reason: nothing
+that measures a vehicle is measured on terrain.
+
+```
+EscapeWithYourFriends.exe -batchmode -nographics -host -port 7953 -playerKey test:host   -scene island -noNatives -noAnimals -impactTest -vehicleLog -quitAfter 200
+```
+
+The flight has a **ceiling as well as a floor**, the same lesson the boat's turning circle taught. A
+catapult passes "was the body launched"; a floor-only test would have shipped the one that threw
+people 186 metres up and never said a word. And one collision must count as exactly one hit - a
+ragdoll under a moving car is a stream of fresh contacts, one per bone, so without the per-victim
+cooldown the first person run over takes two dozen hits at once and dies instantly.
+
 ---
 
 ## Data-driven content

@@ -433,6 +433,7 @@ GameObject:
   - component: {fileID: 8257986291991544836}
   - component: {fileID: 7460778966405789901}
   - component: {fileID: 5259733202340675013}
+  - component: {fileID: 7212801055428003978}
   m_Layer: 0
   m_Name: Boat
   m_TagString: Untagged
@@ -658,6 +659,29 @@ MonoBehaviour:
   _lateralDrag: 2600
   _keelAft: 1.2
   _centreOfMass: {x: 0, y: -0.25, z: 0}
+--- !u!114 &7212801055428003978
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7812919310764199910}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c024e76277c80cc44a5aa5b70e8385c8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Vehicles.VehicleImpact
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 4531440845832883637}
+  _networkObjectCache: {fileID: 0}
+  _minSpeed: 3.5
+  _launchPerSpeed: 55
+  _damagePerSpeed: 3.5
+  _lift: 0.5
+  _stunBase: 1.2
+  _stunPerSpeed: 0.12
+  _maxStun: 5
+  _cooldown: 0.8
 --- !u!1 &7824246898932533230
 GameObject:
   m_ObjectHideFlags: 0
