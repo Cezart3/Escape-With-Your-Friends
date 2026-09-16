@@ -5288,6 +5288,26 @@ tips; a rattle reads as an explosion. It is a pure static function so the harnes
 number with no screen in the process.
 
 
+### The sentence the store page has to be able to say (#67)
+
+Valve bans real-money gambling, and a store questionnaire answered wrongly about a casino is an app
+review rather than a bug report. So the checklist lives in [COMPLIANCE.md](COMPLIANCE.md), and the
+rule it encodes is a design constraint on everything in `Casino/` and `Economy/` rather than a
+paragraph somebody wrote once:
+
+**Money enters this world in exactly two ways** - the 500 a player starts with, and selling something
+to the trader - and **chips have exactly two doors**, both of them the cage window. No third path has
+ever existed, which is why the barman in #66 charges money rather than chips even though he stands
+ten metres from a roulette table. That was the cheaper decision *and* the one that keeps the sentence
+"chips cannot be bought with real money and cannot be cashed out" true without a footnote.
+
+Each row of the checklist names where the claim is enforced and which harness proves it, because a
+compliance claim nobody can re-check is a promise rather than a fact. What would break it is written
+down too: a DLC that grants a starting purse, any way to move a wallet between accounts, or any
+randomised reward behind a paid door. Adding a second game to the casino is fine; adding a price tag
+to the door is not.
+
+
 ---
 
 ## Data-driven content
