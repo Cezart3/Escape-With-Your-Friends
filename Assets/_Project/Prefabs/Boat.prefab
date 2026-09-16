@@ -436,6 +436,7 @@ GameObject:
   - component: {fileID: 7212801055428003978}
   - component: {fileID: 335001885274534205}
   - component: {fileID: 3084413280847737746}
+  - component: {fileID: 6446507848507559397}
   m_Layer: 0
   m_Name: Boat
   m_TagString: Untagged
@@ -726,6 +727,25 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 5835620fdbe3c5548a5934b76d46a548, type: 2}
   - {fileID: 11400000, guid: 09f3e2878136e084b9cf78cf5eeccec6, type: 2}
   - {fileID: 11400000, guid: 2268903b2185d1c4489f16e1913dbc21, type: 2}
+--- !u!114 &6446507848507559397
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7812919310764199910}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2385cb93daf09e489e29793fdc9c6d8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Vehicles.BoatVoyage
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 4531440845832883637}
+  _networkObjectCache: {fileID: 0}
+  _parts: 4
+  _margin: 60
+  _holdSeconds: 4
+  _recoverSeconds: 45
 --- !u!1 &7824246898932533230
 GameObject:
   m_ObjectHideFlags: 0

@@ -24,6 +24,13 @@ namespace EscapeWithYourFriends.World
 
         bool _registered;
 
+        /// <summary>
+        /// Where this scene puts people. Read directly by <see cref="Net.GameSceneLoader"/> when a
+        /// boat arrives, because the spawner's copy is handed over on Awake and taken away on
+        /// OnDestroy, and a scene swap runs both of those in an order not worth depending on.
+        /// </summary>
+        public Transform[] Points => _points;
+
         void Awake()
         {
             if (_points == null || _points.Length == 0) _points = Collect();

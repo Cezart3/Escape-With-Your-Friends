@@ -68,3 +68,14 @@ MonoBehaviour:
     PadRaise: 0
     MaxSlope: 0.5
     AllowUnderwater: 1
+  - Id: boat
+    PrefabPath: Assets/_Project/Prefabs/Boat.prefab
+    Position: {x: -42, y: 51}
+    Yaw: 225
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 12
+    PadFalloff: 10
+    PadRaise: 0
+    MaxSlope: 0.3
+    AllowUnderwater: 1

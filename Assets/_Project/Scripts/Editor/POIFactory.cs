@@ -465,6 +465,16 @@ namespace EscapeWithYourFriends.EditorTools
                 FlatWeight = 0.4f, Separation = 50f, FootprintRadius = 10f
             }, "wreck");
 
+            // #69. The far island gets its own hull at its own mooring, because a boat is a scene
+            // object and scene objects do not cross scenes. That is also the whole of "losing the
+            // boat is recoverable": wherever you land, something is tied up waiting.
+            Vector2 mooring = Site(shape, bare, taken, new SiteWish
+            {
+                WantedHeight = -1.2f, MinHeight = -3f, MaxHeight = -0.3f, Reference = camp,
+                MinFromReference = 25f, MaxFromReference = 70f,
+                FlatWeight = 0.7f, Separation = 30f, FootprintRadius = 12f
+            }, "mooring");
+
             float campFacing = Facing(camp, village);
 
             return new[]
@@ -485,6 +495,9 @@ namespace EscapeWithYourFriends.EditorTools
 
                 Entry("wreck", GreyboxDir + "/Wreck.prefab", wreck, Facing(wreck, camp),
                       pad: 10f, falloff: 14f, raise: 0f, maxSlope: 0.5f, allowUnderwater: true),
+
+                Entry("boat", BoatBuilder.BoatPath, mooring, Facing(mooring, camp) + 180f,
+                      pad: 12f, falloff: 10f, raise: 0f, maxSlope: 0.3f, allowUnderwater: true)
             };
         }
 

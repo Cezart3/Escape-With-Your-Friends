@@ -67,9 +67,12 @@ namespace EscapeWithYourFriends.EditorTools
             var vehicle = saved.GetComponent<Vehicle>();
             var boat = saved.GetComponent<BoatController>();
 
+            var voyage = saved.GetComponent<BoatVoyage>();
+
             Debug.Log($"[BoatBuilder] Built {BoatPath}: {vehicle.SeatCount} seat(s), "
                       + $"{boat.FloatCount} float(s), "
-                      + $"cargo socket {(vehicle.CarrySocket != null ? "wired" : "MISSING")}.");
+                      + $"cargo socket {(vehicle.CarrySocket != null ? "wired" : "MISSING")}, "
+                      + $"{(voyage != null ? $"{voyage.Needed} part(s) to finish" : "NO VOYAGE")}.");
 
             if (Application.isBatchMode) EditorApplication.Exit(0);
         }
@@ -144,6 +147,10 @@ namespace EscapeWithYourFriends.EditorTools
 
             // #62. A bigger outboard, plate and a drum. No tyres.
             root.AddComponent<VehicleUpgrades>().Configure(VehicleUpgradeFactory.Sea());
+
+            // #69. The part gate, the crossing and the tow home. Defaults are in the component and
+            // nothing here overrides them, because both islands want the same boat.
+            root.AddComponent<BoatVoyage>();
 
             return root;
         }

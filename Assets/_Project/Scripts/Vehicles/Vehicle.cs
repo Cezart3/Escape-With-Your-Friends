@@ -167,7 +167,15 @@ namespace EscapeWithYourFriends.Vehicles
                 // interface. It costs one line here and no new key, no new screen and no second
                 // interactable competing for the same press.
                 string service = ServiceLabel(LocalBag());
-                return service ?? $"Ride the {_label}";
+                if (service != null) return service;
+
+                // #69. A boat nobody has finished paying for says so, rather than offering a ride it
+                // is going to refuse a frame later.
+                var voyage = GetComponent<BoatVoyage>();
+                if (voyage != null && !voyage.Seaworthy)
+                    return $"The {_label} needs {voyage.Missing} more part(s)";
+
+                return $"Ride the {_label}";
             }
         }
 
@@ -219,9 +227,15 @@ namespace EscapeWithYourFriends.Vehicles
             var condition = GetComponent<VehicleCondition>();
             VehicleUpgradeDef part = Part(held);
 
+            // #69. A boat part is the fourth thing the key can mean, and deliberately the same press
+            // as the other three: no new key, no new screen, no second interactable on the mooring.
+            var voyage = GetComponent<BoatVoyage>();
+            bool fitting = voyage != null && !voyage.Seaworthy && held.Id == BoatVoyage.PartItem;
+
             if (bag.Remove(held, 1) <= 0) return false;
 
-            bool serviced = part != null ? GetComponent<VehicleUpgrades>().ServerFit(part)
+            bool serviced = fitting ? voyage.ServerFit()
+                          : part != null ? GetComponent<VehicleUpgrades>().ServerFit(part)
                           : held.Id == FuelItem ? condition.ServerRefuel()
                           : condition.ServerRepair();
 
@@ -241,6 +255,10 @@ namespace EscapeWithYourFriends.Vehicles
 
             ItemDef held = bag.Selected.Def;
             if (held == null) return null;
+
+            var voyage = GetComponent<BoatVoyage>();
+            if (voyage != null && !voyage.Seaworthy && held.Id == BoatVoyage.PartItem)
+                return $"Fit a part to the {_label} ({voyage.Fitted}/{voyage.Needed})";
 
             var condition = GetComponent<VehicleCondition>();
 
@@ -375,6 +393,16 @@ namespace EscapeWithYourFriends.Vehicles
             if (ragdoll != null && ragdoll.IsRagdolled)
             {
                 why = "they are a heap on the ground";
+                return false;
+            }
+
+            // #69. Half a boat is scenery. Refusing the seat rather than the throttle is what makes
+            // the gate obvious standing next to it, and it is one call instead of a check in every
+            // thing that could make the hull move.
+            var voyage = GetComponent<BoatVoyage>();
+            if (voyage != null && !voyage.Seaworthy)
+            {
+                why = $"the {_label} is {voyage.Missing} part(s) short of finished";
                 return false;
             }
 
