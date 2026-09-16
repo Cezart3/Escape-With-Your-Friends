@@ -66,6 +66,11 @@ namespace EscapeWithYourFriends.EditorTools
             // scrap metal it would be displacing in the bag - which made carrying it home a mistake.
             new("flint", "Flint", ItemCategory.Material, 10, 0.4f, 4, "Strikes a spark. The whole reason you have fire."),
 
+            // #61. Four kilograms against a 40kg limit, and it stacks to five: a full load of fuel is
+            // half the bag, which is the point. Nothing on the island makes it, so it is the one
+            // consumable the trader has a monopoly on.
+            new("fuel", "Fuel Can", ItemCategory.Material, 5, 4f, 30, "Petrol, sloshing. Engines want it and nothing here makes it."),
+
             // Hunting's half of the material list (#53). A hide is the single most valuable thing an
             // early island gives away, which is the point: it is what makes walking into the trees
             // with a hatchet a better idea than picking up another plank.

@@ -152,6 +152,10 @@ namespace EscapeWithYourFriends.EditorTools
             // #60. Running a friend over is the point of owning a car.
             root.AddComponent<VehicleImpact>();
 
+            // #61. Sixty litres at twelve a kilometre is five kilometres of driving, and the island
+            // is one across, so a tank is a day out rather than an errand.
+            root.AddComponent<VehicleCondition>().Configure(tank: 60f, integrity: 100f);
+
             return root;
         }
 

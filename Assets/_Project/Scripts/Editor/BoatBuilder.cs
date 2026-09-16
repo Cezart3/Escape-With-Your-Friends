@@ -138,6 +138,10 @@ namespace EscapeWithYourFriends.EditorTools
             // #60. A hull moving at 12 m/s is a blunt instrument.
             root.AddComponent<VehicleImpact>();
 
+            // #61. Twice the buggy's tank, because running dry on land is a walk home and running
+            // dry at sea is the run-ending outcome the issue says never to ship.
+            root.AddComponent<VehicleCondition>().Configure(tank: 120f, integrity: 140f);
+
             return root;
         }
 
