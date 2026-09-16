@@ -104,7 +104,9 @@ namespace EscapeWithYourFriends.Vehicles
 
             while (Time.time < vehicleDeadline && buggy == null)
             {
-                buggy = Vehicle.All.FirstOrDefault(v => v != null && v.IsSpawned);
+                // By component, not by whichever spawned first: the island now also bakes a boat.
+                buggy = Vehicle.All.FirstOrDefault(v => v != null && v.IsSpawned
+                                                        && v.GetComponent<CarController>() != null);
                 if (buggy == null) yield return new WaitForSeconds(0.5f);
             }
 
@@ -150,7 +152,11 @@ namespace EscapeWithYourFriends.Vehicles
             Check($"the buggy has four wheels ({wheels.Length})", wheels.Length == 4);
             Check("the body is dynamic on the server", !body.isKinematic);
             Check($"it weighs something ({body.mass:0} kg)", body.mass > 100f);
-            Check("its centre of mass is below the chassis floor", body.centerOfMass.y < 0.05f);
+            // Axle height, and up there on purpose. This assertion used to demand the opposite,
+            // from back when the centre of mass sat on the floor and the buggy could not be rolled
+            // at all - which is the one thing the issue asks for by name.
+            Check($"its centre of mass is up at axle height ({body.centerOfMass.y:0.00}m)",
+                  body.centerOfMass.y > 0.2f && body.centerOfMass.y < 0.6f);
             Check("it interpolates, or four passengers' heads stutter", body.interpolation
                   != RigidbodyInterpolation.None);
 
@@ -508,11 +514,11 @@ namespace EscapeWithYourFriends.Vehicles
 
             // Back to base camp. The suite borrowed the only car in the world and moved it four
             // kilometres into the sky; leaving it there would be leaving the island without one.
-            var body = buggy.GetComponent<Rigidbody>();
-            body.linearVelocity = Vector3.zero;
-            body.angularVelocity = Vector3.zero;
-            body.position = _parkedAt;
-            body.rotation = _parkedFacing;
+            var chassis = buggy.GetComponent<Rigidbody>();
+            chassis.linearVelocity = Vector3.zero;
+            chassis.angularVelocity = Vector3.zero;
+            chassis.position = _parkedAt;
+            chassis.rotation = _parkedFacing;
             Physics.SyncTransforms();
         }
 

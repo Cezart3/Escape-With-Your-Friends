@@ -96,7 +96,9 @@ namespace EscapeWithYourFriends.Vehicles
 
             while (Time.time < vehicleDeadline && buggy == null)
             {
-                buggy = Vehicle.All.FirstOrDefault(v => v != null && v.IsSpawned);
+                // By component, not by whichever spawned first: the island now also bakes a boat.
+                buggy = Vehicle.All.FirstOrDefault(v => v != null && v.IsSpawned
+                                                        && v.GetComponent<CarController>() != null);
                 if (buggy == null) yield return new WaitForSeconds(0.5f);
             }
 
@@ -386,13 +388,25 @@ namespace EscapeWithYourFriends.Vehicles
                   Vector3.Distance(motor.transform.position, buggy.transform.position) > 1f);
 
             // The thing that matters more than any of it: a body that left a car can walk.
+            //
+            // Sideways rather than upward. This used to teleport half a metre up and ask whether the
+            // body had moved, which gravity answers with "no" as soon as it lands - the check was
+            // really a question about how long Settled() waits. Away from the buggy, so the target
+            // is not inside the chassis it just got out of.
             Vector3 before = motor.transform.position;
-            motor.ServerTeleport(before + Vector3.up * 0.5f, motor.transform.eulerAngles.y);
+
+            Vector3 away = before - buggy.transform.position;
+            away.y = 0f;
+            away = away.sqrMagnitude > 0.01f ? away.normalized : motor.transform.right;
+
+            motor.ServerTeleport(before + away * 2f, motor.transform.eulerAngles.y);
 
             yield return Settled();
 
-            Check("and can be moved again",
-                  Vector3.Distance(motor.transform.position, before) > 0.01f);
+            Vector3 walked = motor.transform.position - before;
+            walked.y = 0f;
+
+            Check($"and can be moved again ({walked.magnitude:0.00}m)", walked.magnitude > 1f);
 
             // Back in for the rest of the cases, which all want a body in a seat.
             buggy.ServerInteract(motor.NetworkObject);
