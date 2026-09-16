@@ -5541,6 +5541,125 @@ then the playtest.
 
 ---
 
+### Three parts, and both of your hands (#70)
+
+The boat is bought. The plane is *carried*.
+
+That is the whole design decision, and everything else follows from it. A boat part is an
+`ItemDef` you buy at a shop, put in a pocket and forget about until you are standing at the
+mooring. A plane part is a rigidbody lying in a native village on the far island that somebody has
+to pick up and walk home with, at a third of their normal speed, while the people who live there
+notice. Same word, opposite verb: one is *shopping*, and the acceptance on #70 asks for a comedy
+set piece.
+
+**It is not an inventory item and deliberately cannot become one.** There is no `ItemDef`, no slot,
+no stack. `PlanePart` is a `NetworkBehaviour` on a crate with a `BoxCollider`, and the only two
+things you can do with it are lift it and put it down.
+
+#### Why it is not a Carryable
+
+The project already carries things: `Carryable` puts a stunned friend on your shoulder and
+`CarrySystem` decides who may lift whom. Reusing it was the first thing tried and the wrong answer,
+for one reason. `Carryable` parents a ragdoll's hip to a socket and lets **every peer simulate its
+own copy**, which is right for a corpse - two clients disagreeing by a metre about where your friend
+landed is the game's whole sense of humour - and wrong for an objective. Two clients disagreeing
+about where the engine landed is a run that cannot be finished, and the disagreement would show up
+an hour in, in somebody else's session.
+
+So a part follows `WorldItem`'s rule instead: **physics on the server, everybody else kinematic
+behind a `NetworkTransform`**. It is never reparented to anything. While it is carried the server
+writes its transform onto the carrier's `CarrySocket` every frame, which puts it exactly on the
+shoulder where the simulation lives and lets everybody else see it arrive there through the
+`NetworkTransform`'s interpolation - so on your screen your own engine is welded on, and on your
+friend's screen it swims along behind you. That is not a defect being tolerated. A two-metre
+propeller on a rubber band is funnier than one bolted to a shoulder, and the machine that decides
+where it actually is has no rubber band at all.
+
+The socket comes from `ICarryHolder`, the same one-property interface a corpse is hung on, which is
+the one piece of the carry system that did get reused. It cost nothing because it was already
+written to be asked for by interface rather than by type.
+
+#### Two pairs of hands, and no rig
+
+One person can lift any part. They will move at 0.30× with the engine, which is slower than a
+crouch, and the walk back from the village is two hundred metres. A second player takes the other
+end and both of them go to 0.75×.
+
+There is no joint, no second socket, no shared transform. The helper is a `SyncVar<NetworkObject>`
+and a distance check: stay within four metres of the part and you are holding it, wander off and you
+are not, and the carrier drops back to a crawl the moment you do. That is the entire mechanism, and
+it is the entire joke - the interesting failure is not a physics rig coming apart, it is one of the
+two people deciding to sprint ahead.
+
+The speed itself is one line in `PlayerMotor`, next to the one the buffs use and read the same way:
+
+```csharp
+targetSpeed *= World.PlanePart.SpeedFor(NetworkObject);
+```
+
+`SpeedFor` scans every part in the world. There are three.
+
+#### Both hands means both hands
+
+You cannot carry two parts, and you cannot carry a part while a friend is on your shoulder. Both
+refusals live in `PlanePart.ServerCanInteract`, which is also where a stunned or downed player is
+turned away - the third door on a corridor `PlayerInteractor` already guards twice, and the one the
+headless test comes in through.
+
+Getting punched, tasered, shot with a dart or disconnected all drop the part where you stood. They
+are polled in one place rather than subscribed to in three, because every one of them ends up as
+either `Health.IsIncapacitated` or `StunState.IsStunned` and the part is looking at both every frame
+anyway. The part then goes dynamic and rolls downhill, which is the set piece the issue asked for:
+two hundred metres of hauling undone by one native with a blowgun.
+
+One line in the drop is not obvious and is copied straight from `Carryable`'s hard-won comment:
+`Physics.SyncTransforms()` between writing the transform and clearing `isKinematic`.
+`autoSyncTransforms` is off in this project, so without it the solver still has the part where it
+was picked up, and going dynamic there throws it back across the island.
+
+#### Where they are
+
+Three parts, at the three places on the second island that want you dead: the propeller ten metres
+*inside* the native village, the wing at the cave mouth, the engine in the wreck. That is why those
+three places are on an island whose catalogue is otherwise a beachhead and a revive machine - #68's
+notes said as much while they were still empty.
+
+They flatten nothing and raise nothing. Every other POI in the game comes with a pad that levels the
+ground under it; a crate that arrived with its own patch of level terrain would read as a crate
+somebody had placed there for you.
+
+Finding them is `Objective`, the same one global line the rest of the game uses, written by whichever
+part happens to be first in the list at 2Hz so that three components do not fight over one string. It
+is local and unreplicated like every other objective: each peer can see where the parts are and works
+the same sentence out for itself.
+
+#### What the harness measures
+
+The acceptance - *"hauling parts is a comedy set piece, not a fetch-quest chore"* - is a judgement no
+headless run can make. What `-partTest` checks is every mechanism the joke is built out of, because
+each one stops being funny the moment it stops working: that the parts are a walk from camp and
+standing at a landmark, that one person crawls and two do not, that a helper who wanders off loses
+their grip, that both hands are both hands, and that a punch puts the engine in the mud where you
+were standing.
+
+The pickup goes in through `PlanePart.ServerInteract`, the same door `PlayerInteractor`'s RPC uses.
+Only the aiming is stubbed out - there is no camera in a headless run to point at anything - which is
+the arrangement `-carryTest` settled on for the same reason.
+
+```
+[PartTest] propeller at village, 166m out; wing at cave, 192m out; engine at wreck, 117m out, all of it on foot.
+[PartTest] the propeller went from lying on the ground to riding a shoulder at 0.55x, still 0.00m off it after 30m of walking.
+[PartTest] a second pair of hands took it from 0.55x to 0.90x, and 20m of wandering took it straight back to 0.55x.
+[PartTest] one punch and the propeller was in the mud 0.8m from where the carrier stood, moving under its own weight again.
+[PartTest] 38 passed, 0 failed.
+```
+
+What it cannot check is the number that matters: whether 0.30× is funny-slow or just slow. That is
+the playtest, and the three numbers per part sit in one table in `PlanePartBuilder` so that moving
+them is a diff rather than three prefab inspectors.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**
