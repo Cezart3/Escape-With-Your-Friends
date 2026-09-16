@@ -356,6 +356,14 @@ namespace EscapeWithYourFriends.Vehicles
             {
                 body.isKinematic = wasKinematic;
                 body.interpolation = wasInterpolated;
+
+                // A kinematic body that has been slid 180 metres at 30 m/s hands that momentum back
+                // the moment it goes dynamic again, and the buggy then careers off across the island
+                // on its own. Harmless until #60, at which point the runaway started flattening the
+                // spare bodies standing around and the sections after this one inherited a car park
+                // full of ragdolls. The suite teleported it; it has not earned any velocity.
+                body.linearVelocity = Vector3.zero;
+                body.angularVelocity = Vector3.zero;
             }
         }
 
@@ -525,6 +533,11 @@ namespace EscapeWithYourFriends.Vehicles
         IEnumerator Sweeping(Vehicle buggy, PlayerMotor motor, VehicleRider rider, Health health)
         {
             if (health == null) yield break;
+
+            // Upright first. Everything before this has downed them, carried them and - since #60 -
+            // may have run them over, and a heap on the ground cannot be put in a seat.
+            Stand(motor, health);
+            yield return Settled();
 
             if (!rider.IsSeated)
             {

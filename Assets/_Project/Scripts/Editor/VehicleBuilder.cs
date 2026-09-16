@@ -138,11 +138,19 @@ namespace EscapeWithYourFriends.EditorTools
             // and the stutter is much easier to see on a passenger's head than on the car.
             body.interpolation = RigidbodyInterpolation.Interpolate;
 
+            // #60. At 22 m/s a discrete step moves the chassis 44cm, which is wider than the person
+            // standing in front of it: a car that tunnels through its victim never reports the
+            // collision the run-over is built on.
+            body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+
             var vehicle = root.AddComponent<Vehicle>();
             vehicle.Configure(seats.ToArray(), cargo, "buggy");
 
             var car = root.AddComponent<CarController>();
             car.Configure(wheels.ToArray(), visuals.ToArray());
+
+            // #60. Running a friend over is the point of owning a car.
+            root.AddComponent<VehicleImpact>();
 
             return root;
         }

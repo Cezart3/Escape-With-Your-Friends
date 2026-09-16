@@ -135,6 +135,9 @@ namespace EscapeWithYourFriends.EditorTools
             var boat = root.AddComponent<BoatController>();
             boat.Configure(Floats());
 
+            // #60. A hull moving at 12 m/s is a blunt instrument.
+            root.AddComponent<VehicleImpact>();
+
             return root;
         }
 
