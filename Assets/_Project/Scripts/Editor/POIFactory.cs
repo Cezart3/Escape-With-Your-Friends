@@ -348,6 +348,10 @@ namespace EscapeWithYourFriends.EditorTools
                       casino + Offset(casinoFacing, 7f) + Offset(casinoFacing + 90f, 1.6f),
                       casinoFacing + 180f, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
 
+                // The table, inside the shell. #65 builds the room around it.
+                Entry("casino.table", CasinoFactory.TablePath, casino, casinoFacing + 180f,
+                      pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
+
                 Entry("village", GreyboxDir + "/NativeVillage.prefab", village, villageFacing,
                       pad: 24f, falloff: 20f, raise: 0.3f, maxSlope: 0.32f),
 

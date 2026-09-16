@@ -283,6 +283,7 @@ namespace EscapeWithYourFriends.Net
             Vehicles.ConditionTest.Begin();
             Vehicles.VehicleUpgradeTest.Begin();
             Casino.ChipsTest.Begin();
+            Casino.RouletteTest.Begin();
             Player.SurvivalTest.Begin();
             Player.BuffTest.Begin();
         }
@@ -292,6 +293,12 @@ namespace EscapeWithYourFriends.Net
             Debug.Log($"[NetworkBootstrap] Client: {args.ConnectionState}.");
             ClientStateChanged?.Invoke(args.ConnectionState);
             ClearRegistryIfFullyStopped();
+
+            // Every other harness in the project runs on the server, so they are all started above.
+            // #64's is the exception: what it checks is what a peer that is *not* the server ends up
+            // showing, which the host can never observe about itself. It no-ops without
+            // -rouletteTest, and on a host it has already been started and will not start twice.
+            if (args.ConnectionState == LocalConnectionState.Started) Casino.RouletteTest.Begin();
         }
 
         /// <summary>

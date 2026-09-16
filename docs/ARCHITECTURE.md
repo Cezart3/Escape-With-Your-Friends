@@ -5040,6 +5040,94 @@ Same lesson as #62's tyre measurement, from the other direction: there, a number
 that was not the upgrade; here, a number stayed still for a reason that was not the rule. Both are
 the same mistake, which is grading something the test did not isolate.
 
+### The wheel does not decide anything (#64)
+
+A single-zero wheel, thirty-seven pockets, and the house edge is the green one.
+
+**The server rolls, then tells everybody the answer.** `Round()` closes the betting window, takes a
+number out of a server-side `System.Random`, writes it to a `SyncVar`, and sends one `ObserversRpc`
+carrying that number. What crosses the wire is the result - not a seed, not a wheel speed, not a
+request to roll - so there is no message a client can send that reaches the outcome, and no timing
+it can win. That is #64's acceptance, and it is the same shape as every other authority decision in
+the project.
+
+The animation is therefore cosmetic by construction. Each peer eases its own wheel through four
+turns and stops on the pocket it was handed, and if it ever stopped somewhere else the only
+consequence would be a wheel lying about a payout that already happened. Which is exactly what the
+harness looks for: it reads the angle back off the transform after the spin and asks which pocket is
+under the marker, twelve rounds running.
+
+#### Ten squares instead of a screen
+
+Betting is ten small objects on the baize - red, black, odd, even, low, high, three dozens and a
+straight bet on seven - and the player chooses by aiming at one. The betting UI is #65's job and
+needs an interior to sit in; until then the lazy version of *multiple bet types* is the thing a
+roulette table already is, a board with the bets written on it.
+
+**Each square is its own nested `NetworkObject`, and that is the load-bearing part.** The client
+sends the object it aimed at and the server resolves the component with
+`GetComponentInChildren<IInteractable>()`. Ten `BetSpot`s parented to one networked root would every
+one of them resolve to whichever came first, and every bet in the game would land on red. This is
+the third issue in a row to be shaped by that one line in `PlayerInteractor` - #62 dropped a feature
+over it, #63 built two prefabs to avoid it, and #64 finally pays the small cost of nesting.
+
+#### The half a host cannot check
+
+The first run of the harness was green and only half a test. It ran on the host, where the server
+and the client are the same process and the wheel is animated by a direct call rather than by the
+RPC - so the thing the acceptance is actually about, *what a peer that is not the server ends up
+showing*, was never observed. A host cannot receive its own `ObserversRpc`.
+
+So `-rouletteTest` now has a second, much smaller suite that runs when the process is a client: it
+finds the table, waits for four spins to settle, and each time asserts that the pocket under its own
+marker is the number the `SyncVar` says the host rolled. The host, having finished its own
+assertions, keeps spinning on a loop until it is killed, purely so the client has wheels to watch.
+
+Getting there turned up a real gap in the scaffolding rather than in the feature. **Every harness in
+the project is started from `OnServerConnectionState`**, which is right for all of them - they all
+assert about server state, and the ones that need two players have the host drive the second body.
+A pure client therefore ran nothing at all, silently: the first two-process run produced a client
+log with no `[RouletteTest]` line in it, not even the error branches. `NetworkBootstrap` now also
+starts this one from `OnClientConnectionState`.
+
+And then, once it ran, it failed - which is the whole reason for writing it. **The host said 10 and
+the client's wheel was showing 0.** The spin duration was a server-side field: the server had been
+told to spin for two seconds, the client was still easing through the prefab's five, and it was
+being read a number it had not arrived at yet. Nothing about the result was wrong and nothing a
+client did could have changed it, but the wheel in front of a player would have been pointing at
+somebody else's number when the chips moved.
+
+So the RPC carries the duration as well as the pocket, and every peer animates for the same length
+of time the server did. The harness waits on its own wheel rather than on the server's clock, since
+the RPC still lands a tick late. Three of the four checks in this issue came from the two-process
+run; none of them were visible from the host alone.
+
+The last one it turned up is a join, not a spin. A client that arrives while the wheel is already
+turning never receives that round's RPC and sits with its wheel wherever the prefab was saved -
+pocket zero - until the next round. The wheel now snaps to the last number in `OnStartClient`, so a
+player walking into the casino sees the table the way a real one looks, and the harness lets any
+round that was already in flight when it joined finish unwatched, because grading it would be
+grading the join.
+
+#### The arithmetic, on paper
+
+Stakes leave the wallet when the bet is placed, not at settlement: a bet you can walk away from is
+not a bet, and it means the table never has to chase somebody who disconnected mid-spin. A winner is
+handed the stake back *plus* the odds, because the stake already left.
+
+The pay table is the real one - 35 to 1 on a number, 2 to 1 on a dozen, evens on the rest - and the
+harness checks it as arithmetic rather than as a comment. For every kind of bet, the number of
+pockets it wins on times what it returns comes to exactly 36 for every 37 staked. Red wins 18 and
+pays 2; a dozen wins 12 and pays 3; a straight wins 1 and pays 36. Any bet that came to 37 would be
+a casino that loses money, and the 2.7% is the same whichever square you stand at.
+
+**Chips move at a table; money never does.** `ServerStakeChips` and `ServerPayChips` touch only the
+chip balance, so `TotalInWallets()` is the same number before and after a spin whoever wins - which
+is what keeps #63's rule true now that there is something to lose chips on. They are not doors: the
+only two ways value crosses between money and chips are still the two cage windows. Staked and paid
+chips get counters of their own rather than riding on `Minted` and `Burned`, because the house is
+not a wallet - a losing stake is simply gone and a win is simply made.
+
 ---
 
 ## Data-driven content
