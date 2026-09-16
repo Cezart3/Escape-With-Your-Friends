@@ -391,6 +391,7 @@ GameObject:
   - component: {fileID: 7708903967674735572}
   - component: {fileID: 7128130648543340972}
   - component: {fileID: 5319427432827425271}
+  - component: {fileID: 5726002772625494383}
   m_Layer: 0
   m_Name: Buggy
   m_TagString: Untagged
@@ -669,6 +670,26 @@ MonoBehaviour:
   _crashDamage: 4
   _fuelPerCan: 25
   _repairPerPart: 30
+--- !u!114 &5726002772625494383
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3856522724236745473}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c400f4ccb5dbc344b0d3adf4a68f3f2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Vehicles.VehicleUpgrades
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 577700582600648652}
+  _networkObjectCache: {fileID: 0}
+  _fits:
+  - {fileID: 11400000, guid: 5835620fdbe3c5548a5934b76d46a548, type: 2}
+  - {fileID: 11400000, guid: 5a720887f9862614b95aacff1b14637b, type: 2}
+  - {fileID: 11400000, guid: 09f3e2878136e084b9cf78cf5eeccec6, type: 2}
+  - {fileID: 11400000, guid: 2268903b2185d1c4489f16e1913dbc21, type: 2}
 --- !u!1 &4299882861046916769
 GameObject:
   m_ObjectHideFlags: 0

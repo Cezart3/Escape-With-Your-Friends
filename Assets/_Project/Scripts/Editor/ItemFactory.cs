@@ -71,6 +71,15 @@ namespace EscapeWithYourFriends.EditorTools
             // consumable the trader has a monopoly on.
             new("fuel", "Fuel Can", ItemCategory.Material, 5, 4f, 30, "Petrol, sloshing. Engines want it and nothing here makes it."),
 
+            // #62. Vehicle parts. One each, heavy against the 40kg limit on purpose: fetching a part
+            // is a trip, and a player carrying an engine block is a player who cannot also carry the
+            // fuel to test it. Priced high because the trader is the only place they exist - the
+            // island gives you scrap, not gearboxes.
+            new("engine_kit", "Tuned Engine", ItemCategory.Material, 1, 15f, 220, "A bigger block off the trader's shelf. Half again the pull, and the speed to match."),
+            new("tyre_kit", "Grippy Tyres", ItemCategory.Material, 1, 12f, 160, "Fat knobbly things. They hold a corner the stock rubber lets go of."),
+            new("armour_kit", "Bolt-on Armour", ItemCategory.Material, 1, 20f, 180, "Plate, bolts, and no thought for weight. Hitting things stops ending the trip."),
+            new("tank_kit", "Long-range Tank", ItemCategory.Material, 1, 10f, 140, "A drum where the spare wheel was. Half again as far before you walk."),
+
             // Hunting's half of the material list (#53). A hide is the single most valuable thing an
             // early island gives away, which is the point: it is what makes walking into the trees
             // with a hatchet a better idea than picking up another plank.

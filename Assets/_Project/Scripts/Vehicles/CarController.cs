@@ -177,6 +177,54 @@ namespace EscapeWithYourFriends.Vehicles
             _vehicle = GetComponent<Vehicle>();
 
             _body.centerOfMass = _centreOfMass;
+
+            // #62. What the prefab was baked with, before anybody bolts anything to it. Captured
+            // here because Awake is the last moment these are certainly the authored numbers:
+            // VehicleUpgrades rewrites them from the fitted tiers and needs something absolute to
+            // multiply, or a part fitted twice would compound.
+            _stockTorque = _motorTorque;
+            _stockTopSpeed = _topSpeed;
+            _stockGrip = _wheels.Length > 0 && _wheels[0] != null
+                ? _wheels[0].sidewaysFriction.stiffness
+                : 1f;
+            _stockForwardGrip = _wheels.Length > 0 && _wheels[0] != null
+                ? _wheels[0].forwardFriction.stiffness
+                : 1f;
+        }
+
+        // ---------------------------------------------------------------- what is bolted on (#62)
+
+        float _stockTorque;
+        float _stockTopSpeed;
+        float _stockGrip;
+        float _stockForwardGrip;
+
+        /// <summary>
+        /// Server only. Rewrites power and grip as absolute multiples of the baked numbers.
+        ///
+        /// A bigger engine raises top speed as well as torque, because torque alone on a car that
+        /// still cuts the motor at 22 m/s buys a shorter run-up to the same ceiling, and nobody
+        /// paying for an engine means that. Grip goes onto the friction curves rather than into some
+        /// steering coefficient: it is the wheels that let go, and a tyre upgrade that did not change
+        /// what the wheels do would be a lie told in the UI.
+        /// </summary>
+        public void ServerTune(float power, float grip)
+        {
+            _motorTorque = _stockTorque * power;
+            _topSpeed = _stockTopSpeed * power;
+
+            foreach (WheelCollider wheel in _wheels)
+            {
+                if (wheel == null) continue;
+
+                WheelFrictionCurve sideways = wheel.sidewaysFriction;
+                sideways.stiffness = _stockGrip * grip;
+                wheel.sidewaysFriction = sideways;
+
+                WheelFrictionCurve forward = wheel.forwardFriction;
+                forward.stiffness = _stockForwardGrip * grip;
+                wheel.forwardFriction = forward;
+            }
         }
 
         public override void OnStartNetwork()

@@ -133,6 +133,24 @@ namespace EscapeWithYourFriends.Vehicles
             _vehicle = GetComponent<Vehicle>();
 
             _body.centerOfMass = _centreOfMass;
+
+            // #62. The baked numbers, kept so an outboard can be expressed as a multiple of them.
+            _stockThrust = _thrust;
+            _stockTopSpeed = _topSpeed;
+        }
+
+        float _stockThrust;
+        float _stockTopSpeed;
+
+        /// <summary>
+        /// Server only. A bigger outboard, from #62. Thrust and ceiling move together for the same
+        /// reason they do on the car: more push against the same speed limit is a shorter run-up to
+        /// a number the buyer already had.
+        /// </summary>
+        public void ServerTune(float power)
+        {
+            _thrust = _stockThrust * power;
+            _topSpeed = _stockTopSpeed * power;
         }
 
         public override void OnStartNetwork()

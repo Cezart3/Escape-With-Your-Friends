@@ -142,6 +142,9 @@ namespace EscapeWithYourFriends.EditorTools
             // dry at sea is the run-ending outcome the issue says never to ship.
             root.AddComponent<VehicleCondition>().Configure(tank: 120f, integrity: 140f);
 
+            // #62. A bigger outboard, plate and a drum. No tyres.
+            root.AddComponent<VehicleUpgrades>().Configure(VehicleUpgradeFactory.Sea());
+
             return root;
         }
 
