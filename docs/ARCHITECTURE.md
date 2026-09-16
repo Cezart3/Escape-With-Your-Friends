@@ -5128,6 +5128,65 @@ only two ways value crosses between money and chips are still the two cage windo
 chips get counters of their own rather than riding on `Minted` and `Burned`, because the house is
 not a wallet - a losing stake is simply gone and a win is simply made.
 
+### A casino built by people stranded on an island (#65)
+
+The shape of the room was right from the blockout - three walls, an open front, one table four
+people crowd round. What it was missing was any reason to believe somebody built it.
+
+So the greybox casino was rebuilt around the table #64 put in it: a floor of mismatched decking
+instead of sand, a front wall with a two-metre doorway rather than a missing side, crates to sit on,
+a bar with bottles on it, a chandelier that is seven bottles on a wire, and a sign nailed over the
+door at an angle nobody could be bothered to fix. Everything in there is salvage, which is the
+brief.
+
+**The lighting is the part that does the work.** Five point lights, no two the same colour, none of
+them where a lighting designer would put one, and a `TackyLights` component that walks each of them
+round the colour wheel on a fourteen-second cycle and breathes their brightness out of step. Every
+other room in this game is lit and left alone; this one will not sit still, and that is the whole
+difference between a shack and a casino. None of them casts a shadow - five shadow-casting lamps in
+one small room is a slideshow on the GPU this game has to run on, and the flatness suits it anyway.
+
+Nothing about the lights is networked. Each peer runs its own chase off its own clock, because two
+players seeing slightly different shades of magenta is not a bug anybody can have. On a headless
+host the component switches itself off, since there is no graphics device to light.
+
+#### The board, which is a sign rather than a menu
+
+Over the table, and only while you are standing at one: the last number in its own colour - red,
+black, green for zero - and a line under it saying what you hold, what is on the cloth, and whether
+the table is still listening. It appears within six metres and is gone again when you walk away.
+
+It is deliberately not clickable. Betting is done by aiming at a square and pressing the interact
+key, so the board needs no `EventSystem`, no raycaster, and no chance of eating a mouse click the
+game wanted. Everything it draws is already replicated onto this peer, which is what lets a player
+watch somebody else's stake land without a round trip.
+
+That replication needed one addition. `RouletteWheel` knew what was staked because it holds the
+server's own list of bets, and that list is empty on every other peer - a board reading it would
+have shown every player their own nothing. The pot is now a `SyncVar` alongside the result.
+
+The strings are pure statics, like `Purse.Text`: a headless run has no canvas, and the claim worth
+testing is what the words say, not that a rectangle was laid out. `-casinoTest` reads them in all
+three states a table can be in.
+
+#### What a harness can hold of "it reads as a casino"
+
+Nothing, directly - that is a judgement somebody makes by looking. What it can hold is everything
+that would have to be true first, and each of these has been wrong in some build: there is a floor,
+a roof, three walls and a doorway wide enough for four people arriving at once; the table is inside
+the room rather than clipping a wall or out on the sand; there is somewhere to sit and something to
+drink at; the lamps are there, there are several, and no two agree on a colour.
+
+The table check is the one that earns its keep. The building is placed by the greybox builder and
+the table by the POI catalogue, two systems that have never met, and nothing but arithmetic keeps
+them agreeing. A table half inside a wall is the most likely way this issue quietly breaks later.
+
+One thing to know before writing another test that looks a landmark up: **`POISpawner` overwrites
+`Landmark.Id` with the catalogue entry's id as it spawns.** The prefab is a *kind* of place and the
+catalogue entry is *this particular one*, so the building the greybox builder called `Casino` is
+called `casino` by the time anything can see it. This suite sidesteps the question by finding the
+landmark nearest the table, which is also what it actually means by "the casino".
+
 ---
 
 ## Data-driven content

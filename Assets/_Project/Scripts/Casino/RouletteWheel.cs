@@ -91,6 +91,12 @@ namespace EscapeWithYourFriends.Casino
         /// <summary>True from the moment betting closes until the payouts are done.</summary>
         readonly SyncVar<bool> _spinning = new();
 
+        /// <summary>
+        /// Everything riding on this spin, replicated. <see cref="Staked"/> is the server's own list
+        /// and reads zero everywhere else, which is no use to the board a player is looking at (#65).
+        /// </summary>
+        readonly SyncVar<int> _pot = new();
+
         readonly List<Bet> _bets = new();
 
         System.Random _rng;
@@ -121,6 +127,9 @@ namespace EscapeWithYourFriends.Casino
         }
 
         public int BetCount => _bets.Count;
+
+        /// <summary>What is on the table, as every peer sees it. See <see cref="_pot"/>.</summary>
+        public int Pot => _pot.Value;
 
         struct Bet
         {
@@ -229,6 +238,7 @@ namespace EscapeWithYourFriends.Casino
             if (staked <= 0) return 0;
 
             _bets.Add(new Bet { Owner = actor, Kind = kind, Number = number, Chips = staked });
+            _pot.Value = Staked;
 
             Debug.Log($"[Roulette] {actor.name} put {staked} on {Describe(kind, number)}. "
                       + $"{_bets.Count} bet(s), {Staked} on the table.");
@@ -293,6 +303,7 @@ namespace EscapeWithYourFriends.Casino
                       + $"{Staked} staked, {paid} paid out across {_bets.Count} bet(s).");
 
             _bets.Clear();
+            _pot.Value = 0;
         }
 
         public static string Describe(BetKind kind, int number)

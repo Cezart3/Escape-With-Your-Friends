@@ -93,7 +93,10 @@ Driving reuses the movement keys: **W/S** throttle and reverse, **A/D** steer, *
   outside the casino. Inside is a roulette table with ten squares painted on it - red, black, odd,
   even, low, high, three dozens and a straight bet on seven. Aim at a square, press **E**, and 100
   chips go on it; the first bet opens a twelve-second window, then the wheel turns for five seconds
-  and pays. The building around it is still a shell.
+  and pays. A board over the table shows the last number in its colour, what you hold and what is on
+  the cloth, and appears only while you are standing at the table. The room around it is decking,
+  crates to sit on, a bar with bottles, a sign nailed over the door and five lamps that will not
+  agree on a colour.
 - The **native village** is roughly 300 m from spawn and is hostile. Natives see you further by day
   and hear you further at night. They carry loot worth the walk; a village native carries more than a
   wandering one.
