@@ -90,8 +90,10 @@ Driving reuses the movement keys: **W/S** throttle and reverse, **A/D** steer, *
 - The **casino**, the **wreck** and the **cave** are placed and enterable. Two windows stand outside
   the casino door: the gold one sells you 100 chips for 100 coins, the green one buys them back at
   the same rate, and either will move whatever is left if you have less than 100. Chips buy nothing
-  outside the casino, and there is nothing to bet them on until #64. The building itself is still
-  empty.
+  outside the casino. Inside is a roulette table with ten squares painted on it - red, black, odd,
+  even, low, high, three dozens and a straight bet on seven. Aim at a square, press **E**, and 100
+  chips go on it; the first bet opens a twelve-second window, then the wheel turns for five seconds
+  and pays. The building around it is still a shell.
 - The **native village** is roughly 300 m from spawn and is hostile. Natives see you further by day
   and hear you further at night. They carry loot worth the walk; a village native carries more than a
   wandering one.

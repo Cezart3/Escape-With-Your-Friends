@@ -93,12 +93,20 @@ namespace EscapeWithYourFriends.Economy
         /// </summary>
         public static int Exchanged { get; private set; }
 
+        /// <summary>Chips taken by a table this session, and chips paid back out by one (#64).</summary>
+        public static int Staked { get; private set; }
+
+        /// <summary>See <see cref="Staked"/>. The difference between the two is the house's night.</summary>
+        public static int PaidOut { get; private set; }
+
         /// <summary>Forgets the session counters. For the harness, which wants a clean baseline.</summary>
         public static void ResetLedger()
         {
             Minted = 0;
             Burned = 0;
             Exchanged = 0;
+            Staked = 0;
+            PaidOut = 0;
         }
 
         void Awake() => _balance.OnChange += OnBalanceChanged;
@@ -274,6 +282,41 @@ namespace EscapeWithYourFriends.Economy
         {
             if (!IsServerStarted) return;
             _chips.Value = Mathf.Max(0, amount);
+        }
+
+        // ---------------------------------------------------------------- the table (#64)
+
+        /// <summary>
+        /// Takes chips for a bet. Returns what was actually taken, which is zero if the stack cannot
+        /// cover it - the caller stakes what it asked for or nothing, never a fraction.
+        ///
+        /// This is not a door. Chips staked at a table and chips paid back by one never touch
+        /// <see cref="Balance"/>, so the money in the world is the same number before and after a
+        /// spin whoever wins; the only two ways value crosses between money and chips are still
+        /// <see cref="ServerBuyChips"/> and <see cref="ServerCashOut"/>. What the table does move is
+        /// chips between the players and the house, and the house is not a wallet: a losing stake
+        /// is simply gone and a win is simply made, which is why these two have counters of their
+        /// own rather than riding on <see cref="Minted"/> and <see cref="Burned"/>.
+        /// </summary>
+        [Server]
+        public int ServerStakeChips(int chips)
+        {
+            if (chips <= 0 || _chips.Value < chips) return 0;
+
+            _chips.Value -= chips;
+            Staked += chips;
+
+            return chips;
+        }
+
+        /// <summary>Hands chips back after a win. See <see cref="ServerStakeChips"/>.</summary>
+        [Server]
+        public void ServerPayChips(int chips)
+        {
+            if (chips <= 0) return;
+
+            _chips.Value += chips;
+            PaidOut += chips;
         }
 
         /// <summary>One line for the log.</summary>
