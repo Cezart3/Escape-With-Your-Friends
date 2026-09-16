@@ -189,13 +189,15 @@ namespace EscapeWithYourFriends.EditorTools
             Box(root, "Sign.Letters", "Accent", new Vector3(0f, 3.5f, 2.29f),
                 new Vector3(3.4f, 0.35f, 0.06f), solid: false);
 
-            // The bar, along the back wall, with bottles on it. The drink NPC stands behind it (#66).
-            Box(root, "Bar", "Wood", new Vector3(-2.6f, 1f, -3.2f), new Vector3(3f, 0.2f, 0.8f));
-            Box(root, "Bar.Front", "Wood", new Vector3(-2.6f, 0.5f, -2.9f), new Vector3(3f, 1f, 0.15f));
+            // The bar, along the back wall, with bottles on it. Pulled forward from the wall in #66
+            // to leave the barman somewhere to stand: the gap behind it is where the POI drops him,
+            // and at the blockout's 0.2m he was standing inside the plank.
+            Box(root, "Bar", "Wood", new Vector3(-2.6f, 1f, -3.05f), new Vector3(3f, 0.2f, 0.8f));
+            Box(root, "Bar.Front", "Wood", new Vector3(-2.6f, 0.5f, -2.75f), new Vector3(3f, 1f, 0.15f));
 
             for (int i = 0; i < 6; i++)
                 Box(root, $"Bar.Bottle{i}", "Metal",
-                    new Vector3(-3.9f + i * 0.5f, 1.25f, -3.3f), new Vector3(0.12f, 0.3f, 0.12f),
+                    new Vector3(-3.9f + i * 0.5f, 1.25f, -3.15f), new Vector3(0.12f, 0.3f, 0.12f),
                     solid: false);
 
             // Crates to sit on, round the table the POI puts at the origin. Not chairs: nobody
@@ -232,7 +234,7 @@ namespace EscapeWithYourFriends.EditorTools
             root.AddComponent<TackyLights>().Configure(lamps);
 
             Empty(root, "TableSeat", new Vector3(0f, 0f, 1.6f));
-            Empty(root, "BarNpcStand", new Vector3(-2.6f, 0f, -3.7f));
+            Empty(root, "BarNpcStand", new Vector3(-2.6f, 0f, -3.62f));
             return root;
         }
 

@@ -285,6 +285,7 @@ namespace EscapeWithYourFriends.Net
             Casino.ChipsTest.Begin();
             Casino.RouletteTest.Begin();
             Casino.CasinoTest.Begin();
+            Casino.DrunkTest.Begin();
             Player.SurvivalTest.Begin();
             Player.BuffTest.Begin();
         }

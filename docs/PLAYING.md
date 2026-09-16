@@ -96,7 +96,11 @@ Driving reuses the movement keys: **W/S** throttle and reverse, **A/D** steer, *
   and pays. A board over the table shows the last number in its colour, what you hold and what is on
   the cloth, and appears only while you are standing at the table. The room around it is decking,
   crates to sit on, a bar with bottles, a sign nailed over the door and five lamps that will not
-  agree on a colour.
+  agree on a colour. Behind the bar stands the **barman**, who sells grog at 25 coins - money, not
+  chips. Drinking it takes two seconds and leaves an empty bottle. For ninety seconds after that you
+  take a quarter less damage and you are slower, thirstier, and seven degrees worse at aiming, which
+  is wider than a shotgun's own spread; the screen blurs, the colours fringe at the edges and the
+  horizon will not sit level. It is a good trade in a brawl and a terrible one in a gunfight.
 - The **native village** is roughly 300 m from spawn and is hostile. Natives see you further by day
   and hear you further at night. They carry loot worth the walk; a village native carries more than a
   wandering one.

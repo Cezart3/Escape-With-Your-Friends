@@ -1,5 +1,8 @@
 using System.IO;
 using EscapeWithYourFriends.Casino;
+using EscapeWithYourFriends.Core;
+using EscapeWithYourFriends.Data;
+using EscapeWithYourFriends.Economy;
 using FishNet.Managing.Object;
 using FishNet.Object;
 using UnityEditor;
@@ -28,6 +31,17 @@ namespace EscapeWithYourFriends.EditorTools
         internal const string BuyWindowPath = PrefabDir + "/ChipWindow.prefab";
         internal const string CashWindowPath = PrefabDir + "/CashWindow.prefab";
         internal const string TablePath = PrefabDir + "/RouletteTable.prefab";
+        internal const string BarmanPath = PrefabDir + "/Barman.prefab";
+
+        const string BarShopPath = "Assets/_Project/Data/Bar.asset";
+        const string ItemFolder = "Assets/_Project/Data/Items";
+
+        /// <summary>
+        /// What a drink costs. Grog is worth 12 to anybody else, which is the joke: the barman is
+        /// the only person on the island charging a markup on something that makes you worse at the
+        /// game, and he is never short of customers.
+        /// </summary>
+        const int GrogPrice = 25;
 
         /// <summary>Money per press. A stack to bet with, not a night's savings.</summary>
         const int Chunk = 100;
@@ -43,6 +57,8 @@ namespace EscapeWithYourFriends.EditorTools
                       new Color(0.35f, 0.65f, 0.45f))) built++;
 
             if (Table()) built++;
+
+            if (Barman(EnsureBar())) built++;
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -185,6 +201,137 @@ namespace EscapeWithYourFriends.EditorTools
 
             RegisterSpawnable(saved.GetComponent<NetworkObject>(), TablePath);
             Debug.Log($"[CasinoFactory] Built {TablePath} with {spots.Length} bet spots.");
+
+            return true;
+        }
+
+        /// <summary>
+        /// The bar's stock: one line, unlimited, paid for in money. #66.
+        ///
+        /// A second <see cref="ShopDef"/> rather than a line on the trader's, because the trader is
+        /// two hundred metres away and the thing being sold is the reason to walk into this room.
+        /// It is a <see cref="ShopCounter"/> rather than a new kind of NPC for the lazier reason:
+        /// buying, stock, restocking, the reach check and the trade UI all already exist, and a
+        /// barman is a shopkeeper with one thing on the shelf.
+        ///
+        /// **Money, not chips.** Nothing outside the cage takes a payment in chips (#63), and that
+        /// line is worth more than the convenience of paying for a drink with your winnings: it is
+        /// what keeps "chips buy nothing real" true, which is the sentence #67's compliance
+        /// checklist has to be able to say.
+        /// </summary>
+        static ShopDef EnsureBar()
+        {
+            var shop = AssetDatabase.LoadAssetAtPath<ShopDef>(BarShopPath);
+            bool rebuild = CommandLine.HasFlag("-rebuildShop");
+
+            if (shop != null && !rebuild) return shop;
+
+            bool fresh = shop == null;
+            if (fresh) shop = ScriptableObject.CreateInstance<ShopDef>();
+
+            var grog = AssetDatabase.LoadAssetAtPath<ItemDef>($"{ItemFolder}/grog.asset");
+            if (grog == null)
+                Debug.LogError("[CasinoFactory] the bar has nothing to sell: no grog item. Run "
+                               + "ItemFactory.Build first.");
+
+            var so = new SerializedObject(shop);
+            so.FindProperty("_id").stringValue = "casino_bar";
+            so.FindProperty("_displayName").stringValue = "the Barman";
+
+            // He buys a bottle back for a quarter of its worth, which is three. Nobody has ever
+            // done this twice.
+            so.FindProperty("_buyBackFraction").floatValue = 0.25f;
+            so.FindProperty("_restockSeconds").floatValue = 60f;
+
+            SerializedProperty offers = so.FindProperty("_offers");
+            offers.arraySize = 1;
+
+            SerializedProperty entry = offers.GetArrayElementAtIndex(0);
+            entry.FindPropertyRelative("Item").objectReferenceValue = grog;
+            entry.FindPropertyRelative("Price").intValue = GrogPrice;
+            entry.FindPropertyRelative("Stock").intValue = -1;
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            if (fresh)
+            {
+                AssetDatabase.CreateAsset(shop, BarShopPath);
+                Debug.Log($"[CasinoFactory] Created {BarShopPath}: grog at {GrogPrice}.");
+            }
+            else
+            {
+                EditorUtility.SetDirty(shop);
+                Debug.Log($"[CasinoFactory] Rebuilt {BarShopPath} from code (-rebuildShop).");
+            }
+
+            return shop;
+        }
+
+        /// <summary>
+        /// The man himself: seven boxes and a shop. He stands in the gap between the bar and the
+        /// back wall that <c>GreyboxBuilder</c> leaves at <c>BarNpcStand</c>, facing the door.
+        ///
+        /// Only the torso has a collider, so the crosshair finding him is unambiguous and walking
+        /// into the bar does not shove him through the wall.
+        /// </summary>
+        static bool Barman(ShopDef shop)
+        {
+            Directory.CreateDirectory(PrefabDir);
+
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(BarmanPath);
+            if (existing != null)
+            {
+                // Same rule as ShopFactory: the stock link is structure, not balance, so it is
+                // re-applied even to a prefab somebody has already dressed.
+                var counter = existing.GetComponent<ShopCounter>();
+                if (counter != null)
+                {
+                    var so = new SerializedObject(counter);
+                    so.FindProperty("_shop").objectReferenceValue = shop;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                    PrefabUtility.SavePrefabAsset(existing);
+                }
+
+                return false;
+            }
+
+            var root = new GameObject("Barman");
+
+            var skin = new Color(0.72f, 0.55f, 0.42f);
+            var shirt = new Color(0.90f, 0.88f, 0.82f);
+            var apron = new Color(0.30f, 0.28f, 0.34f);
+
+            Block(root.transform, "Torso", new Vector3(0f, 1.25f, 0f), new Vector3(0.6f, 0.75f, 0.3f),
+                  shirt, solid: true);
+            Block(root.transform, "Legs", new Vector3(0f, 0.45f, 0f), new Vector3(0.5f, 0.9f, 0.28f),
+                  apron, solid: false);
+            Block(root.transform, "Apron", new Vector3(0f, 1.05f, 0.17f), new Vector3(0.52f, 0.8f, 0.05f),
+                  apron, solid: false);
+            Block(root.transform, "Arm.Left", new Vector3(-0.38f, 1.25f, 0f),
+                  new Vector3(0.14f, 0.7f, 0.22f), shirt, solid: false);
+            Block(root.transform, "Arm.Right", new Vector3(0.38f, 1.25f, 0f),
+                  new Vector3(0.14f, 0.7f, 0.22f), shirt, solid: false);
+            Block(root.transform, "Head", new Vector3(0f, 1.78f, 0f), new Vector3(0.28f, 0.32f, 0.28f),
+                  skin, solid: false);
+
+            // The hat is the whole characterisation budget.
+            Block(root.transform, "Hat", new Vector3(0f, 1.97f, 0f), new Vector3(0.38f, 0.08f, 0.38f),
+                  new Color(0.20f, 0.18f, 0.22f), solid: false);
+
+            root.AddComponent<NetworkObject>();
+            root.AddComponent<ShopCounter>().Configure(shop);
+
+            GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, BarmanPath, out bool success);
+            Object.DestroyImmediate(root);
+
+            if (!success || saved == null)
+            {
+                Debug.LogError($"[CasinoFactory] Failed to save {BarmanPath}.");
+                return false;
+            }
+
+            RegisterSpawnable(saved.GetComponent<NetworkObject>(), BarmanPath);
+            Debug.Log($"[CasinoFactory] Built {BarmanPath}: grog at {GrogPrice}, paid in money.");
 
             return true;
         }
