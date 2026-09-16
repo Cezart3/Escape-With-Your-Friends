@@ -264,6 +264,17 @@ namespace EscapeWithYourFriends.World
             return 1f;
         }
 
+        /// <summary>The part <paramref name="body"/> is holding, or null. #71 asks this at the plane.</summary>
+        public static PlanePart HeldBy(NetworkObject body)
+        {
+            if (body == null) return null;
+
+            foreach (PlanePart part in All)
+                if (part._carrier.Value == body) return part;
+
+            return null;
+        }
+
         /// <summary>
         /// Points the objective banner at the nearest part still out in the world.
         ///
@@ -281,10 +292,11 @@ namespace EscapeWithYourFriends.World
             foreach (PlanePart part in All)
                 if (!part.IsCarried) { loose = part; break; }
 
+            // Nothing loose means everything is on a shoulder or already in the airframe, and from
+            // there the line belongs to PlaneAssembly. Two components writing one string at 2Hz is
+            // two components flickering, so this one stops rather than competing. #71.
             if (loose != null)
-                Objective.Set($"Find the {loose._label} and haul it back to camp", loose.transform);
-            else
-                Objective.Set("Get the parts back to camp");
+                Objective.Set($"Find the {loose._label} and haul it to the plane", loose.transform);
         }
     }
 }

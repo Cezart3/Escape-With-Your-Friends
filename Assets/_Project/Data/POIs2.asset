@@ -112,3 +112,14 @@ MonoBehaviour:
     PadRaise: 0
     MaxSlope: 0.6
     AllowUnderwater: 0
+  - Id: plane
+    PrefabPath: Assets/_Project/Prefabs/Plane.prefab
+    Position: {x: 70, y: 33}
+    Yaw: -45
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 22
+    PadFalloff: 18
+    PadRaise: 0.2
+    MaxSlope: 0.25
+    AllowUnderwater: 0

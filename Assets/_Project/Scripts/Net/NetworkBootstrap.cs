@@ -291,6 +291,7 @@ namespace EscapeWithYourFriends.Net
             World.Island2Test.Begin();
             Vehicles.VoyageTest.Begin();
             World.PartTest.Begin();
+            World.PlaneTest.Begin();
         }
 
         void OnClientConnectionState(ClientConnectionStateArgs args)
@@ -299,11 +300,14 @@ namespace EscapeWithYourFriends.Net
             ClientStateChanged?.Invoke(args.ConnectionState);
             ClearRegistryIfFullyStopped();
 
-            // Every other harness in the project runs on the server, so they are all started above.
-            // #64's is the exception: what it checks is what a peer that is *not* the server ends up
-            // showing, which the host can never observe about itself. It no-ops without
-            // -rouletteTest, and on a host it has already been started and will not start twice.
-            if (args.ConnectionState == LocalConnectionState.Started) Casino.RouletteTest.Begin();
+            // Almost every harness in the project runs on the server, so they are all started above.
+            // These two are the exceptions: what they check is what a peer that is *not* the server
+            // ends up showing, which the host can never observe about itself. Both no-op without
+            // their flag, and on a host both have already been started and will not start twice.
+            if (args.ConnectionState != LocalConnectionState.Started) return;
+
+            Casino.RouletteTest.Begin();
+            World.PlaneTest.Begin();
         }
 
         /// <summary>

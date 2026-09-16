@@ -5658,6 +5658,94 @@ What it cannot check is the number that matters: whether 0.30× is funny-slow or
 the playtest, and the three numbers per part sit in one table in `PlanePartBuilder` so that moving
 them is a diff rather than three prefab inspectors.
 
+### The plane is the progress bar (#71)
+
+Three parts come home from three bad places. #71 is what they come home *to*, and its acceptance is
+one sentence: *"progress is legible at a glance and replicated to all players."*
+
+The laziest honest reading of that sentence is that **the aeroplane itself is the progress bar**. A
+wreck stands on a flat strip a short walk from the beachhead with its starboard wing, its engine and
+its propeller missing, and each part you carry back fills one of those holes in on everybody's
+screen at once. There is no meter, no percentage and no new UI. If you have to read a number to know
+how far along the plane is, the plane is not legible, and a bar floating over a seven-metre object
+is a worse version of a fact the object is already telling you.
+
+| File | What it is |
+|---|---|
+| `Scripts/World/PlaneAssembly.cs` | The airframe. One `SyncVar<int>`, one interaction, and the objective line once the parts are all off the ground |
+| `Scripts/Editor/PlaneBuilder.cs` | Generates `Plane.prefab` out of primitives and registers it spawnable |
+| `Scripts/World/PlaneTest.cs` | `-planeTest`, and the first harness where **both** ends of the pair run a half |
+| `Scripts/Editor/POIFactory.cs` | One more site and one more entry, so the plane is placed like every other landmark |
+
+#### The holes are wired by name
+
+Every child of the prefab called `Fitted.something` is a missing piece. `PlaneAssembly.Awake` walks
+its children, records `something` as the `PlanePart.Label` that fills that hole, and switches the
+child off. That is the entire wiring between the builder and the component: no serialized table, no
+array to drag into an inspector, no id to keep in sync in two files. Adding a fourth part later is a
+fourth box in `PlaneBuilder` and a fourth entry in `PlanePartBuilder`, and `PlaneAssembly.cs` does
+not change.
+
+What is fitted is a **bitmask**, not a count. The difference costs one character and is the whole
+reason the harness fits the wing first: with a count, fitting the wing and watching an engine
+materialise is a small lie, and a player who catches the model lying about one thing stops trusting
+it about everything. One bit per hole, `_fitted.Value |= 1 << hole`, and `Show()` sets each child
+active from its own bit.
+
+`Show()` runs on `OnStartServer`, on `OnStartClient` and on the SyncVar's `OnChange`. The first two
+are not redundant with the third: a late joiner is handed the *value* rather than the changes that
+produced it, so without the `OnStartClient` call somebody who joined after the engine went in would
+be looking at a plane that is still missing it - which is precisely the bug the acceptance is about.
+
+#### Fitting one
+
+`PlaneAssembly` is an `IInteractable` like everything else, so the plumbing is already written.
+`ServerCanInteract` asks `PlanePart.HeldBy(actor)` what is on the actor's shoulder and whether this
+plane still has a hole for it; it deliberately does not ask how far away the actor is standing,
+because `PlayerInteractor` owns that number on the server already and a second copy is a second
+place to get it wrong. `ServerInteract` sets the bit, calls `ServerPutDown()` so the collision-ignore
+bookkeeping the carry put on the player unwinds through the same path a normal drop uses, and then
+despawns the part. The part stops existing because it is now part of the aeroplane; leaving a
+carryable engine lying inside the engine bay would be funny exactly once.
+
+The crosshair reads `The plane is missing engine, wing and propeller`, then `missing engine and
+propeller`, then `The plane is finished`, which is the same list `Missing()` builds for the objective
+line.
+
+#### Who owns the objective line
+
+`Objective` is one global, local, unreplicated string, and two components writing it at 2Hz is two
+components flickering. So they take turns by state rather than by priority: `PlanePart` writes
+*"Find the propeller and haul it to the plane"* while any part is still lying loose in the world and
+falls silent when none is, and `PlaneAssembly` writes *"Bring the engine to the plane"* or *"Get in
+the plane"* only when nothing is loose. Neither knows about the other's schedule; each one checks the
+same list and one of them always finds nothing to say.
+
+#### Both ends of the harness
+
+`-planeTest` is the first harness where the client does more than exist. The server half hauls the
+three parts home - teleporting between them, because #70 already proved the walking works and doing
+it again at 0.35x would put three real minutes into every run - and checks that the wing goes in
+first and the *wing* is what appears, that the other two follow, and that a finished plane has
+nothing left to offer. The client half touches nothing at all: it looks at the aeroplane, waits, and
+looks again, and asks `Showing` rather than the SyncVar, because a replicated integer nobody turned
+into a wing is not progress anybody can read. Half the acceptance lives on a machine that is not
+doing the work, so half the harness does too.
+
+Two things had to give for a client to run a harness at all. Every other test in the project is
+started from `OnServerConnectionState`, so on a machine that is not the server none of them exist;
+`-planeTest` is started from the client handler too, next to `-rouletteTest`, which was already there
+for the same reason. And the scene guard every island harness opens with - *is this Island2?* - is a
+question only the server can answer, because `GameSceneLoader.Current` is written on the two paths
+the server walks and stays the empty string everywhere else. The client half asks the plane instead:
+the plane only exists on the second island, so waiting for it is the same question with an answer on
+both machines.
+
+`-planeTest` on the second island: **33 passed, 0 failed** on the host, **8 passed, 0 failed** on the
+client, with the plane standing 92m from the camp fire and the three parts 176m, 225m and 127m out.
+`-partTest` still 38/38.
+
+
 ---
 
 ## Data-driven content
