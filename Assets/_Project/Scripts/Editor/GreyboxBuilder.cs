@@ -143,9 +143,17 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
-        /// The casino. A round table in the middle with room for four around it, and a bar along one
-        /// wall where the drink NPC stands. The roulette and the alcohol buff are M6; the shape is
-        /// what has to be right now, because "four players crowding one table" is the whole scene.
+        /// The casino, rebuilt for #65. The shape was always right - four players crowding one table
+        /// is the whole scene - and what it was missing was any reason to believe somebody built it.
+        ///
+        /// So: a floor of mismatched decking, a doorway you walk through rather than a missing wall,
+        /// stools that are crates, a bar with bottles on it, a sign nailed over the door, and five
+        /// coloured lamps that will not sit still. Everything in here is salvage. The roulette table
+        /// itself is no longer part of the building - it is a networked prefab placed at this POI by
+        /// <c>CasinoFactory</c> (#64), and the room is built around where it lands.
+        ///
+        /// The lighting is the load-bearing part of "reads as a casino built by people stranded on an
+        /// island". Every other room in the game is lit and left alone; see <see cref="TackyLights"/>.
         /// </summary>
         static GameObject BuildCasino()
         {
@@ -153,22 +161,101 @@ namespace EscapeWithYourFriends.EditorTools
                                    "Roulette, terrible decisions, and a man who will sell you a drink.",
                                    radius: 12f, hostile: false);
 
-            // Three walls and an open front: an interior you can see into, with no door to get stuck in.
+            // A floor, because a casino with sand underfoot is a shack. Flat on the pad, so the
+            // table the POI drops here stands on the same ground the player walks in on.
+            Box(root, "Floor", "Wood", new Vector3(0f, 0.03f, -1f), new Vector3(9f, 0.06f, 6.2f),
+                solid: false);
+
+            for (int i = 0; i < 5; i++)
+                Box(root, $"Floor.Plank{i}", "Canvas",
+                    new Vector3(-3.4f + i * 1.7f, 0.07f, -1f), new Vector3(0.5f, 0.04f, 6f),
+                    solid: false);
+
+            // Three walls and a front with a doorway in it. The gap is two metres, which is wide
+            // enough that four people arriving at once do not wedge.
             Box(root, "Wall.Back", "Wood", new Vector3(0f, 1.6f, -4f), new Vector3(9f, 3.2f, 0.3f));
             Box(root, "Wall.Left", "Wood", new Vector3(-4.4f, 1.6f, -1f), new Vector3(0.3f, 3.2f, 6.2f));
             Box(root, "Wall.Right", "Wood", new Vector3(4.4f, 1.6f, -1f), new Vector3(0.3f, 3.2f, 6.2f));
+            Box(root, "Wall.FrontLeft", "Wood", new Vector3(-3.1f, 1.6f, 2.0f), new Vector3(2.9f, 3.2f, 0.3f));
+            Box(root, "Wall.FrontRight", "Wood", new Vector3(3.1f, 1.6f, 2.0f), new Vector3(2.9f, 3.2f, 0.3f));
+            Box(root, "Door.Lintel", "Wood", new Vector3(0f, 2.9f, 2.0f), new Vector3(3.4f, 0.6f, 0.3f),
+                solid: false);
             Box(root, "Roof", "Canvas", new Vector3(0f, 3.3f, -1f), new Vector3(9.6f, 0.2f, 7f));
 
-            Cylinder(root, "Table", "Accent", new Vector3(0f, 0.9f, -0.6f), new Vector3(3.2f, 0.1f, 3.2f));
-            Cylinder(root, "Table.Base", "Wood", new Vector3(0f, 0.45f, -0.6f), new Vector3(0.8f, 0.9f, 0.8f), solid: false);
-            Cylinder(root, "Wheel", "Metal", new Vector3(0f, 1f, -0.6f), new Vector3(1.4f, 0.12f, 1.4f), solid: false);
+            // The sign, nailed over the door at an angle somebody could not be bothered to fix.
+            GameObject sign = Box(root, "Sign", "Canvas", new Vector3(0f, 3.5f, 2.2f),
+                                  new Vector3(4.2f, 0.9f, 0.12f), solid: false);
+            sign.transform.localRotation = Quaternion.Euler(0f, 0f, -4f);
+            Box(root, "Sign.Letters", "Accent", new Vector3(0f, 3.5f, 2.29f),
+                new Vector3(3.4f, 0.35f, 0.06f), solid: false);
 
+            // The bar, along the back wall, with bottles on it. The drink NPC stands behind it (#66).
             Box(root, "Bar", "Wood", new Vector3(-2.6f, 1f, -3.2f), new Vector3(3f, 0.2f, 0.8f));
             Box(root, "Bar.Front", "Wood", new Vector3(-2.6f, 0.5f, -2.9f), new Vector3(3f, 1f, 0.15f));
+
+            for (int i = 0; i < 6; i++)
+                Box(root, $"Bar.Bottle{i}", "Metal",
+                    new Vector3(-3.9f + i * 0.5f, 1.25f, -3.3f), new Vector3(0.12f, 0.3f, 0.12f),
+                    solid: false);
+
+            // Crates to sit on, round the table the POI puts at the origin. Not chairs: nobody
+            // stranded on an island builds a chair before they build a bar.
+            (float x, float z)[] stools = { (2.9f, 1.5f), (2.9f, -1.5f), (0.4f, -1.9f), (-2.6f, 1.6f) };
+
+            for (int i = 0; i < stools.Length; i++)
+            {
+                Box(root, $"Stool{i}", "Wood",
+                    new Vector3(stools[i].x, 0.3f, stools[i].z), new Vector3(0.6f, 0.55f, 0.6f));
+                Box(root, $"Stool{i}.Cushion", "Accent",
+                    new Vector3(stools[i].x, 0.6f, stools[i].z), new Vector3(0.62f, 0.08f, 0.62f),
+                    solid: false);
+            }
+
+            // A chandelier of bottles on a line, because somebody had bottles and a line.
+            Box(root, "Chandelier.Line", "Metal", new Vector3(0f, 3.15f, -1f), new Vector3(7f, 0.04f, 0.04f),
+                solid: false);
+
+            for (int i = 0; i < 7; i++)
+                Box(root, $"Chandelier.Bottle{i}", "Metal",
+                    new Vector3(-3f + i, 2.95f, -1f), new Vector3(0.1f, 0.34f, 0.1f), solid: false);
+
+            // Five lamps, no two the same, none of them where a lighting designer would put one.
+            var lamps = new[]
+            {
+                Lamp(root, "Lamp.Table", new Vector3(0f, 2.7f, -0.2f), new Color(1f, 0.35f, 0.75f), 4.5f, 8f),
+                Lamp(root, "Lamp.Bar", new Vector3(-2.9f, 2.4f, -3f), new Color(0.3f, 0.9f, 1f), 3f, 6f),
+                Lamp(root, "Lamp.Door", new Vector3(0f, 2.6f, 1.8f), new Color(1f, 0.8f, 0.25f), 2.5f, 6f),
+                Lamp(root, "Lamp.Left", new Vector3(-3.6f, 2.8f, 0.6f), new Color(0.55f, 1f, 0.4f), 2f, 5f),
+                Lamp(root, "Lamp.Right", new Vector3(3.6f, 2.8f, 0.6f), new Color(0.8f, 0.4f, 1f), 2f, 5f),
+            };
+
+            root.AddComponent<TackyLights>().Configure(lamps);
 
             Empty(root, "TableSeat", new Vector3(0f, 0f, 1.6f));
             Empty(root, "BarNpcStand", new Vector3(-2.6f, 0f, -3.7f));
             return root;
+        }
+
+        /// <summary>
+        /// A coloured point light with no shadows. Shadows off is not a saving here, it is the look:
+        /// five shadow-casting lamps in one small room is a mess on any GPU and a slideshow on the
+        /// one this game has to run on.
+        /// </summary>
+        static Light Lamp(GameObject root, string name, Vector3 position, Color colour,
+                          float intensity, float range)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(root.transform, false);
+            go.transform.localPosition = position;
+
+            var lamp = go.AddComponent<Light>();
+            lamp.type = LightType.Point;
+            lamp.color = colour;
+            lamp.intensity = intensity;
+            lamp.range = range;
+            lamp.shadows = LightShadows.None;
+
+            return lamp;
         }
 
         /// <summary>

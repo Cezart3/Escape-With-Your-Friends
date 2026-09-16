@@ -1254,7 +1254,6 @@ GameObject:
   - component: {fileID: 3881802745171078398}
   - component: {fileID: 8665099786978586152}
   - component: {fileID: 8669298156227523158}
-  - component: {fileID: 7751369025487390868}
   m_Layer: 0
   m_Name: NativeVillage
   m_TagString: Untagged
@@ -1321,23 +1320,22 @@ MonoBehaviour:
   _spectatorInterpolation: 2
   _enableTeleport: 0
   _teleportThreshold: 1
-  <PrefabId>k__BackingField: 3
+  <PrefabId>k__BackingField: 65535
   <SpawnableCollectionId>k__BackingField: 0
   <AssetPathHash>k__BackingField: 2618233336852164970
   SceneId: 0
   SerializedTransformProperties:
     Position: {x: 0, y: 0, z: 0}
-    Rotation: {x: 0, y: 0, z: 0, w: 1}
-    Scale: {x: 1, y: 1, z: 1}
-    IsValid: 1
+    Rotation: {x: 0, y: 0, z: 0, w: 0}
+    Scale: {x: 0, y: 0, z: 0}
+    IsValid: 0
   <IsNested>k__BackingField: 0
   WasActiveDuringEdit: 0
   WasActiveDuringEdit_Set1: 1
   <ComponentIndex>k__BackingField: 0
   <PredictedSpawn>k__BackingField: {fileID: 0}
   <PredictedOwner>k__BackingField: {fileID: 0}
-  NetworkBehaviours:
-  - {fileID: 7751369025487390868}
+  NetworkBehaviours: []
   InitializedParentNetworkBehaviour: {fileID: 0}
   InitializedNestedNetworkObjects: []
   RuntimeParentNetworkBehaviour: {fileID: 0}
@@ -1348,7 +1346,7 @@ MonoBehaviour:
   _initializeOrder: 0
   _preventDespawnOnDisconnect: 0
   _defaultDespawnType: 0
-  _initializedTimestamp: -8584121111478725888
+  _initializedTimestamp: 0
 --- !u!114 &8669298156227523158
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1367,21 +1365,6 @@ MonoBehaviour:
     your friends end up if the natives carry them off.
   Radius: 22
   Hostile: 1
---- !u!114 &7751369025487390868
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7801597979753490094}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8a6a39c46bf52104ba8efe3100bce3f7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: FishNet.Runtime::FishNet.Object.EmptyNetworkBehaviour
-  _componentIndexCache: 0
-  _addedNetworkObject: {fileID: 8665099786978586152}
-  _networkObjectCache: {fileID: 8665099786978586152}
 --- !u!1 &7964837318325388133
 GameObject:
   m_ObjectHideFlags: 0

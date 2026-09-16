@@ -284,6 +284,7 @@ namespace EscapeWithYourFriends.Net
             Vehicles.VehicleUpgradeTest.Begin();
             Casino.ChipsTest.Begin();
             Casino.RouletteTest.Begin();
+            Casino.CasinoTest.Begin();
             Player.SurvivalTest.Begin();
             Player.BuffTest.Begin();
         }

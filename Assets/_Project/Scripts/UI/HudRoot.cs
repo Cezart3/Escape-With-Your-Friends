@@ -43,6 +43,7 @@ namespace EscapeWithYourFriends.UI
         readonly Purse _purse = new();
         readonly FishingBar _fishing = new();
         readonly InventoryScreen _inventory = new();
+        readonly CasinoBoard _casino = new();
 
         Canvas _canvas;
         Camera _camera;
@@ -97,6 +98,7 @@ namespace EscapeWithYourFriends.UI
             _hotbar.Build(root);
             _purse.Build(root);
             _fishing.Build(root);
+            _casino.Build(root);
 
             // Its own canvas, above this one, and the only one in the game with a raycaster on it.
             // See InventoryScreen for why that split is not optional.
@@ -125,6 +127,11 @@ namespace EscapeWithYourFriends.UI
                 _hotbar.Refresh(local.Bag);
                 _purse.Refresh(local.Purse);
                 _inventory.Refresh(local);
+
+                // Off the camera rather than the body: it is what the player is actually looking
+                // through, and it survives the body being replaced by a ghost and back (#26).
+                _casino.Refresh(_camera != null ? CasinoBoard.Nearest(_camera.transform.position) : null,
+                                local.Purse);
             }
 
             if (_testRunning) RunTest();
