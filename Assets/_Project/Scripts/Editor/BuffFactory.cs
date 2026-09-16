@@ -44,7 +44,7 @@ namespace EscapeWithYourFriends.EditorTools
             public readonly float HealthRate, HungerRate, ThirstRate, WarmthRate, StaminaRate;
 
             // Multipliers.
-            public readonly float Speed, DamageTaken, StaminaCost, Haze;
+            public readonly float Speed, DamageTaken, StaminaCost, Haze, AimWobble;
 
             public Seed(string id, string name, string description, float duration,
                         BuffStacking stacking,
@@ -53,7 +53,7 @@ namespace EscapeWithYourFriends.EditorTools
                         float healthRate = 0f, float hungerRate = 0f, float thirstRate = 0f,
                         float warmthRate = 0f, float staminaRate = 0f,
                         float speed = 1f, float damageTaken = 1f, float staminaCost = 1f,
-                        float haze = 0f)
+                        float haze = 0f, float aimWobble = 0f)
             {
                 Id = id;
                 Name = name;
@@ -74,6 +74,7 @@ namespace EscapeWithYourFriends.EditorTools
                 DamageTaken = damageTaken;
                 StaminaCost = staminaCost;
                 Haze = haze;
+                AimWobble = aimWobble;
             }
         }
 
@@ -111,11 +112,15 @@ namespace EscapeWithYourFriends.EditorTools
             new("bandaged", "Bandaged", "Closing up. Do not get hit.",
                 15f, BuffStacking.Ignore, health: 8f, healthRate: 1.6f, staminaCost: 1.15f),
 
-            // Nothing applies this yet. It exists so #M6 has to write an asset and not a system, and
-            // so the multipliers and the haze are exercised by something before then.
+            // #66's drink, and the only buff in the list that is a bargain and a mistake at once.
+            // Seven degrees of wobble is worse than a shotgun's own cone (6.5) and about thirty-five
+            // times a rifle's (0.2), so the trade is real: you take less damage and you cannot shoot
+            // back. It was written for #M6 before there was anything to drink; the wobble and the
+            // barman are what finished it.
             new("drunk", "Drunk", "Braver, slower, and much harder to aim.",
                 90f, BuffStacking.Stack, thirst: -10f, thirstRate: -0.25f,
-                speed: 0.88f, damageTaken: 0.75f, staminaCost: 0.85f, haze: 0.5f),
+                speed: 0.88f, damageTaken: 0.75f, staminaCost: 0.85f, haze: 0.5f,
+                aimWobble: 7f),
         };
 
         /// <summary>
@@ -135,6 +140,10 @@ namespace EscapeWithYourFriends.EditorTools
             ("meat_cooked", "roast", 3f, null),
             ("water_bottle", "hydrated", 1.5f, "empty_bottle"),
             ("bandage", "bandaged", 3f, null),
+
+            // Two seconds, because a drink is a decision you make before the fight rather than
+            // during it. The bottle it leaves is the same one the water filter refills.
+            ("grog", "drunk", 2f, "empty_bottle"),
         };
 
         /// <summary>
@@ -202,6 +211,7 @@ namespace EscapeWithYourFriends.EditorTools
             so.FindProperty("_damageTakenMultiplier").floatValue = seed.DamageTaken;
             so.FindProperty("_staminaCostMultiplier").floatValue = seed.StaminaCost;
             so.FindProperty("_haze").floatValue = seed.Haze;
+            so.FindProperty("_aimWobble").floatValue = seed.AimWobble;
 
             so.ApplyModifiedPropertiesWithoutUndo();
 

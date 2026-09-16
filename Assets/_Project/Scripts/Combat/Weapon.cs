@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.Data;
 using EscapeWithYourFriends.Items;
+using EscapeWithYourFriends.Player;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
 using UnityEngine;
@@ -67,6 +68,7 @@ namespace EscapeWithYourFriends.Combat
 
         Health _health;
         StunState _stun;
+        BuffState _buffs;
 
         readonly Collider[] _overlap = new Collider[32];
         readonly List<Health> _hitThisAttack = new();
@@ -130,6 +132,7 @@ namespace EscapeWithYourFriends.Combat
         {
             _health = GetComponent<Health>();
             _stun = GetComponent<StunState>();
+            _buffs = GetComponent<BuffState>();
             if (_inventory == null) _inventory = GetComponent<Inventory>();
 
             WeaponCatalog.Use(_catalog);
@@ -438,7 +441,7 @@ namespace EscapeWithYourFriends.Combat
 
             for (int i = 0; i < pellets; i++)
             {
-                Vector3 shot = Scatter(direction, weapon.Spread);
+                Vector3 shot = Scatter(direction, weapon.Spread + Wobble());
                 ends[i] = originPosition + shot * weapon.Range;
 
                 if (!Physics.Raycast(originPosition, shot, out RaycastHit hit, weapon.Range,
@@ -460,6 +463,16 @@ namespace EscapeWithYourFriends.Combat
 
             ObserversFired(originPosition, ends);
         }
+
+        /// <summary>
+        /// Degrees of scatter this shooter is adding on their own, from #66's drink. Added to the
+        /// weapon's own cone rather than multiplying it, because a pistol's spread is zero and
+        /// "much harder to aim" has to mean something while you are holding one.
+        ///
+        /// Server-side, like every other number in this file: the client sends a direction, and what
+        /// the drink does to it is not theirs to leave out.
+        /// </summary>
+        float Wobble() => _buffs != null ? _buffs.AimWobble : 0f;
 
         /// <summary>A direction nudged inside a cone. Uniform enough for a gun, cheap enough for eight.</summary>
         static Vector3 Scatter(Vector3 direction, float spreadDegrees)

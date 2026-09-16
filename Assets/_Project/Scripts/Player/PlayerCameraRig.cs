@@ -38,6 +38,9 @@ namespace EscapeWithYourFriends.Player
         [Tooltip("The weapon whose landed hits kick this camera. Assigned at bake time.")]
         [SerializeField] Weapon _weapon;
 
+        [Tooltip("Read for the haze that leans this camera while drunk (#66). Assigned at bake time.")]
+        [SerializeField] BuffState _buffs;
+
         [Tooltip("Followed while limp, because the body root stops moving when the ragdoll takes over.")]
         [SerializeField] Transform _headBone;
 
@@ -260,6 +263,13 @@ namespace EscapeWithYourFriends.Player
                 eye += look * Bob(dt);
                 look *= Quaternion.Euler(0f, 0f, _bobRollAngle);
             }
+
+            // #66. A drink leans the horizon rather than rattling it, so it is applied here instead
+            // of through the trauma channel: trauma is a sharp Perlin jitter that decays, and this
+            // is a slow lean that lasts a minute and a half. Owner-side only, like the blur - what a
+            // drunk player's camera does is not something the other three need to see.
+            float haze = _buffs != null ? _buffs.Haze : 0f;
+            if (haze > 0f) look *= Quaternion.Euler(DrunkVision.Sway(haze, Time.time));
 
             float shake = _trauma * _trauma; // Squared, so small trauma is felt as a nudge, not a jolt.
             if (shake > 0f)

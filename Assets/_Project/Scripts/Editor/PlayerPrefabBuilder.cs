@@ -371,6 +371,7 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_shock").objectReferenceValue = shock;
                 so.FindProperty("_health").objectReferenceValue = health;
                 so.FindProperty("_weapon").objectReferenceValue = weapon;
+                so.FindProperty("_buffs").objectReferenceValue = buffs;
                 so.FindProperty("_headBone").objectReferenceValue = bones["Head"];
                 so.FindProperty("_aimOrigin").objectReferenceValue = aimOrigin;
             });
@@ -385,6 +386,11 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_ragdoll").objectReferenceValue = ragdoll;
                 so.FindProperty("_ghost").objectReferenceValue = ghost;
             });
+
+            // #66's blur. Owner-only and screen-only, so on a headless host and on every peer that
+            // is not this player it switches itself off in OnStartClient and costs nothing.
+            var drunkVision = root.AddComponent<DrunkVision>();
+            SetFields(drunkVision, so => so.FindProperty("_buffs").objectReferenceValue = buffs);
 
             // Now that the motor exists it can be switched off while the body is limp. The reader is
             // deliberately not in this list: disabling it releases the cursor and tears down its

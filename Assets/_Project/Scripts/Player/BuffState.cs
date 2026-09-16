@@ -279,6 +279,27 @@ namespace EscapeWithYourFriends.Player
             }
         }
 
+        /// <summary>
+        /// Extra degrees of scatter on every shot, worst of any active buff. Max rather than a sum
+        /// for the same reason as <see cref="Haze"/>: a second drink cannot make the cone wider than
+        /// the gun can miss, and a stack of them turning a pistol into a shotgun that fires backwards
+        /// is a joke that stops being funny on the first round of a fight.
+        /// </summary>
+        public float AimWobble
+        {
+            get
+            {
+                float worst = 0f;
+                for (int i = 0; i < _active.Count; i++)
+                {
+                    BuffDef def = Resolve(_active[i]);
+                    if (def != null) worst = Mathf.Max(worst, def.AimWobble);
+                }
+
+                return worst;
+            }
+        }
+
         public bool Has(BuffDef def) => IndexOfBuff(_catalog != null ? _catalog.IndexOf(def) : (ushort)0) >= 0;
 
         /// <summary>Seconds left on a buff, or zero when it is not active.</summary>

@@ -31,4 +31,5 @@ MonoBehaviour:
   _damageTakenMultiplier: 0.75
   _staminaCostMultiplier: 0.85
   _haze: 0.5
+  _aimWobble: 7
   _icon: {fileID: 0}

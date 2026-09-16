@@ -145,6 +145,17 @@ MonoBehaviour:
     PadRaise: 0
     MaxSlope: 0.3
     AllowUnderwater: 0
+  - Id: casino.bar
+    PrefabPath: Assets/_Project/Prefabs/Stations/Barman.prefab
+    Position: {x: -273.95596, y: -71.94701}
+    Yaw: 82
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 0
+    PadFalloff: 0
+    PadRaise: 0
+    MaxSlope: 0.3
+    AllowUnderwater: 0
   - Id: village
     PrefabPath: Assets/_Project/Prefabs/World/NativeVillage.prefab
     Position: {x: 130, y: 205}

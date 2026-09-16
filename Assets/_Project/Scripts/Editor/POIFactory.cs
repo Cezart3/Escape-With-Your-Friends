@@ -352,6 +352,14 @@ namespace EscapeWithYourFriends.EditorTools
                 Entry("casino.table", CasinoFactory.TablePath, casino, casinoFacing + 180f,
                       pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
 
+                // #66's barman, in the gap the greybox leaves between the bar and the back wall, at
+                // the room's own BarNpcStand. Placed exactly rather than on the metre grid every
+                // other entry uses: that gap is 40cm, and half a metre of rounding puts him inside
+                // a wall.
+                Entry("casino.bar", CasinoFactory.BarmanPath,
+                      casino + Offset(casinoFacing, -3.62f) + Offset(casinoFacing + 90f, -2.6f),
+                      casinoFacing, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f, exact: true),
+
                 Entry("village", GreyboxDir + "/NativeVillage.prefab", village, villageFacing,
                       pad: 24f, falloff: 20f, raise: 0.3f, maxSlope: 0.32f),
 
@@ -391,12 +399,18 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         static POIEntry Entry(string id, string prefab, Vector2 position, float yaw, float pad,
-                              float falloff, float raise, float maxSlope, bool allowUnderwater = false)
+                              float falloff, float raise, float maxSlope, bool allowUnderwater = false,
+                              bool exact = false)
             => new POIEntry
             {
                 Id = id,
                 PrefabPath = prefab,
-                Position = new Vector2(Mathf.Round(position.x), Mathf.Round(position.y)),
+
+                // Whole metres, because a baked catalogue somebody reads is nicer than one full of
+                // 137.4182. `exact` is for the few placements where the slack is smaller than the
+                // rounding - see casino.bar.
+                Position = exact ? position
+                                 : new Vector2(Mathf.Round(position.x), Mathf.Round(position.y)),
                 Yaw = Mathf.Round(yaw),
                 SnapToGround = true,
                 PadRadius = pad,

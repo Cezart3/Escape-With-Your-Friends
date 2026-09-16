@@ -87,9 +87,14 @@ namespace EscapeWithYourFriends.Data
         [Min(0f)]
         [SerializeField] float _staminaCostMultiplier = 1f;
 
+        [Tooltip("Extra degrees of scatter added to whatever the weapon already has. Added rather "
+                 + "than multiplied so it also ruins the aim of a gun with no spread of its own.")]
+        [Range(0f, 30f)]
+        [SerializeField] float _aimWobble;
+
         [Header("Presentation")]
-        [Tooltip("0..1. How badly this messes with your vision. #M6's alcohol drives a URP Volume "
-                 + "off it - depth of field, chromatic aberration, grain. Nothing reads it yet.")]
+        [Tooltip("0..1. How badly this messes with your vision. #66's alcohol drives a URP Volume "
+                 + "off it - depth of field, chromatic aberration, grain - and rolls the camera.")]
         [Range(0f, 1f)]
         [SerializeField] float _haze;
 
@@ -118,6 +123,9 @@ namespace EscapeWithYourFriends.Data
         public float SpeedMultiplier => Mathf.Max(0f, _speedMultiplier);
         public float DamageTakenMultiplier => Mathf.Max(0f, _damageTakenMultiplier);
         public float StaminaCostMultiplier => Mathf.Max(0f, _staminaCostMultiplier);
+
+        /// <summary>Degrees of extra scatter. Read by <c>Weapon</c> when it rolls a shot. See #66.</summary>
+        public float AimWobble => Mathf.Max(0f, _aimWobble);
 
         public float Haze => _haze;
         public Sprite Icon => _icon;

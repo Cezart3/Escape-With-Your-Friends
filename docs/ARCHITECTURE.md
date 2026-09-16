@@ -3506,7 +3506,10 @@ server's raycast.
 
 `-gunTest` is the harness, and it runs both processes under `-latency 100` because that is the
 condition the acceptance is written against - so the test reads the latency the bootstrap applied
-and **fails if nobody asked for any**, rather than quietly passing a test of nothing. **81 checks,
+and **fails if nobody asked for any**, rather than quietly passing a test of nothing. It also needs
+`-scene arena`: it stands the victim at a computed distance at the *attacker's own height*, which on
+the island's slopes buries them in a hillside, and every gun then reports landing nothing. That
+failure looks exactly like a broken weapon and is not one - #66 spent three runs finding that out. **81 checks,
 all passing:**
 
 ```
@@ -5186,6 +5189,104 @@ One thing to know before writing another test that looks a landmark up: **`POISp
 catalogue entry is *this particular one*, so the building the greybox builder called `Casino` is
 called `casino` by the time anything can see it. This suite sidesteps the question by finding the
 landmark nearest the table, which is also what it actually means by "the casino".
+
+### The drink, and what it costs (#66)
+
+There is a man behind the bar now, and he sells one thing.
+
+The buff he sells has been sitting in `BuffFactory.Seeds` since #45 with a comment saying nothing
+applies it yet. It was written so that the casino's alcohol would be an asset rather than a system,
+and that held: **this issue added no buff system, no drink system and no NPC system.** What it added
+was an item, a row in a table, a shopkeeper, one field, and a volume.
+
+#### The barman is a shop with one line on the shelf
+
+`ShopCounter` already knows how to take money, hold stock, restock, refuse a trade from too far
+away, and open a trade UI. A barman is a shopkeeper with one thing to sell, so the barman *is* a
+`ShopCounter`, pointed at a second `ShopDef` — `Bar.asset`, one offer, unlimited, grog at 25 against
+an item worth 12. The prefab is seven boxes and a hat.
+
+**He takes money, not chips.** Nothing outside the cage has ever taken a payment in chips (#63), and
+that line is worth more than the convenience of paying for a drink out of your winnings: it is what
+keeps "chips buy nothing outside the casino" literally true, which is the sentence #67's compliance
+checklist needs to be able to say without a footnote. The harness checks it the way #63 learned to —
+standing at the bar, with the refusal read to make sure it is about the money and not the distance.
+
+He stands in the gap between the bar and the back wall that #65's greybox already marked
+`BarNpcStand`. That gap was 20cm, which is thinner than a man, so the bar moved forward 15cm. His
+placement is also the one POI entry in the catalogue that is **not** rounded to the metre grid: the
+slack there is 40cm and the rounding is 50, so `Entry(..., exact: true)` exists for him and for
+anything else later that has to stand somewhere specific rather than somewhere near.
+
+#### Two halves of a trade, and both of them measured
+
+The acceptance is that the buff is genuinely tempting and the vision genuinely a handicap. Neither
+is assertable. What is assertable is the arithmetic each judgement rests on, and the interesting
+thing is that the two halves are enforced in completely different places:
+
+- **Tempting** is `DamageTakenMultiplier` at 0.75 — a quarter off every hit, for ninety seconds,
+  for the price of one boat-part-and-a-half of nothing. That already reached `Health` before this
+  issue; the harness measures it as a number by landing the same 20-point hit sober and drunk.
+- **The handicap** is a new field, `BuffDef.AimWobble`, in degrees, added to the weapon's own spread
+  on the server. Added rather than multiplied, because a pistol's spread is zero and a multiplier
+  applied to zero is a drink that does not affect aim at all — which is the trap that made the
+  original description ("much harder to aim") a lie for four of the six guns.
+
+Seven degrees is the number. That is wider than a shotgun's own cone (6.5) and about thirty-five
+times a rifle's (0.2), so drunk sniping is over and drunk brawling is fine. Like every other number
+in `Weapon`, the client never sends it: the client sends a direction, and what the drink does to that
+direction is not theirs to leave out.
+
+#### Firing sixty shots at the sky to see where they went
+
+The check that matters is not `AimWobble > 0` — that passes on a build where nothing reads the
+field, which is exactly the bug worth catching. `-drunkTest` equips a pistol, fires sixty shots
+straight up sober and sixty drunk, and takes the angle of each one off the `Fired` event, which is
+the same event that draws the tracer. Straight up, because a ray into the sky hits nothing and comes
+back at full range; a shot into the hillside gives the same angle with a much shorter arm.
+
+```
+[DrunkTest] the barman is standing 4.5m from the wheel.
+[DrunkTest] 60 shots sober: 60 shots, 0.72° average, 1.37° worst.
+                     Drunk: 60 shots, 4.12° average, 8.24° worst.
+[DrunkTest] 36 passed, 0 failed.
+```
+
+The worst shot of sixty is the number that pins it: 1.37° against a pistol's own 1.5, and 8.24°
+against the 8.5 the drink is supposed to add. Nothing in the harness reads `AimWobble` to decide
+what to expect - it reads the asset and the gun, adds them, and checks the shots came in under.
+
+This is #63's lesson in a different hat. A refusal from four hundred metres away looked like a rule
+about money; an assertion about a field looks like a rule about aim. Both pass for the wrong reason,
+and the fix in both cases is to measure the thing the player experiences rather than the thing the
+asset says.
+
+#### The blur is owner-side and unnetworked
+
+`DrunkVision` builds a `VolumeProfile` in code — gaussian depth of field, chromatic aberration, film
+grain, and a small barrel distortion — and drives its weight off `BuffState.Haze`, which has existed
+since #45 with nothing reading it. Gaussian rather than bokeh because this has to run on an
+integrated GPU, and the weight tops out at 0.85 rather than 1 because at 1 the player cannot find the
+door, which is annoying rather than funny.
+
+Nothing about it is networked, and that is deliberate: **the haze belongs to a pair of eyes, not to a
+body.** Every peer already has the buff list it needs to compute its own, a spectator watching
+somebody else drink should see their own sober picture, and a headless host has no screen at all —
+so the component switches itself off unless it is the owner and there is a graphics device.
+
+One flag had to be turned on for any of it to appear. URP ignores every volume in the scene unless
+the camera asks for them, and a camera built in code does not ask; nothing in this project had needed
+post-processing before, so `renderPostProcessing` gets set exactly once, on the one camera this peer
+looks through.
+
+The camera also leans. That is separate from the volume and lives in `PlayerCameraRig`, next to the
+bob and the trauma shake, because it is the same kind of thing — but it is applied through neither of
+them: trauma is a sharp Perlin jitter that decays in a second, and this is a slow lean that lasts a
+minute and a half. Three sines at frequencies that do not divide into each other, roll about three
+times the size of pitch and yaw, so the horizon tips rather than rattles. A drunk person's horizon
+tips; a rattle reads as an explosion. It is a pure static function so the harness can hold it to a
+number with no screen in the process.
+
 
 ---
 

@@ -106,6 +106,10 @@ namespace EscapeWithYourFriends.EditorTools
             new("meat_raw", "Raw Meat", ItemCategory.Food, 5, 0.9f, 14, "Off the bone. Somebody has to cook it."),
             new("meat_cooked", "Roast Meat", ItemCategory.Food, 5, 0.8f, 30, "The reason the fire was worth building."),
             new("water_bottle", "Water Bottle", ItemCategory.Drink, 1, 1.2f, 10, "Refillable at the filter. Empty it weighs nothing."),
+
+            // #66. Worth about what a cooked fish is, which is the joke: the barman charges nearly
+            // three times that for it, and people keep paying. Leaves an empty bottle behind.
+            new("grog", "Grog", ItemCategory.Drink, 4, 0.6f, 12, "Whatever washed ashore, poured over whatever did not. Braver, slower, blurrier."),
             new("bandage", "Bandage", ItemCategory.Medical, 5, 0.2f, 15, "Stops the bleeding. Does not stop the shouting."),
 
             new("hatchet", "Hatchet", ItemCategory.Tool, 1, 2.5f, 40, "Chops wood. Also settles arguments."),
