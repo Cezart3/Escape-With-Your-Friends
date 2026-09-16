@@ -618,7 +618,7 @@ MonoBehaviour:
   _reverseFraction: 0.35
   _steerAtRest: 34
   _steerAtSpeed: 11
-  _centreOfMass: {x: 0, y: -0.1, z: 0.1}
+  _centreOfMass: {x: 0, y: 0.35, z: 0.1}
   _rightingDelay: 3
   _rightingLift: 0.8
 --- !u!1 &4299882861046916769

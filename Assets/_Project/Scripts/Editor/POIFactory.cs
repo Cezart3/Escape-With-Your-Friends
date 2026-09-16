@@ -253,6 +253,16 @@ namespace EscapeWithYourFriends.EditorTools
                 FlatWeight = 0.5f, Separation = 70f, FootprintRadius = 10f
             }, "cave");
 
+            // Moored off the camp beach. It is placed on the seabed a metre or so under and floats
+            // itself up within the first second, which needs no new placement plumbing at all:
+            // buoyancy is already the thing that decides where a boat's waterline is.
+            Vector2 mooring = Site(shape, bare, taken, new SiteWish
+            {
+                WantedHeight = -1.2f, MinHeight = -3f, MaxHeight = -0.3f, Reference = camp,
+                MinFromReference = 40f, MaxFromReference = 160f,
+                FlatWeight = 0.7f, Separation = 40f, FootprintRadius = 12f
+            }, "mooring");
+
             Object.DestroyImmediate(bare);
 
             float campFacing = Facing(camp, Vector2.zero);
@@ -352,7 +362,12 @@ namespace EscapeWithYourFriends.EditorTools
                       pad: 10f, falloff: 14f, raise: 0f, maxSlope: 0.5f, allowUnderwater: true),
 
                 Entry("cave", GreyboxDir + "/Cave.prefab", cave, Facing(cave, camp),
-                      pad: 13f, falloff: 16f, raise: 0.2f, maxSlope: 0.45f)
+                      pad: 13f, falloff: 16f, raise: 0.2f, maxSlope: 0.45f),
+
+                // Nose out to sea, so the first thing a driver does is leave rather than reverse off
+                // the beach.
+                Entry("boat", BoatBuilder.BoatPath, mooring, Facing(mooring, camp) + 180f,
+                      pad: 12f, falloff: 10f, raise: 0f, maxSlope: 0.3f, allowUnderwater: true)
             };
         }
 

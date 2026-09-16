@@ -37,6 +37,10 @@ namespace EscapeWithYourFriends.Vehicles
         /// <summary>The engine of whatever we are sitting in, if it has one. Cached on the way in.</summary>
         CarController _car;
 
+        /// <summary>The other kind of engine. Two fields and a branch, rather than an interface for
+        /// two implementations; see the note on <see cref="Drive"/>.</summary>
+        BoatController _boat;
+
         readonly List<Collider> _ignoredWith = new();
 
         /// <summary>The vehicle this body is sitting in, or null.</summary>
@@ -60,9 +64,12 @@ namespace EscapeWithYourFriends.Vehicles
         /// </summary>
         public void Drive(Vector2 move, bool handbrake)
         {
-            if (_car == null || !IsDriving) return;
+            if (!IsDriving) return;
 
-            _car.OwnerDrive(move.y, move.x, handbrake);
+            // ponytail: one field per vehicle kind. Worth an IDriveable when the plane makes it
+            // three; two implementations is not yet a pattern.
+            if (_car != null) _car.OwnerDrive(move.y, move.x, handbrake);
+            else if (_boat != null) _boat.OwnerDrive(move.y, move.x, handbrake);
         }
 
         void Awake() => _controller = GetComponent<CharacterController>();
@@ -104,6 +111,7 @@ namespace EscapeWithYourFriends.Vehicles
             _vehicle = vehicle;
             _seat = seat;
             _car = vehicle.GetComponent<CarController>();
+            _boat = vehicle.GetComponent<BoatController>();
 
             if (_controller != null)
             {
@@ -132,6 +140,7 @@ namespace EscapeWithYourFriends.Vehicles
             _vehicle = null;
             _seat = -1;
             _car = null;
+            _boat = null;
 
             IgnoreVehicle(vehicle, false);
 
