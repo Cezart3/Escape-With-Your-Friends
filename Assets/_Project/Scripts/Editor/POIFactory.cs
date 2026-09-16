@@ -475,6 +475,17 @@ namespace EscapeWithYourFriends.EditorTools
                 FlatWeight = 0.7f, Separation = 30f, FootprintRadius = 12f
             }, "mooring");
 
+            // #71. The airframe, and eventually the strip it leaves from. It wants the flattest
+            // ground on an island that has almost none, which is why FlatWeight is nearly all of the
+            // score and the height it asks for is a suggestion. Near the beachhead because every
+            // part in the game has to be carried here on foot, at a third of walking pace.
+            Vector2 strip = Site(shape, bare, taken, new SiteWish
+            {
+                WantedHeight = 5f, MinHeight = 1.5f, MaxHeight = 16f, Reference = camp,
+                MinFromReference = 35f, MaxFromReference = 95f,
+                FlatWeight = 0.95f, Separation = 28f, FootprintRadius = 22f
+            }, "plane");
+
             float campFacing = Facing(camp, village);
 
             return new[]
@@ -516,7 +527,12 @@ namespace EscapeWithYourFriends.EditorTools
 
                 Entry("part.engine", PlanePartBuilder.EnginePath,
                       wreck + Offset(Facing(wreck, camp), 6f), Facing(wreck, camp),
-                      pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.6f)
+                      pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.6f),
+
+                // #71. This one does get a pad, and the biggest on the island: a plane standing on a
+                // slope is a plane that will not be taking off in #72.
+                Entry("plane", PlaneBuilder.PlanePath, strip, Facing(strip, camp),
+                      pad: 22f, falloff: 18f, raise: 0.2f, maxSlope: 0.25f)
             };
         }
 
