@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.World;
 using FishNet;
@@ -288,6 +288,7 @@ namespace EscapeWithYourFriends.Net
             Casino.DrunkTest.Begin();
             Player.SurvivalTest.Begin();
             Player.BuffTest.Begin();
+            World.Island2Test.Begin();
         }
 
         void OnClientConnectionState(ClientConnectionStateArgs args)

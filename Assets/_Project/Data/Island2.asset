@@ -1,0 +1,92 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6526cf5e0e54e2a4c97f8f86d976371d, type: 3}
+  m_Name: Island2
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.IslandProfile
+  Id: Island2
+  Seed: 20260916
+  Size: 512
+  Resolution: 513
+  SeabedDepth: 45
+  PeakHeight: 190
+  HillFeatureSize: 220
+  HillOctaves: 6
+  HillGain: 0.5
+  HillLacunarity: 2.03
+  HillHeight: 58
+  HillWaterLine: 0.44
+  WarpStrength: 80
+  WarpFeatureSize: 300
+  CoastInnerRadius: 0.34
+  CoastOuterRadius: 0.8
+  CoastRaggedness: 0.22
+  CoastFeatureSize: 140
+  BeachBand: 1.6
+  BeachFlatten: 0.75
+  MountainCentre: {x: 0.06, y: -0.1}
+  MountainRadius: 0.4
+  MountainHeight: 150
+  MountainSharpness: 3
+  MountainRidge: 0.55
+  MountainRidgeFeatureSize: 90
+  SandTop: 1.2
+  SandBlend: 1.2
+  RockSlope: 0.45
+  RockSlopeBlend: 0.2
+  RockHeight: 40
+  RockHeightBlend: 18
+  DirtFeatureSize: 90
+  DirtThreshold: 0.5
+  DirtBlend: 0.07
+  CoverJitter: 1.6
+  CoverJitterFeatureSize: 26
+  SplatResolution: 256
+  SandTiling: 9
+  GrassTiling: 7
+  RockTiling: 12
+  DirtTiling: 7
+  CanopyCellSize: 4
+  UndergrowthCellSize: 2.4
+  FloraJitter: 0.9
+  FloraMinHeight: 0.35
+  FloraMinScale: 0.8
+  FloraMaxScale: 1.35
+  PalmDensity: 0
+  JungleDensity: 0.5
+  HighlandDensity: 0.95
+  BushDensity: 0.35
+  GroveFeatureSize: 140
+  GroveFloor: 0.45
+  GroveSpan: 0.14
+  DetailResolution: 256
+  DetailPerPatch: 32
+  GrassPerCell: 6
+  GrassThreshold: 0.55
+  TreeDistance: 260
+  TreeBillboardDistance: 90
+  TreeCrossFade: 25
+  TreeMaximumFullLOD: 60
+  DetailDistance: 70
+  DetailDensity: 0.8
+  FogScale: 2
+  Pois: {fileID: 11400000, guid: de4ec26071868d94a98d41a960459c51, type: 2}
+  NavVoxelSize: 0.25
+  NavTileSize: 512
+  NavMinRegionArea: 6
+  NavWaterline: 0.4
+  WaterPatchExtent: 320
+  WaterCellSize: 4
+  WaterFadeBand: 70
+  WaterHorizon: 4000
+  WaterDepthResolution: 256
+  ShoreFadeDepth: 14
+  FoamWidth: 1.6

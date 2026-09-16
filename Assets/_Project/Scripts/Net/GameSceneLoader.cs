@@ -24,6 +24,7 @@ namespace EscapeWithYourFriends.Net
     ///
     ///   -scene island   the real map (default)
     ///   -scene arena    the M1 greybox, for testing combat without a kilometre of terrain
+    ///   -scene island2  the second island: half the size, twice the fog, natives that do not flee
     ///   -scene none     load nothing, which is what the old Bootstrap-only smoke tests expect
     /// </summary>
     public class GameSceneLoader : MonoBehaviour
@@ -32,7 +33,7 @@ namespace EscapeWithYourFriends.Net
         [SerializeField] string _defaultScene = "Island";
 
         [Tooltip("Scene names this is allowed to load. Anything else is refused rather than guessed at.")]
-        [SerializeField] string[] _known = { "Island", "Arena" };
+        [SerializeField] string[] _known = { "Island", "Arena", "Island2" };
 
         NetworkManager _manager;
         bool _loaded;

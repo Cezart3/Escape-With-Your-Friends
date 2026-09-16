@@ -14,5 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.NativeCatalog
   _natives:
   - {fileID: 11400000, guid: abba4fcd933e93a4290dcc8e48674022, type: 2}
+  - {fileID: 11400000, guid: 1c5eb04baf15eaa4889600db74ae9da7, type: 2}
   - {fileID: 11400000, guid: 6e736fde68bf4474e90f7e1e979f22a5, type: 2}
   - {fileID: 11400000, guid: d145dd91bae7e924ba02e2f077e80ab5, type: 2}

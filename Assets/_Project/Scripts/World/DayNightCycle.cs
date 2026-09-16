@@ -35,6 +35,13 @@ namespace EscapeWithYourFriends.World
         [Tooltip("How much light the ground bounces back at night, as a fraction of the day value.")]
         [Range(0f, 1f)] public float NightGroundBounce = 0.4f;
 
+        /// <summary>
+        /// Multiplier on the fog the profile asks for. One island, one climate: the sky profile is
+        /// shared, and this is the whole of what #68 means by "worse weather" on the second island -
+        /// the same day turned murkier, so you see a headhunter at the distance it sees you.
+        /// </summary>
+        public float FogScale = 1f;
+
         /// <summary>Sunlight level at which the moon has faded to nothing. Purely a crossfade width.</summary>
         const float Handover = 0.3f;
 
@@ -125,7 +132,8 @@ namespace EscapeWithYourFriends.World
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogColor = Profile.FogColour.Evaluate(timeOfDay);
-            RenderSettings.fogDensity = Mathf.Max(0f, Profile.FogDensity.Evaluate(timeOfDay));
+            RenderSettings.fogDensity =
+                Mathf.Max(0f, Profile.FogDensity.Evaluate(timeOfDay) * Mathf.Max(0.01f, FogScale));
 
             ApplySky(timeOfDay);
         }

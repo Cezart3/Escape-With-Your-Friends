@@ -53,6 +53,7 @@
 # TerrainData serialises as binary whatever the project setting says, and a regeneration
 # rewrites all 2MB of it. Last match wins, so this beats the *.asset rule above.
 Assets/_Project/Data/IslandTerrain.asset filter=lfs diff=lfs merge=lfs -text
+Assets/_Project/Data/Island2Terrain.asset filter=lfs diff=lfs merge=lfs -text
 
 # The water patch is 26k generated vertices of YAML. Nobody reviews it, nobody merges it, and it
 # is rewritten whole whenever the patch size changes.
@@ -61,3 +62,4 @@ Assets/_Project/Art/Water/WaterPatch.asset filter=lfs diff=lfs merge=lfs -text
 # NavMeshData is a native blob wearing a .asset extension - a megabyte of base64 that is rewritten
 # whole by every bake and that no human will ever read a diff of.
 Assets/_Project/Data/IslandNavMesh.asset filter=lfs diff=lfs merge=lfs -text
+Assets/_Project/Data/Island2NavMesh.asset filter=lfs diff=lfs merge=lfs -text

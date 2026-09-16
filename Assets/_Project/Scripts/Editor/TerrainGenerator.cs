@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -33,11 +33,24 @@ namespace EscapeWithYourFriends.EditorTools
     /// </summary>
     public static class TerrainGenerator
     {
-        const string ProfilePath = "Assets/_Project/Data/Island.asset";
-        const string TerrainDataPath = "Assets/_Project/Data/IslandTerrain.asset";
-        const string TerrainMaterialPath = "Assets/_Project/Data/IslandTerrain.mat";
-        const string ScenePath = "Assets/_Project/Scenes/Island.unity";
-        const string TerrainObjectName = "Island";
+        /// <summary>
+        /// Which island this run bakes. <c>-island 2</c> points every path below at the second set
+        /// of assets; with no switch it is the first island and byte-for-byte what it always was.
+        ///
+        /// ponytail: a static, because one batchmode process bakes one island and threading an id
+        /// through eight factories would be a bigger diff than the feature. Everything downstream
+        /// of the profile reads <c>IslandProfile.Id</c> instead, which is threaded already.
+        /// </summary>
+        static string _id = FirstIsland;
+
+        const string FirstIsland = "Island";
+        const string SecondIsland = "Island2";
+
+        static string ProfilePath => $"Assets/_Project/Data/{_id}.asset";
+        static string TerrainDataPath => $"Assets/_Project/Data/{_id}Terrain.asset";
+        static string TerrainMaterialPath => $"Assets/_Project/Data/{_id}Terrain.mat";
+        static string ScenePath => $"Assets/_Project/Scenes/{_id}.unity";
+        static string TerrainObjectName => _id;
         const string TerrainArtFolder = "Assets/_Project/Art/Terrain";
 
         // Fixed salt for the placeholder textures: their look must not change when the island seed does.
@@ -51,6 +64,8 @@ namespace EscapeWithYourFriends.EditorTools
         [MenuItem("EWYF/Generate Island Terrain")]
         public static void GenerateIsland()
         {
+            _id = CommandLine.GetInt("-island", 1) == 2 ? SecondIsland : FirstIsland;
+
             IslandProfile profile = LoadOrCreateProfile();
             ApplyCommandLine(profile);
 
@@ -127,13 +142,105 @@ namespace EscapeWithYourFriends.EditorTools
         static IslandProfile LoadOrCreateProfile()
         {
             var profile = AssetDatabase.LoadAssetAtPath<IslandProfile>(ProfilePath);
-            if (profile != null) return profile;
+            if (profile != null)
+            {
+                // An island baked before the id existed has an empty one, and every factory
+                // downstream would then name its assets after nothing at all.
+                if (string.IsNullOrEmpty(profile.Id)) profile.Id = _id;
+                return profile;
+            }
 
             profile = ScriptableObject.CreateInstance<IslandProfile>();
+            profile.Id = _id;
+            if (_id == SecondIsland) Harden(profile);
+
             Directory.CreateDirectory(Path.GetDirectoryName(ProfilePath));
             AssetDatabase.CreateAsset(profile, ProfilePath);
-            Debug.Log($"[TerrainGenerator] Created {ProfilePath} with default parameters.");
+            Debug.Log($"[TerrainGenerator] Created {ProfilePath} with "
+                      + (_id == SecondIsland ? "the second island's parameters." : "default parameters."));
             return profile;
+        }
+
+        /// <summary>
+        /// The second island, as a set of numbers rather than as a second generator.
+        ///
+        /// Every value here is one the first island already had; none of them is new machinery. The
+        /// brief is that a player standing on the beach knows within half a minute that this is the
+        /// worse place, so the changes are the ones that read at a glance: half the size so the
+        /// danger is not diluted, almost no beach because the land meets the sea as rock, a coast
+        /// cut into headlands, a higher and sharper mountain, the rock line dropped to 40m so most
+        /// of what is visible is bare, and the forest thinned to a few stands of highland trees
+        /// with no palms in them at all.
+        ///
+        /// It only runs when the asset is created. After that the YAML is the truth and this code
+        /// has no say, which is what makes the island tunable with sed - delete the asset to get
+        /// these numbers back.
+        /// </summary>
+        static void Harden(IslandProfile p)
+        {
+            p.Seed = 20260916;
+
+            // Half the island, and the sample grids halved with it: the same metres per sample the
+            // first island has, so nothing about the detail changes except how much of it there is.
+            p.Size = 512f;
+            p.Resolution = 513;
+            p.SplatResolution = 256;
+            p.DetailResolution = 256;
+            p.WaterDepthResolution = 256;
+
+            // Taller and steeper out of less ground. The relief is choppier (smaller features, more
+            // height) and the warp is pulled in to match, or the ridges bend further than they run.
+            p.SeabedDepth = 45f;
+            p.PeakHeight = 190f;
+            p.HillFeatureSize = 220f;
+            p.HillHeight = 58f;
+            p.HillWaterLine = 0.44f;
+            p.WarpStrength = 80f;
+            p.WarpFeatureSize = 300f;
+
+            // A coast of headlands and inlets rather than a ring of sand, and a shore that stays at
+            // its natural slope. Between them this is what makes a landing a decision.
+            p.CoastInnerRadius = 0.34f;
+            p.CoastOuterRadius = 0.80f;
+            p.CoastRaggedness = 0.22f;
+            p.CoastFeatureSize = 140f;
+            p.BeachBand = 1.6f;
+            p.BeachFlatten = 0.75f;
+
+            p.MountainCentre = new Vector2(0.06f, -0.10f);
+            p.MountainRadius = 0.40f;
+            p.MountainHeight = 150f;
+            p.MountainSharpness = 3.0f;
+            p.MountainRidge = 0.55f;
+            p.MountainRidgeFeatureSize = 90f;
+
+            // Grey. Sand only where the water actually reaches, rock from 26 degrees and from 40m up.
+            p.SandTop = 1.2f;
+            p.SandBlend = 1.2f;
+            p.RockSlope = 0.45f;
+            p.RockSlopeBlend = 0.2f;
+            p.RockHeight = 40f;
+            p.RockHeightBlend = 18f;
+            p.DirtThreshold = 0.50f;
+
+            // No palms at all - a palm reads as holiday, and this island is not one. What is left is
+            // highland trees in thin stands, which is also a great deal less cover to run through.
+            p.PalmDensity = 0f;
+            p.JungleDensity = 0.5f;
+            p.HighlandDensity = 0.95f;
+            p.BushDensity = 0.35f;
+            p.GroveFloor = 0.45f;
+            p.GrassThreshold = 0.55f;
+
+            // Half the island means half the draw distance buys the same view, and this one has to
+            // run on the same integrated GPU with worse weather sitting in front of it (#38).
+            p.TreeDistance = 260f;
+            p.DetailDistance = 70f;
+
+            // Twice the fog the shared sky profile asks for. It is the cheapest hostile thing on the
+            // list and the one that lands first: the mountain is a shape rather than a place, and a
+            // headhunter with 75m of vision now sees you at about the distance you see it.
+            p.FogScale = 2f;
         }
 
         /// <summary>
@@ -263,6 +370,7 @@ namespace EscapeWithYourFriends.EditorTools
 
             var cycle = sun.AddComponent<DayNightCycle>();
             cycle.Profile = sky;
+            cycle.FogScale = profile.FogScale;
             cycle.Sun = light;
             cycle.Sky = skyMaterial;
 
