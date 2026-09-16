@@ -112,6 +112,28 @@ MonoBehaviour:
     PadRaise: 0.4
     MaxSlope: 0.3
     AllowUnderwater: 0
+  - Id: casino.chips
+    PrefabPath: Assets/_Project/Prefabs/Stations/ChipWindow.prefab
+    Position: {x: -263, y: -71}
+    Yaw: 262
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 0
+    PadFalloff: 0
+    PadRaise: 0
+    MaxSlope: 0.3
+    AllowUnderwater: 0
+  - Id: casino.cash
+    PrefabPath: Assets/_Project/Prefabs/Stations/CashWindow.prefab
+    Position: {x: -263, y: -75}
+    Yaw: 262
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 0
+    PadFalloff: 0
+    PadRaise: 0
+    MaxSlope: 0.3
+    AllowUnderwater: 0
   - Id: village
     PrefabPath: Assets/_Project/Prefabs/World/NativeVillage.prefab
     Position: {x: 130, y: 205}

@@ -229,6 +229,8 @@ namespace EscapeWithYourFriends.EditorTools
                 FlatWeight = 0.7f, Separation = 60f, FootprintRadius = 10f
             }, "casino");
 
+            float casinoFacing = Facing(casino, camp);
+
             // Far enough that walking into it is a decision rather than an accident.
             Vector2 village = Site(shape, bare, taken, new SiteWish
             {
@@ -330,8 +332,21 @@ namespace EscapeWithYourFriends.EditorTools
                 Entry("shop.counter", ShopFactory.CounterPath, shop + Offset(shopFacing, 5f),
                       shopFacing + 180f, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
 
-                Entry("casino", GreyboxDir + "/Casino.prefab", casino, Facing(casino, camp),
+                Entry("casino", GreyboxDir + "/Casino.prefab", casino, casinoFacing,
                       pad: 14f, falloff: 12f, raise: 0.4f, maxSlope: 0.3f),
+
+                // #63's cage. Two windows side by side on the way in, three metres apart so the
+                // crosshair picks one without ambiguity: chips on the left, cash on the right. They
+                // are separate objects rather than one booth with two verbs because the server
+                // resolves an interaction to the first IInteractable on a NetworkObject, and
+                // aiming is a thing players already know how to do.
+                Entry("casino.chips", CasinoFactory.BuyWindowPath,
+                      casino + Offset(casinoFacing, 7f) + Offset(casinoFacing + 90f, -1.6f),
+                      casinoFacing + 180f, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
+
+                Entry("casino.cash", CasinoFactory.CashWindowPath,
+                      casino + Offset(casinoFacing, 7f) + Offset(casinoFacing + 90f, 1.6f),
+                      casinoFacing + 180f, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
 
                 Entry("village", GreyboxDir + "/NativeVillage.prefab", village, villageFacing,
                       pad: 24f, falloff: 20f, raise: 0.3f, maxSlope: 0.32f),

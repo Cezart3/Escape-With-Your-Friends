@@ -4974,6 +4974,72 @@ the server to disambiguate two interactables on one `NetworkObject`, which is an
 rather than an upgrade one, and it would have been the larger half of this issue.
 
 
+### Chips, and the two doors (#63)
+
+**A chip is a number in the same wallet as the money.** `Wallet` grew a second `SyncVar<int>`
+rather than a second component, because chips obey exactly the rules money already obeys - server
+writes, everyone reads - and the only interesting part is the boundary between them.
+
+That boundary is two methods: `ServerBuyChips` takes money and gives chips, `ServerCashOut` takes
+chips and gives money, both one for one, both take-before-give in a single call. **They are the
+only two doors, and there is no third one anywhere in the project.** That is the whole of #63's
+acceptance - *no path for real money to enter or leave* - held structurally instead of by a rule
+somebody has to remember. Chips cannot be bought with anything that is not already money in a
+wallet, money cannot be got out of chips except by walking back to the cage, and nothing outside
+the casino takes a payment in chips. The shop counter reads `Balance` and nothing else, which the
+harness asserts directly: a player holding five thousand chips and no money cannot buy a rope.
+
+One for one, deliberately. A house rate on the exchange would be a second place where value leaks,
+and the house already has an edge at the table.
+
+**Neither direction touches `Minted` or `Burned`.** Those count value created and destroyed, and an
+exchange is the same value wearing a different hat; counting it would have the ledger report the
+casino as printing money every time somebody bought a stack. `Exchanged` is a separate diagnostic
+counter that goes up on a buy and down on a cash-out, so it reads as *money currently sitting on
+tables*. What a conservation check watches is `TotalInWallets() + TotalChips()`, which no exchange
+can move by a single unit - the harness takes that number before a run of buys and cash-outs and
+asserts it identical after.
+
+#### Two windows, not one booth
+
+The cage is two prefabs, `ChipWindow` and `CashWindow`, three metres apart on the way in, differing
+only in sign colour and a baked `CageDirection`. A single booth that has to mean two opposite things
+from one key needs either a rule about which - *it cashes you out unless you are broke* - or a
+second key nobody would find. Two booths cost one extra prefab and one extra line in the POI list,
+and the player picks by aiming, which is a thing they already know how to do.
+
+It also sidesteps the trap #62 hit from the other side: the server resolves an interaction with
+`GetComponentInChildren<IInteractable>()`, so two `Cashier` components on one `NetworkObject` would
+quietly have been one. Two objects, two interactables, no disambiguation needed.
+
+Each press moves a fixed hundred - enough to bet with, small enough that a bad night is several
+decisions rather than one - **or everything that is left, if that is less**. The remainder is the
+part that matters: a player with forty chips left has to be able to get their forty back, or the
+cage has quietly eaten them, which is the one thing this issue must never do. A window with nothing
+to move returns an empty `Prompt`, and the interactor skips those, so a broke player walks past the
+buy window instead of pressing a key that does nothing.
+
+The windows trade in chunks so they need no screen. #65 brings the casino UI, and when it does it
+calls these same two wallet methods with a number the player typed.
+
+#### The check that passed for the wrong reason
+
+The trader-does-not-take-chips assertion went green on its first run and was wrong. It set a wallet
+to no money and five thousand chips, asked the shop counter for a rope, and got nothing - but the
+refusal it printed was *you are not at the counter*. The player was standing wherever the spawn had
+left them, two hundred metres from the shop, so `ServerBuy` bailed on distance before it ever looked
+at the money. A pass for the wrong reason is worse than a failure, because a failure argues with
+you.
+
+It now teleports the player to the counter, asserts they are in reach, asserts the refusal is *not*
+about the counter, and then - the part that actually settles it - gives them real money in the same
+spot with the same chips still in hand and buys the rope. The purchase is the control: it proves the
+counter was willing and the only thing that changed was which balance the coins came from.
+
+Same lesson as #62's tyre measurement, from the other direction: there, a number moved for a reason
+that was not the upgrade; here, a number stayed still for a reason that was not the rule. Both are
+the same mistake, which is grading something the test did not isolate.
+
 ---
 
 ## Data-driven content

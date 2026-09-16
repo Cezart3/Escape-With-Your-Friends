@@ -43,8 +43,17 @@ namespace EscapeWithYourFriends.Economy
 
         readonly SyncVar<int> _balance = new();
 
+        /// <summary>
+        /// Casino chips, from #63. A second balance rather than a second component, because it is
+        /// the same rules with a different name and the interesting part is the door between them.
+        /// </summary>
+        readonly SyncVar<int> _chips = new();
+
         /// <summary>What this player can spend. Replicated; only the server writes it.</summary>
         public int Balance => _balance.Value;
+
+        /// <summary>What this player can bet. Worth nothing anywhere but a casino table.</summary>
+        public int Chips => _chips.Value;
 
         /// <summary>Raised on every peer when the balance changes. (previous, current)</summary>
         public event Action<int, int> Changed;
@@ -67,11 +76,29 @@ namespace EscapeWithYourFriends.Economy
             return total;
         }
 
+        /// <summary>Every chip on every peer. The other half of the conservation check.</summary>
+        public static int TotalChips()
+        {
+            int total = 0;
+            foreach (Wallet wallet in FindObjectsByType<Wallet>(FindObjectsSortMode.None))
+                if (wallet != null && wallet.IsSpawned) total += wallet.Chips;
+
+            return total;
+        }
+
+        /// <summary>
+        /// Net money turned into chips this session. Diagnostic, not a ledger entry: an exchange
+        /// creates and destroys nothing, so it deliberately does not touch <see cref="Minted"/> or
+        /// <see cref="Burned"/> - see <see cref="ServerBuyChips"/>.
+        /// </summary>
+        public static int Exchanged { get; private set; }
+
         /// <summary>Forgets the session counters. For the harness, which wants a clean baseline.</summary>
         public static void ResetLedger()
         {
             Minted = 0;
             Burned = 0;
+            Exchanged = 0;
         }
 
         void Awake() => _balance.OnChange += OnBalanceChanged;
@@ -190,8 +217,67 @@ namespace EscapeWithYourFriends.Economy
             return amount;
         }
 
+        // ---------------------------------------------------------------- chips (#63)
+
+        /// <summary>
+        /// Money in, chips out, one for one. Returns how many chips were actually bought.
+        ///
+        /// **This method and <see cref="ServerCashOut"/> are the only two doors between money and
+        /// chips, and there is no third one anywhere in the game.** That is the whole of #63's
+        /// acceptance - "no path for real money to enter or leave" - held up structurally rather
+        /// than by a rule somebody has to remember: chips cannot be bought with anything but money
+        /// that is already in a wallet, and money cannot be got out of chips except by walking back
+        /// to the cage. Nothing in the project takes a payment in chips outside the casino, and
+        /// nothing converts either balance into anything a bank would recognise.
+        ///
+        /// Take before give, in one call, like <see cref="ServerTransfer"/> and for the same reason.
+        ///
+        /// Neither door is counted into <see cref="Minted"/> or <see cref="Burned"/>. An exchange is
+        /// the same value wearing a different hat, so counting it would report the casino as
+        /// printing money every time somebody bought a stack - exactly the reasoning that keeps
+        /// <see cref="ServerSetBalance"/> out of the ledger. What a conservation check watches is
+        /// <see cref="TotalInWallets"/> plus <see cref="TotalChips"/>, which no exchange can move.
+        /// </summary>
+        [Server]
+        public int ServerBuyChips(int money)
+        {
+            if (money <= 0 || _balance.Value < money) return 0;
+
+            _balance.Value -= money;
+            _chips.Value += money;
+            Exchanged += money;
+
+            Debug.Log($"[Wallet] {name} bought {money} chip(s); {_balance.Value} left, "
+                      + $"{_chips.Value} on the table.");
+
+            return money;
+        }
+
+        /// <summary>Chips in, money out, one for one. Returns how many chips were cashed.</summary>
+        [Server]
+        public int ServerCashOut(int chips)
+        {
+            if (chips <= 0 || _chips.Value < chips) return 0;
+
+            _chips.Value -= chips;
+            _balance.Value += chips;
+            Exchanged -= chips;
+
+            Debug.Log($"[Wallet] {name} cashed in {chips} chip(s); {_chips.Value} left, "
+                      + $"{_balance.Value} in pocket.");
+
+            return chips;
+        }
+
+        /// <summary>Server only. Sets the chip stack outright, for save loading and for tests.</summary>
+        public void ServerSetChips(int amount)
+        {
+            if (!IsServerStarted) return;
+            _chips.Value = Mathf.Max(0, amount);
+        }
+
         /// <summary>One line for the log.</summary>
-        public string Describe() => $"{Balance}";
+        public string Describe() => Chips > 0 ? $"{Balance} + {Chips} chip(s)" : $"{Balance}";
 
         void OnBalanceChanged(int previous, int next, bool asServer)
         {
