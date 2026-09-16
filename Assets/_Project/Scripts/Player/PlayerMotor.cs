@@ -331,6 +331,11 @@ namespace EscapeWithYourFriends.Player
             // the multiplier into every replicate would cost more than that correction is worth.
             if (_buffs != null) targetSpeed *= _buffs.SpeedMultiplier;
 
+            // So does an aircraft engine on your shoulder (#70). Same trade as the buffs above, and
+            // the same reason it is read rather than stored: who is holding what is server state,
+            // and a predicted tick that guessed wrong is corrected by the next reconcile.
+            targetSpeed *= World.PlanePart.SpeedFor(NetworkObject);
+
             Vector3 wish = transform.TransformDirection(new Vector3(input.x, 0f, input.y));
             var horizontal = new Vector3(_velocity.x, 0f, _velocity.z);
 

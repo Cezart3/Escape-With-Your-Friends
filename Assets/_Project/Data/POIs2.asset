@@ -79,3 +79,36 @@ MonoBehaviour:
     PadRaise: 0
     MaxSlope: 0.3
     AllowUnderwater: 1
+  - Id: part.propeller
+    PrefabPath: Assets/_Project/Prefabs/PlanePart.Propeller.prefab
+    Position: {x: -96, y: -34}
+    Yaw: 37
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 0
+    PadFalloff: 0
+    PadRaise: 0
+    MaxSlope: 0.6
+    AllowUnderwater: 0
+  - Id: part.wing
+    PrefabPath: Assets/_Project/Prefabs/PlanePart.Wing.prefab
+    Position: {x: 23, y: -93}
+    Yaw: 85
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 0
+    PadFalloff: 0
+    PadRaise: 0
+    MaxSlope: 0.6
+    AllowUnderwater: 0
+  - Id: part.engine
+    PrefabPath: Assets/_Project/Prefabs/PlanePart.Engine.prefab
+    Position: {x: -80, y: 18}
+    Yaw: 47
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 0
+    PadFalloff: 0
+    PadRaise: 0
+    MaxSlope: 0.6
+    AllowUnderwater: 0

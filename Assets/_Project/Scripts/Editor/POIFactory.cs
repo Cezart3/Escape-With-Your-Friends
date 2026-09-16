@@ -497,7 +497,26 @@ namespace EscapeWithYourFriends.EditorTools
                       pad: 10f, falloff: 14f, raise: 0f, maxSlope: 0.5f, allowUnderwater: true),
 
                 Entry("boat", BoatBuilder.BoatPath, mooring, Facing(mooring, camp) + 180f,
-                      pad: 12f, falloff: 10f, raise: 0f, maxSlope: 0.3f, allowUnderwater: true)
+                      pad: 12f, falloff: 10f, raise: 0f, maxSlope: 0.3f, allowUnderwater: true),
+
+                // #70. One plane part at each of the three places that want you dead, which is the
+                // whole reason those three places are on this island. They flatten nothing and raise
+                // nothing: a part is a crate on the ground, and a crate that came with its own patch
+                // of level terrain would be a crate somebody had put there for you.
+                //
+                // Inside the danger rather than beside it. The propeller sits ten metres into the
+                // village, which is closer to the huts than anything else on either island gets.
+                Entry("part.propeller", PlanePartBuilder.PropellerPath,
+                      village + Offset(Facing(village, camp), 10f), Facing(village, camp),
+                      pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.6f),
+
+                Entry("part.wing", PlanePartBuilder.WingPath,
+                      cave + Offset(Facing(cave, camp), 5f), Facing(cave, camp) + 90f,
+                      pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.6f),
+
+                Entry("part.engine", PlanePartBuilder.EnginePath,
+                      wreck + Offset(Facing(wreck, camp), 6f), Facing(wreck, camp),
+                      pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.6f)
             };
         }
 
