@@ -1,0 +1,69 @@
+name: Compile check
+
+# Catches scripts that do not build, on the push that broke them rather than on the next
+# person's editor launch. It is a real Mono player build, not a script-only pass: Unity
+# refuses to run -executeMethod at all when compilation fails, so a build that finishes is
+# proof the code compiles, and a build that finishes also proves the scenes still load.
+#
+# The whole job is gated on a UNITY_LICENSE secret and skips, green, when there is none.
+# CI without a licence cannot start Unity, and a workflow that fails red on every push
+# until somebody does paperwork gets muted, which is worse than no workflow. See #10 and
+# docs/ARCHITECTURE.md ("CI is one build, and it sits out until it is paid for").
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: compile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Batchmode build (Mono, Windows target)
+    runs-on: ubuntu-latest
+
+    env:
+      # The secrets context is not available in an `if:`, so it comes in through env, which is.
+      UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+      UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+      UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+
+    steps:
+      - name: Is there a licence?
+        id: licence
+        run: |
+          if [ -z "$UNITY_LICENSE" ]; then
+            echo "have=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Compile check skipped::No UNITY_LICENSE secret on this repository, so Unity cannot be activated and the build was skipped. See docs/ARCHITECTURE.md for the three secrets to add."
+          else
+            echo "have=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.licence.outputs.have == 'true'
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # An import from cold takes longer than the build does. The key changes whenever
+      # anything Unity imports changes; the prefix restore means a near-miss still helps.
+      - name: Cache Library
+        if: steps.licence.outputs.have == 'true'
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: Library-
+
+      - name: Build
+        if: steps.licence.outputs.have == 'true'
+        uses: game-ci/unity-builder@v4
+        with:
+          unityVersion: 6000.3.23f1
+          targetPlatform: StandaloneWindows64
+          buildMethod: EscapeWithYourFriends.EditorTools.BuildTool.PerformBuild
+          # Mono builds in about a minute against IL2CPP's ten, and compiling is what this
+          # job is for. A release build is still IL2CPP; BuildTool restores the setting.
+          customParameters: -scriptingBackend mono -buildOutput build/StandaloneWindows64
