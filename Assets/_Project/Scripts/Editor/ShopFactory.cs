@@ -1,5 +1,6 @@
 using System.IO;
 using EscapeWithYourFriends.Data;
+using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.Economy;
 using FishNet.Managing.Object;
 using FishNet.Object;
@@ -46,6 +47,10 @@ namespace EscapeWithYourFriends.EditorTools
             ("scrap_metal", 18, -1),
             ("empty_bottle", 10, -1),
 
+            // #61's reason to care about the trader: the island makes scrap metal and does not make
+            // petrol, so this is the one line on the shelf a driver cannot walk past.
+            ("fuel", 45, -1),
+
             // Made things. Craftable too, so the price is the tax on not having walked to the bench.
             ("torch", 25, 5),
             ("bandage", 35, 6),
@@ -77,12 +82,22 @@ namespace EscapeWithYourFriends.EditorTools
             if (Application.isBatchMode) EditorApplication.Exit(built ? 0 : 0);
         }
 
+        /// <summary>
+        /// The shelf, written from <see cref="Stock"/> the first time and left alone after that,
+        /// because prices are the sort of thing a human tunes in the inspector. <c>-rebuildShop</c>
+        /// is the trapdoor, and it exists for the same reason <c>-rebuildPois</c> does: without it a
+        /// new line added to the list above is invisible, and the only symptom is a shelf that
+        /// quietly does not have the thing on it. #61's fuel can was exactly that.
+        /// </summary>
         static ShopDef EnsureShop()
         {
             var shop = AssetDatabase.LoadAssetAtPath<ShopDef>(ShopPath);
-            if (shop != null) return shop;
+            bool rebuild = CommandLine.HasFlag("-rebuildShop");
 
-            shop = ScriptableObject.CreateInstance<ShopDef>();
+            if (shop != null && !rebuild) return shop;
+
+            bool fresh = shop == null;
+            if (fresh) shop = ScriptableObject.CreateInstance<ShopDef>();
 
             var so = new SerializedObject(shop);
             so.FindProperty("_id").stringValue = "island_trader";
@@ -110,9 +125,17 @@ namespace EscapeWithYourFriends.EditorTools
 
             so.ApplyModifiedPropertiesWithoutUndo();
 
-            Directory.CreateDirectory(Path.GetDirectoryName(ShopPath));
-            AssetDatabase.CreateAsset(shop, ShopPath);
-            Debug.Log($"[ShopFactory] Created {ShopPath}.");
+            if (fresh)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(ShopPath));
+                AssetDatabase.CreateAsset(shop, ShopPath);
+                Debug.Log($"[ShopFactory] Created {ShopPath}.");
+            }
+            else
+            {
+                EditorUtility.SetDirty(shop);
+                Debug.Log($"[ShopFactory] Rebuilt {ShopPath} from code, prices reset (-rebuildShop).");
+            }
 
             return shop;
         }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using EscapeWithYourFriends.Combat;
 using EscapeWithYourFriends.Core;
+using EscapeWithYourFriends.Data;
 using EscapeWithYourFriends.Player;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
@@ -156,7 +157,24 @@ namespace EscapeWithYourFriends.Vehicles
         /// that matters, and "Ride" on a full one is the harmless kind this project already accepts
         /// everywhere else — the refusal is instant and says why.
         /// </summary>
-        public string Prompt => _localSeat >= 0 ? $"Get out of the {_label}" : $"Ride the {_label}";
+        public string Prompt
+        {
+            get
+            {
+                if (_localSeat >= 0) return $"Get out of the {_label}";
+
+                // What is in your hand decides what the key does, which is the whole of #61's
+                // interface. It costs one line here and no new key, no new screen and no second
+                // interactable competing for the same press.
+                string service = ServiceLabel(LocalBag());
+                return service ?? $"Ride the {_label}";
+            }
+        }
+
+        /// <summary>Items that service a vehicle, matched by id so nothing has to be wired in the
+        /// prefab. See <see cref="VehicleCondition"/>.</summary>
+        const string FuelItem = "fuel";
+        const string RepairItem = "scrap_metal";
 
         public bool ServerCanInteract(NetworkObject actor)
         {
@@ -164,6 +182,10 @@ namespace EscapeWithYourFriends.Vehicles
 
             // Already aboard: the press means "let me out", which is always allowed.
             if (SeatOf(actor) >= 0) return true;
+
+            // Servicing first, because a wrecked car refuses to be boarded by nobody - it boards
+            // fine, it just will not go - and somebody holding a can wants the can used.
+            if (ServiceLabel(actor.GetComponent<Items.Inventory>()) != null) return true;
 
             return ServerCanBoard(actor, out _);
         }
@@ -179,7 +201,63 @@ namespace EscapeWithYourFriends.Vehicles
                 return;
             }
 
+            if (ServerService(actor)) return;
+
             ServerEnter(actor);
+        }
+
+        /// <summary>
+        /// Server only. Spends the held item on whatever the vehicle is short of. Returns true if it
+        /// did, in which case the press was the service rather than a boarding.
+        /// </summary>
+        bool ServerService(NetworkObject actor)
+        {
+            var bag = actor.GetComponent<Items.Inventory>();
+            if (ServiceLabel(bag) == null) return false;
+
+            ItemDef held = bag.Selected.Def;
+            var condition = GetComponent<VehicleCondition>();
+
+            if (bag.Remove(held, 1) <= 0) return false;
+
+            bool serviced = held.Id == FuelItem ? condition.ServerRefuel() : condition.ServerRepair();
+
+            Debug.Log($"[Vehicle] {Name(actor)} spent one {held.Id} on the {_label}: "
+                      + $"{condition.Report()}.");
+
+            return serviced;
+        }
+
+        /// <summary>
+        /// What the held item would do to this vehicle, or null for "nothing". Shared by the prompt
+        /// and by both server-side halves so the crosshair and the key never disagree.
+        /// </summary>
+        string ServiceLabel(Items.Inventory bag)
+        {
+            var condition = GetComponent<VehicleCondition>();
+            if (condition == null || bag == null) return null;
+
+            ItemDef held = bag.Selected.Def;
+            if (held == null) return null;
+
+            if (held.Id == FuelItem && condition.NeedsFuel) return $"Refuel the {_label}";
+            if (held.Id == RepairItem && condition.NeedsRepair) return $"Repair the {_label}";
+
+            return null;
+        }
+
+        /// <summary>
+        /// The local player's bag, for the prompt only. Same shape as <see cref="Items.Storage"/>'s,
+        /// and cached per call for the same reason: a prompt is read on the frame the crosshair is
+        /// on this and never in a loop.
+        /// </summary>
+        Items.Inventory LocalBag()
+        {
+            NetworkObject local = ClientManager != null && ClientManager.Connection != null
+                ? ClientManager.Connection.FirstObject
+                : null;
+
+            return local != null ? local.GetComponent<Items.Inventory>() : null;
         }
 
         /// <summary>

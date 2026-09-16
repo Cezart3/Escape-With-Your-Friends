@@ -41,6 +41,9 @@ namespace EscapeWithYourFriends.Vehicles
         /// two implementations; see the note on <see cref="Drive"/>.</summary>
         BoatController _boat;
 
+        /// <summary>Fuel and integrity, the two reasons a vehicle refuses to move (#61).</summary>
+        VehicleCondition _condition;
+
         readonly List<Collider> _ignoredWith = new();
 
         /// <summary>The vehicle this body is sitting in, or null.</summary>
@@ -65,6 +68,16 @@ namespace EscapeWithYourFriends.Vehicles
         public void Drive(Vector2 move, bool handbrake)
         {
             if (!IsDriving) return;
+
+            // #61. Dry or wrecked, the wheel does nothing. Refusing the input here rather than inside
+            // each controller means a car that runs out at 22 m/s coasts to a stop the way it should,
+            // and the driverless braking both controllers already have needs no second copy.
+            if (_condition != null && !_condition.CanDrive)
+            {
+                if (_car != null) _car.OwnerDrive(0f, 0f, handbrake);
+                else if (_boat != null) _boat.OwnerDrive(0f, 0f, handbrake);
+                return;
+            }
 
             // ponytail: one field per vehicle kind. Worth an IDriveable when the plane makes it
             // three; two implementations is not yet a pattern.
@@ -112,6 +125,7 @@ namespace EscapeWithYourFriends.Vehicles
             _seat = seat;
             _car = vehicle.GetComponent<CarController>();
             _boat = vehicle.GetComponent<BoatController>();
+            _condition = vehicle.GetComponent<VehicleCondition>();
 
             if (_controller != null)
             {
@@ -141,6 +155,7 @@ namespace EscapeWithYourFriends.Vehicles
             _seat = -1;
             _car = null;
             _boat = null;
+            _condition = null;
 
             IgnoreVehicle(vehicle, false);
 

@@ -390,6 +390,7 @@ GameObject:
   - component: {fileID: 6974777537268655540}
   - component: {fileID: 7708903967674735572}
   - component: {fileID: 7128130648543340972}
+  - component: {fileID: 5319427432827425271}
   m_Layer: 0
   m_Name: Buggy
   m_TagString: Untagged
@@ -645,6 +646,29 @@ MonoBehaviour:
   _stunPerSpeed: 0.12
   _maxStun: 5
   _cooldown: 0.8
+  _passThrough: 1.5
+--- !u!114 &5319427432827425271
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3856522724236745473}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb0e61f91ca96ba4cacdf3bf17103573, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Vehicles.VehicleCondition
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 577700582600648652}
+  _networkObjectCache: {fileID: 0}
+  _tank: 60
+  _burnPerKm: 12
+  _integrityMax: 100
+  _crashSpeed: 6
+  _crashDamage: 4
+  _fuelPerCan: 25
+  _repairPerPart: 30
 --- !u!1 &4299882861046916769
 GameObject:
   m_ObjectHideFlags: 0

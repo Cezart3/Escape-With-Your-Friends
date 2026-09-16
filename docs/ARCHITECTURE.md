@@ -4828,6 +4828,74 @@ people 186 metres up and never said a word. And one collision must count as exac
 ragdoll under a moving car is a stream of fresh contacts, one per bone, so without the per-victim
 cooldown the first person run over takes two dozen hits at once and dies instantly.
 
+### Fuel, dents and putting it back together (#61)
+
+A vehicle runs on petrol, breaks when you crash it, and is mended in place with scrap. The issue's
+acceptance is the whole design brief - *"wrecking a vehicle costs something but is never
+run-ending"* - and both halves of that sentence are load-bearing. A wreck has to hurt, or driving
+badly is free and the trader has nothing to sell. A wreck must never be terminal, so **every failure
+state is reversed where the vehicle stands, by a player holding an item.** Nothing tows, despawns or
+respawns anything, because a buggy you cannot fix where it broke is a run that ended at a tree.
+
+Fuel and integrity share one component. They fail the same way - the engine stops - and they are
+fixed the same way - somebody walks over with something in their hands - so two components would be
+two SyncVar sets, two interaction branches and two harnesses for no gain.
+
+**Fuel burns per metre, and only with somebody at the wheel.** Time-based burn makes a parked car a
+liability nobody asked for, and distance is the number a player can actually plan against: twelve
+litres a kilometre out of a sixty litre tank is five kilometres of driving, and the island is one
+across. A driverless car rolling down a hill costs nothing, which is right - the engine is not doing
+it. The boat carries twice as much, because running dry on land is a walk home and running dry at sea
+is exactly the run-ending outcome the issue says never to ship.
+
+**What is in your hand decides what the key does.** A fuel can refuels, scrap metal repairs, anything
+else boards, and the crosshair says which before you press. That is one branch in `Vehicle.Interact`
+and no new key, no new screen, and no second `IInteractable` competing for the same press. The prompt
+and both server-side halves read the same `ServiceLabel`, so the crosshair and the key can never
+disagree.
+
+People do not dent cars - a one-line guard, and without it every run-over, which #60 exists to make
+people do constantly, is also a repair bill.
+
+The trader sells fuel and nothing else does: the island gives away scrap metal and makes no petrol at
+all. That is #61's "reason to care about the trader", and it is one row in `ShopFactory`.
+
+#### The shelf ignores the list, like everything else here
+
+Adding that row changed nothing, silently. `ShopFactory.EnsureShop` returns the existing
+`Shop.asset` untouched, because prices are the sort of thing a human tunes in the inspector - so a
+new line in the `Stock` array is invisible, and the only symptom is a shelf that quietly does not
+have the thing on it. This is the third asset in the project with that shape, after `POIs.asset` and
+every prefab whose serialised field beats its C# initialiser. It now has the same trapdoor the
+others do:
+
+```
+Unity.exe -quit -batchmode -projectPath . -rebuildShop   -executeMethod EscapeWithYourFriends.EditorTools.ShopFactory.Build
+```
+
+#### What `-conditionTest` actually measures
+
+```
+[ConditionTest] buggy: 60.0/60L, 100/100 integrity.
+[ConditionTest] 10s of throttle: 160m on 1.9L (12.0 L/km, 5.0 km to a tank). 58.1/60L, 100/100 integrity.
+[ConditionTest] ran a body over at 20.7 m/s: 57.3/60L, 100/100 integrity.
+[VehicleCondition] Buggy (camp.buggy) hit ConditionTest.Wall at 22.1 m/s: -65 integrity, 35/100 left.
+[ConditionTest] wrecked, then drained: 0.0/60L, 30/100 integrity, DRY.
+[ConditionTest] repaired and refuelled by hand where it stood: 25.0/60L, 100/100 integrity.
+[ConditionTest] back on the road: 72m in 6s. 24.1/60L, 100/100 integrity.
+[ConditionTest] 32 passed, 0 failed.
+```
+
+The gate is checked **through `VehicleRider.Drive`**, not by reading `CanDrive`. A flag being false
+proves nothing about whether anything reads it. And the suite runs a positive control first - ten
+seconds of owner input that moves the car 160 metres - because a stalled car and a car whose input
+path never worked in a headless host look identical from the outside.
+
+The suite's own first run was nine assertions red from one mistake: `Stalling` repaired the buggy to
+full before handing it to `Servicing`, which then had nothing to mend, so the interact boarded the
+player instead and the next one threw them back out. A test that repairs the car it is about to test
+the repair on measures nothing.
+
 ---
 
 ## Data-driven content
