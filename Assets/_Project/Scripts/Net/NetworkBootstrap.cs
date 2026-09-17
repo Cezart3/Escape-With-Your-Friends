@@ -292,6 +292,7 @@ namespace EscapeWithYourFriends.Net
             Vehicles.VoyageTest.Begin();
             World.PartTest.Begin();
             World.PlaneTest.Begin();
+            Vehicles.FlightTest.Begin();
         }
 
         void OnClientConnectionState(ClientConnectionStateArgs args)

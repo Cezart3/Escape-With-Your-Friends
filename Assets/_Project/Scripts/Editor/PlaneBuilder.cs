@@ -1,5 +1,8 @@
+using System.Collections.Generic;
 using System.IO;
+using EscapeWithYourFriends.Vehicles;
 using EscapeWithYourFriends.World;
+using FishNet.Component.Transforming;
 using FishNet.Managing.Object;
 using FishNet.Object;
 using UnityEditor;
@@ -8,7 +11,7 @@ using UnityEngine;
 namespace EscapeWithYourFriends.EditorTools
 {
     /// <summary>
-    /// Generates the greybox plane and registers it as spawnable. #71.
+    /// Generates the greybox plane and registers it as spawnable. #71, then #72.
     ///
     ///   Unity.exe -quit -batchmode -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.PlaneBuilder.Build
     ///
@@ -22,6 +25,11 @@ namespace EscapeWithYourFriends.EditorTools
     /// It stands there missing its starboard wing, its engine and its propeller, which is a silhouette
     /// you can read from the other end of the beach. That is what "legible at a glance" means for a
     /// thing this size - a progress bar floating over it would be a worse version of the same fact.
+    ///
+    /// **#72 made it a vehicle.** Four seats, a rigidbody, a NetworkTransform and a
+    /// <see cref="PlaneController"/>. Two sets of numbers here get moved by feel: where the four of
+    /// them sit, and where the three wheels touch. Everything else about how it flies lives in the
+    /// controller's serialized fields, where it can be tuned without regenerating the prefab.
     /// </summary>
     public static class PlaneBuilder
     {
@@ -30,11 +38,20 @@ namespace EscapeWithYourFriends.EditorTools
 
         public const string PlanePath = PrefabDir + "/Plane.prefab";
 
+        /// <summary>The one physics material the whole airframe wears. See <see cref="Slippery"/>.</summary>
+        const string SkinPath = PrefabDir + "/PlaneSkin.asset";
+
         /// <summary>Half the fuselage, nose to tail. The whole aircraft is built off this.</summary>
         const float HalfLength = 3.5f;
 
         /// <summary>Half the span of one wing panel, measured out from the fuselage side.</summary>
         const float WingSpan = 5f;
+
+        /// <summary>
+        /// How far the wheels stand the airframe off the ground. Everything cosmetic is placed above
+        /// this, so the belly clears the strip.
+        /// </summary>
+        const float WheelRadius = 0.35f;
 
         public static void Build()
         {
@@ -61,7 +78,10 @@ namespace EscapeWithYourFriends.EditorTools
             foreach (Transform child in saved.transform)
                 if (child.name.StartsWith("Fitted.")) holes++;
 
-            Debug.Log($"[PlaneBuilder] Built {PlanePath}: {holes} hole(s) to fill.");
+            var vehicle = saved.GetComponent<Vehicle>();
+
+            Debug.Log($"[PlaneBuilder] Built {PlanePath}: {holes} hole(s) to fill, "
+                      + $"{vehicle.SeatCount} seat(s), {saved.GetComponent<Rigidbody>().mass:0}kg.");
 
             if (Application.isBatchMode) EditorApplication.Exit(0);
         }
@@ -70,10 +90,6 @@ namespace EscapeWithYourFriends.EditorTools
         {
             var root = new GameObject("Plane");
 
-            root.AddComponent<NetworkObject>();
-
-            // No NetworkTransform: it stands on its wheels and does not move until #72 gives it a
-            // reason to. The spawn message carries where it is, same as the stations and the chests.
             var landmark = root.AddComponent<Landmark>();
             landmark.Id = "plane";
             landmark.DisplayName = "The Plane";
@@ -100,9 +116,11 @@ namespace EscapeWithYourFriends.EditorTools
             Box(root, "Tail.Stabiliser", new Vector3(0f, 2.1f, -HalfLength + 0.5f),
                 new Vector3(3f, 0.18f, 0.9f), solid: false);
 
-            Wheel(root, "Gear.Port", new Vector3(-1.1f, 0.5f, 0.6f));
-            Wheel(root, "Gear.Starboard", new Vector3(1.1f, 0.5f, 0.6f));
-            Wheel(root, "Gear.Tail", new Vector3(0f, 0.35f, -HalfLength + 0.3f));
+            // The only three things that touch the strip. Solid, and on a slippery material: rubber
+            // friction on a box the size of a fuselage is a plane that cannot reach flying speed.
+            Wheel(root, "Gear.Port", new Vector3(-1.1f, WheelRadius, 0.6f));
+            Wheel(root, "Gear.Starboard", new Vector3(1.1f, WheelRadius, 0.6f));
+            Wheel(root, "Gear.Tail", new Vector3(0f, WheelRadius, -HalfLength + 0.3f));
 
             // ---- the three holes. The name after the dot is the PlanePart label that fills it.
 
@@ -115,6 +133,69 @@ namespace EscapeWithYourFriends.EditorTools
             Box(root, "Fitted.propeller", new Vector3(0f, 1.7f, HalfLength + 1.2f),
                 new Vector3(2.4f, 0.22f, 0.12f), solid: false);
 
+            // ---- #72. Four of you get off this island, so four seats.
+
+            var seats = new List<Vehicle.Seat>
+            {
+                // Order is the seating order: the first person in flies it.
+                Seat(root.transform, "Pilot", new Vector3(-0.35f, 2.15f, 1.3f),
+                     new Vector3(-1.6f, 0.2f, 1.3f)),
+
+                Seat(root.transform, "Copilot", new Vector3(0.35f, 2.15f, 1.3f),
+                     new Vector3(1.6f, 0.2f, 1.3f)),
+
+                Seat(root.transform, "PortRow", new Vector3(-0.35f, 2.15f, -0.3f),
+                     new Vector3(-1.6f, 0.2f, -0.3f)),
+
+                Seat(root.transform, "StarboardRow", new Vector3(0.35f, 2.15f, -0.3f),
+                     new Vector3(1.6f, 0.2f, -0.3f))
+            };
+
+            // The back of the cabin. A body rides here rather than in a seat, same as the boat's
+            // transom and the buggy's bed: a corpse in a seat is a seat a survivor cannot have.
+            Transform cargo = Empty(root.transform, "CargoSocket", new Vector3(0f, 1.9f, -1.9f));
+
+            // Every collider, not only the three that are meant to touch. The first pass set a
+            // material on the wheels alone and the saved prefab came back with m_Material: {fileID: 0}
+            // on all seven of them, because a PhysicsMaterial built in memory is dropped when the
+            // prefab is serialised - so the whole aeroplane was sitting on Unity's default rubber at
+            // 0.6, which is ~6500N of stiction against 9000N of thrust. It would not roll.
+            //
+            // The strip is flat, but the belly and a wingtip still find the ground on the way in, and
+            // an arcade aeroplane that stops dead the moment anything but a wheel touches is not a
+            // physics problem the player can read. One material, every box.
+            PhysicsMaterial skin = Slippery();
+
+            foreach (Collider piece in root.GetComponentsInChildren<Collider>())
+                piece.sharedMaterial = skin;
+
+            root.AddComponent<NetworkObject>();
+            root.AddComponent<NetworkTransform>();
+
+            var body = root.AddComponent<Rigidbody>();
+            body.mass = 1100f;
+            body.interpolation = RigidbodyInterpolation.Interpolate;
+
+            // PlaneController's drag resists translation only, and its wings-levelling spring has no
+            // damper of its own. This is that damper; if the wings ever start rocking, raise it.
+            body.angularDamping = 1.5f;
+
+            // Low, because a light aircraft that rolls when it is nudged is an aircraft nobody can
+            // taxi. The wing and tail boxes are well above it, so it still rights itself in the air.
+            body.centerOfMass = new Vector3(0f, 0.9f, 0f);
+
+            var vehicle = root.AddComponent<Vehicle>();
+            vehicle.Configure(seats.ToArray(), cargo, "plane");
+
+            root.AddComponent<PlaneController>();
+
+            // #60. A wing at 30 m/s is a blunt instrument, and taxiing through your friends should
+            // cost them something.
+            root.AddComponent<VehicleImpact>();
+
+            // PlaneAssembly last, so the holes above are already children when its Awake walks them.
+            // No VehicleCondition: an aeroplane that runs out of fuel over open water is the
+            // run-ending outcome #61 exists to avoid, and the three parts are gate enough.
             root.AddComponent<PlaneAssembly>();
 
             return root;
@@ -144,10 +225,49 @@ namespace EscapeWithYourFriends.EditorTools
             go.transform.SetParent(root.transform, false);
             go.transform.localPosition = position;
             go.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
-            go.transform.localScale = new Vector3(0.7f, 0.12f, 0.7f);
+            go.transform.localScale = new Vector3(WheelRadius * 2f, 0.12f, WheelRadius * 2f);
 
-            Collider existing = go.GetComponent<Collider>();
-            if (existing != null) Object.DestroyImmediate(existing);
+            // ponytail: a capsule, not a WheelCollider. Three of those want suspension travel, a
+            // steering axle and a tuning session, and none of that is visible at greybox; what the
+            // aeroplane actually needs from its undercarriage is to hold the belly off the strip and
+            // not grip it. Swap them in if taxiing ever has to feel like anything.
+        }
+
+        /// <summary>One seat: where the body sits, and where it is put down when it gets out.</summary>
+        static Vehicle.Seat Seat(Transform parent, string name, Vector3 anchor, Vector3 door)
+            => new()
+            {
+                Anchor = Empty(parent, $"Seat.{name}", anchor),
+                Exit = Empty(parent, $"Exit.{name}", door)
+            };
+
+        /// <summary>
+        /// The airframe's physics material, as an asset rather than an instance: anything a prefab
+        /// points at has to exist on disk, or the reference is a null by the time it is saved.
+        /// </summary>
+        static PhysicsMaterial Slippery()
+        {
+            var material = AssetDatabase.LoadAssetAtPath<PhysicsMaterial>(SkinPath);
+            bool fresh = material == null;
+
+            if (fresh) material = new PhysicsMaterial("PlaneSkin");
+
+            material.dynamicFriction = 0.05f;
+            material.staticFriction = 0.05f;
+            material.frictionCombine = PhysicsMaterialCombine.Minimum;
+
+            if (fresh) AssetDatabase.CreateAsset(material, SkinPath);
+            else EditorUtility.SetDirty(material);
+
+            return material;
+        }
+
+        static Transform Empty(Transform parent, string name, Vector3 localPosition)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPosition;
+            return go.transform;
         }
 
         /// <summary>Same reasoning as PlayerPrefabBuilder.RegisterSpawnable; see the note there.</summary>

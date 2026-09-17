@@ -208,6 +208,22 @@ namespace EscapeWithYourFriends.World
             {
                 NetworkObject second = mate.GetComponent<NetworkObject>();
 
+                // Carry it home first. Every part lies inside the place that wants you dead, and
+                // thirty metres of walking does not leave a village: #72's rebake moved the ground
+                // around and a headhunter reached the second player mid-check -
+                //
+                //   [Native] headhunter 16 claimed 21 3.0m away; hauling to (-102.00, 11.42, -42.00).
+                //
+                // which is the natives working, not the carry failing. A check that stages itself in
+                // an aggro radius is measuring two things and reporting one.
+                Transform camp = Camp();
+                if (camp != null)
+                {
+                    Stand(carrier, camp.position + Vector3.back * 6f);
+                    yield return null;
+                    yield return null;
+                }
+
                 Stand(mate, part.transform.position + Vector3.right * 1.5f);
                 yield return null;
 

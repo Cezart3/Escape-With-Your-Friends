@@ -88,14 +88,24 @@ namespace EscapeWithYourFriends.Player
 
             // In parents, not on the collider: a machine's hit box is a child mesh, and the component
             // that knows what the machine does sits on the networked root.
-            var interactable = hit.collider.GetComponentInParent<IInteractable>();
-            if (interactable == null) return null;
+            //
+            // All of them, not the first: #72's aeroplane is one object that is both a thing you fit
+            // parts to and a thing you get into, and which of those it is depends on what is on your
+            // shoulder. An empty prompt means the component is present but has nothing to offer — a
+            // Rescuable on somebody who is upright, a PlaneAssembly with no holes left — so the first
+            // one with something to say is the answer, and if none of them has anything the key falls
+            // through to carrying, which is what lets a corpse be picked up at all.
+            IInteractable interactable = null;
 
-            // An empty prompt means the component is present but has nothing to offer — a Rescuable
-            // on a player who is upright, or on a corpse, which is the Revive Machine's job. Skipping
-            // those here is what lets Interact fall through to carrying: without it the interactable
-            // would swallow the key on every body in the game and a corpse could never be picked up.
-            if (string.IsNullOrEmpty(interactable.Prompt)) return null;
+            foreach (IInteractable candidate in hit.collider.GetComponentsInParent<IInteractable>())
+            {
+                if (candidate == null || string.IsNullOrEmpty(candidate.Prompt)) continue;
+
+                interactable = candidate;
+                break;
+            }
+
+            if (interactable == null) return null;
 
             networkObject = hit.collider.GetComponentInParent<NetworkObject>();
             return networkObject != null ? interactable : null;
@@ -120,14 +130,17 @@ namespace EscapeWithYourFriends.Player
             if ((target.transform.position - transform.position).sqrMagnitude > maxDistance * maxDistance)
                 return;
 
-            // Children as well as the root: a machine with two panels is one NetworkObject with two
-            // interactables, and the first one is the right answer until something needs otherwise.
-            var interactable = target.GetComponentInChildren<IInteractable>();
-            if (interactable == null) return;
+            // Children as well as the root, and the first one that will actually take the actor
+            // rather than simply the first one. The client picked an object, not a component, so on
+            // an object wearing two interactables — #72's aeroplane wears both PlaneAssembly and
+            // Vehicle — this is where the two are told apart, on the machine that owns the answer.
+            foreach (IInteractable candidate in target.GetComponentsInChildren<IInteractable>())
+            {
+                if (candidate == null || !candidate.ServerCanInteract(NetworkObject)) continue;
 
-            if (!interactable.ServerCanInteract(NetworkObject)) return;
-
-            interactable.ServerInteract(NetworkObject);
+                candidate.ServerInteract(NetworkObject);
+                return;
+            }
         }
     }
 }

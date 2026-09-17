@@ -186,7 +186,8 @@ namespace EscapeWithYourFriends.World
             Check($"all three pieces are standing ({plane.Showing}/{plane.Needed})",
                   plane.Showing == plane.Needed);
             Check("and the plane is finished", plane.Complete);
-            Check($"which is what it now says (\"{plane.Prompt}\")", plane.Prompt == "The plane is finished");
+            Check("and has nothing left to say about parts, so the cockpit is reachable",
+                  string.IsNullOrEmpty(plane.Prompt));
             Check("there is nothing left to fit to it", !plane.ServerCanInteract(who));
             Check($"no parts are left anywhere ({PlanePart.All.Count})", PlanePart.All.Count == 0);
 
