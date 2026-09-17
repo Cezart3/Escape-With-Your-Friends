@@ -18,6 +18,12 @@ namespace EscapeWithYourFriends.AI
     /// <c>-nativeTest</c>, and it wants <c>-scene island</c>, because a native without a NavMesh is a
     /// statue and its camps are baked off the island's POIs.
     ///
+    /// **Run it on a host with nobody else connected.** Every measurement here is a distance between
+    /// one player and one native, and a native hunts whoever is nearest rather than whoever the test
+    /// had in mind - so a second body on the spawn ring is not noise, it is a different experiment.
+    /// The suite watches for that and fails one named check rather than reporting it as a camp that
+    /// cannot shoot straight. #132.
+    ///
     /// The criterion is one sentence with two halves that pull against each other - *"natives are a
     /// real threat at night but not unfair in daylight"* - and the only way to check a sentence like
     /// that is to run the same experiment twice with nothing changed but the sun. So that is what
@@ -62,6 +68,9 @@ namespace EscapeWithYourFriends.AI
 
         int _passed;
         int _failed;
+
+        /// <summary>Set once somebody else's body has been caught nearer a native than the test's own.</summary>
+        bool _crowded;
 
         internal static void Begin()
         {
@@ -873,6 +882,8 @@ namespace EscapeWithYourFriends.AI
             // which is fatal to a test whose whole output is a distance.
             spot = mobile ? Ground(spot) : Stand(spot);
 
+            Crowd(spot, motor);
+
             Native native = spawner.ServerSpawn(def, spot, camp.HasValue ? Ground(camp.Value) : spot);
             if (native == null) return null;
 
@@ -897,6 +908,43 @@ namespace EscapeWithYourFriends.AI
                 native.transform.rotation = Quaternion.LookRotation(facing ? to.normalized : -to.normalized);
 
             return native;
+        }
+
+        /// <summary>
+        /// Complains, once, if somebody else's body is closer to where a native is about to stand
+        /// than the player being measured is.
+        ///
+        /// A native hunts whoever is *nearest*, not whoever this test had in mind, and every number
+        /// the suite prints is a distance between one player and one native put a fixed few metres
+        /// from it. A second process attached to the same host puts another body on the spawn ring
+        /// about nine metres away, which is comfortably inside that - and the result reads as a camp
+        /// that cannot shoot straight rather than as a suite run with the wrong number of people in
+        /// the world. #132.
+        ///
+        /// Checked here rather than once at start-up because a client can join at any point in a
+        /// three-minute run, and the start-up check passed cleanly against a client that had not
+        /// arrived yet.
+        /// </summary>
+        void Crowd(Vector3 spot, PlayerMotor motor)
+        {
+            if (_crowded) return;
+
+            float mine = Vector3.Distance(motor.transform.position, spot);
+
+            PlayerMotor nearer = FindObjectsByType<PlayerMotor>(FindObjectsSortMode.None)
+                .FirstOrDefault(m => m != null && m != motor && m.IsSpawned
+                                     && Vector3.Distance(m.transform.position, spot) < mine);
+
+            if (nearer == null) return;
+
+            _crowded = true;
+
+            Check($"only the player being measured is on this island (object "
+                  + $"{nearer.NetworkObject.ObjectId} is "
+                  + $"{Vector3.Distance(nearer.transform.position, spot):0.0}m from a native put "
+                  + $"{mine:0.0}m from it, so the native will hunt that one instead) - run "
+                  + "-nativeTest on a host with no client attached",
+                  false);
         }
 
         /// <summary>The nearest standable point. A body floating over a hill sees over it.</summary>

@@ -6159,6 +6159,103 @@ Not done, on purpose: audio buses (one master and one voice slider is what peopl
 per-setting revert, and gamepad rebinding UI — the store and the rebind path already handle a gamepad
 path, there is simply no button for it yet.
 
+### A harness that measured the wrong player (#132)
+
+`-nativeTest` failed four checks, deterministically, with the same numbers in every run: a blowgunner
+that fired no darts at all, the two checks that depend on a dart landing, and a shout whose listeners
+arrived 10.9m from where the player had been standing. Deterministic failures are usually arithmetic,
+so this looked like a bug in the camp.
+
+It was a bug in how the suite was run. The repro was a two-process pair, and `-nativeTest` is a
+one-player suite. Every measurement it takes is a distance between one player and one native placed a
+fixed few metres from it — and a native hunts whoever is *nearest*, not whoever the test had in mind.
+The host's player and the client's spawn about nine metres apart on the ring, so the second body was
+comfortably inside the experiment:
+
+```
+[PlayerSpawner] Spawned body for connection 0 at (-84.00, 6.17, -40.50) ...   <- object 38
+[PlayerSpawner] Spawned body for connection 1 at (-77.50, 6.11, -47.00) ...   <- object 61
+
+[Native] blowgunner 102 noticed 61 at 4.6m (notice 34m, night 1.00, sight not needed).
+[Native] spearman  104 noticed 61 at 15.0m (notice 18m, night 0.00, sight required).
+```
+
+Both failures fall straight out of those two lines. The blowgunner was placed eight metres from
+object 38 and turned to face it, then locked onto object 61 at 4.6m instead. A ranged native will not
+attack a target it cannot see, object 61 was outside its vision cone, and the test disables the
+NavMesh agent so a body will stay exactly where it was put — so it stood there in `Chase` forever,
+holding a target it could neither see nor walk to. Zero darts. The alarm check reads `a.Suspect`, and
+`Sense` overwrites `_suspect` with the nearest sighted player every time it notices one, so the
+listener's suspect point became object 61's position: 10.9m from where object 38 was standing.
+
+Run alone, on the same build, with nothing changed:
+
+```
+[NativeTest] 161 passed, 0 failed.
+[Native] blowgunner 101 noticed 38 at 8.0m (notice 34m, night 1.00, sight not needed).
+[NativeTest] a blowgunner at 8.0m: 11 dart(s), 5 hit, 45 health and a stun.
+[NativeTest] one spearman shouted at noon: 2 of 2 out of earshot came looking, within 0.1m of where
+             the player actually was.
+```
+
+The fix watches for it at the moment it matters. Every native this suite places goes through one
+helper, and that helper now asks whether anybody else's body is closer to the spot than the player
+being measured is:
+
+```csharp
+void Crowd(Vector3 spot, PlayerMotor motor)
+{
+    if (_crowded) return;
+
+    float mine = Vector3.Distance(motor.transform.position, spot);
+
+    PlayerMotor nearer = FindObjectsByType<PlayerMotor>(FindObjectsSortMode.None)
+        .FirstOrDefault(m => m != null && m != motor && m.IsSpawned
+                             && Vector3.Distance(m.transform.position, spot) < mine);
+
+    if (nearer == null) return;
+    ...
+}
+```
+
+The first version of this was a refusal at start-up, and it was wrong in a way worth recording: it
+passed cleanly against a client that had not arrived yet. The suite waits for *a* player, the host's
+own body is there immediately, and the client in the repro connects some twenty seconds later - so the
+check ran, found one player, and waved the run through. A client can join at any point in a
+three-minute run, and the only honest place to ask is where the answer is used.
+
+One named failure that says which body, how far away and what to do about it beats four failures deep
+in the ranged and alarm checks that name everything except the cause. This is the same class of
+problem as #141, where seat-drift checks fail only when harnesses run in parallel: a harness that is
+quietly sensitive to what else is running will eventually be believed about something it never
+measured.
+
+```
+EscapeWithYourFriends.exe -batchmode -nographics -host -port 8128 -playerKey test:host   -scene island -noAnimals -nativeTest -quitAfter 200
+```
+
+Run as a pair anyway, that check is the first thing in the log and the rest read as its consequences:
+
+```
+[NativeTest] FAILED: only the player being measured is on this island (object 60 is 4.6m from a
+native put 8.0m from it, so the native will hunt that one instead) - run -nativeTest on a host with
+no client attached.
+[NativeTest] FAILED: a blowgunner fires (0 darts).
+...
+[NativeTest] 157 passed, 5 failed.
+```
+
+It flags rather than aborts. A run with the wrong number of people in it is not worth reading, but the
+157 checks that do not care how many players there are still say something, and threading an abort
+through a dozen coroutines to suppress them would be more code than the problem is worth.
+
+Tracing this turned up something real that is *not* fixed here and is filed as #144: `Alarm` hands
+every listener a live `Health` target, so `TickInvestigate` promotes it to `Chase` on the next tick
+and it walks to where the player *is* rather than to the shouted spot — which is exactly what the
+comment above `Alarm` says it must not do. It causes none of the failures above, and it changes how
+hard a whole camp converges on you, so it is a deliberate change rather than a side effect of a
+harness fix.
+
 ---
 
 ## Data-driven content
