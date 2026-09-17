@@ -67,6 +67,11 @@ namespace EscapeWithYourFriends.Vehicles
 
             _tiers.Clear();
             for (int i = 0; i < Slots; i++) _tiers.Add(0);
+
+            // #75. Here and not from outside, because the line above is the first moment this list
+            // exists: anything that tried to restore tiers earlier iterated an empty list and did
+            // nothing, silently, which is exactly the shape of bug a save is worst at showing.
+            ServerRestoreTiers(Core.RunSave.TiersFor(name));
         }
 
         public int TierOf(VehiclePart part)
@@ -109,6 +114,31 @@ namespace EscapeWithYourFriends.Vehicles
                       + $"({def.Part} tier {def.Tier}, x{def.Multiplier:0.00}). {Report()}");
 
             return true;
+        }
+
+        /// <summary>
+        /// Server only. Puts saved tiers back on, for #75. Each slot is raised to the saved tier and
+        /// never lowered to it: the file is a snapshot of a moment that has passed, and something
+        /// bolted on since that moment is not something a save should unbolt.
+        /// </summary>
+        internal void ServerRestoreTiers(int[] tiers)
+        {
+            if (!IsServerStarted || tiers == null) return;
+
+            bool changed = false;
+
+            for (int i = 0; i < tiers.Length && i < _tiers.Count; i++)
+            {
+                if (tiers[i] <= _tiers[i]) continue;
+
+                _tiers[i] = tiers[i];
+                changed = true;
+            }
+
+            if (!changed) return;
+
+            Apply();
+            Debug.Log($"[VehicleUpgrades] {name}: restored from a save. {Report()}");
         }
 
         /// <summary>The absolute multiplier over stock for a part, 1 for a part nobody has fitted.</summary>

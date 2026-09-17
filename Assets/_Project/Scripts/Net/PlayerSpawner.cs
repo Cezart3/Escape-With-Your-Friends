@@ -126,6 +126,11 @@ namespace EscapeWithYourFriends.Net
             var persistence = body.GetComponent<BodyPersistence>();
             if (persistence != null) persistence.ServerSetOwnerKey(key);
 
+            // And immediately after, because this is the one line in the project where both halves
+            // of "what does this person own" are known: the body exists and the key is on it. #75.
+            // No-ops when nothing was saved, and when saving is off entirely.
+            Core.RunSave.ServerApply(key, body.gameObject);
+
             Debug.Log($"[PlayerSpawner] Spawned body for connection {connection.ClientId} at {position}, "
                       + $"colour slot {colorIndex}, key {PlayerKey.Short(key)}.");
         }

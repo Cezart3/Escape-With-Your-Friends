@@ -115,9 +115,19 @@ namespace EscapeWithYourFriends.World
             // airframe is a scene object and scene objects do not cross scenes, so "the group has a
             // plane" cannot live on one. It survives as long as the process does; it moves into the
             // save file when #75 gives one a home.
+            // #75. The static above dies with the process and the save file does not, so the file
+            // gets the first word. Read here rather than pushed in from outside: RunSave arms inside
+            // the server's own started callback, which is before any scene object has spawned.
+            if (Core.RunSave.SavedPlaneOwned) Owned = true;
+
             if (Owned && _wanted.Count > 0) _fitted.Value = (1 << _wanted.Count) - 1;
 
             base.OnStartServer();
+
+            // And the ordinary case the save exists for: an aeroplane somebody quit halfway through
+            // building. Only ever adds - see ServerFit.
+            foreach (string label in Core.RunSave.SavedParts) ServerFit(label);
+
             Show();
         }
 
@@ -227,6 +237,35 @@ namespace EscapeWithYourFriends.World
             if (!IsServerStarted || _wanted.Count == 0) return;
 
             _fitted.Value = (1 << _wanted.Count) - 1;
+        }
+
+        /// <summary>
+        /// Server only. Fills the hole <paramref name="label"/> belongs to, if it is still empty.
+        /// This is what a loaded save calls, once per part it remembers being fitted. #75.
+        ///
+        /// It only ever adds. A save is a snapshot of a moment that has already passed, and a part
+        /// fitted since that moment must not be pulled back out by a stale file.
+        /// </summary>
+        internal void ServerFit(string label)
+        {
+            if (!IsServerStarted || string.IsNullOrEmpty(label)) return;
+
+            int hole = Hole(label);
+            if (hole < 0) return;
+
+            _fitted.Value |= 1 << hole;
+            Show();
+        }
+
+        /// <summary>Which parts are in, by label, for the save file. Server-side. #75.</summary>
+        internal List<string> ServerFittedLabels()
+        {
+            var fitted = new List<string>();
+
+            for (int i = 0; i < _wanted.Count; i++)
+                if ((_fitted.Value & (1 << i)) != 0) fitted.Add(_wanted[i]);
+
+            return fitted;
         }
 
         public string Missing()
