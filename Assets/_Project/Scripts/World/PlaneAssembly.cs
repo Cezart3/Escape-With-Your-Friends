@@ -217,6 +217,18 @@ namespace EscapeWithYourFriends.World
         }
 
         /// <summary>"engine and wing", for a prompt somebody reads while standing in front of it.</summary>
+        /// <summary>
+        /// Fills every hole at once. This is the <see cref="Owned"/> case applied late: a harness
+        /// that starts on the first island is starting after the group already built an aeroplane,
+        /// and there are no parts lying about on that island to fetch. #74.
+        /// </summary>
+        internal void ServerFitAll()
+        {
+            if (!IsServerStarted || _wanted.Count == 0) return;
+
+            _fitted.Value = (1 << _wanted.Count) - 1;
+        }
+
         public string Missing()
         {
             var left = new List<string>();

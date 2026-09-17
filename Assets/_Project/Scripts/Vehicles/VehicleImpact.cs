@@ -153,6 +153,11 @@ namespace EscapeWithYourFriends.Vehicles
             StartCoroutine(PassThrough(stun));
 
             Hits++;
+
+            // Friends, specifically. Hits counts anything with a body in it, and a boar under the
+            // wheels is not a line anybody wants read out at the end of the run. #74.
+            if (stun.GetComponent<Player.PlayerMotor>() != null) World.RunSummary.ServerRanOver();
+
             LastVictim = stun.name;
             LastSpeed = speed;
             LastDamage = damage;
