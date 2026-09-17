@@ -78,6 +78,10 @@ namespace EscapeWithYourFriends.Casino
             if (stake <= 0) return;
 
             Table.ServerPlaceBet(actor, _kind, _number, stake);
+
+            // What the run gambled, counted where it is staked rather than where it is won or
+            // lost: the ending asks how much went on the table, not how it went. #74.
+            World.RunSummary.ServerStaked(stake);
         }
 
         Wallet LocalWallet()

@@ -5930,6 +5930,53 @@ rather than looking like a pathing failure. The probe in the walk loop is worth 
 reason: a follower that does not follow looks identical from outside whether the leader never moved,
 the path is partial, or the agent is parked somewhere with no exit.
 
+### The run has an ending (#74)
+
+The acceptance was *"a real ending, not a fade to black"*, and the difference between the two is
+entirely whether the screen is about **this** run. So the ending is four numbers that could not have
+come from any other afternoon: how long it took, how many times you died, what you left at the
+roulette table, and how many of your friends you drove into.
+
+**Leaving is not crossing.** `GameSceneLoader.Crossing` toggles between the two islands and nothing
+else, so an aeroplane that flies off the first island with the person you went back for cannot be
+handed to it — it would put everybody back on the island they just escaped from. `PlaneVoyage`
+already knew when a departure was serious (past the edge, high, somebody at the controls, held for
+four seconds); the only addition is what it does at that moment when `Castaway.Instance` is aboard.
+It ends the run instead of travelling.
+
+**Two counters, not a statistics system.**
+
+| Number | Where it comes from |
+|---|---|
+| Deaths | summed off `Health.Deaths` at the end |
+| Chips gambled | one line in `BetSpot`, where the stake goes down |
+| Friends run over | one line in `VehicleImpact`, where it already logs the hit |
+| Seconds | `Time.time` |
+
+Deaths get no counter of their own because `Health` has counted them per body since #24, and summing
+four integers once is cheaper than keeping a fifth in step with them forever — there is nothing to
+fall out of sync, which is also the only thing `-endTest` has to prove about them. The `VehicleImpact`
+line tests for a `PlayerMotor` first: `Hits` counts anything with a body in it, and a boar under the
+wheels is not a line anybody wants read out at the end.
+
+The figures move on the server and reach the other three once, in the RPC that ends the run, rather
+than as four SyncVars ticking all game for a screen nobody sees until it is over.
+
+**The ending is a HUD element, not a scene.** A cutscene scene would mean a second camera rig, a
+second lighting setup and a transition to get back out of, all to show a panel over an aeroplane
+that is already flying away from an island. The aeroplane *is* the cutscene. `EndingPanel` fades
+black over it, writes the four lines, holds, and scrolls the credits — and because it draws locally
+off `RunSummary`, all four of you watch your own copy fly out rather than sharing one camera.
+
+`-endTest` does not check the panel, because a headless build has no canvas to draw one on. It
+checks the four integers, which is the part that can be wrong: that an empty aeroplane past the edge
+ends nothing, that a real death on a real body reaches the tally, that leaving with somebody aboard
+ends the run *and leaves everyone on the island they were on*, and that the numbers on the ending are
+the numbers that happened.
+
+Skipped: taking control away when it ends. The aeroplane flies itself out and the acceptance asks
+for an ending, not for the game to grab the stick. Worth adding if it looks wrong in play.
+
 ---
 
 ## Data-driven content
