@@ -541,6 +541,8 @@ namespace EscapeWithYourFriends.EditorTools
             go.transform.localPosition = localPosition;
             go.transform.localScale = localScale;
 
+            go.GetComponent<Renderer>().sharedMaterial = Palette.Named("Accent");
+
             Collider existing = go.GetComponent<Collider>();
             if (existing != null) UnityEngine.Object.DestroyImmediate(existing);
 

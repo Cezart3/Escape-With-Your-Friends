@@ -158,8 +158,7 @@ namespace EscapeWithYourFriends.EditorTools
                 if (renderer != null) renderer.shadowCastingMode = ShadowCastingMode.Off;
             }
 
-            var material = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = color };
-            cube.GetComponent<Renderer>().sharedMaterial = material;
+            cube.GetComponent<Renderer>().sharedMaterial = Palette.For(color);
 
             return cube;
         }

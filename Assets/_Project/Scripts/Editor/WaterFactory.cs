@@ -319,6 +319,9 @@ namespace EscapeWithYourFriends.EditorTools
                 material.shader = shader;
             }
 
+            // Both islands' seas wear this one material, so it may as well batch (#79).
+            material.enableInstancing = true;
+
             material.SetTexture(DepthMaskId, depth);
             material.SetTexture(NormalMapId, ripples);
 

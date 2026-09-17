@@ -121,6 +121,17 @@ namespace EscapeWithYourFriends.Net
             Debug.Log($"[NetworkBootstrap] Bootstrap scene live {Time.realtimeSinceStartup:0.00}s "
                       + "after process start.");
 
+            UI.MenuTest.Begin();
+            Audio.AudioTest.Begin();
+
+            // Sound is not networked and does not wait for a session: the menu has music too, and a
+            // scene change is what picks the mood. #80, #81.
+            Audio.Music.Begin();
+            Audio.Footsteps.Begin();
+            Player.BodyAnimator.Begin();
+            UnityEngine.SceneManagement.SceneManager.activeSceneChanged +=
+                (_, loaded) => Audio.Music.ForScene(loaded.name);
+
             bool host = CommandLine.HasFlag("-host");
             bool server = CommandLine.HasFlag("-server");
             bool client = CommandLine.HasFlag("-client");
@@ -141,18 +152,26 @@ namespace EscapeWithYourFriends.Net
                 // not. Two things racing to start the same client would be a coin flip.
                 Debug.Log("[NetworkBootstrap] A lobby was asked for on the command line; "
                           + "SteamLobby starts the connection.");
+                UI.MenuScreen.Begin(this, sessionAlready: true);
                 return;
             }
 
             if (!host && !server && !client)
             {
                 if (Application.isEditor && _autoHostInEditor) host = true;
-                else return; // A shipped build waits for the lobby.
+                else
+                {
+                    // A shipped build waits for a player to pick something (#82).
+                    UI.MenuScreen.Begin(this, sessionAlready: false);
+                    return;
+                }
             }
 
             // The server listens on every transport at once, so only the client half picks one.
             NetLink link = TransportSelector.ResolveFromCommandLine(NetLink.Tugboat);
             if (link == NetLink.Steam) address = CommandLine.GetString("-steamId", address);
+
+            UI.MenuScreen.Begin(this, sessionAlready: true);
 
             if (host || server) StartServer(port);
             if (host || client) StartClient(link, address, port);
@@ -272,6 +291,8 @@ namespace EscapeWithYourFriends.Net
             Core.SettingsTest.Begin();
             AchievementTest.Begin();
             World.DemoTest.Begin();
+            World.LookTest.Begin();
+            Player.AnimTest.Begin();
 
             Items.WorldItemTest.Begin();
             Items.CraftingTest.Begin();

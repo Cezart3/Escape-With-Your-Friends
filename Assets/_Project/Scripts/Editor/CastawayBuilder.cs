@@ -102,6 +102,8 @@ namespace EscapeWithYourFriends.EditorTools
             go.transform.localPosition = position;
             go.transform.localScale = scale;
 
+            go.GetComponent<Renderer>().sharedMaterial = Palette.Named("Canvas");
+
             // The capsule on the root is the only collider that should ever be hit: a stack of solid
             // boxes inside a navmesh agent is an agent that fights its own shoulders.
             Collider existing = go.GetComponent<Collider>();

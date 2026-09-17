@@ -1,0 +1,19 @@
+// The one content depot: the Windows player, as BuildTool wrote it (#87).
+"DepotBuild"
+{
+	"DepotID"	"$EWYF_DEPOT"
+	"ContentRoot"	"$EWYF_CONTENT"
+
+	"FileMapping"
+	{
+		"LocalPath"	"*"
+		"DepotPath"	"."
+		"recursive"	"1"
+	}
+
+	// Development leftovers. A shipped build has no logs, no debug symbols and no crash dumps.
+	"FileExclusion"	"*.pdb"
+	"FileExclusion"	"*_BurstDebugInformation_DoNotShip*"
+	"FileExclusion"	"*_BackUpThisFolder_ButDontShipItWithYourGame*"
+	"FileExclusion"	"*.log"
+}

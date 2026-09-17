@@ -30,25 +30,11 @@ namespace EscapeWithYourFriends.EditorTools
         const string MaterialDir = "Assets/_Project/Art/Greybox";
         const string PrefabObjectsPath = "Assets/DefaultPrefabObjects.asset";
 
-        // The whole palette. Five colours is enough to read a blockout and few enough that nobody
-        // mistakes it for a look.
-        static readonly (string name, Color colour, float smoothness)[] Palette =
-        {
-            ("Wood", new Color(0.42f, 0.30f, 0.19f), 0.12f),
-            ("Stone", new Color(0.46f, 0.46f, 0.44f), 0.08f),
-            ("Canvas", new Color(0.74f, 0.68f, 0.52f), 0.06f),
-            ("Metal", new Color(0.55f, 0.57f, 0.60f), 0.55f),
-            ("Accent", new Color(0.72f, 0.28f, 0.22f), 0.20f)
-        };
-
-        static readonly Dictionary<string, Material> Materials = new();
-
         [MenuItem("EWYF/Build greybox landmarks")]
         public static void BuildAll()
         {
             Directory.CreateDirectory(PrefabDir);
             Directory.CreateDirectory(MaterialDir);
-            Materials.Clear();
 
             var built = new List<string>();
 
@@ -125,7 +111,13 @@ namespace EscapeWithYourFriends.EditorTools
                                    radius: 10f, hostile: false);
 
             Box(root, "Hut", "Wood", new Vector3(0f, 1.4f, -1.6f), new Vector3(6f, 2.8f, 3.2f));
-            Box(root, "Roof", "Canvas", new Vector3(0f, 3f, -1.4f), new Vector3(7f, 0.2f, 4.4f));
+            Roof(root, "Roof", "Canvas", new Vector3(0f, 2.9f, -1.4f), 7f, 4.4f, 1.3f);
+
+            // A door on the back wall and a window either side of it, so the hut has a front and a
+            // back from a distance rather than being a box with a counter stuck to it.
+            Opening(root, "Door", new Vector3(0f, 1f, -3.22f), new Vector3(1.1f, 2f, 0.1f));
+            Opening(root, "Window.L", new Vector3(2.1f, 1.9f, -3.22f), new Vector3(1f, 0.8f, 0.1f));
+            Opening(root, "Window.R", new Vector3(-2.1f, 1.9f, -3.22f), new Vector3(1f, 0.8f, 0.1f));
 
             // The counter, and the gap behind it that the shopkeeper occupies.
             Box(root, "Counter", "Wood", new Vector3(0f, 1f, 0.6f), new Vector3(5f, 0.2f, 0.9f));
@@ -180,7 +172,12 @@ namespace EscapeWithYourFriends.EditorTools
             Box(root, "Wall.FrontRight", "Wood", new Vector3(3.1f, 1.6f, 2.0f), new Vector3(2.9f, 3.2f, 0.3f));
             Box(root, "Door.Lintel", "Wood", new Vector3(0f, 2.9f, 2.0f), new Vector3(3.4f, 0.6f, 0.3f),
                 solid: false);
-            Box(root, "Roof", "Canvas", new Vector3(0f, 3.3f, -1f), new Vector3(9.6f, 0.2f, 7f));
+            Roof(root, "Roof", "Canvas", new Vector3(0f, 3.2f, -1f), 9.6f, 7f, 2f);
+
+            // The doorway is a real gap between the two front walls, so it needs no recess - only the
+            // windows either side of it do.
+            Opening(root, "Window.L", new Vector3(3.1f, 2.1f, 2.16f), new Vector3(1.4f, 1f, 0.1f));
+            Opening(root, "Window.R", new Vector3(-3.1f, 2.1f, 2.16f), new Vector3(1.4f, 1f, 0.1f));
 
             // The sign, nailed over the door at an angle somebody could not be bothered to fix.
             GameObject sign = Box(root, "Sign", "Canvas", new Vector3(0f, 3.5f, 2.2f),
@@ -367,6 +364,49 @@ namespace EscapeWithYourFriends.EditorTools
                               Vector3 scale, bool solid = true)
             => Piece(root, name, PrimitiveType.Cube, material, position, scale, solid);
 
+        /// <summary>
+        /// A pitched roof: two slabs and the ridge between them, instead of the flat slab a blockout
+        /// reaches for first (#78).
+        ///
+        /// This is the whole of the "consistent low-poly language" the issue asks for, in the only
+        /// form a batch job can deliver it. Modelled buildings need Blender and a person, but the
+        /// thing that actually makes a greybox read as *unfinished* rather than as *stylised* is that
+        /// every building is a stack of axis-aligned boxes. One angle, used everywhere, is enough to
+        /// flip that - and it costs four primitives per building instead of a mesh import.
+        ///
+        /// <paramref name="rise"/> is how far the ridge sits above the eaves. Keep it around a third
+        /// of the depth; steeper reads as a chapel.
+        /// </summary>
+        static void Roof(GameObject root, string name, string material, Vector3 eaves,
+                         float width, float depth, float rise)
+        {
+            float half = depth * 0.5f;
+            float slant = Mathf.Sqrt(half * half + rise * rise);
+            float pitch = Mathf.Atan2(rise, half) * Mathf.Rad2Deg;
+
+            for (int side = 0; side < 2; side++)
+            {
+                float sign = side == 0 ? 1f : -1f;
+
+                GameObject slab = Box(root, $"{name}.{(side == 0 ? "N" : "S")}", material,
+                                      eaves + new Vector3(0f, rise * 0.5f, sign * half * 0.5f),
+                                      new Vector3(width, 0.18f, slant));
+
+                slab.transform.localRotation = Quaternion.Euler(sign * pitch, 0f, 0f);
+            }
+
+            Box(root, $"{name}.Ridge", material, eaves + new Vector3(0f, rise, 0f),
+                new Vector3(width * 1.02f, 0.2f, 0.28f), solid: false);
+        }
+
+        /// <summary>
+        /// A dark recess in a wall. Not a hole - a blockout with real openings is a blockout whose
+        /// walls stop being convex, and a ragdoll finds every one of those. Read at ten metres, an
+        /// inset reads the same and costs one non-solid box.
+        /// </summary>
+        static void Opening(GameObject root, string name, Vector3 position, Vector3 scale)
+            => Box(root, name, "Dark", position, scale, solid: false);
+
         static GameObject Cylinder(GameObject root, string name, string material, Vector3 position,
                                    Vector3 scale, bool solid = true)
             => Piece(root, name, PrimitiveType.Cylinder, material, position, scale, solid);
@@ -413,36 +453,8 @@ namespace EscapeWithYourFriends.EditorTools
             go.transform.localPosition = position;
         }
 
-        static Material EnsureMaterial(string name)
-        {
-            if (Materials.TryGetValue(name, out Material cached)) return cached;
-
-            string path = $"{MaterialDir}/{name}.mat";
-            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
-
-            if (material == null)
-            {
-                Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-                material = new Material(shader) { name = name };
-
-                foreach ((string entry, Color colour, float smoothness) in Palette)
-                {
-                    if (entry != name) continue;
-
-                    material.color = colour;
-                    if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", colour);
-                    if (material.HasProperty("_Smoothness")) material.SetFloat("_Smoothness", smoothness);
-                    if (material.HasProperty("_Glossiness")) material.SetFloat("_Glossiness", smoothness);
-                }
-
-                material.enableInstancing = true;
-                AssetDatabase.CreateAsset(material, path);
-                Debug.Log($"[GreyboxBuilder] Generated {path}.");
-            }
-
-            Materials[name] = material;
-            return material;
-        }
+        /// <summary>The shared palette (#79). Nothing here owns a colour any more.</summary>
+        static Material EnsureMaterial(string name) => Palette.Named(name);
 
         static string Save(GameObject root, string name)
         {

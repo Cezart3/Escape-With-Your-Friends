@@ -1,0 +1,27 @@
+// SteamPipe build script for Escape With Your Friends (#87).
+//
+// Placeholders are filled in by tools/steam/upload.ps1 from environment variables, so this file
+// never holds an app id, a branch or a password and is safe to keep in the repo.
+//
+//   EWYF_APPID    the app id Valve issues after the Steam Direct fee (#85)
+//   EWYF_DEPOT    the content depot id, normally EWYF_APPID + 1
+//   EWYF_BRANCH   the beta branch to set live, or empty for none
+//   EWYF_CONTENT  the folder holding the built player
+//
+"AppBuild"
+{
+	"AppID"		"$EWYF_APPID"
+	"Desc"		"$EWYF_DESC"
+
+	"BuildOutput"	"$EWYF_OUTPUT"
+	"ContentRoot"	"$EWYF_CONTENT"
+
+	// Never "default". A build that goes live the moment it uploads is how a broken build reaches
+	// players; set a beta branch and promote it from the partner site once somebody has run it.
+	"SetLive"	"$EWYF_BRANCH"
+
+	"Depots"
+	{
+		"$EWYF_DEPOT"	"depot_content.vdf"
+	}
+}

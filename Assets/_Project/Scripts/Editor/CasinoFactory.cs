@@ -338,8 +338,7 @@ namespace EscapeWithYourFriends.EditorTools
 
         static void Paint(GameObject target, Color colour)
         {
-            var material = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = colour };
-            target.GetComponent<Renderer>().sharedMaterial = material;
+            target.GetComponent<Renderer>().sharedMaterial = Palette.For(colour);
         }
 
         /// <summary>Same as ShopFactory.Block; copied rather than shared, because one greybox helper
@@ -361,8 +360,7 @@ namespace EscapeWithYourFriends.EditorTools
                 if (renderer != null) renderer.shadowCastingMode = ShadowCastingMode.Off;
             }
 
-            var material = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = color };
-            cube.GetComponent<Renderer>().sharedMaterial = material;
+            cube.GetComponent<Renderer>().sharedMaterial = Palette.For(color);
 
             return cube;
         }
