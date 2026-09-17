@@ -302,6 +302,15 @@ namespace EscapeWithYourFriends.Casino
             Debug.Log($"[Roulette] {result} {(result == 0 ? "green" : IsRed(result) ? "red" : "black")}. "
                       + $"{Staked} staked, {paid} paid out across {_bets.Count} bet(s).");
 
+            // Bet this spin, holding nothing now. Every winner was paid above, so a zero here is a
+            // player who put the lot on the table and got none of it back. #92.
+            foreach (NetworkObject owner in new HashSet<NetworkObject>(_bets.ConvertAll(b => b.Owner)))
+            {
+                var wallet = owner != null ? owner.GetComponent<Wallet>() : null;
+                if (wallet != null && wallet.Chips == 0)
+                    Net.Achievements.ServerAward(owner, Net.Achievements.LostItAll);
+            }
+
             _bets.Clear();
             _pot.Value = 0;
         }

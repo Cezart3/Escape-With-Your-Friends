@@ -59,7 +59,6 @@ These are code, and their acceptance can be checked headless:
 | Issue | What |
 |---|---|
 | **#38** | Perf pass — occlusion culling, LOD groups, fog, baked lighting. Batchmode-scriptable; `-perfLog` gives numbers. |
-| **#92** | Achievements + Steam Rich Presence. The tracking layer is testable headless; the Steam sink needs an appid. |
 | **#144** | `Alarm` hands every listener a live target instead of a place to look. Changes how hard a camp converges, so it is a feel decision — get the user's word before shipping it. |
 
 ### Open and blocked, with the reason
@@ -183,7 +182,7 @@ or `island2`, `-quitAfter <seconds>`, `-noNatives`, `-noAnimals`, `-botMove`, `-
 ### The test flags
 
 ```
--abductTest   -animalTest  -boatTest     -buffTest      -carryTest   -carTest
+-abductTest   -achievementTest -animalTest  -boatTest     -buffTest      -carryTest   -carTest
 -casinoTest   -chestTest   -chipsTest    -conditionTest -craftTest   -deathTest
 -drunkTest    -economyTest -endTest      -fallTest      -fishTest    -flightTest
 -ghostTest    -gunTest     -hudTest      -impactTest    -invTest     -itemTest
@@ -200,6 +199,8 @@ Logging flags that make a failure readable: `-animalLog`, `-cameraLog`, `-clockL
 
 - **`-nativeTest` must run solo.** A second player body changes what the natives hunt. The suite now
   fails a named check if it catches one, but do not put it in that position.
+- **`-achievementTest` needs a pair, and both processes take the flag** — the client checks what it
+  was told. `-scene island`.
 - **`-partTest` needs a pair and `-scene island2`.** The host gets `-partTest`; the client is just a
   warm body with no test flag. Run solo it fails "a second player joined to take the other end".
 - **Pair harnesses need the host up about twenty seconds before the client.**
@@ -210,7 +211,7 @@ Logging flags that make a failure readable: `-animalLog`, `-cameraLog`, `-clockL
 
 ### Ports
 
-One port per concurrent process, never reused inside a session. **Consumed through 8151.** See §5
+One port per concurrent process, never reused inside a session. **Consumed through 8156.** See §5
 for the split when two accounts are running.
 
 ---

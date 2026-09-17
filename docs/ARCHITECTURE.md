@@ -6366,6 +6366,77 @@ Not changed: clients keep interpolation on their kinematic copy, which is moved 
 NetworkTransform rather than written every frame by gameplay code. If a carried part is ever seen
 trailing on a client, the same line belongs in `OnStartClient`.
 
+### Achievements, decided by the host and unlocked by the player (#92)
+
+The issue asks for achievements "for the stupid stuff" that "fire reliably in multiplayer for all
+clients". Two facts shape the design:
+
+- **Only the host saw it happen.** A client does not know it ran anybody over, only that the car it
+  was sitting in moved.
+- **An achievement belongs to the Steam account at the keyboard.** The host's Steam client cannot
+  unlock anything for somebody else.
+
+So the host decides and the owner unlocks. `Achievements.ServerAward(body, id)` sends one reliable
+FishNet broadcast, `AchievementUnlock`, to the connection that owns the body. The receiving client
+adds the id to `Achievements.Unlocked` and, if Steam is up, calls
+`new Steamworks.Data.Achievement(id).Trigger()`. Bodies nobody owns (natives, boars) are skipped
+inside `ServerAward`, so the hooks do not have to know about them. `NetworkBootstrap` registers the
+handler once, because an unlock is addressed to a connection, not to an object.
+
+There is no event bus. Each award is one line in the place that already knew:
+
+| Id | Hook | Earned by |
+|---|---|---|
+| `RAN_OVER_FRIEND` | `VehicleImpact`, next to `RunSummary.ServerRanOver` | whoever is in seat 0 when a player goes under the wheels |
+| `LOST_IT_ALL` | `RouletteWheel.Settle`, after the payouts | anyone who bet this spin and now holds no chips; once per owner per spin |
+| `DIED_TEN` | `Health.SetState`, where `Deaths` is counted | the body, on exactly its tenth death |
+| `FIRST_TRY` | `PlaneVoyage`, where the run ends | everyone aboard, if `PlaneController.Touchdowns` is still zero |
+
+`FIRST_TRY` is the one that departs from the issue's wording, "land the plane on the first try",
+because this game ends in the air. The version that exists here is that the flight that ended the
+run was the plane's only one. `Touchdowns` counts returns to the ground after more than three
+seconds aloft, so a bounce on the take-off run does not count.
+
+Rich Presence lives in `SteamRuntime.Update`. It is checked once a second and sent only when it
+changes:
+
+- `status` reads "Stranded on the island", "On the island that shoots back", "Escaped" or "In the
+  menu". It is the one key Steam shows without a localisation file.
+- `steam_player_group` and `steam_player_group_size` come from the lobby, so the friends list shows
+  a party as one.
+- `steam_display` needs tokens uploaded against the real app id, so it waits for #85.
+
+The ids are also the API names the Steamworks backend will need. Spacewar (480) has its own fixed
+set, so until then a Trigger does nothing and the log line is the evidence.
+
+`-achievementTest` is a pair on `-scene island`, and **both** processes take the flag, because the
+half the acceptance is about, a client being told, can only be checked on the client. The host earns
+everything through the real hooks, never by calling `ServerAward` itself:
+
+- the guest dies eleven times;
+- the guest bets everything on one number until it is gone;
+- the host runs the guest over on a pad in the sky;
+- the two of them fly off with the castaway.
+
+Each side then checks it heard exactly what it earned: the driver and not the one under the wheels,
+the one who died and not the one who killed them.
+
+```
+host    [Achievements] DIED_TEN to object 34 (connection 1).
+        [Achievements] LOST_IT_ALL to object 34 (connection 1).
+        [Achievements] RAN_OVER_FRIEND to object 33 (connection 0).
+        [Achievements] FIRST_TRY to object 33 (connection 0).
+        [Achievements] FIRST_TRY to object 34 (connection 1).
+        [AchievementTest] ... the host was told: RAN_OVER_FRIEND, FIRST_TRY.
+        [AchievementTest] 20 passed, 0 failed.
+
+client  [AchievementTest] this client was told: DIED_TEN, LOST_IT_ALL, FIRST_TRY.
+        [AchievementTest] 5 passed, 0 failed.
+```
+
+Not tested, because nothing headless can test it: the Steam call itself, and what the friends list
+shows.
+
 ---
 
 ## Data-driven content

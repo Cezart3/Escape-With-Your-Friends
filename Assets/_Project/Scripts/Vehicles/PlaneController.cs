@@ -125,6 +125,16 @@ namespace EscapeWithYourFriends.Vehicles
         /// <summary>True while nothing is under the belly.</summary>
         public bool IsAirborne => !_grounded;
 
+        /// <summary>
+        /// Server side. Times this aeroplane has come back down after a real flight - longer in the
+        /// air than <see cref="Hop"/>, so a bounce off a bump on the take-off run does not count.
+        /// Zero when the run ends means it was the first try. #92.
+        /// </summary>
+        public int Touchdowns { get; private set; }
+
+        const float Hop = 3f;
+        float _aloft;
+
         /// <summary>Degrees of bank. Signed: positive is right wing down.</summary>
         public float Bank
         {
@@ -251,6 +261,13 @@ namespace EscapeWithYourFriends.Vehicles
             // wrong. One step behind, which at 50Hz nobody can tell.
             _grounded = _touching;
             _contacts = _touches;
+
+            if (!_grounded) _aloft += Time.fixedDeltaTime;
+            else
+            {
+                if (_aloft > Hop) Touchdowns++;
+                _aloft = 0f;
+            }
             _under = _underNext;
             _touching = false;
             _touches = 0;

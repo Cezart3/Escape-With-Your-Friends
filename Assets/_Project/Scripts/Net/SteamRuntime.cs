@@ -42,6 +42,9 @@ namespace EscapeWithYourFriends.Net
 
         static bool _ownsShutdown;
 
+        float _presenceAt;
+        string _presence;
+
         void Awake()
         {
             _appId = (uint)CommandLine.GetInt("-steamAppId", (int)_appId);
@@ -84,6 +87,37 @@ namespace EscapeWithYourFriends.Net
             LocalName = SteamClient.Name;
 
             Debug.Log($"[SteamRuntime] app {_appId} ready as \"{LocalName}\" ({LocalSteamId}).");
+        }
+
+        /// <summary>
+        /// Rich Presence, looked at once a second and sent only when it changes. #92.
+        ///
+        /// "status" is the one key Steam shows without a localisation file; steam_display wants
+        /// tokens uploaded against the real app id, which does not exist yet. The two group keys are
+        /// what lets the friends list show four people as one party.
+        /// </summary>
+        void Update()
+        {
+            if (!Available || Time.unscaledTime < _presenceAt) return;
+            _presenceAt = Time.unscaledTime + 1f;
+
+            string scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            string status = World.RunSummary.Over ? "Escaped"
+                          : scene == "Island" ? "Stranded on the island"
+                          : scene == "Island2" ? "On the island that shoots back"
+                          : "In the menu";
+
+            Steamworks.Data.Lobby? lobby = SteamLobby.Instance != null ? SteamLobby.Instance.Current : null;
+            string group = lobby?.Id.Value.ToString() ?? "";
+            string size = lobby?.MemberCount.ToString() ?? "";
+
+            string now = $"{status}|{group}|{size}";
+            if (now == _presence) return;
+            _presence = now;
+
+            SteamFriends.SetRichPresence("status", status);
+            SteamFriends.SetRichPresence("steam_player_group", group);
+            SteamFriends.SetRichPresence("steam_player_group_size", size);
         }
 
         void OnApplicationQuit()

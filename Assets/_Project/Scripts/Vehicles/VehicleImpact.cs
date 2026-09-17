@@ -156,7 +156,15 @@ namespace EscapeWithYourFriends.Vehicles
 
             // Friends, specifically. Hits counts anything with a body in it, and a boar under the
             // wheels is not a line anybody wants read out at the end of the run. #74.
-            if (stun.GetComponent<Player.PlayerMotor>() != null) World.RunSummary.ServerRanOver();
+            if (stun.GetComponent<Player.PlayerMotor>() != null)
+            {
+                World.RunSummary.ServerRanOver();
+
+                // A harness driving with nobody in the seat has nobody to award. #92.
+                VehicleRider driver = GetComponent<Vehicle>()?.Driver;
+                if (driver != null && driver.NetworkObject != stun.NetworkObject)
+                    Net.Achievements.ServerAward(driver.NetworkObject, Net.Achievements.RanOverFriend);
+            }
 
             LastVictim = stun.name;
             LastSpeed = speed;
