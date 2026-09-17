@@ -6314,6 +6314,58 @@ on the other account's Unity forever. `CLAUDE.md` and `docs/WORKING-AGREEMENT.md
 command lines instead — `JocStupid` followed by a quote, a space or the end, or `EWYF-dev` followed by a slash — which
 matches this checkout's editor and build and neither of `JocStupid-b` or `EWYF-dev-b`.
 
+### A part that was still where it had been (#139)
+
+`-partTest` failed one paired run in three, always with the same five checks: the second pair of
+hands did not take the other end, and a punch then dropped the part a long way from the carrier.
+Nothing changed between passing and failing runs, so the question was what the failing ones were
+seeing. The probe was widened to print positions after the handshake and at the punch, and the first
+failure answered it:
+
+```
+probe: after the handshake the helper is nobody and the part is still up; carrier at (5.00, 3.85, 92.00),
+       mate at (6.50, 4.85, 92.60), part at (5.00, 4.85, 92.60).
+probe: punched at (5.00, 3.85, 92.00), carrier now at (5.00, 3.85, 92.00), part at (-26.17, 6.84, 63.32).
+FAILED: where you were standing (42.4m).
+```
+
+Everybody is where they should be, 1.5m apart, and yet the grip check let the helper go. The part
+then landed at `(-26, 63)`, which is exactly where it had been riding a shoulder thirty metres into
+the walk, *before* the test teleported the carrier home. The physics body never left that spot.
+
+This is #107 again, for parts instead of bodies. `PlanePart` is built with an interpolated rigidbody.
+While it is carried it is kinematic and `Update` writes its transform onto the shoulder every frame,
+but before `Update` runs, interpolation writes the transform back from the body's last two
+**physics** poses. While walking those are a step stale. After a teleport with no physics step since,
+they are the whole jump stale. A headless host runs many frames per 20ms step, so the handful of
+frames between the teleport, the handshake and the punch could easily contain no step at all. In
+those runs:
+
+- `Update`'s grip check read the part at the old spot, 42m from the helper, and cleared the helper
+  the frame after it was set.
+- `ServerPutDown` placed the part correctly, but the interpolation history still held the old pose,
+  and the transform was written back to it.
+
+Whether a physics step happened to land in that window is the whole of the one-in-three.
+
+The fix is the one `RagdollController.SetBonesKinematic` already makes: while something else owns the
+pose, nothing interpolates it. `ServerLift` sets `RigidbodyInterpolation.None` and `ServerPutDown`
+puts `Interpolate` back when the part goes dynamic. Six paired runs in a row, three with the host's
+body carrying and three with the client's (the suite takes whichever `FindObjectsByType` returns
+first):
+
+```
+[PartTest] a second pair of hands took it from 0.55x to 0.90x, and 20m of wandering took it straight back to 0.55x.
+[PartTest] one punch and the propeller was in the mud 1.1m from where the carrier stood, moving under its own weight again.
+[PartTest] 38 passed, 0 failed.        (x6)
+```
+
+The wider probe stays. The next time this suite fails, it will say where everything was.
+
+Not changed: clients keep interpolation on their kinematic copy, which is moved by the
+NetworkTransform rather than written every frame by gameplay code. If a carried part is ever seen
+trailing on a client, the same line belongs in `OnStartClient`.
+
 ---
 
 ## Data-driven content

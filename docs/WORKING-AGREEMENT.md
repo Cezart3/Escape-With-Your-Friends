@@ -60,8 +60,6 @@ These are code, and their acceptance can be checked headless:
 |---|---|
 | **#38** | Perf pass — occlusion culling, LOD groups, fog, baked lighting. Batchmode-scriptable; `-perfLog` gives numbers. |
 | **#92** | Achievements + Steam Rich Presence. The tracking layer is testable headless; the Steam sink needs an appid. |
-| **#139** | `-partTest`: the second pair of hands is intermittent. |
-| **#141** | Seat drift under parallel harnesses. *Fix is written and uncommitted at time of writing — check `git status` first.* |
 | **#144** | `Alarm` hands every listener a live target instead of a place to look. Changes how hard a camp converges, so it is a feel decision — get the user's word before shipping it. |
 
 ### Open and blocked, with the reason
@@ -212,7 +210,7 @@ Logging flags that make a failure readable: `-animalLog`, `-cameraLog`, `-clockL
 
 ### Ports
 
-One port per concurrent process, never reused inside a session. **Consumed through 8135.** See §5
+One port per concurrent process, never reused inside a session. **Consumed through 8151.** See §5
 for the split when two accounts are running.
 
 ---

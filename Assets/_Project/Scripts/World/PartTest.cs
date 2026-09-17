@@ -234,8 +234,9 @@ namespace EscapeWithYourFriends.World
                 // that turns out to be the first look identical from the outside, and both land as
                 // "FAILED: and takes it".
                 var mateCarry = mate.GetComponent<Combat.CarrySystem>();
-                Debug.Log($"[PartTest] probe: carrier is object {who.ObjectId} at "
-                          + $"{carrier.transform.position}, mate is object {second.ObjectId} at "
+                Debug.Log($"[PartTest] probe: carrier is object {who.ObjectId} (owner {who.OwnerId}) at "
+                          + $"{carrier.transform.position}, mate is object {second.ObjectId} "
+                          + $"(owner {second.OwnerId}) at "
                           + $"{mate.transform.position}, the part is at {part.transform.position}; "
                           + $"carried {part.IsCarried}, helper "
                           + $"{(part.Helper == null ? "nobody" : part.Helper.ObjectId.ToString())}, "
@@ -247,7 +248,9 @@ namespace EscapeWithYourFriends.World
 
                 Debug.Log($"[PartTest] probe: after the handshake the helper is "
                           + $"{(part.Helper == null ? "nobody" : part.Helper.ObjectId.ToString())} "
-                          + $"and the part is {(part.IsCarried ? "still up" : "on the ground")}.");
+                          + $"and the part is {(part.IsCarried ? "still up" : "on the ground")}; "
+                          + $"carrier at {carrier.transform.position}, mate at {mate.transform.position}, "
+                          + $"part at {part.transform.position}.");
 
                 Check("and takes it", part.Helper == second);
                 Check("with nothing left to offer a third person", string.IsNullOrEmpty(part.Prompt));
@@ -285,6 +288,9 @@ namespace EscapeWithYourFriends.World
                 stun.ServerStun(1.5f);
                 yield return null;
                 yield return null;
+
+                Debug.Log($"[PartTest] probe: punched at {dropZone}, carrier now at "
+                          + $"{carrier.transform.position}, part at {part.transform.position}.");
 
                 Check("one punch and the part is in the mud", !part.IsCarried);
                 Check($"where you were standing ({Flat(part.transform.position, dropZone):0.0}m)",
