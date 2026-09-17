@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6526cf5e0e54e2a4c97f8f86d976371d, type: 3}
   m_Name: Island
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.IslandProfile
+  Id: Island
   Seed: 20260830
   Size: 1024
   Resolution: 1025
@@ -76,6 +77,7 @@ MonoBehaviour:
   TreeMaximumFullLOD: 60
   DetailDistance: 85
   DetailDensity: 0.8
+  FogScale: 1
   Pois: {fileID: 11400000, guid: 5de992fcce44e734d888a225d71cb91f, type: 2}
   NavVoxelSize: 0.25
   NavTileSize: 512

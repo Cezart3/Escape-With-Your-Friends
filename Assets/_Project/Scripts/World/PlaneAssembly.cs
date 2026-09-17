@@ -64,6 +64,12 @@ namespace EscapeWithYourFriends.World
         }
         public bool Complete => _wanted.Count > 0 && Fitted == _wanted.Count;
 
+        /// <summary>
+        /// Whether this group has ever finished an aeroplane. See the note in OnStartServer: the
+        /// airframe on the far island is the same group's, so it stands there whole.
+        /// </summary>
+        public static bool Owned { get; private set; }
+
         void Awake()
         {
             Instance = this;
@@ -101,6 +107,16 @@ namespace EscapeWithYourFriends.World
 
         public override void OnStartServer()
         {
+            // #73. The group built an aeroplane once, and the one waiting on the other island is
+            // theirs too. Flying back to fetch somebody and finding three fresh holes in the airframe
+            // would mean hauling the same three parts across an island that has none of them.
+            //
+            // ponytail: a static, exactly like BoatVoyage's owned parts and for the same reason - an
+            // airframe is a scene object and scene objects do not cross scenes, so "the group has a
+            // plane" cannot live on one. It survives as long as the process does; it moves into the
+            // save file when #75 gives one a home.
+            if (Owned && _wanted.Count > 0) _fitted.Value = (1 << _wanted.Count) - 1;
+
             base.OnStartServer();
             Show();
         }
@@ -164,6 +180,10 @@ namespace EscapeWithYourFriends.World
             for (int i = 0; i < _pieces.Count; i++)
                 if (_pieces[i] != null)
                     _pieces[i].SetActive((_fitted.Value & (1 << i)) != 0);
+
+            // One place, because every road to "it is whole" goes through here: the last part being
+            // fitted, and a peer being handed a finished plane it never watched get built.
+            if (Complete) Owned = true;
         }
 
         void Update()
@@ -176,7 +196,12 @@ namespace EscapeWithYourFriends.World
             foreach (PlanePart part in PlanePart.All)
                 if (!part.IsCarried) return;
 
-            if (Complete) Objective.Set("Get in the plane", transform);
+            // #73. Once there is somebody to go back for, the chain is theirs: Castaway writes every
+            // line from "find them" onward. Two components taking turns on one global line is a
+            // flicker, and the one standing next to the player wins.
+            if (AI.Castaway.Instance != null && !AI.Castaway.Instance.Rescued) return;
+
+            if (Complete) Objective.Set("Get in the plane and fly to the other island", transform);
             else Objective.Set($"Bring the {Missing()} to the plane", transform);
         }
 

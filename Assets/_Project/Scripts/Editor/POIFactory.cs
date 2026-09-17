@@ -278,6 +278,18 @@ namespace EscapeWithYourFriends.EditorTools
                 FlatWeight = 0.7f, Separation = 40f, FootprintRadius = 12f
             }, "mooring");
 
+            // #73. The first island gets a strip of its own, for the same reason each island keeps
+            // its own hull at its own mooring: an airframe is a scene object, scene objects do not
+            // cross scenes, and flying back to fetch somebody would otherwise be a one-way trip.
+            // Further from camp than the second island's, because this island is twice the size and
+            // there is more flat ground to be choosy about.
+            Vector2 strip = Site(shape, bare, taken, new SiteWish
+            {
+                WantedHeight = 6f, MinHeight = 2f, MaxHeight = 20f, Reference = camp,
+                MinFromReference = 60f, MaxFromReference = 190f,
+                FlatWeight = 0.95f, Separation = 40f, FootprintRadius = 30f
+            }, "plane");
+
             Object.DestroyImmediate(bare);
 
             float campFacing = Facing(camp, Vector2.zero);
@@ -407,7 +419,25 @@ namespace EscapeWithYourFriends.EditorTools
                 // Nose out to sea, so the first thing a driver does is leave rather than reverse off
                 // the beach.
                 Entry("boat", BoatBuilder.BoatPath, mooring, Facing(mooring, camp) + 180f,
-                      pad: 12f, falloff: 10f, raise: 0f, maxSlope: 0.3f, allowUnderwater: true)
+                      pad: 12f, falloff: 10f, raise: 0f, maxSlope: 0.3f, allowUnderwater: true),
+
+                // #73. The group's other aeroplane. It stands here whole, because PlaneAssembly
+                // remembers that this group has already built one - see the note on its Owned flag.
+                Entry("plane", PlaneBuilder.PlanePath, strip, Facing(strip, camp),
+                      pad: 30f, falloff: 20f, raise: 0.2f, maxSlope: 0.25f),
+
+                // And the person. At the wreck, on the camp side: somebody stranded at a shipwreck
+                // is a sentence you can read from the air, and putting them anywhere with a roof
+                // would raise the question of why they never walked to the camp.
+                //
+                // Sixteen metres out, not six. Six was inside the hull, which the bake said out
+                // loud - "setting off 13m from the marker because the marker is inside the
+                // building" - and a navmesh agent standing in a sealed pocket of mesh has
+                // isOnNavMesh true and nowhere to walk. The wreck's own pad is 10m, so this is the
+                // first open sand past it.
+                Entry("castaway", CastawayBuilder.CastawayPath,
+                      wreck + Offset(Facing(wreck, camp), 16f), Facing(wreck, camp) + 180f,
+                      pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.5f)
             };
         }
 
