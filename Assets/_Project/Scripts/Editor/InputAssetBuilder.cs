@@ -119,6 +119,11 @@ namespace EscapeWithYourFriends.EditorTools
             inventory.AddBinding("<Keyboard>/i");
             inventory.AddBinding("<Gamepad>/select");
 
+            // Escape, because there is no other key anybody would try first. #84.
+            InputAction settings = map.AddAction("ToggleSettings", InputActionType.Button);
+            settings.AddBinding("<Keyboard>/escape");
+            settings.AddBinding("<Gamepad>/start");
+
             File.WriteAllText(AssetPath, asset.ToJson());
             Object.DestroyImmediate(asset);
 

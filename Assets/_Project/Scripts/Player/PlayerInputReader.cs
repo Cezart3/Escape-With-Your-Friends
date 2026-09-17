@@ -44,6 +44,7 @@ namespace EscapeWithYourFriends.Player
         InputAction _reload;
         InputAction _hotbarScroll;
         InputAction _toggleInventory;
+        InputAction _toggleSettings;
         readonly InputAction[] _hotbar = new InputAction[Items.Inventory.HotbarSlots];
 
         bool _bound;
@@ -55,6 +56,7 @@ namespace EscapeWithYourFriends.Player
         bool _jumpQueued, _interactQueued, _attackQueued, _altAttackQueued, _dropQueued;
         bool _useQueued, _reloadQueued;
         bool _toggleInventoryQueued;
+        bool _toggleSettingsQueued;
 
         // Hotbar selection is two inputs for one value. -1 means no number key was pressed; the
         // scroll accumulates because a flick of the wheel is several notches inside one frame.
@@ -113,6 +115,85 @@ namespace EscapeWithYourFriends.Player
         public bool IsBound => _bound;
 
         /// <summary>
+        /// The rebinds currently on this player's clone, as the Input System's own override JSON. #84.
+        /// Empty when nothing has been rebound. This is what goes into
+        /// <see cref="Core.GameSettings.Rebinds"/>, and reading it back is how the harness proves a
+        /// stored rebind reached the action rather than only the preferences file.
+        /// </summary>
+        public string BoundOverrides
+            => _instance != null ? _instance.SaveBindingOverridesAsJson() : "";
+
+        /// <summary>
+        /// Points one action at a different control and hands back the JSON to store. #84.
+        ///
+        /// Applied to this player's clone rather than to the shared asset, for the same reason the
+        /// clone exists at all. The caller decides whether to keep it - the settings screen stores
+        /// the result, a cancelled rebind simply throws the string away and reloads the old one.
+        /// </summary>
+        public string Rebind(string actionName, string controlPath)
+        {
+            if (_instance == null || _map == null) return "";
+
+            InputAction action = _map.FindAction(actionName, throwIfNotFound: false);
+            if (action == null)
+            {
+                Debug.LogWarning($"[PlayerInputReader] There is no '{actionName}' to rebind.");
+                return _instance.SaveBindingOverridesAsJson();
+            }
+
+            action.ApplyBindingOverride(controlPath);
+            return _instance.SaveBindingOverridesAsJson();
+        }
+
+        /// <summary>
+        /// What this action is currently bound to, for a settings row to print. Empty if there is no
+        /// such action. #84.
+        /// </summary>
+        public string BindingLabel(string actionName)
+        {
+            InputAction action = _map?.FindAction(actionName, throwIfNotFound: false);
+            return action != null ? action.GetBindingDisplayString() : "";
+        }
+
+        /// <summary>
+        /// Listens for the next control the player touches and binds <paramref name="actionName"/> to
+        /// it, calling back with the JSON to store - or with null if they pressed escape. #84.
+        ///
+        /// The Input System's own rebinding operation rather than a hand-rolled "what key went down
+        /// this frame": it already knows to ignore the mouse movement that happens while somebody
+        /// reaches for the keyboard, and it already knows that a rebind must not fire the action it
+        /// is rebinding. Both are bugs that only show up in somebody else's hands.
+        /// </summary>
+        public void RebindInteractive(string actionName, System.Action<string> done)
+        {
+            InputAction action = _map?.FindAction(actionName, throwIfNotFound: false);
+            if (_instance == null || action == null)
+            {
+                done?.Invoke(null);
+                return;
+            }
+
+            // Disabled for the duration, or pressing the new key would also jump.
+            action.Disable();
+
+            action.PerformInteractiveRebinding()
+                  .WithCancelingThrough("<Keyboard>/escape")
+                  .OnComplete(operation =>
+                  {
+                      operation.Dispose();
+                      action.Enable();
+                      done?.Invoke(_instance.SaveBindingOverridesAsJson());
+                  })
+                  .OnCancel(operation =>
+                  {
+                      operation.Dispose();
+                      action.Enable();
+                      done?.Invoke(null);
+                  })
+                  .Start();
+        }
+
+        /// <summary>
         /// True while a full-screen panel owns the mouse. Set by <c>InventoryScreen</c>.
         ///
         /// The world stops taking input entirely while this is on, rather than the UI trying to
@@ -162,6 +243,12 @@ namespace EscapeWithYourFriends.Player
             // two bodies sharing one instance would fight over it the moment a second local player
             // exists — and disabling one would silently disable the other.
             _instance = Instantiate(_actions);
+
+            // #84. Onto the clone, before anything reads a binding. Stored as the Input System's own
+            // override JSON, so composites, modifiers and gamepads all come back without this class
+            // having been taught about any of them.
+            if (!string.IsNullOrEmpty(Core.GameSettings.Rebinds))
+                _instance.LoadBindingOverridesFromJson(Core.GameSettings.Rebinds);
             _map = _instance.FindActionMap("Player", throwIfNotFound: true);
 
             _move = _map.FindAction("Move", throwIfNotFound: true);
@@ -180,6 +267,7 @@ namespace EscapeWithYourFriends.Player
             _reload = _map.FindAction("Reload", throwIfNotFound: false);
             _hotbarScroll = _map.FindAction("HotbarScroll", throwIfNotFound: false);
             _toggleInventory = _map.FindAction("ToggleInventory", throwIfNotFound: false);
+            _toggleSettings = _map.FindAction("ToggleSettings", throwIfNotFound: false);
             for (int i = 0; i < _hotbar.Length; i++)
                 _hotbar[i] = _map.FindAction($"Hotbar{i + 1}", throwIfNotFound: false);
 
@@ -228,6 +316,9 @@ namespace EscapeWithYourFriends.Player
             if (_toggleInventory != null)
                 _toggleInventoryQueued |= _toggleInventory.WasPressedThisFrame();
 
+            if (_toggleSettings != null)
+                _toggleSettingsQueued |= _toggleSettings.WasPressedThisFrame();
+
             if (UiOpen)
             {
                 Move = Vector2.zero;
@@ -244,8 +335,12 @@ namespace EscapeWithYourFriends.Player
             AttackHeld = _attack.IsPressed();
 
             Vector2 look = _look.ReadValue<Vector2>();
-            Yaw = Mathf.Repeat(Yaw + look.x * _lookSensitivity, 360f);
-            Pitch = Mathf.Clamp(Pitch - look.y * _lookSensitivity, _minPitch, _maxPitch);
+            // The serialized value is the tuned look speed and the setting is a multiplier over it,
+            // rather than a replacement: "1.0" then means the speed somebody actually playtested. #84.
+            float speed = _lookSensitivity * Core.GameSettings.Sensitivity;
+
+            Yaw = Mathf.Repeat(Yaw + look.x * speed, 360f);
+            Pitch = Mathf.Clamp(Pitch - look.y * speed, _minPitch, _maxPitch);
 
             // OR into the buffer instead of overwriting: several frames can pass between ticks, and
             // only one of them saw the press.
@@ -347,6 +442,8 @@ namespace EscapeWithYourFriends.Player
         public bool ConsumeReload() => Consume(ref _reloadQueued);
 
         public bool ConsumeToggleInventory() => Consume(ref _toggleInventoryQueued);
+
+        public bool ConsumeToggleSettings() => Consume(ref _toggleSettingsQueued);
 
         /// <summary>The hotbar slot a number key asked for, or -1. Cleared by reading.</summary>
         public int ConsumeHotbarSlot()

@@ -420,15 +420,15 @@ namespace EscapeWithYourFriends.Net
             switch (state)
             {
                 case LifeState.Downed:
-                    _source.volume = _downedVolume;
+                    _source.volume = _downedVolume * Core.GameSettings.VoiceVolume;
                     _lowPass.cutoffFrequency = _downedCutoff;
                     break;
                 case LifeState.Dead:
-                    _source.volume = _deadVolume;
+                    _source.volume = _deadVolume * Core.GameSettings.VoiceVolume;
                     _lowPass.cutoffFrequency = _deadCutoff;
                     break;
                 default:
-                    _source.volume = 1f;
+                    _source.volume = Core.GameSettings.VoiceVolume;
                     _lowPass.cutoffFrequency = OpenCutoff;
                     break;
             }

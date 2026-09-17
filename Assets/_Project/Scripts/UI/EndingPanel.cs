@@ -60,12 +60,10 @@ namespace EscapeWithYourFriends.UI
 
         public void Build(RectTransform parent)
         {
-            _root = HudFactory.Rect(parent, "Ending");
-            HudFactory.Anchor(_root, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            _root = HudFactory.Stretch(HudFactory.Rect(parent, "Ending"));
 
             _black = HudFactory.Block(_root.transform, "Black", new Color(0f, 0f, 0f, 1f));
-            HudFactory.Anchor((RectTransform)_black.transform, Vector2.zero, Vector2.one,
-                              Vector2.zero, Vector2.zero);
+            HudFactory.Stretch(_black.rectTransform);
 
             _title = HudFactory.Label(_root.transform, "Title", 44, TextAnchor.UpperCenter);
             HudFactory.Anchor((RectTransform)_title.transform, new Vector2(0.5f, 1f),

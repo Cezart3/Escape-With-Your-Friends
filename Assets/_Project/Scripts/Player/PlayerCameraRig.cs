@@ -112,6 +112,14 @@ namespace EscapeWithYourFriends.Player
 
         float _pitch;
         float _fov;
+
+        /// <summary>
+        /// The resting field of view, from the player's settings (#84). The serialized <c>_baseFov</c>
+        /// is no longer what the camera uses - it is the number the slider defaults to and the number
+        /// the sprint widening was tuned against, so the widening is carried over as a difference
+        /// rather than as an absolute and a player on 110 still gets the same lurch forward.
+        /// </summary>
+        float Resting => Core.GameSettings.Fov;
         float _bobPhase;
         float _bobRollAngle;
         float _trauma;
@@ -155,7 +163,7 @@ namespace EscapeWithYourFriends.Player
             EnsureBrain();
             BuildCamera();
 
-            _fov = _baseFov;
+            _fov = Resting;
             _pitch = _input != null ? _input.Pitch : 0f;
             _followValid = false;
             _nextLogAt = Time.time + LogIntervalSeconds;
@@ -167,7 +175,7 @@ namespace EscapeWithYourFriends.Player
                 _weapon.Fired += OnFired;
             }
 
-            Debug.Log($"[PlayerCameraRig] Owner {OwnerId} camera live at fov {_baseFov}.");
+            Debug.Log($"[PlayerCameraRig] Owner {OwnerId} camera live at fov {Resting:0}.");
         }
 
         public override void OnStopClient()
@@ -223,7 +231,7 @@ namespace EscapeWithYourFriends.Player
             var go = new GameObject($"PlayerCamera (owner {OwnerId})");
             _camera = go.AddComponent<CinemachineCamera>();
             _camera.Target.TrackingTarget = _target;
-            _camera.Lens.FieldOfView = _baseFov;
+            _camera.Lens.FieldOfView = Resting;
 
             // Cinemachine's lens overwrites the brain camera's every frame, so the clip planes have
             // to be set here too or the draw distance changes the moment a player spawns.
@@ -469,7 +477,7 @@ namespace EscapeWithYourFriends.Player
             bool sprinting = _motor != null && _motor.IsGrounded
                              && _input != null && _input.Sprint && _input.Move.sqrMagnitude > 0.01f;
 
-            float goal = sprinting ? _sprintFov : _baseFov;
+            float goal = sprinting ? Resting + (_sprintFov - _baseFov) : Resting;
             float t = _fovResponse <= 0f ? 1f : 1f - Mathf.Exp(-dt / _fovResponse);
 
             _fov = Mathf.Lerp(_fov, goal, t);

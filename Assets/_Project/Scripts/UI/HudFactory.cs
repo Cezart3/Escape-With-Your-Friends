@@ -86,6 +86,86 @@ namespace EscapeWithYourFriends.UI
             return text;
         }
 
+        /// <summary>
+        /// Stretches a rect over its whole parent, with an optional inset in reference pixels.
+        ///
+        /// <see cref="Anchor"/> cannot do this and never could: it sets <c>anchorMin</c> and
+        /// <c>anchorMax</c> to the same point, which is right for a corner-pinned widget and gives a
+        /// rect of size zero when somebody passes it (0,0) and (1,1) meaning "fill the screen". That
+        /// was a real bug in the ending screen (#74) and it could not be caught by a harness, because
+        /// a headless run builds no canvas at all - so the full-screen idiom gets a name of its own.
+        /// </summary>
+        public static RectTransform Stretch(RectTransform rect, float inset = 0f)
+        {
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = new Vector2(inset, inset);
+            rect.offsetMax = new Vector2(-inset, -inset);
+            return rect;
+        }
+
+        /// <summary>
+        /// A clickable plate with a caption. The settings screen's toggles, its quality cycler and
+        /// its rebind rows are all this one widget, because a button that changes its own caption is
+        /// three fewer kinds of thing to build than a button, a toggle and a dropdown.
+        /// </summary>
+        public static Button Button(Transform parent, string name, string caption, int size,
+                                    UnityEngine.Events.UnityAction onClick)
+        {
+            Image plate = Block(parent, name, new Color(0.18f, 0.20f, 0.24f, 0.95f));
+
+            // Block turns raycasts off, which is right for every other widget in this HUD and wrong
+            // for the one that exists to be clicked.
+            plate.raycastTarget = true;
+
+            var button = plate.gameObject.AddComponent<Button>();
+            button.targetGraphic = plate;
+            if (onClick != null) button.onClick.AddListener(onClick);
+
+            Text label = Label(plate.transform, "Caption", size, TextAnchor.MiddleCenter);
+            Stretch(label.rectTransform);
+            label.text = caption;
+
+            return button;
+        }
+
+        /// <summary>A horizontal slider, built from the three rects uGUI insists on.</summary>
+        public static Slider Slider(Transform parent, string name, float min, float max, float value,
+                                    UnityEngine.Events.UnityAction<float> onChange)
+        {
+            RectTransform rect = Rect(parent, name);
+            var slider = rect.gameObject.AddComponent<Slider>();
+
+            Image track = Block(rect, "Track", new Color(0.12f, 0.13f, 0.16f, 0.95f));
+            Stretch(track.rectTransform, 0f);
+            track.raycastTarget = true;
+
+            RectTransform area = Rect(rect, "Fill Area");
+            Stretch(area, 4f);
+
+            Image fill = Block(area, "Fill", new Color(0.45f, 0.65f, 0.85f, 0.95f));
+            Stretch(fill.rectTransform);
+
+            RectTransform handleArea = Rect(rect, "Handle Slide Area");
+            Stretch(handleArea, 4f);
+
+            Image handle = Block(handleArea, "Handle", new Color(0.85f, 0.88f, 0.92f, 1f));
+            handle.rectTransform.sizeDelta = new Vector2(18f, 0f);
+            handle.raycastTarget = true;
+
+            slider.fillRect = fill.rectTransform;
+            slider.handleRect = handle.rectTransform;
+            slider.targetGraphic = handle;
+            slider.direction = UnityEngine.UI.Slider.Direction.LeftToRight;
+            slider.minValue = min;
+            slider.maxValue = max;
+            slider.value = Mathf.Clamp(value, min, max);
+
+            if (onChange != null) slider.onValueChanged.AddListener(onChange);
+
+            return slider;
+        }
+
         /// <summary>Anchors a rect to one corner with a pixel offset, sized in reference pixels.</summary>
         public static RectTransform Anchor(RectTransform rect, Vector2 anchor, Vector2 pivot,
                                            Vector2 offset, Vector2 size)
