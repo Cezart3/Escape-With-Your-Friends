@@ -84,6 +84,14 @@ namespace EscapeWithYourFriends.Vehicles
 
                 World.RunSummary.Finish(deaths, gambled, ranOver, seconds);
                 EndingRpc(deaths, gambled, ranOver, seconds);
+
+                if (_plane != null && _plane.Touchdowns == 0)
+                    for (int seat = 0; seat < _vehicle.SeatCount; seat++)
+                    {
+                        VehicleRider rider = _vehicle.Occupant(seat);
+                        if (rider != null) Achievements.ServerAward(rider.NetworkObject, Achievements.FirstTry);
+                    }
+
                 return;
             }
 

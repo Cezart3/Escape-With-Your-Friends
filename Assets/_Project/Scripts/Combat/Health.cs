@@ -292,7 +292,12 @@ namespace EscapeWithYourFriends.Combat
 
             // Before the state is published, so anything reading Deaths off the state change sees
             // the count that includes this death.
-            if (next == LifeState.Dead) _deaths.Value++;
+            if (next == LifeState.Dead)
+            {
+                _deaths.Value++;
+                if (_deaths.Value == Net.Achievements.Deaths)
+                    Net.Achievements.ServerAward(NetworkObject, Net.Achievements.DiedTen);
+            }
 
             ServerStateChanged?.Invoke(previous, next);
             _state.Value = next;
