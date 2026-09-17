@@ -6083,6 +6083,82 @@ easiest to forget: a resume that quietly overwrote what it resumed from would pa
 above and still lose the run on the second restart.
 
 
+### The settings menu, and making it mean something (#84)
+
+A settings menu is the easiest feature in the game to ship broken, because a slider that moves and
+changes nothing looks exactly like a slider that works. So the rule here is that **every setting has
+exactly one reader somewhere in the game, and the test asks the reader rather than the stored
+number.** The volume check reads `AudioListener.volume`; the colour check reads what a spawned
+player's body is actually tinted with; the rebind check reads the binding override sitting on a
+freshly spawned player's own copy of the input asset.
+
+`Core/GameSettings.cs` is the store. It is `PlayerPrefs`, **not the save file**, and that division is
+the whole design: `RunSave` holds what the four of you earned, `GameSettings` holds how one of you
+likes to sit. Somebody loading a six-hour-old save still wants their own sensitivity, and somebody
+starting a fresh run does not want to redo their keybinds. Nothing here is networked and nothing here
+should be — a replicated setting is a setting somebody else can change on your machine.
+
+Quality is the exception that proves it. `GraphicsBoot` already owns a quality preference, guesses a
+tier from the GPU on a first run and applies it before the first scene loads. A second key would give
+one number two owners, and they would disagree the first time anybody passed `-quality`. So
+`GameSettings.Quality` is a *window onto* `GraphicsBoot.PreferenceKey`, not a copy of it.
+
+Three of the values are carried as relationships rather than as absolutes, which is the part that is
+easy to get wrong and impossible to notice afterwards:
+
+- **Sensitivity is a multiplier** over the tuned `_lookSensitivity` on the prefab, so `1.0` means the
+  speed that was actually playtested and retuning the prefab does not silently move everybody's
+  setting.
+- **Sprint field of view is a difference.** `PlayerCameraRig` widens by `_sprintFov - _baseFov`, so a
+  player sitting on 110 still gets the same lurch rather than none at all.
+- **Rebinds are the Input System's own override JSON**, stored as one opaque string. A hand-rolled
+  map of action name to key would have to be taught about composites, modifiers and gamepads one at a
+  time; this way `PlayerInputReader` loads the string into its instance and the format stays the input
+  asset's business.
+
+Colourblind mode swaps `PlayerIdentity.Palette` for an Okabe-Ito set. This is not decoration: the
+whole game identifies people by colour — the squad list, the downed markers, the tint on the body —
+so on the wrong palette two of the four are the same person. Because a colour is applied once when a
+body spawns rather than read every frame, `GameSettings` raises a `Changed` event and `PlayerIdentity`
+subscribes; it is the only subscriber, and the only one needed.
+
+`UI/SettingsScreen.cs` is the menu, on its own canvas above the HUD with its own raycaster, opened
+with Escape via a new `ToggleSettings` action. There is no Apply button — every widget writes on
+change and `PlayerPrefs.Save()` runs immediately, for the same reason `PlayerKey` writes its generated
+key immediately: the session somebody spent ten minutes rebinding in is quite likely the one that
+crashes. Rows are laid out by a counter rather than a layout group, and one widget — a Button with a
+caption that redraws itself — serves the toggles, the quality cycler, the resolution cycler and the
+rebind rows.
+
+Writing that screen turned up a bug in #74's ending panel that no harness could ever have caught:
+`HudFactory.Anchor` sets `anchorMin` and `anchorMax` to the *same* vector, so the full-screen fade
+rect it was building had zero size and the ending would have drawn nothing. Headless builds no canvas,
+so there is no test that could have failed. The fix is `HudFactory.Stretch`, which is what the call
+site meant, and its doc comment now says why the two helpers are not interchangeable.
+
+Verification is `-settingsTest write` then `-settingsTest read`, two processes, because "persists
+across sessions" is not honestly testable in one. The write half also checks that absurd values are
+clamped rather than believed — a preferences store is a text file somebody will edit — and the read
+half is a fresh process that forces nothing: everything it checks was put back by the boot hook and
+the spawn path on their own.
+
+```
+[SettingsTest] write: 13 passed, 0 failed.
+[SettingsTest] read: 8 passed, 0 failed.
+```
+
+**These two runs must not run in parallel with anything, including each other.** Every process on the
+machine shares one `PlayerPrefs` store, so the read half also resets everything on its way out rather
+than leaving the next harness on 2.5x sensitivity with a rebound jump key.
+
+Field of view and resolution are the two settings the harness cannot check, because both need a screen
+a headless run does not have. Both are one-line reads of this same store, and the store is what is
+under test.
+
+Not done, on purpose: audio buses (one master and one voice slider is what people actually use), a
+per-setting revert, and gamepad rebinding UI — the store and the rebind path already handle a gamepad
+path, there is simply no button for it yet.
+
 ---
 
 ## Data-driven content

@@ -34,6 +34,34 @@ namespace EscapeWithYourFriends.Player
             new(0.95f, 0.55f, 0.75f), // pink
         };
 
+        /// <summary>
+        /// The same eight slots for a player who cannot tell the red one from the green one. #84.
+        ///
+        /// This is the Okabe-Ito set, which is the standard answer and happens to be exactly eight
+        /// colours, with its black swapped for a pale grey - black is a fine data colour on a white
+        /// chart and an invisible player on a night-time island. It is worth more than it looks:
+        /// every way this game tells you who somebody is goes through their colour, so getting it
+        /// wrong does not make the HUD uglier, it makes two of your four friends the same person.
+        ///
+        /// Local, and deliberately not replicated. Which colours you can see is not the other three
+        /// players' business, and the slot index - which is what actually travels - is unchanged.
+        /// </summary>
+        public static readonly Color[] ColourblindPalette =
+        {
+            new(0.90f, 0.60f, 0.00f), // orange
+            new(0.35f, 0.70f, 0.90f), // sky blue
+            new(0.00f, 0.60f, 0.50f), // bluish green
+            new(0.95f, 0.90f, 0.25f), // yellow
+            new(0.00f, 0.45f, 0.70f), // blue
+            new(0.80f, 0.37f, 0.00f), // vermillion
+            new(0.80f, 0.60f, 0.70f), // reddish purple
+            new(0.85f, 0.85f, 0.85f), // pale grey, where Okabe-Ito has black
+        };
+
+        /// <summary>Whichever of the two this player asked for. Read everywhere a colour is drawn.</summary>
+        public static Color[] Active
+            => Core.GameSettings.Colourblind ? ColourblindPalette : Palette;
+
         [Header("Appearance")]
         [Tooltip("Renderers tinted with the player colour. Empty means every renderer under this object.")]
         [SerializeField] Renderer[] _tintedRenderers;
@@ -55,7 +83,7 @@ namespace EscapeWithYourFriends.Player
 
         public byte ColorIndex => _colorIndex.Value;
 
-        public Color Color => Palette[_colorIndex.Value % Palette.Length];
+        public Color Color => Active[_colorIndex.Value % Active.Length];
 
         void Awake()
         {
@@ -64,12 +92,17 @@ namespace EscapeWithYourFriends.Player
 
             _displayName.OnChange += OnNameChanged;
             _colorIndex.OnChange += OnColorChanged;
+
+            // The tint is applied once, when the colour slot arrives. Swapping palettes changes what
+            // that slot means without changing the slot, so something has to say "look again". #84.
+            Core.GameSettings.Changed += ApplyColor;
         }
 
         void OnDestroy()
         {
             _displayName.OnChange -= OnNameChanged;
             _colorIndex.OnChange -= OnColorChanged;
+            Core.GameSettings.Changed -= ApplyColor;
         }
 
         public override void OnStartNetwork()

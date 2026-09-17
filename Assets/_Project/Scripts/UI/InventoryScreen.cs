@@ -249,7 +249,7 @@ namespace EscapeWithYourFriends.UI
         /// game that needs pointer events, and a scene carrying one for a screen that may never open
         /// is a dependency the next person has to work out the reason for.
         /// </summary>
-        static void EnsureEventSystem()
+        internal static void EnsureEventSystem()
         {
             if (EventSystem.current != null) return;
 

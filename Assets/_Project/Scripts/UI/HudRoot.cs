@@ -45,6 +45,7 @@ namespace EscapeWithYourFriends.UI
         readonly InventoryScreen _inventory = new();
         readonly CasinoBoard _casino = new();
         readonly EndingPanel _ending = new();
+        readonly SettingsScreen _settings = new();
 
         Canvas _canvas;
         Camera _camera;
@@ -105,6 +106,9 @@ namespace EscapeWithYourFriends.UI
             // Its own canvas, above this one, and the only one in the game with a raycaster on it.
             // See InventoryScreen for why that split is not optional.
             _inventory.Build(_sortOrder + 100);
+
+            // Above the inventory: escape should reach the settings even with the bag open. #84.
+            _settings.Build(_sortOrder + 200);
         }
 
         void Update()
@@ -129,6 +133,7 @@ namespace EscapeWithYourFriends.UI
                 _hotbar.Refresh(local.Bag);
                 _purse.Refresh(local.Purse);
                 _inventory.Refresh(local);
+                _settings.Refresh(local);
 
                 // Off the camera rather than the body: it is what the player is actually looking
                 // through, and it survives the body being replaced by a ghost and back (#26).

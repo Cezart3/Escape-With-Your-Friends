@@ -263,6 +263,7 @@ namespace EscapeWithYourFriends.Net
             // and everything below wants to run on the map it will actually be played on. #75.
             Core.RunSave.Begin();
             Core.SaveTest.Begin();
+            Core.SettingsTest.Begin();
 
             Items.WorldItemTest.Begin();
             Items.CraftingTest.Begin();
