@@ -37,8 +37,12 @@ namespace EscapeWithYourFriends.Vehicles
         const float WaitForPlayer = 60f;
         const float WaitForVehicle = 60f;
 
-        /// <summary>Metres a rider is allowed to be from its anchor. Same budget as the buggy's.</summary>
-        const float Glued = 0.15f;
+        /// <summary>
+        /// Metres a rider is allowed to be behind its anchor beyond the one frame the sampling
+        /// ordering guarantees. Same budget as the buggy's, and for the same reason - see
+        /// <see cref="CarTest"/> and #141.
+        /// </summary>
+        const float Glued = 0.02f;
 
         /// <summary>Height of the deck above the keel, matching <c>BoatBuilder.DeckHeight</c>.</summary>
         const float DeckHeight = 1f;
@@ -440,6 +444,18 @@ namespace EscapeWithYourFriends.Vehicles
             float peak = 0f;
             float lowest = float.MaxValue;
 
+            // Where each anchor was at the previous sample, and why this loop is not simply a
+            // distance. The glue runs in Vehicle.LateUpdate, and a coroutine resuming on a bare
+            // "yield return null" runs before it - so a rider is one frame behind its anchor, by
+            // construction, and that gap is a measurement of when we looked rather than of the glue.
+            // It scales with frame time, which is why these checks failed only while another
+            // headless harness was stretching frames. Subtracting how far the anchor moved in that
+            // same frame leaves what actually matters: whether anybody is slipping further behind
+            // than the one frame the ordering guarantees. #141.
+            var wasAt = new Vector3[hull.SeatCount];
+            bool seen = false;
+            float stale = 0f;
+
             float started = Time.time;
             while (Time.time - started < RideSeconds)
             {
@@ -459,24 +475,33 @@ namespace EscapeWithYourFriends.Vehicles
                     if (occupant == null || anchor == null) continue;
 
                     float drift = Vector3.Distance(occupant.transform.position, anchor.position);
+                    float travelled = seen ? Vector3.Distance(anchor.position, wasAt[i]) : drift;
+
+                    wasAt[i] = anchor.position;
                     samples++;
+                    stale = Mathf.Max(stale, drift);
 
-                    if (drift <= worst) continue;
+                    float slip = Mathf.Max(0f, drift - travelled);
+                    if (slip <= worst) continue;
 
-                    worst = drift;
+                    worst = slip;
                     worstSeat = i;
                 }
+
+                seen = true;
             }
 
             boat.ServerDrive(0f, 0f, handbrake: true);
 
-            Check($"nobody drifted out of their seat over {samples} sample(s) "
-                  + $"(worst {worst:0.000}m, seat {worstSeat})", worst < Glued);
+            Check($"nobody slipped out of their seat over {samples} sample(s) "
+                  + $"(worst {worst:0.000}m behind the frame the glue runs in, seat {worstSeat}; "
+                  + $"{stale:0.000}m before that frame is accounted for)", worst < Glued);
             Check($"all four are still aboard ({hull.Occupied()}/4)", hull.Occupied() == 4);
             Check($"and four passengers did not sink it (least freeboard {lowest:0.00}m)", lowest > 0f);
 
             Debug.Log($"[BoatTest] {RideSeconds:0}s of driving with four aboard, peaking at "
-                      + $"{peak:0.0} m/s: worst drift {worst:0.000}m over {samples} sample(s), "
+                      + $"{peak:0.0} m/s: worst slip {worst:0.000}m ({stale:0.000}m raw) over "
+                      + $"{samples} sample(s), "
                       + $"least freeboard {lowest:0.00}m.");
 
             yield return new WaitForSeconds(2f);

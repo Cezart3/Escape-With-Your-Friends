@@ -6256,6 +6256,64 @@ comment above `Alarm` says it must not do. It causes none of the failures above,
 hard a whole camp converges on you, so it is a deliberate change rather than a side effect of a
 harness fix.
 
+### A seat that was never loose (#141)
+
+The passenger checks in `-carTest` and `-boatTest` failed only while another headless harness was
+running: 0.350m of drift on the buggy against 0.062m alone, 0.504m on the boat. The issue asked the
+right question — is this a harness that needs to be run alone, or a seat follow that depends on frame
+rate, which a player on a slow machine would see too?
+
+Neither. The glue is not frame-rate dependent; the measurement was. `Vehicle.LateUpdate` is the last
+thing to write a rider's transform, and it snaps them straight onto their anchor. The two suites
+sample from a coroutine that resumes on a bare `yield return null`, and Unity resumes those after
+`Update` and **before** `LateUpdate`. So by the time the test looks, physics has already moved the
+vehicle for this frame and the glue has not yet run: every rider is exactly one frame of travel
+behind their seat, by construction. A frame twice as long is a frame of travel twice as long, which
+is the whole of the "factor of five and a half" — it tracked the neighbours' CPU load, not anything
+in the vehicle.
+
+`VehicleTest` never had the problem, and the reason is worth keeping: it moves the buggy itself,
+by setting its position, *before* it yields, so when it wakes the glue has already caught up with
+that move and nothing has moved the vehicle since. The car and boat suites drive for real — a motor
+and buoyancy under physics — so the vehicle keeps moving in the frame the test wakes in.
+
+The fix is in the measurement, not the tolerance. Each sample also records how far that seat's
+anchor travelled since the previous sample, and the check is on what is left once that is taken
+off:
+
+```csharp
+float drift = Vector3.Distance(occupant.transform.position, anchor.position);
+float travelled = seen ? Vector3.Distance(anchor.position, wasAt[i]) : drift;
+wasAt[i] = anchor.position;
+float slip = Mathf.Max(0f, drift - travelled);
+```
+
+A rider exactly one frame behind has `drift == travelled` and a slip of zero. A rider who has come
+loose and is being dragged falls further behind each frame and shows up at once. The raw figure is
+still logged next to it, so the frame-time effect stays visible rather than being hidden:
+
+```
+alone
+[CarTest]  12s of real driving with four aboard, peaking at 22.1 m/s: worst slip 0.000m (0.054m raw)
+           over 23972 sample(s).                                             22 passed, 0 failed.
+[BoatTest] 12s of driving with four aboard, peaking at 12.1 m/s: worst slip 0.000m (0.033m raw)
+           over 23976 sample(s), least freeboard 0.38m.                      25 passed, 0 failed.
+
+both at once
+[CarTest]  ... worst slip 0.000m (0.058m raw) over 23968 sample(s).          22 passed, 0 failed.
+[BoatTest] ... worst slip 0.000m (0.031m raw) over 23968 sample(s).          25 passed, 0 failed.
+```
+
+With that, `Glued` goes back to what it was meant to be, a rounding budget: **0.02m**, down from the
+0.15m it had been widened to in order to swallow a frame of travel. Both suites are now safe to run
+alongside other harnesses.
+
+The same afternoon exposed a flaw in the working agreement's "is Unity busy" check. It matched
+process *names*, so with a second Claude account working in its own worktree it would have waited
+on the other account's Unity forever. `CLAUDE.md` and `docs/WORKING-AGREEMENT.md` now filter the
+command lines instead — `JocStupid` followed by a quote, a space or the end, or `EWYF-dev` followed by a slash — which
+matches this checkout's editor and build and neither of `JocStupid-b` or `EWYF-dev-b`.
+
 ---
 
 ## Data-driven content

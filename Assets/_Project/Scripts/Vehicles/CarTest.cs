@@ -38,15 +38,17 @@ namespace EscapeWithYourFriends.Vehicles
         const float WaitForVehicle = 60f;
 
         /// <summary>
-        /// Metres a rider is allowed to be from its anchor. Not a seatbelt test - it is there to catch
-        /// a rider that has come loose and is being dragged. Two centimetres was the budget back when
-        /// this suite could not get the buggy to move; at 17 m/s the chassis is interpolated between
-        /// physics steps and the rider is placed on a different beat, so ten centimetres is six
-        /// milliseconds of that lag and anything genuinely detached leaves in metres, not centimetres.
-        /// Measured worst case on the pad is 0.084m at 22 m/s, and 22 m/s is the limiter, so this is
-        /// the ceiling plus enough room that one unlucky frame is not a red suite.
+        /// Metres a rider is allowed to be behind its anchor *beyond* the one frame the sampling
+        /// ordering guarantees. Not a seatbelt test - it is there to catch a rider that has come
+        /// loose and is being dragged.
+        ///
+        /// It used to be 0.15m, widened from a rounding budget because the measured drift grew with
+        /// frame time: the chassis is interpolated between physics steps and the rider is glued on a
+        /// different beat. #141 stopped paying for that with tolerance and subtracted it instead, so
+        /// this is a rounding budget again. Measured slip is 0.000m over some twenty-four thousand
+        /// samples, alone and while another harness is stretching frames.
         /// </summary>
-        const float Glued = 0.15f;
+        const float Glued = 0.02f;
 
         /// <summary>Seconds of full throttle when measuring what the thing will do.</summary>
         const float RunUp = 9f;
@@ -365,6 +367,18 @@ namespace EscapeWithYourFriends.Vehicles
             int samples = 0;
             float peak = 0f;
 
+            // Where each anchor was at the previous sample, and why this loop is not simply a
+            // distance. The glue runs in Vehicle.LateUpdate, and a coroutine resuming on a bare
+            // "yield return null" runs before it - so a rider is one frame behind its anchor, by
+            // construction, and that gap is a measurement of when we looked rather than of the glue.
+            // It scales with frame time, which is why these checks failed only while another
+            // headless harness was stretching frames. Subtracting how far the anchor moved in that
+            // same frame leaves what actually matters: whether anybody is slipping further behind
+            // than the one frame the ordering guarantees. #141.
+            var wasAt = new Vector3[buggy.SeatCount];
+            bool seen = false;
+            float stale = 0f;
+
             car.ServerDrive(1f, 0f, handbrake: false);
 
             float started = Time.time;
@@ -385,23 +399,32 @@ namespace EscapeWithYourFriends.Vehicles
                     if (occupant == null || anchor == null) continue;
 
                     float drift = Vector3.Distance(occupant.transform.position, anchor.position);
+                    float travelled = seen ? Vector3.Distance(anchor.position, wasAt[i]) : drift;
+
+                    wasAt[i] = anchor.position;
                     samples++;
+                    stale = Mathf.Max(stale, drift);
 
-                    if (drift <= worst) continue;
+                    float slip = Mathf.Max(0f, drift - travelled);
+                    if (slip <= worst) continue;
 
-                    worst = drift;
+                    worst = slip;
                     worstSeat = i;
                 }
+
+                seen = true;
             }
 
             car.ServerDrive(0f, 0f, handbrake: true);
 
-            Check($"nobody drifted out of their seat over {samples} sample(s) "
-                  + $"(worst {worst:0.000}m, seat {worstSeat})", worst < Glued);
+            Check($"nobody slipped out of their seat over {samples} sample(s) "
+                  + $"(worst {worst:0.000}m behind the frame the glue runs in, seat {worstSeat}; "
+                  + $"{stale:0.000}m before that frame is accounted for)", worst < Glued);
             Check($"all four are still aboard ({buggy.Occupied()}/4)", buggy.Occupied() == 4);
 
             Debug.Log($"[CarTest] {RideSeconds:0}s of real driving with four aboard, peaking at "
-                      + $"{peak:0.0} m/s: worst drift {worst:0.000}m over {samples} sample(s).");
+                      + $"{peak:0.0} m/s: worst slip {worst:0.000}m ({stale:0.000}m raw) over "
+                      + $"{samples} sample(s).");
 
             yield return new WaitForSeconds(2f);
         }

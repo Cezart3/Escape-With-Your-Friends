@@ -30,8 +30,13 @@ Claude cannot: playtest, judge feel, decide art, or run the Unity Editor interac
 ## Build and test
 
 ```bash
-# Build (~18s, 169 MB). Unity batchmode and the open Editor cannot both run — check first.
-tasklist | grep -iE "^(Unity|EscapeWithYourFriends)\.exe"
+# Busy check. Unity batchmode and the open Editor cannot share a project. Only YOUR processes
+# count - a plain `tasklist | grep Unity` also sees account B's and waits on them for nothing.
+# Account B swaps the grep for:  grep -iE 'JocStupid-b|EWYF-dev-b'
+powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { \$_.Name -match '^(Unity|EscapeWithYourFriends)\.exe$' } | ForEach-Object { \$_.CommandLine }" \
+  | grep -iE 'JocStupid(["[:space:]]|$)|EWYF-dev[\/]'     # empty = free
+
+# Build (~18s, 169 MB)
 
 "/d/Unity/Editors/6000.3.23f1/Editor/Unity.exe" -batchmode -quit \
   -projectPath "D:\Proiecte\JocStupid" -logFile "D:\Builds\build.log" \
