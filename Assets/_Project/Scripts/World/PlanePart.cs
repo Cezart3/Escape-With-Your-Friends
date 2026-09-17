@@ -162,7 +162,17 @@ namespace EscapeWithYourFriends.World
         void ServerLift(NetworkObject actor)
         {
             _carrier.Value = actor;
-            if (_body != null) _body.isKinematic = true;
+            if (_body == null) return;
+
+            _body.isKinematic = true;
+
+            // Update writes this transform onto a shoulder every frame, and an interpolated body
+            // first overwrites it from its last two physics poses - a step stale while walking, and
+            // the whole jump stale after a teleport with no physics step since. The helper's grip
+            // check then measured from there and let go at once, and a punch put the part down
+            // there. #107 learned the same for bodies (RagdollController.SetBonesKinematic); #139
+            // for parts.
+            _body.interpolation = RigidbodyInterpolation.None;
         }
 
         /// <summary>Server only. Puts it on the ground in front of whoever was holding it.</summary>
@@ -186,6 +196,7 @@ namespace EscapeWithYourFriends.World
             if (_body != null)
             {
                 _body.isKinematic = false;
+                _body.interpolation = RigidbodyInterpolation.Interpolate;
                 _body.linearVelocity = Vector3.zero;
                 _body.angularVelocity = Vector3.zero;
             }
