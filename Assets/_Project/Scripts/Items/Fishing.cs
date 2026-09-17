@@ -273,6 +273,7 @@ namespace EscapeWithYourFriends.Items
             FishCatalog catalog = Catalog;
             FishDef def = catalog != null ? catalog.At(index) : null;
 
+            Audio.Sfx.Play(Audio.Sound.Pickup, transform.position);
             Caught?.Invoke(def, count);
 
             if (_log && def != null)
@@ -291,6 +292,7 @@ namespace EscapeWithYourFriends.Items
         [ObserversRpc(RunLocally = true)]
         void AnnounceBite()
         {
+            Audio.Sfx.Play(Audio.Sound.Coin, transform.position, 0.6f);
             Bit?.Invoke();
 
             if (_log) Debug.Log($"[Fishing] {name} has a bite.");

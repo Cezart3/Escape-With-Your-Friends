@@ -308,7 +308,10 @@ namespace EscapeWithYourFriends.Combat
 
         [ObserversRpc(RunLocally = true)]
         void ObserversIncapacitated(Vector3 impulse, Vector3 hitPoint, byte damageType)
-            => Incapacitated?.Invoke(new DamageInfo(0f, (DamageType)damageType, impulse, hitPoint));
+        {
+            Audio.Sfx.Play(Audio.Sound.Down, transform.position);
+            Incapacitated?.Invoke(new DamageInfo(0f, (DamageType)damageType, impulse, hitPoint));
+        }
 
         void OnHealthChanged(float prev, float next, bool asServer)
         {

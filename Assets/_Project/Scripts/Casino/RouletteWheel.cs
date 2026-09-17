@@ -332,7 +332,11 @@ namespace EscapeWithYourFriends.Casino
         /// mid-spin on 0.
         /// </summary>
         [ObserversRpc(ExcludeServer = true)]
-        void RpcSpinTo(int result, float seconds) => Animate(result, seconds);
+        void RpcSpinTo(int result, float seconds)
+        {
+            Audio.Sfx.Play(Audio.Sound.Spin, transform.position);
+            Animate(result, seconds);
+        }
 
         void Animate(int result, float seconds)
         {

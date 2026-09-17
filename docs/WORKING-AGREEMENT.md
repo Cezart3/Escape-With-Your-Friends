@@ -61,9 +61,9 @@ into the tree under the right epic.
 
 | Issue | Blocked on |
 |---|---|
-| #76–#79 | Art. Needs the user to open Blender with the blender-mcp addon running. `get_addon_status` fails until they do. |
-| #80–#81 | SFX and music. Needs sourced audio, not code. |
-| #82 | "A new player understands the HUD without explanation" — a playtest verdict. |
+| #76–#79 | Code half shipped: one palette (`-lookTest`), procedural animation (`-animTest`), dressed bodies, pitched roofs. What is left is modelling in Blender and a person to say whether it looks good. |
+| #80–#81 | Shipped as generative audio (`-audioTest`). Open for the verdict on whether it is pleasant, which no harness can give. |
+| #82 | Menu and lobby shipped (`-menuTest`). "A new player understands the HUD without explanation" is a playtest verdict. |
 | #83 | 60fps on the Radeon 760M at 1080p. Human gate, on the user's hardware. |
 | #38 | Perf work shipped (f2abf4c). Stays open for one measured run on the 760M, same gate as #83. |
 | #85–#89, #91, #93 | Steam. Needs the $100 Steam Direct fee, a tax interview (W-8BEN) and an appid. Up to 30 days of waiting. |
@@ -180,11 +180,12 @@ or `island2`, `-quitAfter <seconds>`, `-noNatives`, `-noAnimals`, `-botMove`, `-
 ### The test flags
 
 ```
--abductTest   -achievementTest -animalTest  -boatTest     -buffTest      -carryTest   -carTest
+-abductTest   -achievementTest -animalTest  -audioTest    -boatTest      -buffTest    -carryTest
+-carTest
 -casinoTest   -chestTest   -chipsTest    -conditionTest -craftTest   -deathTest
 -demoTest    -drunkTest   -economyTest -endTest      -fallTest      -fishTest    -flightTest
--ghostTest    -gunTest     -hudTest      -impactTest    -invTest     -itemTest
--lootTest     -machineTest -meleeTest    -moneyTest     -nativeTest  -partTest
+-ghostTest    -gunTest     -hudTest      -impactTest    -invTest     -itemTest     -lookTest
+-lootTest     -machineTest -meleeTest    -menuTest      -moneyTest   -nativeTest   -partTest
 -planeTest    -prisonTest  -rescueTest   -reviveTest    -rouletteTest -saveTest
 -settingsTest -shopTest    -statTest     -uiTest        -upgradeTest -vehicleTest
 -vehicleUpgradeTest        -voiceTest    -voyageTest    -weaponTest
@@ -200,6 +201,9 @@ Logging flags that make a failure readable: `-animalLog`, `-cameraLog`, `-clockL
 - **`-achievementTest` needs a pair, and both processes take the flag** — the client checks what it
   was told. `-scene island`.
 - **`-demoTest` needs a pair, both with `-demo -demoTest`**, the host also with `-save`. `-scene island`.
+- **`-lookTest` and `-audioTest` run solo**, on either island. `-lookTest` counts materials in the
+  loaded scene, so run it after a bake; `-audioTest` needs no scene at all.
+- **`-menuTest` runs solo and without `-host`** - it drives the menu's own buttons.
 - **`-partTest` needs a pair and `-scene island2`.** The host gets `-partTest`; the client is just a
   warm body with no test flag. Run solo it fails "a second player joined to take the other end".
 - **Pair harnesses need the host up about twenty seconds before the client.**
@@ -210,7 +214,7 @@ Logging flags that make a failure readable: `-animalLog`, `-cameraLog`, `-clockL
 
 ### Ports
 
-One port per concurrent process, never reused inside a session. **Consumed through 8177.** See §5
+One port per concurrent process, never reused inside a session. **Consumed through 8181.** See §5
 for the split when two accounts are running.
 
 ---

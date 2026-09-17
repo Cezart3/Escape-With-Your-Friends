@@ -6540,6 +6540,168 @@ pair of flags it fails with `0 spawned` on any code.
 
 ---
 
+## One palette, and a test that counts it (#79)
+
+Every factory used to call `new Material(Shader.Find("Universal Render Pipeline/Lit"))` and pick a
+colour where it stood. Three problems in one line: the island ended up wearing forty near-identical
+browns, none of them had instancing on, and each baked prefab carried its own material asset - so a
+hundred crates were a hundred materials and a hundred draw calls, all of them slightly different
+crates.
+
+`Editor/Palette.cs` is the whole fix: thirteen named entries, each a shared `.mat` asset in
+`Assets/_Project/Art/Greybox`, instancing on. A factory asks `Palette.For(colour)` and gets the
+*nearest* entry, or `Palette.Named("Wood")` when it knows what it wants. Snapping is the feature, not
+a compromise - a coherent look **is** a short list of materials that everything is painted with, and
+the quickest way to get one is to make the wrong answer unavailable. `EWYF/Art/Rebuild palette`
+writes the whole set, and the bake commands are re-runnable, so the day somebody wants warmer sand
+they change one number and re-bake rather than repainting a hundred prefabs.
+
+The runtime half is `-lookTest` (`World/LookTest.cs`), which runs solo on either island, waits for
+the scene, and walks every `Renderer`. It fails on the states that are wrong no matter what the art
+ends up being - a missing shader, a renderer with nothing on it, a `MeshRenderer` whose material
+cannot batch - and then on the one that is a judgement call: more than `Budget = 40` distinct
+materials in a scene. That number is a ratchet rather than a measurement. It passes today, and the
+day somebody adds their own brown it does not.
+
+What a terminal cannot settle is whether the result is *nice*. It can settle that there is exactly
+one of each colour, which is the part that was actually broken.
+
+---
+
+## The game makes its own noise (#80, #81)
+
+There is no audio budget and no sound designer, so nothing is imported: every sound in the game is
+computed. `Audio/Synth.cs` is forty lines of the usual primitives - white noise off a seeded
+`System.Random`, an exponential `Decay`, sine, square, and a `Clip` helper that clamps, guards NaN
+and fades 4 ms at each end so nothing clicks. `Audio/Sfx.cs` turns those into the fourteen sounds the
+game needs (`Punch`, `Taser`, `Zap`, `Shot`, `DryFire`, `Reload`, `Step`, `Coin`, `Spin`, `Crash`,
+`Click`, ...), caches each one the first time it is asked for, and plays it through a pool of eight
+`AudioSource`s on a `DontDestroyOnLoad` object. Eight is the number of overlapping sounds a
+four-player brawl actually produces; the ninth steals the oldest voice, which nobody has ever heard
+happen.
+
+Sound is a *client* concern, so the hooks hang off the `[ObserversRpc(RunLocally = true)]` methods
+that already exist to say "this happened" - one line each in `Weapon`, `TaserWeapon`, `Health`,
+`RouletteWheel`, `Fishing` and `StunState`. No new RPCs, no new network traffic, and a sound cannot
+desync because it is never authoritative. Footsteps are the exception and get their own watcher
+(`Audio/Footsteps.cs`) over `NetworkPlayerRegistry`, measuring distance travelled rather than
+listening for an animation event: a stride is 2.2 m, the player must be grounded, and the whole thing
+lives outside the player prefab so it survives prediction replaying the same tick three times.
+
+Music is generative and streaming. `Audio/Music.cs` creates one `AudioClip` with
+`AudioClip.Create(..., stream: true, OnRead)` and fills the buffer on the audio thread: a two-sine
+pad plus a pentatonic pluck with rests, the scale, root, tempo and pad chosen by `Mood`. The mood
+comes from the loaded scene name, hooked to `SceneManager.activeSceneChanged`, so the menu, the first
+island, the second island and the casino each sound different without anybody shipping four tracks.
+It never loops, because there is no loop - only a function of time.
+
+The audio thread is a hostile place, so `OnRead` touches no Unity API at all; `Mathf`, `System.Math`
+and a seeded `System.Random` are the entire vocabulary.
+
+`-audioTest` checks what a headless process can check: every `Sound` produces a clip that is audible
+(peak above 0.05), of sane length, cached by reference rather than rebuilt, and that playing it
+headless is harmless. For the music it pulls two consecutive 8192-sample buffers and asserts they
+differ, which is the only automatic way to catch "the soundtrack is four seconds long", and that
+Island and Island2 do not produce the same samples. Whether it is *good* is a human verdict; whether
+it is silent, clipping, or on a loop is not.
+
+---
+
+## A menu that is the lobby (#82)
+
+Before this, the game connected on startup because a command-line flag told it to, which works
+exactly once - for the developer. `UI/MenuScreen.cs` is the first thing a player sees: its own canvas
+at sort order 400, five rows built with the same `HudFactory.Button` as the rest of the HUD, and a
+status line.
+
+It is deliberately not a screen *manager*. There are no states, no stack and no transitions -
+`Update` asks whether a session is running and shows or hides itself accordingly. That single check
+covers everything the flow actually needs: the menu vanishes when a game starts, and it comes back by
+itself when the run ends or the host drops, which is the case a state machine would have to be told
+about.
+
+Host goes through `SteamLobby.Instance.HostLobby()` when Steam is up and falls back to
+`NetworkBootstrap.StartHost(NetLink.Tugboat)` when it is not, so the game is still playable over a
+direct connection with no Steam client running - the case Valve's build review tests and nobody else
+does. Joining is not a button: you accept a friend's invite, Steam hands the lobby to
+`SteamLobby`, and the menu shows the member list. Invite opens the overlay. There is no server
+browser, no lobby code and no friends list of our own, because a four-player game with Steam invites
+needs none of them.
+
+Headless builds create no canvas (`HudRoot.Awake` returns early when there is no graphics device), so
+UI is normally unreachable from a harness. `MenuScreen` makes an exception for `-menuTest` and builds
+its canvas anyway, which lets the harness check the wiring rather than the pixels: the menu exists
+and is shown, the status admits Steam is missing, nothing is connected, `HostClicked()` brings up a
+server and a client, the menu hides, `LeaveClicked()` tears the session down, and the menu comes
+back. Nine checks for the sequence a player performs in their first thirty seconds.
+
+---
+
+## The walk cycle is a function, not a file (#76, #77)
+
+#77 asked for a Mixamo set retargeted onto the rig. Mixamo is a browser and an account, and this
+project is written from a terminal, so that route was never going to close. The alternatives were
+worse: every free humanoid library ships its own skeleton, and retargeting onto
+`PlayerPrefabBuilder`'s generated bones is a job for a person with the editor open.
+
+So the animation is code. `Player/BodyAnimator.cs` is one watcher over `NetworkPlayerRegistry` -
+the same shape as `Audio/Footsteps`, and for the same two reasons: prefabs here are generated and
+never hand-edited, and player movement runs inside a predicted tick that FishNet replays. It reads
+each body's rest pose off the rig at runtime, measures how far the body moved since last frame, and
+writes six bone rotations in `LateUpdate`: legs opposed on a sine, knees folding on the half of the
+wave where the leg swings through, arms counter-swinging, and a tucked pose while falling. The chest
+is deliberately left alone - an idle breathing sway is the obvious next touch, and the head is a child
+of the chest with the camera rig riding it, so two degrees of breathing is two degrees of camera
+rocking at every moment the player is standing still and reading the world. Carrying something replaces the arm
+swing with both arms forward, because arms swinging through a carried crate reads as a bug.
+
+Two properties come free from driving it with *distance* rather than playing a clip. There is no foot
+sliding to tune - a sprint is the same wave sampled against more metres, so the stride lengthens by
+itself. And there is nothing to network: every client computes the same pose from a position it
+already has, so the animation costs zero bandwidth and cannot desync.
+
+The part of #77's acceptance with teeth was "works with both the animator and the ragdoll bone
+setup". It is one branch: a ragdolled body is skipped entirely, because those transforms belong to
+the physics solver, and writing over them is how you get a corpse with a twitching hip. `-animTest`
+drags a body forward by hand and measures the bones against the pose the rig was built in: the legs
+must leave rest, they must be opposed to each other, the arms must be opposed to the legs, standing
+still must settle back to rest, a ragdoll must receive no poses at all, and getting up must hand the
+bones back.
+
+For #76 the honest answer is that "funny at a glance" is a human verdict and low-poly modelling needs
+Blender open. What a batch job can do is the part that was actually missing, and it happens in
+`PlayerPrefabBuilder.Dress`: the primitives are painted from the palette - skin, cloth, dark boots -
+and given the details that make a silhouette read as a person, which are hands, feet, a nose so the
+head has a front, and a cap. Every one of them is mesh only, with its collider destroyed on the spot,
+so none of it changes a mass, a joint limit or how far a body flies when a car hits it. On top of
+that each body's *cloth* is tinted per player through a `MaterialPropertyBlock` - four shirts, no
+extra materials, still batching - because four grey bodies in a four-player game is four people who
+cannot tell which one is them.
+
+---
+
+## Why the blockout reads as unfinished (#78)
+
+The issue asks for modelled POIs. That needs Blender and a person, and "reads as intentionally
+stylised" is a verdict only a human can give. But the reason a greybox reads as *unfinished* is not
+that the shapes are simple - plenty of shipped games are this simple - it is that every building is a
+stack of axis-aligned boxes with a flat slab on top. Nothing in the world is at an angle, so the
+whole island looks like scaffolding.
+
+So `GreyboxBuilder` grew two pieces of shared vocabulary. `Roof` builds a pitched roof from two
+tilted slabs and a ridge, which is four primitives and the only angle in the building. `Opening`
+insets a dark recess where a door or a window goes, rather than cutting a hole: a wall with a hole in
+it stops being convex, and a ragdoll finds every non-convex wall on the island. At ten metres the
+recess reads the same and costs one shadowless box.
+
+Both are used by the shop and the casino, which are the two landmarks with walls. The casino keeps
+its real doorway - a two-metre gap between two front walls, wide enough that four people arriving at
+once do not wedge - so it gets windows only.
+
+This does not close #78. It closes the half of it that does not need a person to look at the screen.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**

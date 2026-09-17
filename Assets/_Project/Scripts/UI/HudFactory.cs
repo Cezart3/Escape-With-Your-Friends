@@ -120,6 +120,7 @@ namespace EscapeWithYourFriends.UI
 
             var button = plate.gameObject.AddComponent<Button>();
             button.targetGraphic = plate;
+            button.onClick.AddListener(() => Audio.Sfx.Play2D(Audio.Sound.Click));
             if (onClick != null) button.onClick.AddListener(onClick);
 
             Text label = Label(plate.transform, "Caption", size, TextAnchor.MiddleCenter);

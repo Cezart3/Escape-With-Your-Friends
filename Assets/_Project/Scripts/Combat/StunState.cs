@@ -114,6 +114,10 @@ namespace EscapeWithYourFriends.Combat
         [ObserversRpc(RunLocally = true)]
         void ObserversApplyImpulse(Vector3 impulse, Vector3 hitPoint)
         {
+            // A fist is already covered by the weapon that threw it. Anything this hard is a car,
+            // a fall or an explosion, and those want their own noise.
+            if (impulse.sqrMagnitude > 400f) Audio.Sfx.Play(Audio.Sound.Crash, hitPoint);
+
             // The stun flag may not have replicated yet, so make sure we are limp before pushing.
             _ragdoll.EnableRagdoll(impulse, hitPoint);
         }

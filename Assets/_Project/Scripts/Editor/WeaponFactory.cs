@@ -366,8 +366,7 @@ namespace EscapeWithYourFriends.EditorTools
 
             var renderer = cube.GetComponent<Renderer>();
             renderer.shadowCastingMode = ShadowCastingMode.Off;
-            renderer.sharedMaterial =
-                new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = seed.Colour };
+            renderer.sharedMaterial = Palette.For(seed.Colour);
 
             // A grip, so a machete reads as a machete and not as a plank.
             if (seed.Kind == WeaponKind.Melee)
@@ -382,8 +381,9 @@ namespace EscapeWithYourFriends.EditorTools
 
                 var gripRenderer = grip.GetComponent<Renderer>();
                 gripRenderer.shadowCastingMode = ShadowCastingMode.Off;
-                gripRenderer.sharedMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"))
-                    { color = new Color(0.28f, 0.20f, 0.14f) };
+                // A material that is not an asset deserialises as null the next time the prefab is
+                // loaded, which is what left half the island wearing nothing until #79.
+                gripRenderer.sharedMaterial = Palette.Named("Wood");
             }
 
             GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, path, out bool success);

@@ -193,10 +193,18 @@ namespace EscapeWithYourFriends.Combat
         }
 
         [ObserversRpc(ExcludeOwner = true)]
-        void ObserversFire() => Fired?.Invoke();
+        void ObserversFire()
+        {
+            Audio.Sfx.Play(Audio.Sound.Taser, transform.position);
+            Fired?.Invoke();
+        }
 
         [ObserversRpc(RunLocally = true)]
-        void ObserversHit(Vector3 contact) => HitLanded?.Invoke(contact);
+        void ObserversHit(Vector3 contact)
+        {
+            Audio.Sfx.Play(Audio.Sound.Zap, contact);
+            HitLanded?.Invoke(contact);
+        }
 
         void OnDrawGizmosSelected()
         {

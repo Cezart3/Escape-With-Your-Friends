@@ -472,6 +472,8 @@ namespace EscapeWithYourFriends.EditorTools
             mesh.transform.localRotation = Quaternion.Euler(bone.MeshEuler);
             mesh.transform.localScale = bone.MeshScale;
 
+            Dress(go.transform, mesh, bone.Name);
+
             if (bone.Parent == null) return go.transform;
 
             var joint = go.AddComponent<CharacterJoint>();
@@ -489,6 +491,68 @@ namespace EscapeWithYourFriends.EditorTools
             joint.enablePreprocessing = false; // Preprocessing lets joints explode under big impulses.
 
             return go.transform;
+        }
+
+        /// <summary>
+        /// Paints a bone and hangs the bits that make it read as a person on it (#76).
+        ///
+        /// The characters stay primitives. A modelled and skinned mesh would mean an armature, an
+        /// importer, a retarget and a binary asset nobody in this workflow can look at, to replace a
+        /// skeleton that already works with the ragdoll - and the acceptance criterion is "funny at a
+        /// glance", which is not a thing a batch job can check anyway. What a batch job *can* do is
+        /// the part that was actually missing: a silhouette with hands, boots, a head you can tell the
+        /// front of, and colours from the one palette instead of default grey.
+        ///
+        /// Every detail here is mesh only - its collider is destroyed on the spot - so none of it
+        /// changes a mass, a joint limit or how far a body flies when a car hits it.
+        /// </summary>
+        static void Dress(Transform bone, GameObject mesh, string name)
+        {
+            mesh.GetComponent<Renderer>().sharedMaterial = Palette.Named(Cloth(name));
+
+            switch (name)
+            {
+                case "Head":
+                    // A nose, because a sphere has no front, and a cap so four identical bodies are
+                    // not four identical bodies from behind.
+                    Detail(bone, "Nose", new(0f, 0.16f, 0.17f), new(0.07f, 0.07f, 0.10f), "Skin");
+                    Detail(bone, "Cap", new(0f, 0.31f, 0f), new(0.30f, 0.08f, 0.30f), "Accent");
+                    break;
+
+                case "LowerArm.L":
+                    Detail(bone, "Hand.L", new(0.28f, 0f, 0f), new(0.11f, 0.11f, 0.11f), "Skin");
+                    break;
+                case "LowerArm.R":
+                    Detail(bone, "Hand.R", new(-0.28f, 0f, 0f), new(0.11f, 0.11f, 0.11f), "Skin");
+                    break;
+
+                case "LowerLeg.L":
+                case "LowerLeg.R":
+                    Detail(bone, "Foot", new(0f, -0.42f, 0.06f), new(0.13f, 0.07f, 0.23f), "Dark");
+                    break;
+            }
+        }
+
+        /// <summary>What a bone is wearing. Skin where skin shows, cloth everywhere else.</summary>
+        static string Cloth(string name) => name switch
+        {
+            "Head" => "Skin",
+            "LowerArm.L" or "LowerArm.R" => "Skin",
+            "LowerLeg.L" or "LowerLeg.R" => "Dark",
+            _ => "Cloth",
+        };
+
+        static void Detail(Transform bone, string name, Vector3 at, Vector3 scale, string colour)
+        {
+            GameObject detail = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            detail.name = name;
+            detail.transform.SetParent(bone, false);
+            detail.transform.localPosition = at;
+            detail.transform.localScale = scale;
+            detail.GetComponent<Renderer>().sharedMaterial = Palette.Named(colour);
+
+            // Decoration, not geometry. A collider here would change every mass and every impact.
+            Object.DestroyImmediate(detail.GetComponent<Collider>());
         }
 
         /// <summary>

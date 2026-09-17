@@ -512,16 +512,32 @@ namespace EscapeWithYourFriends.Combat
         void ObserversAttack() => Attacked?.Invoke(Equipped);
 
         [ObserversRpc(RunLocally = true)]
-        void ObserversHit(Vector3 contact) => HitLanded?.Invoke(contact);
+        void ObserversHit(Vector3 contact)
+        {
+            Audio.Sfx.Play(Audio.Sound.Punch, contact);
+            HitLanded?.Invoke(contact);
+        }
 
         [ObserversRpc(RunLocally = true)]
-        void ObserversFired(Vector3 origin, Vector3[] ends) => Fired?.Invoke(origin, ends);
+        void ObserversFired(Vector3 origin, Vector3[] ends)
+        {
+            Audio.Sfx.Play(Audio.Sound.Shot, origin);
+            Fired?.Invoke(origin, ends);
+        }
 
         [ObserversRpc(RunLocally = true)]
-        void ObserversDryFired() => DryFired?.Invoke(Equipped);
+        void ObserversDryFired()
+        {
+            Audio.Sfx.Play(Audio.Sound.DryFire, transform.position);
+            DryFired?.Invoke(Equipped);
+        }
 
         [ObserversRpc(RunLocally = true)]
-        void ObserversReloading(bool started) => Reloading?.Invoke(Equipped, started);
+        void ObserversReloading(bool started)
+        {
+            if (started) Audio.Sfx.Play(Audio.Sound.Reload, transform.position);
+            Reloading?.Invoke(Equipped, started);
+        }
 
         // ---------------------------------------------------------------- the harness's door
 
