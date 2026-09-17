@@ -259,6 +259,11 @@ namespace EscapeWithYourFriends.Net
             // It no-ops without -itemTest, so this costs a flag check on a state change.
             if (args.ConnectionState != LocalConnectionState.Started) return;
 
+            // First, and not a test: it may sail the server to the island the save was written on,
+            // and everything below wants to run on the map it will actually be played on. #75.
+            Core.RunSave.Begin();
+            Core.SaveTest.Begin();
+
             Items.WorldItemTest.Begin();
             Items.CraftingTest.Begin();
             Items.StorageTest.Begin();

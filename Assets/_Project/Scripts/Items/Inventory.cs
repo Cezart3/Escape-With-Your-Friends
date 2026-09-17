@@ -208,6 +208,25 @@ namespace EscapeWithYourFriends.Items
                 if (!_slots[i].IsEmpty) _slots[i] = ItemStack.Empty;
         }
 
+        /// <summary>
+        /// Server only. Puts a stack straight back into the slot it was in, for #75's save loading.
+        ///
+        /// Deliberately not <see cref="Add"/>: Add packs into partial stacks first, which is right
+        /// for a pickup and wrong for a restore - it would quietly rearrange somebody's hotbar every
+        /// time they resumed. This writes the slot it is given and checks nothing else, because
+        /// every item it is handed was legally carried in this same bag a moment before the quit.
+        /// </summary>
+        [Server]
+        public void ServerRestore(int slot, ItemDef def, int count)
+        {
+            if (slot < 0 || slot >= _slots.Count || def == null || count <= 0) return;
+
+            ushort index = Index(def);
+            if (index == 0) return;
+
+            _slots[slot] = new ItemStack(index, Mathf.Min(count, def.MaxStack));
+        }
+
         /// <summary>How many of something is being carried. Crafting and quests both ask this.</summary>
         public int CountOf(ItemDef def)
         {

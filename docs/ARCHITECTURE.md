@@ -5977,6 +5977,112 @@ the numbers that happened.
 Skipped: taking control away when it ends. The aeroplane flies itself out and the acceptance asks
 for an ending, not for the game to grab the stick. Worth adding if it looks wrong in play.
 
+### Quitting without losing the run (#75)
+
+A run is four people, an afternoon, and a pile of things they earned. Until this issue the pile only
+existed in memory: closing the game threw away every wallet, every bag, the aeroplane they had
+half-built and the fact that they were standing on the second island at all. `RunSave` puts that on
+disk.
+
+**One file, written by the host.** The host is already the authority on every number worth keeping —
+`Wallet` is a SyncVar only the server writes, so is `Inventory`, so is `PlaneAssembly` — so the save
+is a snapshot of what the server believes, and the other three get it the way they get everything
+else: replicated, when their body spawns and their wallet and bag are filled in. There is no
+client-side save file, no merge between four copies and nothing to reconcile.
+
+**Keyed by `PlayerKey`, which #111 already had to solve.** A saved bag has to find its way back to
+the same person across a process restart. FishNet reuses client ids, and every Tugboat client on one
+machine shares an address, so neither identifies anybody tomorrow. The key — a Steam id, a
+`-playerKey` flag, or a GUID in `PlayerPrefs` — is the only identifier in the project that means the
+same thing in the next session, and it was already sitting on every body for reconnect adoption.
+`PlayerSpawner` calls `RunSave.ServerApply` on the line after it stamps the key, because that is the
+one point where both halves of "what does this person own" are known at once.
+
+**Autosave, not a save on quit.** `OnApplicationQuit` fires on the polite ending and on no other. The
+endings that actually happen are alt-F4, a crash, and a router, so the file is written every thirty
+seconds as well; the quit hook is there so that quitting on purpose loses nothing at all, and the
+periodic write is the one that will do the real work. Each write goes to `run.json.tmp` and is copied
+over the real file, because a write interrupted halfway is precisely what a crash is.
+
+**What is saved is what the issue asked for.** Money, chips, bags slot for slot, which island the
+group is on, which holes in the aeroplane are filled, and which upgrades are bolted to which vehicle.
+Deliberately not saved: where anybody was standing, what is lying on the ground, which animals are
+alive, how full the chests are, the time of day. Position is the most tempting of those and the least
+valuable — a body restored mid-air, or inside geometry that moved under it, is worse than a walk back
+from the spawn.
+
+Two details in the file are worth more than they look:
+
+- **Items are stored by `ItemDef.Id`, not by `ItemStack.Index`.** The index is a position in a
+  catalogue that is regenerated every time somebody adds an item, so a save written with indices
+  would quietly turn a bag of fish into a bag of dynamite the first time the content list grew —
+  during development, which is exactly when saves get tested. Ids cost a few bytes and survive it.
+  The same reasoning puts aeroplane parts in the file by label rather than as the `_fitted` bitmask.
+- **Everything merges, and every restore only ever raises.** A player who left an hour ago is not in
+  the scene, and an island the group sailed away from has no vehicles loaded, so a snapshot that
+  rebuilt its lists from whatever is in memory would delete both. On the way back in,
+  `PlaneAssembly.ServerFit` adds a part and cannot remove one, and `VehicleUpgrades.ServerRestoreTiers`
+  takes the higher of the two tiers — a stale file cannot unbolt something fitted since it was
+  written. `Inventory.ServerRestore` writes the slot it is given rather than going through `Add`,
+  because `Add` packs into partial stacks first: right for a pickup, and wrong for a restore that
+  would otherwise rearrange somebody's hotbar every time they resumed.
+
+**Nothing pushes state into the world; the world pulls it.** `RunSave` arms inside the server's own
+"started" callback, which is before FishNet has spawned a single scene object. The first version of
+this restored the world from a loop, and it silently did nothing: `PlaneAssembly` was not spawned yet
+and `VehicleUpgrades._tiers` was still an empty list, so iterating it restored no upgrades and said so
+to nobody. The aeroplane appeared to work only because it has a second route in through the `Owned`
+static. So each thing restores itself in its own `OnStartServer` — `PlaneAssembly` reads
+`RunSave.SavedParts` and `SavedPlaneOwned`, `VehicleUpgrades` reads `RunSave.TiersFor(name)` on the
+line after it builds the list — because that is the first moment it can. Sailing between the islands
+then needs no handling at all: scene objects are rebuilt by the load and ask again on the way up.
+
+**The island itself is restored by sailing to it.** `RunSave` arms before every harness in
+`NetworkBootstrap`'s server block, and if the file was written on a different map than the one the
+command line asked for, it calls `GameSceneLoader.ServerTravel`.
+
+**Off by default in a headless run.** A build with no graphics device is a harness, and twenty
+harnesses sharing one `persistentDataPath` would each inherit the last one's island and wallet — the
+`-endTest` assertion that the run starts on `Island` would fail for a reason that has nothing to do
+with #74. So headless has to ask, with `-save`; a build with a screen saves unless told `-noSave`.
+`-savePath <file>` moves the file, which is how two harness lanes stay out of each other's way.
+
+**Skipped deliberately:** a save-version migration. Version 1 is discarded, not upgraded, when the
+shape changes, because there is one version of this game and nobody has a save worth migrating yet.
+`RunSave.Read` is where that goes when somebody does. Also skipped: a slot or profile system —
+there is one run at a time and a menu to choose between three of them is #84's problem, not this one.
+
+**Harness — `-saveTest write` then `-saveTest read`.** The acceptance is "quit and resume without
+losing progress" and the only honest test of that is two processes, so the test is one thing in two
+halves. The write half plays a little, saves, checks the file on disk holds the key, the money, the
+item *ids* and the island, and then does the whole round trip in-process — throw the state away,
+forget the file was ever read, read it again, put it back — so that a broken serializer fails in one
+run rather than in a pair somebody has to remember to run both halves of. The read half is a
+genuinely fresh process with fresh SyncVars and nothing but the file to go on, and it forces nothing:
+everything it checks was put back by the game's own load path before the coroutine ran.
+
+```
+EscapeWithYourFriends.exe -batchmode -nographics -host -port 8108 -playerKey test:host -scene island \
+    -noNatives -noAnimals -save -savePath D:\Builds\save-test\run.json -saveTest write -quitAfter 120
+EscapeWithYourFriends.exe -batchmode -nographics -host -port 8108 -playerKey test:host -scene island \
+    -noNatives -noAnimals -save -savePath D:\Builds\save-test\run.json -saveTest read  -quitAfter 120
+```
+
+```
+[SaveTest] wrote run.json: 1234 money, 77 chip(s), 2 stack(s), plane whole, island Island.
+[SaveTest] write: 9 passed, 0 failed.
+
+[RunSave] Armed; island 'Island', 1 player(s), 3 part(s) fitted.
+[VehicleUpgrades] Buggy (camp.buggy): restored from a save. Engine stock, Tyres tier 2 (x1.00), Armour stock, Tank stock.
+[RunSave] test:hos… resumed with 1234 money, 77 chip(s) and 2 stack(s).
+[SaveTest] read: 7 passed, 0 failed.
+```
+
+`run.json` is byte-identical after the read run, which is the check that matters most and is the
+easiest to forget: a resume that quietly overwrote what it resumed from would pass every assertion
+above and still lose the run on the second restart.
+
+
 ---
 
 ## Data-driven content
