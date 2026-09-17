@@ -113,6 +113,30 @@ namespace EscapeWithYourFriends.World
             return height;
         }
 
+        /// <summary>
+        /// True inside a point of interest's levelled pad. Nothing is planted here.
+        ///
+        /// A pad is the flattest ground on the island, which makes it the most inviting ground a
+        /// tree could ask for - the flora rules score by slope, so levelling a clearing was the same
+        /// as ordering a wood. That cost #72 four harness runs: the aeroplane stood on its finished
+        /// strip with full throttle and would not move, because it had spawned against a trunk. Tree
+        /// colliders belong to the TerrainCollider, so the contact came back named after the island
+        /// and looked for all the world like the ground holding it.
+        /// </summary>
+        public bool InsidePad(float x, float z)
+        {
+            for (int i = 0; i < _pads.Length; i++)
+            {
+                POIEntry pad = _pads[i];
+                float dx = x - pad.Position.x;
+                float dz = z - pad.Position.y;
+
+                if (dx * dx + dz * dz <= pad.PadRadius * pad.PadRadius) return true;
+            }
+
+            return false;
+        }
+
         /// <summary>The island before anything is levelled into it. The five layers, and nothing else.</summary>
         float RawHeightAt(float x, float z)
         {

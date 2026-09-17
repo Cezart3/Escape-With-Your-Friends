@@ -111,8 +111,11 @@ namespace EscapeWithYourFriends.World
         {
             get
             {
-                if (_wanted.Count == 0) return null;
-                if (Complete) return "The plane is finished";
+                // Null once it is whole, not "The plane is finished". A prompt is an offer, and this
+                // component has nothing left to offer; saying so out loud would also park the
+                // crosshair on this component forever and leave the Vehicle underneath it - the one
+                // that flies you home - unreachable. #72.
+                if (_wanted.Count == 0 || Complete) return null;
 
                 return $"The plane is missing {Missing()}";
             }

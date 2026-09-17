@@ -5746,6 +5746,96 @@ client, with the plane standing 92m from the camp fire and the three parts 176m,
 `-partTest` still 38/38.
 
 
+### Flying it off the island (#72)
+
+The plane is whole, so now it has to fly. #72 is the arcade flight model, and the shortest statement
+of what it owes the player is: *two held keys get you off the ground, and nothing you can do with
+them is unrecoverable.*
+
+| File | What it is |
+|---|---|
+| `Scripts/Vehicles/PlaneController.cs` | Four forces and three torques. The whole flight model |
+| `Scripts/Vehicles/FlightTest.cs` | `-flightTest`: grounded, repair, boarding, take-off, handling, stalling, landing |
+| `Scripts/Editor/PlaneBuilder.cs` | The airframe grew a rigidbody, four seats, three wheels and a physics material |
+| `Scripts/Vehicles/VehicleRider.cs` | One more field and one more branch |
+| `Scripts/Player/PlayerInteractor.cs` | Both ends taught that one object can offer two interactions |
+
+#### Four forces, and a stall that falls out of the arithmetic
+
+Thrust along the nose, lift along `transform.up`, anisotropic drag, and gravity. Lift is scaled by a
+real angle-of-attack coefficient — `cl = aoa / stallAngle`, clamped to `±clMax` — and that clamp is
+the entire stall. Past about fifteen degrees the wing stops paying for more angle, so hauling the
+stick back trades speed for nothing and the aeroplane mushes down. There is no stall state, no
+discontinuity and no branch: a forgiving stall is what a clipped coefficient does on its own, and a
+plane that departs violently is a plane that ends the run of whoever was flying it.
+
+Drag is deliberately lopsided — 4.5 quadratic along the nose against 900 sideways and 700 vertically.
+That asymmetry *is* the aeroplane: it means the thing goes roughly where it is pointing, which is the
+only aerodynamic fact the player needs to hold in their head.
+
+Shift is throttle, ctrl is brake, and the stick is the movement keys. Bank is turn — roll the wings
+and the nose follows, because nobody is hunting for a rudder key mid-panic. `PlaneAssembly.Complete`
+is the ignition: an aeroplane missing its propeller makes no thrust, so the three parts from #70 are
+the key rather than a checklist to read.
+
+#### One object, two things to do with it
+
+The plane is now a `PlaneAssembly` *and* a `Vehicle` on the same object, and that broke interaction in
+a way worth recording. `PlayerInteractor` took the first `IInteractable` it found on the way up from
+the collider and offered that; once the plane was finished, the first one was always the assembly,
+so the crosshair parked on a component with nothing left to say and the seats underneath could never
+be reached.
+
+The fix is at both ends, and it is the same idea twice: the client skips candidates with an empty
+`Prompt`, and the server skips candidates whose `ServerCanInteract` says no. `PlaneAssembly.Prompt`
+returns null once the last part is in, so it takes itself out of the running and the `Vehicle` is
+what you see. Any future object that wants two interactions gets this for free.
+
+`VehicleRider.Drive` grew a `boost` parameter and a third branch rather than an `IDriveable`. A car
+and a boat take a throttle and a steer; a plane takes a pitch, a roll, a power key and a brake key,
+so the interface would have to be the union of both signatures — which is what the branch already is,
+minus a vtable.
+
+#### What the harness caught
+
+Three of the seven `-flightTest` runs failed on the same line: the aeroplane sat on its finished
+strip at full throttle and would not move. A dynamic, awake, unconstrained 1100kg body taking 9000N
+and answering with exactly zero. Ruling things out by reading did not find it, so the harness grew a
+probe that asks PhysX directly — every rigidbody field, the friction on every collider, the clearance
+between each collider and the ground, and a 10 m/s shove to see whether the body answers to anything
+at all. It took two runs of that to produce the contradiction that named the bug:
+
+```
+Fuselage bottom at 8.85, ground 7.90, clearance 0.95m
+9 contact(s) [Island2<-Gear.Tail, ..., Island2<-Fuselage, Island2<-Fitted.wing]
+```
+
+The belly was touching something a metre above the ground and reporting it as the island. **Terrain
+tree colliders belong to the `TerrainCollider`**, so a tree comes back wearing the terrain's name, and
+the aeroplane had spawned inside a trunk.
+
+It was standing in a wood of its own making. Flora is scored by slope, and a POI pad is the flattest
+ground on the island — levelling a clearing was the same instruction as ordering a forest to grow in
+it. `IslandShape.InsidePad` is the fix and it is one guard in `IslandFlora`, which clears the camps and
+the village floor at the same time.
+
+Two more, both found the same way:
+
+- **A physics material built in memory is dropped when the prefab is serialised.** The first pass set
+  a slippery material on the three wheels; the saved prefab came back with `m_Material: {fileID: 0}`
+  on all seven colliders, so the airframe was riding on Unity's default rubber. It lives at
+  `Prefabs/PlaneSkin.asset` now, and every collider wears it — a belly or a wingtip touching the strip
+  should cost the player a scrape, not the aeroplane.
+- **Control authority was computed from forward speed alone**, and a stalled aeroplane falls
+  belly-first with nothing on its nose. Authority went to zero exactly when the elevator was the only
+  way out: the stick went dead and stayed dead until the ground arrived. Falling at thirteen metres a
+  second is thirteen metres a second of air over the tail whichever way the nose is pointing, so
+  authority reads the whole velocity now. That one was a deep-stall lock with no way out, and it is
+  the check `-flightTest` earns its keep on.
+
+The take-off roll is about twenty-five metres, which is why the strip's pad went from 22m to 30m. It
+is the one pad on the island with a length requirement rather than a footprint.
+
 ---
 
 ## Data-driven content

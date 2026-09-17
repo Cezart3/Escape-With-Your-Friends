@@ -37,9 +37,11 @@ namespace EscapeWithYourFriends.Vehicles
         /// <summary>The engine of whatever we are sitting in, if it has one. Cached on the way in.</summary>
         CarController _car;
 
-        /// <summary>The other kind of engine. Two fields and a branch, rather than an interface for
-        /// two implementations; see the note on <see cref="Drive"/>.</summary>
+        /// <summary>The other kind of engine. See the note on <see cref="Drive"/>.</summary>
         BoatController _boat;
+
+        /// <summary>And the third, which takes different input from the other two. #72.</summary>
+        PlaneController _plane;
 
         /// <summary>Fuel and integrity, the two reasons a vehicle refuses to move (#61).</summary>
         VehicleCondition _condition;
@@ -65,7 +67,7 @@ namespace EscapeWithYourFriends.Vehicles
         /// Steering a vehicle that has no engine is not an error: a boat and a plane will answer the
         /// same two axes with their own components, and a trailer will answer with nothing.
         /// </summary>
-        public void Drive(Vector2 move, bool handbrake)
+        public void Drive(Vector2 move, bool brake, bool boost)
         {
             if (!IsDriving) return;
 
@@ -74,15 +76,18 @@ namespace EscapeWithYourFriends.Vehicles
             // and the driverless braking both controllers already have needs no second copy.
             if (_condition != null && !_condition.CanDrive)
             {
-                if (_car != null) _car.OwnerDrive(0f, 0f, handbrake);
-                else if (_boat != null) _boat.OwnerDrive(0f, 0f, handbrake);
+                if (_car != null) _car.OwnerDrive(0f, 0f, brake);
+                else if (_boat != null) _boat.OwnerDrive(0f, 0f, brake);
                 return;
             }
 
-            // ponytail: one field per vehicle kind. Worth an IDriveable when the plane makes it
-            // three; two implementations is not yet a pattern.
-            if (_car != null) _car.OwnerDrive(move.y, move.x, handbrake);
-            else if (_boat != null) _boat.OwnerDrive(move.y, move.x, handbrake);
+            // ponytail: still one field per vehicle kind, and the IDriveable this comment used to
+            // promise for the third one is not being written. The plane does not take a throttle and
+            // a steer: it takes a pitch, a roll, a power key and a brake key, so the interface would
+            // have to be the union of both signatures - which is this branch, with a vtable.
+            if (_car != null) _car.OwnerDrive(move.y, move.x, brake);
+            else if (_boat != null) _boat.OwnerDrive(move.y, move.x, brake);
+            else if (_plane != null) _plane.OwnerDrive(move.y, move.x, boost, brake);
         }
 
         void Awake() => _controller = GetComponent<CharacterController>();
@@ -125,6 +130,7 @@ namespace EscapeWithYourFriends.Vehicles
             _seat = seat;
             _car = vehicle.GetComponent<CarController>();
             _boat = vehicle.GetComponent<BoatController>();
+            _plane = vehicle.GetComponent<PlaneController>();
             _condition = vehicle.GetComponent<VehicleCondition>();
 
             if (_controller != null)
@@ -155,6 +161,7 @@ namespace EscapeWithYourFriends.Vehicles
             _seat = -1;
             _car = null;
             _boat = null;
+            _plane = null;
             _condition = null;
 
             IgnoreVehicle(vehicle, false);

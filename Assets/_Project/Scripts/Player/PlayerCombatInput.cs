@@ -91,11 +91,13 @@ namespace EscapeWithYourFriends.Player
             // same key. Fishing only puts it on the wire when it changes and only during a fight.
             if (_fishing != null) _fishing.NotifyReel(_input.AttackHeld);
 
-            // Driving reuses Move and Crouch rather than asking for an action map of its own. Two
-            // axes and a handbrake is the whole control scheme of an arcade car, the body they came
-            // from is going nowhere on its own while seated, and a second map is a second place for a
-            // rebind to be forgotten.
-            if (_rider != null && _rider.IsDriving) _rider.Drive(_input.Move, _input.Crouch);
+            // Driving reuses Move, Crouch and Sprint rather than asking for an action map of its
+            // own. Two axes, a brake and a throttle is the whole control scheme of an arcade car and
+            // of #72's aeroplane, the body they came from is going nowhere on its own while seated,
+            // and a second map is a second place for a rebind to be forgotten. The car and the boat
+            // ignore the third one.
+            if (_rider != null && _rider.IsDriving)
+                _rider.Drive(_input.Move, _input.Crouch, _input.Sprint);
 
             if (altAttack && _taser != null) _taser.RequestFire();
 

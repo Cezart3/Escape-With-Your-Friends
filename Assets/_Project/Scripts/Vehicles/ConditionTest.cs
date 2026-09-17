@@ -179,11 +179,11 @@ namespace EscapeWithYourFriends.Vehicles
             float until = Time.time + 10f;
             while (Time.time < until)
             {
-                rider.Drive(new Vector2(0f, 1f), false);
+                rider.Drive(new Vector2(0f, 1f), brake: false, boost: false);
                 yield return null;
             }
 
-            rider.Drive(Vector2.zero, true);
+            rider.Drive(Vector2.zero, brake: true, boost: false);
 
             float driven = Vector3.Distance(body.position, from);
             float burned = fuelBefore - condition.Fuel;
@@ -313,7 +313,7 @@ namespace EscapeWithYourFriends.Vehicles
             float until = Time.time + 5f;
             while (Time.time < until)
             {
-                rider.Drive(new Vector2(0f, 1f), false);
+                rider.Drive(new Vector2(0f, 1f), brake: false, boost: false);
                 yield return null;
             }
 
@@ -336,7 +336,7 @@ namespace EscapeWithYourFriends.Vehicles
             until = Time.time + 5f;
             while (Time.time < until)
             {
-                rider.Drive(new Vector2(0f, 1f), false);
+                rider.Drive(new Vector2(0f, 1f), brake: false, boost: false);
                 yield return null;
             }
 
@@ -446,11 +446,11 @@ namespace EscapeWithYourFriends.Vehicles
             float until = Time.time + 6f;
             while (Time.time < until)
             {
-                rider.Drive(new Vector2(0f, 1f), false);
+                rider.Drive(new Vector2(0f, 1f), brake: false, boost: false);
                 yield return null;
             }
 
-            rider.Drive(Vector2.zero, true);
+            rider.Drive(Vector2.zero, brake: true, boost: false);
 
             float driven = Vector3.Distance(body.position, from);
 

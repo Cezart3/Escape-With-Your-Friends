@@ -93,6 +93,9 @@ namespace EscapeWithYourFriends.World
                     float x = origin + (i + 0.5f + jx) * cell;
                     float z = origin + (j + 0.5f + jz) * cell;
 
+                    // The camps, the strip and the village floor are cleared ground. See InsidePad.
+                    if (_shape.InsidePad(x, z)) continue;
+
                     float height = _shape.HeightAt(x, z);
                     if (height <= _profile.FloraMinHeight) continue;
 

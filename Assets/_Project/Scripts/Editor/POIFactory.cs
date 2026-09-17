@@ -483,7 +483,7 @@ namespace EscapeWithYourFriends.EditorTools
             {
                 WantedHeight = 5f, MinHeight = 1.5f, MaxHeight = 16f, Reference = camp,
                 MinFromReference = 35f, MaxFromReference = 95f,
-                FlatWeight = 0.95f, Separation = 28f, FootprintRadius = 22f
+                FlatWeight = 0.95f, Separation = 28f, FootprintRadius = 30f
             }, "plane");
 
             float campFacing = Facing(camp, village);
@@ -531,8 +531,12 @@ namespace EscapeWithYourFriends.EditorTools
 
                 // #71. This one does get a pad, and the biggest on the island: a plane standing on a
                 // slope is a plane that will not be taking off in #72.
+                //
+                // #72 widened it. Full throttle is 9000N on 1100kg, so the take-off roll is about
+                // twenty-five metres and a 22m pad ran out from under it half way. A strip is the one
+                // pad on the island that has a length requirement rather than a footprint.
                 Entry("plane", PlaneBuilder.PlanePath, strip, Facing(strip, camp),
-                      pad: 22f, falloff: 18f, raise: 0.2f, maxSlope: 0.25f)
+                      pad: 30f, falloff: 20f, raise: 0.2f, maxSlope: 0.25f)
             };
         }
 
