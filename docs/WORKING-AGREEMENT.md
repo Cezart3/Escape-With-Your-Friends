@@ -54,11 +54,8 @@ combat, vehicles, the casino, island 2 and the ending. What remains is M8 (art a
 
 ### Open and workable right now
 
-These are code, and their acceptance can be checked headless:
-
-| Issue | What |
-|---|---|
-| **#144** | `Alarm` hands every listener a live target instead of a place to look. Changes how hard a camp converges, so it is a feel decision — get the user's word before shipping it. |
+None. Everything open is waiting on a person, below. New code work arrives as new issues; file them
+into the tree under the right epic.
 
 ### Open and blocked, with the reason
 
@@ -198,7 +195,7 @@ Logging flags that make a failure readable: `-animalLog`, `-cameraLog`, `-clockL
 
 ### Harness rules learned the hard way
 
-- **`-nativeTest` must run solo.** A second player body changes what the natives hunt. The suite now
+- **`-nativeTest` must run solo, and without `-noNatives`** (its camp check needs the spawner on). A second player body changes what the natives hunt. The suite now
   fails a named check if it catches one, but do not put it in that position.
 - **`-achievementTest` needs a pair, and both processes take the flag** — the client checks what it
   was told. `-scene island`.
@@ -213,7 +210,7 @@ Logging flags that make a failure readable: `-animalLog`, `-cameraLog`, `-clockL
 
 ### Ports
 
-One port per concurrent process, never reused inside a session. **Consumed through 8169.** See §5
+One port per concurrent process, never reused inside a session. **Consumed through 8177.** See §5
 for the split when two accounts are running.
 
 ---

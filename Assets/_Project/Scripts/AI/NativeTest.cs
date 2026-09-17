@@ -734,6 +734,14 @@ namespace EscapeWithYourFriends.AI
 
             Check($"the {def.Id} standing on the player notices", shouter.Target != null);
 
+            // The same frame as the shout, before either listener could have seen anything for
+            // itself. A listener already holding a target was handed the player, not a place (#144),
+            // and the count below cannot tell the two apart once they start walking.
+            Check($"the shout hands over a place, not the player ({a.State}/{a.Target != null}, "
+                  + $"{b.State}/{b.Target != null})",
+                  a.State == NativeState.Investigate && a.Target == null
+                  && b.State == NativeState.Investigate && b.Target == null);
+
             yield return new WaitForSeconds(1f);
 
             int woken = new[] { a, b }.Count(n => n.State == NativeState.Investigate
