@@ -6500,6 +6500,44 @@ rounds after that: write 9/0 and read 7/0 each time.
 What no harness can check is the acceptance itself: whether the demo is fun on its own and turns
 players into wishlists. That needs players, and then Steam's numbers.
 
+### A shout gives a place, not a person (#144)
+
+`Native.Alarm` has always been documented as "go and look at where the player was". The code did
+more than that. Every listener was also handed the live `Health` it was shouted about, and
+`TickInvestigate` turns a native with a target into a chasing one on the next tick. So the walk
+toward the spot lasted one frame. After that the listener ran at the player's current position,
+through terrain it had never seen them from. That is the camp that cheats, which the comment above
+the method says it is not.
+
+The fix is one deleted line, `other._target = about;`, plus the parameter it used. A listener now
+gets `_suspect`, `_hasSuspect` and `_forgetAt`, walks to the spot, and picks the player up only
+through `Sense`. `Sense` applies the same day and night rules to it as to any other native: sight
+by day, the notice radius at night, and earshot either way. A player who has moved on from where
+they were shouted about can get away. A player who stays put is still found, because that spot is
+where the listeners are going.
+
+This makes a camp less punishing. That is a feel change, so it was held back from #132 to be
+decided on its own. It shipped with the version the code already documented.
+
+**The check.** `-nativeTest` already had a shout test, but it counted `Investigate`, `Chase` and
+`Attack` all as "came looking". With one player standing still, the honest listener and the cheating
+one end up in the same place, so the test could not tell them apart. It now also checks, in the same
+frame as the shout and before either listener could have seen anything, that both are in
+`Investigate` with no target. Against the old `Native.cs` that check fails:
+
+```
+old Native.cs:  [NativeTest] FAILED: the shout hands over a place, not the player (Chase/True, Chase/True).
+fixed:          [NativeTest] 162 passed, 0 failed.
+                [NativeTest] one spearman shouted at noon: 2 of 2 out of earshot came looking,
+                             within 0.1m of where the player actually was.
+```
+
+Regressions: `-abductTest` 43/0, `-prisonTest` 44/0, `-rescueTest` 15/0.
+
+One more rule for running it. `-nativeTest` must run **without `-noNatives`**, as well as solo. Its
+"the camps man themselves" check needs the spawner switched on. With the usual `-noNatives -noAnimals`
+pair of flags it fails with `0 spawned` on any code.
+
 ---
 
 ## Data-driven content

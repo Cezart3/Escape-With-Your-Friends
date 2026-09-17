@@ -462,7 +462,7 @@ namespace EscapeWithYourFriends.AI
             if (fresh)
             {
                 Noticed?.Invoke(this, best);
-                Alarm(this, best, _suspect);
+                Alarm(this, _suspect);
 
                 if (CommandLine.HasFlag("-nativeLog"))
                     Debug.Log($"[Native] {_def.Id} {ObjectId} noticed {best.ObjectId} at "
@@ -508,9 +508,11 @@ namespace EscapeWithYourFriends.AI
         /// <summary>
         /// The shout. Every native inside the radius that is not already busy goes to look at where
         /// the player was - not at where the player *is*, which is the difference between a camp
-        /// that reacts and a camp that cheats.
+        /// that reacts and a camp that cheats. So a listener gets a place and no target: it walks
+        /// there and picks the player up through <see cref="Sense"/>, by the same day and night rules
+        /// as anybody else, or not at all (#144).
         /// </summary>
-        static void Alarm(Native caller, Health about, Vector3 where)
+        static void Alarm(Native caller, Vector3 where)
         {
             if (caller == null || caller.Def == null) return;
 
@@ -529,7 +531,6 @@ namespace EscapeWithYourFriends.AI
                 if (other._state == NativeState.Abduct) continue;
                 if (Vector3.Distance(other.transform.position, caller.transform.position) > radius) continue;
 
-                other._target = about;
                 other._suspect = where;
                 other._hasSuspect = true;
                 other._forgetAt = Time.time + other._def.MemorySeconds;
@@ -1010,7 +1011,7 @@ namespace EscapeWithYourFriends.AI
             _hasSuspect = true;
             _forgetAt = Time.time + _def.MemorySeconds;
 
-            Alarm(this, attacker, _suspect);
+            Alarm(this, _suspect);
 
             if (_state != NativeState.Chase && _state != NativeState.Attack) EnterChase();
         }

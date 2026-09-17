@@ -71,7 +71,7 @@ for i in $(seq 1 130); do
   **no UI can be harness-tested**. UI bugs are found by reading.
 - One runtime asmdef, so `internal` is visible across every runtime script.
 - Pair harnesses need the host up ~20s before the client.
-- `-nativeTest` must run **solo** — a second player body nine metres away changes what the natives
+- `-nativeTest` must run **solo** and **without `-noNatives`** — a second player body nine metres away changes what the natives
   hunt (#132). `-partTest` needs a **pair** and `-scene island2`.
 
 ## Modes
