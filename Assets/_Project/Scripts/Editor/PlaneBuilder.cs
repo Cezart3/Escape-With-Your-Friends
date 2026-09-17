@@ -193,6 +193,10 @@ namespace EscapeWithYourFriends.EditorTools
             // cost them something.
             root.AddComponent<VehicleImpact>();
 
+            // #73. Fly past the edge of the map and hold it, and everybody arrives on the other
+            // island. Same line in the sea as the boat's, because it asks BoatVoyage where it is.
+            root.AddComponent<PlaneVoyage>();
+
             // PlaneAssembly last, so the holes above are already children when its Awake walks them.
             // No VehicleCondition: an aeroplane that runs out of fuel over open water is the
             // run-ending outcome #61 exists to avoid, and the three parts are gate enough.

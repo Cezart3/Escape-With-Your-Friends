@@ -230,8 +230,24 @@ namespace EscapeWithYourFriends.World
                 Check("a second pair of hands is offered the other end",
                       part.Prompt != null && part.Prompt.Contains("other end"));
 
+                // Why, not just whether. A refused second pair of hands and a second pair of hands
+                // that turns out to be the first look identical from the outside, and both land as
+                // "FAILED: and takes it".
+                var mateCarry = mate.GetComponent<Combat.CarrySystem>();
+                Debug.Log($"[PartTest] probe: carrier is object {who.ObjectId} at "
+                          + $"{carrier.transform.position}, mate is object {second.ObjectId} at "
+                          + $"{mate.transform.position}, the part is at {part.transform.position}; "
+                          + $"carried {part.IsCarried}, helper "
+                          + $"{(part.Helper == null ? "nobody" : part.Helper.ObjectId.ToString())}, "
+                          + $"mate carrying a body {(mateCarry != null && mateCarry.IsCarrying)}, "
+                          + $"mate may interact {part.ServerCanInteract(second)}.");
+
                 part.ServerInteract(second);
                 yield return null;
+
+                Debug.Log($"[PartTest] probe: after the handshake the helper is "
+                          + $"{(part.Helper == null ? "nobody" : part.Helper.ObjectId.ToString())} "
+                          + $"and the part is {(part.IsCarried ? "still up" : "on the ground")}.");
 
                 Check("and takes it", part.Helper == second);
                 Check("with nothing left to offer a third person", string.IsNullOrEmpty(part.Prompt));

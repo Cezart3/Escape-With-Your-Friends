@@ -122,6 +122,18 @@ namespace EscapeWithYourFriends.Vehicles
             NetworkObject who = players[0].GetComponent<NetworkObject>();
             _strip = assembly.transform.position;
 
+            // Take the crossing off this aeroplane for the duration. #73 put PlaneVoyage on the
+            // prefab, and this test flies hard enough to leave the map at altitude with somebody at
+            // the controls - which is the crossing's exact trigger, so the scene changed underneath
+            // the test and every later check read a destroyed component:
+            //
+            //   NullReferenceException at PlaneController.get_Bank ()
+            //
+            // The game was right and the harness was surprised. Whether the gate works is
+            // -rescueTest's question; this one is about the flight model.
+            var voyage = vehicle.GetComponent<PlaneVoyage>();
+            if (voyage != null) voyage.enabled = false;
+
             yield return Grounded(assembly, plane, vehicle, who);
             yield return Repair(assembly, who);
             yield return Boarding(vehicle, assembly, who);

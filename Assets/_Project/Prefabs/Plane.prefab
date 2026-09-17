@@ -924,6 +924,7 @@ GameObject:
   - component: {fileID: 4510845386794450790}
   - component: {fileID: 3463151767227693356}
   - component: {fileID: 8924555150750617394}
+  - component: {fileID: 6621669299436508006}
   - component: {fileID: 8895163338048588249}
   m_Layer: 0
   m_Name: Plane
@@ -1197,6 +1198,24 @@ MonoBehaviour:
   _maxStun: 5
   _cooldown: 0.8
   _passThrough: 1.5
+--- !u!114 &6621669299436508006
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5672358809334198705}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba7c1de1955ba564f97579f4694ecc64, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Vehicles.PlaneVoyage
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 346885417255877344}
+  _networkObjectCache: {fileID: 0}
+  _margin: 60
+  _holdSeconds: 4
+  _minAltitude: 25
 --- !u!114 &8895163338048588249
 MonoBehaviour:
   m_ObjectHideFlags: 0

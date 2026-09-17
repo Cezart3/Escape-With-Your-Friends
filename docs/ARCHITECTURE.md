@@ -5836,6 +5836,100 @@ Two more, both found the same way:
 The take-off roll is about twenty-five metres, which is why the strip's pad went from 22m to 30m. It
 is the one pad on the island with a length requirement rather than a footprint.
 
+### Going back for the one you left (#73)
+
+The aeroplane was never the point. Somebody was left on the first island, and the whole reason for
+three parts, a strip and a flight model is to go and get them.
+
+**They are a passenger, not a parcel.** The obvious reading of "pick up the NPC" is to make them a
+`Carryable`, like a corpse — and that is the expensive reading twice over. A `Carryable` requires a
+`RagdollController`, so the NPC would need the full bone rig; and `CarrySystem`'s target finder only
+ever offers a body whose `Health.IsIncapacitated`, so somebody standing on a beach waving at you
+would never be offered in the first place. Both would have to be bent to fit. So `Castaway` walks the
+navmesh the island already has, and rides in the plane's `CargoSocket` — the seat `Vehicle` already
+keeps for a body. No rig, no new socket, and no argument with the seat-and-ownership machinery.
+
+Four stages, one `SyncVar<int>`: `Waiting`, `Following`, `Aboard`, `Home`. Interacting moves them
+along it; there is no state that is not one of those four, and no stage the player cannot see the
+consequence of.
+
+**The objective chain has no chain file.** The acceptance for this issue was *"the chain is clear
+without a tutorial"*, and the temptation is a `QuestManager` holding the list of steps. There isn't
+one. Each component writes its own line at the moment it can see the step has happened, continuing
+what `PlaneAssembly` already did when the last part went in:
+
+| Who writes it | When | The line |
+|---|---|---|
+| `PlaneAssembly` | parts still missing | *Find the missing plane parts* |
+| `Castaway` | waiting | *Find the one you left behind* |
+| `Castaway` | following | *Get them to the plane* |
+| `Castaway` | aboard | *Fly them home* |
+| `PlaneAssembly` | plane whole, nobody to rescue | *Get in the plane and fly to the other island* |
+
+`Objective` is local, derived and unreplicated, so all four players read the same sentence without
+anybody sending one. The only coordination between the two writers is one line in `PlaneAssembly`:
+if a castaway exists and is not rescued, it does not write. A manager would have bought a registry,
+an ordering and a priority scheme to express exactly that.
+
+**`PlaneVoyage` is the boat's rule with one extra condition.** It reuses `BoatVoyage.OffTheMap`
+rather than copying the sea's edge, so a hull and an airframe can never disagree about where the
+world ends. What it does not borrow is the rest: a hull has four parts, a fuel tank and a mooring to
+be towed back to; an aeroplane had its parts gate in #71, no fuel by design, and no tow. The extra
+condition is altitude. Taxiing off the end of the strip is not a decision to leave, and the harness
+parks a plane past the edge on the ground with nobody in it to prove the crossing stays at zero.
+
+**The far island needs its own airframe, for the reason each island keeps its own hull.** Scene
+objects do not cross scenes, so without one the flight is one-way and the rescue is unfinishable.
+`PlaneAssembly.Owned` is a static, exactly like `BoatVoyage`'s owned parts: the group built an
+aeroplane once, so the one waiting on the other side stands there whole. Island 1's catalogue gained
+a strip, an airframe and the castaway themselves, sited next to the wreck they came off.
+
+Two runs of `-rescueTest` failed on the same check — *they walk to the plane on their own feet* —
+for two entirely different reasons, and only the second one was a bug in the game.
+
+The first was the harness:
+
+```
+[Castaway] lost sight of everyone and sat back down.
+```
+
+The strip is two hundred metres from the beach and the leash is sixty, so a test that teleported the
+leader to the aeroplane in one frame had abandoned the follower by the component's own rule. That is
+the leash working. The harness moves the leader ten metres at a time now, and only once they have
+caught up — which is what walking is. The board radius went from four metres to six in the same
+pass: it is measured from the aeroplane's root, and a follower who stops two and a half metres behind
+somebody standing beside the fuselage is not within four metres of its origin.
+
+The second was real, and the bake had been reporting it all along:
+
+```
+[NavFactory] castaway -> camp.base: setting off 13m from the marker because the marker is inside
+the building
+```
+
+Their site stood them six metres from the wreck, and six metres from the wreck is *inside the hull*.
+They stood up, announced they were following, and travelled nothing — while the harness printed
+`on the mesh True`, which is what made it puzzling and is also the lesson: **`isOnNavMesh` is true on
+any polygon, including a sealed pocket of mesh inside a building with no way out of it.** It is not
+a question about the agent, it is a question about the island, and the bake was already answering it
+in a line nobody was reading. Sixteen metres out — past the wreck's own 10m pad, onto open sand —
+and the same line now reads *setting off 2m from the marker*, while the castaway walks 201m to the
+strip on their own feet.
+
+One more fell out of the regression set rather than the new harness. `-flightTest` began dying on
+`NullReferenceException at PlaneController.get_Bank ()` — a destroyed component — because
+`PlaneVoyage` is now on the aeroplane prefab and that test flies hard enough to leave the map at
+altitude with somebody at the controls, which is the crossing's exact trigger. The scene changed
+underneath the test. The game was right and the harness was surprised, so `-flightTest` switches the
+voyage off for its duration: whether the gate works is `-rescueTest`'s question.
+
+Two habits came out of it. `Castaway` warps onto the nearest mesh at spawn, which does not rescue a
+sealed pocket but does cover the ordinary case of a marker a metre inside a wall; and the harness
+prints `agent enabled … on the mesh …` before it starts, so the next one of these names itself
+rather than looking like a pathing failure. The probe in the walk loop is worth keeping for the same
+reason: a follower that does not follow looks identical from outside whether the leader never moved,
+the path is partial, or the agent is parked somewhere with no exit.
+
 ---
 
 ## Data-driven content
