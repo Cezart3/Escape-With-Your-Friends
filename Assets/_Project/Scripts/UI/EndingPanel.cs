@@ -68,7 +68,7 @@ namespace EscapeWithYourFriends.UI
             _title = HudFactory.Label(_root.transform, "Title", 44, TextAnchor.UpperCenter);
             HudFactory.Anchor((RectTransform)_title.transform, new Vector2(0.5f, 1f),
                               new Vector2(0.5f, 1f), new Vector2(0f, -120f), new Vector2(900f, 60f));
-            _title.text = "You got off the island.";
+            _title.text = Core.Demo.On ? "That's the demo." : "You got off the island.";
 
             _figures = HudFactory.Label(_root.transform, "Figures", 24, TextAnchor.UpperCenter);
             HudFactory.Anchor((RectTransform)_figures.transform, new Vector2(0.5f, 1f),

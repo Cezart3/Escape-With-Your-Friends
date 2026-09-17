@@ -26,6 +26,7 @@ namespace EscapeWithYourFriends.EditorTools
 
             string outputDir = GetArg(args, "-buildOutput") ?? DefaultOutputDir;
             bool development = args.Contains("-development");
+            bool demo = args.Contains("-demo");
             string backend = GetArg(args, "-scriptingBackend") ?? "il2cpp";
 
             // Batchmode gives a relative projectPath, so anchor everything to the project root.
@@ -62,11 +63,14 @@ namespace EscapeWithYourFriends.EditorTools
                 targetGroup = BuildTargetGroup.Standalone,
                 options = development
                     ? BuildOptions.Development | BuildOptions.AllowDebugging
-                    : BuildOptions.None
+                    : BuildOptions.None,
+
+                // #90. Compiled in, so a demo cannot be turned into the full game with a flag.
+                extraScriptingDefines = demo ? new[] { "EWYF_DEMO" } : null
             };
 
             Debug.Log($"[BuildTool] {scenes.Length} scene(s), backend={backend}, " +
-                      $"development={development}, output={outputDir}");
+                      $"development={development}, demo={demo}, output={outputDir}");
 
             BuildSummary summary;
             try

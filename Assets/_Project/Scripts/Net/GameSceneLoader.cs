@@ -164,6 +164,14 @@ namespace EscapeWithYourFriends.Net
 
             if (_travelling) return false;
 
+            // The demo is the first island. Every way off it - boat or plane - ends it here. #90.
+            if (Core.Demo.On)
+            {
+                Debug.Log($"[GameSceneLoader] Demo: leaving {Current} for '{requested}' ends the run.");
+                World.RunSummary.ServerEnd();
+                return true;
+            }
+
             string scene = Resolve(requested);
             if (scene == null || scene == Current)
             {

@@ -142,8 +142,12 @@ namespace EscapeWithYourFriends.Core
             if (plane != null) plane.ServerFitAll();
 
             VehicleUpgrades vehicle = FindObjectsByType<VehicleUpgrades>(FindObjectsSortMode.None)
-                                      .FirstOrDefault(v => v != null && v.IsSpawned);
+                                      .Where(v => v != null && v.IsSpawned)
+                                      .OrderBy(v => v.name)
+                                      .FirstOrDefault();
 
+            // By name: both halves must pick the same vehicle, the file is keyed by name, and
+            // FindObjectsByType promises no order between the buggy and the boat.
             if (vehicle != null)
             {
                 var tiers = new int[VehicleUpgrades.Slots];
@@ -229,7 +233,9 @@ namespace EscapeWithYourFriends.Core
             Check("and the group is still remembered as having built one", PlaneAssembly.Owned);
 
             VehicleUpgrades vehicle = FindObjectsByType<VehicleUpgrades>(FindObjectsSortMode.None)
-                                      .FirstOrDefault(v => v != null && v.IsSpawned);
+                                      .Where(v => v != null && v.IsSpawned)
+                                      .OrderBy(v => v.name)
+                                      .FirstOrDefault();
 
             if (vehicle != null)
                 Check($"and the upgrade is still bolted on (tier {vehicle.TierOf((VehiclePart)1)})",

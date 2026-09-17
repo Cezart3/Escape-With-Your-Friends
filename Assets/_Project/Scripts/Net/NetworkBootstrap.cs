@@ -72,6 +72,7 @@ namespace EscapeWithYourFriends.Net
 
             // Once, here, rather than per body: an unlock is addressed to a connection. #92.
             _manager.ClientManager.RegisterBroadcast<AchievementUnlock>(Achievements.OnUnlock);
+            _manager.ClientManager.RegisterBroadcast<World.RunEnded>(World.RunSummary.OnEnded);
 
             if (!_logRoster) return;
             NetworkPlayerRegistry.PlayerAdded += OnPlayerAdded;
@@ -87,6 +88,7 @@ namespace EscapeWithYourFriends.Net
             _manager.ServerManager.OnServerConnectionState -= OnServerConnectionState;
             _manager.ClientManager.OnClientConnectionState -= OnClientConnectionState;
             _manager.ClientManager.UnregisterBroadcast<AchievementUnlock>(Achievements.OnUnlock);
+            _manager.ClientManager.UnregisterBroadcast<World.RunEnded>(World.RunSummary.OnEnded);
         }
 
         void OnPlayerAdded(NetworkPlayerRegistry.PlayerBody body)
@@ -269,6 +271,7 @@ namespace EscapeWithYourFriends.Net
             Core.SaveTest.Begin();
             Core.SettingsTest.Begin();
             AchievementTest.Begin();
+            World.DemoTest.Begin();
 
             Items.WorldItemTest.Begin();
             Items.CraftingTest.Begin();
@@ -323,6 +326,7 @@ namespace EscapeWithYourFriends.Net
             Casino.RouletteTest.Begin();
             World.PlaneTest.Begin();
             AchievementTest.Begin();
+            World.DemoTest.Begin();
         }
 
         /// <summary>
