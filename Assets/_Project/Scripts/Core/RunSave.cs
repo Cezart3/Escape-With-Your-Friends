@@ -127,7 +127,7 @@ namespace EscapeWithYourFriends.Core
 
         internal static void Begin()
         {
-            if (_driver != null) return;
+            if (_driver != null || Demo.On) return;
 
             bool headless = SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null;
             bool wanted = !CommandLine.HasFlag("-noSave")

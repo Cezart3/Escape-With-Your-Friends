@@ -1,8 +1,17 @@
 using EscapeWithYourFriends.Combat;
+using FishNet;
+using FishNet.Broadcast;
+using FishNet.Transporting;
 using UnityEngine;
 
 namespace EscapeWithYourFriends.World
 {
+    /// <summary>Server to everybody: the run is over, and these were the figures.</summary>
+    public struct RunEnded : IBroadcast
+    {
+        public int Deaths, Gambled, RanOver, Seconds;
+    }
+
     /// <summary>
     /// What the run was, once it is over. #74.
     ///
@@ -18,8 +27,8 @@ namespace EscapeWithYourFriends.World
     /// <c>VehicleImpact</c>, one in <c>BetSpot</c>.
     ///
     /// **Server truth, one delivery.** The counters only ever move on the server. They reach the
-    /// other three players once, in the RPC that ends the run, rather than as four SyncVars ticking
-    /// all game for a screen nobody sees until the end.
+    /// other three players once, in the broadcast that ends the run, rather than as four SyncVars
+    /// ticking all game for a screen nobody sees until the end.
     /// </summary>
     public static class RunSummary
     {
@@ -29,7 +38,10 @@ namespace EscapeWithYourFriends.World
         /// <summary>Chips staked at the table over the whole run, win or lose.</summary>
         public static int Gambled { get; private set; }
 
-        /// <summary>True once the aeroplane has left with everyone aboard. Set on every peer.</summary>
+        /// <summary>
+        /// True once the aeroplane has left with everyone aboard - or, in the demo, once anybody
+        /// leaves the first island at all. Set on every peer.
+        /// </summary>
         public static bool Over { get; private set; }
 
         /// <summary>The figures as they were when it ended. Meaningless before <see cref="Over"/>.</summary>
@@ -79,6 +91,27 @@ namespace EscapeWithYourFriends.World
             Debug.Log($"[RunSummary] Over after {seconds / 60}m {seconds % 60}s: {deaths} death(s), "
                       + $"{gambled} chips gambled, {ranOver} friend(s) run over.");
         }
+
+        /// <summary>
+        /// Server only. Ends the run here and on every client. The two ways to end one - the last
+        /// flight (#74) and leaving the demo's island (#90) - both come through this.
+        /// </summary>
+        public static void ServerEnd()
+        {
+            (int deaths, int gambled, int ranOver, int seconds) = ServerTally();
+
+            Finish(deaths, gambled, ranOver, seconds);
+
+            // The host's own client hears this too, and Finish ignores a second ending.
+            InstanceFinder.ServerManager.Broadcast(new RunEnded
+            {
+                Deaths = deaths, Gambled = gambled, RanOver = ranOver, Seconds = seconds
+            });
+        }
+
+        /// <summary>Client side. Registered once by NetworkBootstrap.</summary>
+        internal static void OnEnded(RunEnded ended, Channel channel)
+            => Finish(ended.Deaths, ended.Gambled, ended.RanOver, ended.Seconds);
 
         /// <summary>
         /// Back to nothing. Only the harness calls this - the game has no way to start a second run

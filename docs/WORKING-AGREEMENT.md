@@ -58,7 +58,6 @@ These are code, and their acceptance can be checked headless:
 
 | Issue | What |
 |---|---|
-| **#38** | Perf pass — occlusion culling, LOD groups, fog, baked lighting. Batchmode-scriptable; `-perfLog` gives numbers. |
 | **#144** | `Alarm` hands every listener a live target instead of a place to look. Changes how hard a camp converges, so it is a feel decision — get the user's word before shipping it. |
 
 ### Open and blocked, with the reason
@@ -69,7 +68,9 @@ These are code, and their acceptance can be checked headless:
 | #80–#81 | SFX and music. Needs sourced audio, not code. |
 | #82 | "A new player understands the HUD without explanation" — a playtest verdict. |
 | #83 | 60fps on the Radeon 760M at 1080p. Human gate, on the user's hardware. |
-| #85–#91, #93 | Steam. Needs the $100 Steam Direct fee, a tax interview (W-8BEN) and an appid. Up to 30 days of waiting. |
+| #38 | Perf work shipped (f2abf4c). Stays open for one measured run on the 760M, same gate as #83. |
+| #85–#89, #91, #93 | Steam. Needs the $100 Steam Direct fee, a tax interview (W-8BEN) and an appid. Up to 30 days of waiting. |
+| #90 | Demo gate shipped (`-demoTest`). Acceptance is "fun standalone, converts to wishlists": players, then Steam numbers. |
 | #29 | GATE: M1 playtest with four real players. The one that decides whether the game is fun. |
 | #6 | MCP for Unity. Needs the Editor open. |
 
@@ -184,7 +185,7 @@ or `island2`, `-quitAfter <seconds>`, `-noNatives`, `-noAnimals`, `-botMove`, `-
 ```
 -abductTest   -achievementTest -animalTest  -boatTest     -buffTest      -carryTest   -carTest
 -casinoTest   -chestTest   -chipsTest    -conditionTest -craftTest   -deathTest
--drunkTest    -economyTest -endTest      -fallTest      -fishTest    -flightTest
+-demoTest    -drunkTest   -economyTest -endTest      -fallTest      -fishTest    -flightTest
 -ghostTest    -gunTest     -hudTest      -impactTest    -invTest     -itemTest
 -lootTest     -machineTest -meleeTest    -moneyTest     -nativeTest  -partTest
 -planeTest    -prisonTest  -rescueTest   -reviveTest    -rouletteTest -saveTest
@@ -201,6 +202,7 @@ Logging flags that make a failure readable: `-animalLog`, `-cameraLog`, `-clockL
   fails a named check if it catches one, but do not put it in that position.
 - **`-achievementTest` needs a pair, and both processes take the flag** — the client checks what it
   was told. `-scene island`.
+- **`-demoTest` needs a pair, both with `-demo -demoTest`**, the host also with `-save`. `-scene island`.
 - **`-partTest` needs a pair and `-scene island2`.** The host gets `-partTest`; the client is just a
   warm body with no test flag. Run solo it fails "a second player joined to take the other end".
 - **Pair harnesses need the host up about twenty seconds before the client.**
@@ -211,7 +213,7 @@ Logging flags that make a failure readable: `-animalLog`, `-cameraLog`, `-clockL
 
 ### Ports
 
-One port per concurrent process, never reused inside a session. **Consumed through 8156.** See §5
+One port per concurrent process, never reused inside a session. **Consumed through 8169.** See §5
 for the split when two accounts are running.
 
 ---

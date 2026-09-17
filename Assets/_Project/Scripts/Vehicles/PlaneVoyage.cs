@@ -77,13 +77,10 @@ namespace EscapeWithYourFriends.Vehicles
             {
                 _left = true;
 
-                (int deaths, int gambled, int ranOver, int seconds) = World.RunSummary.ServerTally();
-
                 Debug.Log($"[PlaneVoyage] {_vehicle.Occupied()} aboard at {transform.position.y:0}m "
                           + "with the one they went back for; that is the run.");
 
-                World.RunSummary.Finish(deaths, gambled, ranOver, seconds);
-                EndingRpc(deaths, gambled, ranOver, seconds);
+                World.RunSummary.ServerEnd();
 
                 if (_plane != null && _plane.Touchdowns == 0)
                     for (int seat = 0; seat < _vehicle.SeatCount; seat++)
@@ -105,15 +102,6 @@ namespace EscapeWithYourFriends.Vehicles
 
             _left = loader.ServerTravel(there);
         }
-
-        /// <summary>
-        /// The other three are told the figures once, here, rather than watching four SyncVars tick
-        /// all game for a screen nobody sees until it is over. The server has already called
-        /// Finish itself, which is what ExcludeServer is for.
-        /// </summary>
-        [ObserversRpc(ExcludeServer = true)]
-        void EndingRpc(int deaths, int gambled, int ranOver, int seconds)
-            => World.RunSummary.Finish(deaths, gambled, ranOver, seconds);
 
         /// <summary>Somebody is flying it, it is whole, it is high, and it is past the line.</summary>
         bool Leaving()

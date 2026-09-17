@@ -6437,6 +6437,69 @@ client  [AchievementTest] this client was told: DIED_TEN, LOST_IT_ALL, FIRST_TRY
 Not tested, because nothing headless can test it: the Steam call itself, and what the friends list
 shows.
 
+### The demo is one gate (#90)
+
+The demo is the first island and nothing past it. Punching, carrying, fishing, the shop, the table
+and the buggy are all already on that island, so the demo is not a cut of the content. It is one
+switch, `Core.Demo.On`, and two places that read it.
+
+**The gate.** `GameSceneLoader.ServerTravel` is the only way off an island. The boat and the plane
+both end up there. In the demo it ends the run instead of loading anything:
+
+```csharp
+if (Core.Demo.On)
+{
+    Debug.Log($"[GameSceneLoader] Demo: leaving {Current} for '{requested}' ends the run.");
+    World.RunSummary.ServerEnd();
+    return true;
+}
+```
+
+It returns `true`, so both voyages latch the way they would after a real crossing and do not call it
+again every frame. The ending panel reads the same flag and says "That's the demo." instead of "You
+got off the island.". What the panel says next, and whether it should link to the store page, is
+waiting on the app id (#87).
+
+**No save.** `RunSave.Begin` does nothing in the demo. A demo that shared a save folder with the full
+game would load a full-game save sitting on the second island, which the demo cannot show.
+
+**One way to end a run.** Ending a run used to be an `ObserversRpc` on `PlaneVoyage`, which is fine
+for one ending but not for two, and the demo's ending has nothing to do with a plane. It is now a
+broadcast, `World.RunEnded`, sent by `RunSummary.ServerEnd()`, which tallies once on the host and
+hands the same four figures to everybody. `NetworkBootstrap` registers `RunSummary.OnEnded` for it.
+The host's own client hears it too, and `Finish` already ignores a second ending, so nobody needs
+`ExcludeServer`.
+
+**Building it.** `BuildTool -demo` adds the `EWYF_DEMO` scripting define, and `Demo.On` is then
+true in a build that has no flag to remove. `-demo` turns it on in any build, which is how the
+harness sees it.
+
+**`-demoTest`** is a pair on `-scene island -noNatives -noAnimals`. Both processes take `-demo
+-demoTest`, and the host also takes `-save`, so "the demo keeps no save" is a real question and not
+a default. The host kills and revives the guest once so the ending has something to carry. Then it
+flies the plane past the edge with the castaway still on the beach. In the full game that exact
+move crosses to the second island. The host checks that the run ended, the death is in it, and the
+scene did not change. The client checks that it was told, with the same death count, and that the
+second island never loaded.
+
+```
+[PlaneVoyage] 1 aboard at 300m and 4s past the edge of Island; making for Island2.
+[GameSceneLoader] Demo: leaving Island for 'Island2' ends the run.
+[RunSummary] Over after 0m 29s: 1 death(s), 0 chips gambled, 0 friend(s) run over.
+[DemoTest] 7 passed, 0 failed.        (host; client: 4 passed, 0 failed, and no save file written)
+```
+
+Moving the ending onto a broadcast touched every run that ends, so `-endTest` (17/0),
+`-voyageTest` (29/0), `-flightTest` (29/0) and the `-achievementTest` pair (20/0, 5/0) were run
+again. The same pass caught an old flake in `-saveTest`. Both halves took "the first"
+`VehicleUpgrades` that `FindObjectsByType` returned, and that call promises no order. With a buggy
+and a boat on the island, the write half could upgrade one and the read half check the other. Both
+halves now take the first vehicle by name, which is also what the save file is keyed by. Three
+rounds after that: write 9/0 and read 7/0 each time.
+
+What no harness can check is the acceptance itself: whether the demo is fun on its own and turns
+players into wishlists. That needs players, and then Steam's numbers.
+
 ---
 
 ## Data-driven content
