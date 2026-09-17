@@ -139,7 +139,8 @@ ordering of lines; the order things print in is evidence.
 ### Build
 
 ```bash
-tasklist | grep -iE "^(Unity|EscapeWithYourFriends)\.exe"     # must be empty first
+powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { \$_.Name -match '^(Unity|EscapeWithYourFriends)\.exe$' } | ForEach-Object { \$_.CommandLine }" \
+  | grep -iE 'JocStupid(["[:space:]]|$)|EWYF-dev[\/]'     # empty = free
 
 "/d/Unity/Editors/6000.3.23f1/Editor/Unity.exe" -batchmode -quit \
   -projectPath "D:\Proiecte\JocStupid" -logFile "D:\Builds\build.log" \
@@ -255,6 +256,15 @@ result that belongs to nobody.
 Unity locks its `Library/` per project, so **two accounts on two project directories can build at
 the same time.** Two accounts on the *same* directory cannot, and neither can a batchmode build and
 an open Editor.
+
+**So the busy check has to look at command lines, not process names.** A plain
+`tasklist | grep Unity.exe` sees the other account's processes too, and a session that waits for it
+to be empty will sit behind the other account's work for no reason — or, with both sessions doing
+it, take turns forever. The check in §4 matches account A's paths; account B uses:
+
+```bash
+powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { \$_.Name -match '^(Unity|EscapeWithYourFriends)\.exe$' } | ForEach-Object { \$_.CommandLine }"   | grep -iE 'JocStupid-b|EWYF-dev-b'
+```
 
 Expect slower builds when both are running, and remember that a slower machine stretches frame times
 in every headless harness. If your check is a timing measurement, wait for the other account to
