@@ -404,12 +404,16 @@ namespace EscapeWithYourFriends.EditorTools
         ///
         /// The texture is whichever one the FBX importer already found for the slot; failing that,
         /// the one in the pack's Textures folder whose name the slot's name contains, longest first
-        /// ("Leaves_NormalTree" over "Leaves"). A texture with alpha is a leaf card: alpha clip, both
-        /// faces, and mips that keep their coverage, or a pine thins to nothing at forty metres.
+        /// ("Leaves_NormalTree" over "Leaves"). A leaf card gets alpha clip, both faces, and mips that
+        /// keep their coverage, or a pine thins to nothing at forty metres.
         /// </summary>
         static Material TexturedMaterial(Material worn, ArtCatalog.Pack pack)
         {
-            var texture = worn.mainTexture as Texture2D;
+            Texture2D texture = null;
+            if (TextureOf.TryGetValue(worn.name, out string named))
+                texture = AssetDatabase.LoadAssetAtPath<Texture2D>($"{pack.Folder}/Textures/{named}.png");
+
+            if (texture == null) texture = worn.mainTexture as Texture2D;
             if (texture == null || !AssetDatabase.GetAssetPath(texture).StartsWith(pack.Folder))
                 texture = MatchTexture(worn.name, pack);
 
@@ -425,11 +429,11 @@ namespace EscapeWithYourFriends.EditorTools
             if (existing != null) return existing;
 
             string texturePath = AssetDatabase.GetAssetPath(texture);
-            bool cutout = false;
+            bool cutout = Cutout(texture.name);
+            bool twoSided = cutout || texture.name.StartsWith("Grass");
 
             if (AssetImporter.GetAtPath(texturePath) is TextureImporter textures)
             {
-                cutout = textures.DoesSourceTextureHaveAlpha();
 
                 // Painted, not swatches: mips are right here. 1024 because the bark ships far larger
                 // than anything a 760M should hold for a tree trunk.
@@ -455,13 +459,40 @@ namespace EscapeWithYourFriends.EditorTools
                 material.SetFloat("_AlphaClip", 1f);
                 material.SetFloat("_Cutoff", 0.5f);
                 material.EnableKeyword("_ALPHATEST_ON");
+                material.renderQueue = (int)RenderQueue.AlphaTest;
+            }
+
+            // Grass blades are single planes with no alpha to cut: drawn from both sides, not clipped.
+            if (twoSided)
+            {
                 material.SetFloat("_Cull", (float)CullMode.Off);
                 material.doubleSidedGI = true;
-                material.renderQueue = (int)RenderQueue.AlphaTest;
             }
 
             return Save(material, path);
         }
+
+        /// <summary>
+        /// The slots whose name does not say which texture they wear, read from the kit's own glTF
+        /// (2026-09-27, measured on the zip). The leaves wear the "_C" cutout sheets, and "Rocks"
+        /// wears Rocks_Diffuse. Checked before anything the FBX importer found, because the FBX
+        /// names the artist's desktop and the glTF is the one the kit renders its previews from.
+        /// </summary>
+        static readonly Dictionary<string, string> TextureOf = new()
+        {
+            { "Leaves_NormalTree", "Leaves_NormalTree_C" },
+            { "Leaves_Pine", "Leaf_Pine_C" },
+            { "Leaves_TwistedTree", "Leaves_TwistedTree_C" },
+            { "Rocks", "Rocks_Diffuse" },
+        };
+
+        /// <summary>
+        /// Leaf cards and petals. Measured, not guessed: every texture in the nature kit is RGBA, but
+        /// only these have alpha below one; the bark's channel is solid, and clipping it would only
+        /// cost the early depth test on every trunk.
+        /// </summary>
+        static bool Cutout(string texture)
+            => texture.StartsWith("Leaves") || texture.StartsWith("Leaf_") || texture.StartsWith("Flowers");
 
         static Texture2D MatchTexture(string materialName, ArtCatalog.Pack pack)
         {

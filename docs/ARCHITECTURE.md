@@ -7142,12 +7142,18 @@ the catalogue say, in its own words, where the licence was read; `ArtExtract` wr
 kit matches any zip; the extractor already picks the one that holds the most of the wanted files,
 and no Kenney zip holds any of these.
 
-**The caps.** Quaternius models are denser than Kenney's. `ArtVisual.Cap` for trees, plants, rocks,
-props and the wreck went up to numbers estimated from the glTF buffer sizes (a `CommonTree` is a
-few thousand triangles, not 400). They are ceilings for `BuildAll` to report against, not a budget
-anyone signed: the real counts are the first thing its log prints, and the terrain bake's
-"Triangle budget" and "Worst case" lines say what the forest costs. That, and 60 fps on the 760M,
-is the decision this change hands back.
+**Measured, not guessed.** The triangle counts, the texture each material wears and which
+textures really have alpha were read from the kits' own glTF on Cezar's machine. Two things came
+out of it. The leaves' materials do not name their textures (`Leaves_Pine` wears `Leaf_Pine_C`,
+`Rocks` wears `Rocks_Diffuse`), so `ArtLibrary.TextureOf` says so, ahead of whatever the FBX
+importer found. And every texture is RGBA while only the leaves and flowers have alpha below one,
+so cutout is decided by name (`ArtLibrary.Cutout`), not by the channel; grass is two-sided but not
+clipped.
+
+**The caps.** Quaternius models are denser than Kenney's: trees 1 646-6 265 triangles, palms about
+3 000, plants up to 1 690, the large ship 20 636, against Kenney's 400-odd. `ArtVisual.Cap` is set
+just over those. The terrain bake's "Triangle budget" and "Worst case" lines say what the forest
+costs, and 60 fps on the 760M decides whether the heavy `CommonTree_1` and `_2` stay.
 
 ---
 
