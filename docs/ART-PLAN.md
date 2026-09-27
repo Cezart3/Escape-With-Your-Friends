@@ -299,8 +299,8 @@ dress → `SaveAsPrefabAsset` on the same path, which keeps the GUID.
 | Buggy (`VehicleBuilder`) | ~~car/suv + car/wheel-default ×4~~ → car/race (1 952 tris, its own four wheels) | Changed in T11: the SUV's wheel arches only meet the buggy's axles at 2.8 m wide, and riders' heads go through its roof |
 | Boat (`BoatBuilder`) | ~~boat-fishing-small or boat-speed-a~~ → watercraft/boat-speed-j (178) | 1.78 × 4.27, the hull's own proportions, so it fits unstretched |
 | Plane + parts (`PlaneBuilder`, `PlanePartBuilder`) | **unchanged for now** | Candidates: mfep biplane (CC0, SNIPPET, split in Blender) or scailman plane (CC-BY, parts separated, SNIPPET). Decide after you look |
-| pistol, rifle, shotgun, smg, knife (`WeaponFactory`) | weapon/pistol (350), weapon/sniper or machinegun (486), weapon/shotgun, weapon/uzi, weapon/knife_sharp | Flat-colour materials (grey, greyDark, dark, wood) |
-| hatchet, shovel | survival/tool-axe, survival/tool-shovel | |
+| pistol, pistol_mk2, pistol_auto, smg, shotgun, rifle, knife (`WeaponFactory`) | weapon/pistol (350), pistolSilencer (542), uziSilencer (746), uziLong (646), shotgun (663), sniper (1 660), knife_sharp (1 288) | Flat-colour materials (grey, greyDark, dark, wood). Kept to shape at the box's length |
+| hatchet, hatchet_fire, shovel | survival/tool-axe (84), tool-axe-upgraded (140), tool-shovel (124) | Stood up in the kit, laid down along the box |
 | machete, bat, chainsaw, fists | machete ← knife_sharp stretched; bat ← survival/tree-log-small; chainsaw unchanged | Gaps, said so |
 
 ---
@@ -521,8 +521,8 @@ hand.
 
 **Status:** T1–T8 written. Nothing has run in Unity: the build machine has none and could not
 download a kit. Everything has been type-checked, though, against Unity reference assemblies, the
-real URP 17.3 source and FishNet's, with no new errors. T9, T10 and T11 are written the same way;
-T12 onward waits for your eye on P1-P3.
+real URP 17.3 source and FishNet's, with no new errors. T9 to T12 are written the same way; T13
+and T14 wait for your pick.
 
 ### P1 — the most visible: nature, lighting, casino
 
@@ -600,7 +600,9 @@ without `-noNatives`), `-rescueTest`, `-casinoTest` `0 failed`.
 moves its four wheels onto the wheel visuals; `BoatBuilder` fits boat-speed-j over the hull. No
 collider, wheel, seat or float moved. `CarController`'s wheel visuals roll and steer properly now
 (they only twitched). *Done:* `-carTest`, `-boatTest`, `-vehicleTest` `0 failed`.
-**T12 · Sonnet · weapons.** `WeaponFactory` models per §4. *Done:* `-weaponTest`, `-gunTest`,
+**T12 · Sonnet · weapons.** `WeaponFactory` dresses each weapon prefab in place with the models in
+§4. The view prefab has no reader, so the same prefab becomes the item's `WorldPrefab`: the weapon
+is seen lying on the ground. The chainsaw stays a box. *Done:* `-weaponTest`, `-gunTest`,
 `-meleeTest` `0 failed`.
 **T13 · Sonnet · animals**, after you pick the pack. *Done:* `-animalTest` `0 failed`.
 **T14 · Opus · plane**, after you pick the model.

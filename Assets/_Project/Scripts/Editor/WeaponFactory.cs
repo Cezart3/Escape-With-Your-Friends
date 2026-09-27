@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using EscapeWithYourFriends.Data;
+using EscapeWithYourFriends.World;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -321,9 +322,12 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_reloadSeconds").floatValue = seed.Reload;
             }
 
-            so.FindProperty("_item").objectReferenceValue = Item(seed.Item, seed.Id);
             so.FindProperty("_ammo").objectReferenceValue = Item(seed.Ammo, seed.Id);
-            so.FindProperty("_viewPrefab").objectReferenceValue = EnsureModel(seed);
+            ItemDef item = Item(seed.Item, seed.Id);
+            GameObject model = EnsureModel(seed);
+            so.FindProperty("_item").objectReferenceValue = item;
+            so.FindProperty("_viewPrefab").objectReferenceValue = model;
+            ShowOnGround(item, model);
 
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(def);
@@ -354,7 +358,7 @@ namespace EscapeWithYourFriends.EditorTools
 
             string path = $"{PrefabDir}/{seed.Id}.prefab";
             var existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-            if (existing != null) return existing;
+            if (existing != null) return Dressed(seed, path);
 
             var root = new GameObject(seed.Name);
 
@@ -396,7 +400,91 @@ namespace EscapeWithYourFriends.EditorTools
             }
 
             Debug.Log($"[WeaponFactory] Built {path}.");
-            return saved;
+            return Dressed(seed, path);
+        }
+
+        /// <summary>
+        /// Which kit model each weapon wears instead of its box (#79, ART-PLAN T12). No kit has a
+        /// machete or a bat, so those two are stretched to fill the old box: a knife drawn out long,
+        /// a thin log for a club. The rest keep their proportions at the box's length. The chainsaw
+        /// has no row and stays a box.
+        /// </summary>
+        static readonly Dictionary<string, (string Model, bool Stretch)> Art = new()
+        {
+            ["pistol"] = ("Pistol", false),
+            ["pistol_mk2"] = ("PistolSilenced", false),
+            ["pistol_auto"] = ("PistolAuto", false),
+            ["smg"] = ("Smg", false),
+            ["shotgun"] = ("Shotgun", false),
+            ["rifle"] = ("Rifle", false),
+            ["knife"] = ("Knife", false),
+            ["machete"] = ("Knife", true),
+            ["hatchet"] = ("Axe", false),
+            ["hatchet_fire"] = ("FireAxe", false),
+            ["shovel"] = ("Shovel", false),
+            ["bat"] = ("Club", true),
+            ["bat_nailed"] = ("Club", true),
+            ["bat_shark"] = ("Club", true),
+        };
+
+        /// <summary>
+        /// The saved prefab with its kit model hung in place of the box, dressed where it lies so the
+        /// GUID the weapon asset names survives. Dressed or not, it is returned: a machine without the
+        /// kits keeps the box.
+        /// </summary>
+        static GameObject Dressed(Seed seed, string path)
+        {
+            ArtDress.DressPrefab(path, "Art", root => Dress(root, seed));
+            return AssetDatabase.LoadAssetAtPath<GameObject>(path);
+        }
+
+        static bool Dress(Transform root, Seed seed)
+        {
+            if (!Art.TryGetValue(seed.Id, out (string Model, bool Stretch) art)) return false;
+
+            GameObject source = ArtLibrary.Source(art.Model);
+            if (source == null) return false;
+
+            // The kit draws a gun lying along +z with the muzzle forward, which is how the box lies. A
+            // knife or a tool stands on its handle; a quarter turn about x lays it down with the tip
+            // at +z and the handle at -z, where the box had its grip.
+            Vector3 native = ArtLibrary.NativeBounds(source).size;
+            Quaternion turn = native.y > native.z ? Quaternion.Euler(90f, 0f, 0f) : Quaternion.identity;
+            Vector3 laid = turn * native;
+            laid = new Vector3(Mathf.Abs(laid.x), Mathf.Abs(laid.y), Mathf.Abs(laid.z));
+
+            // Centred where the box was, which is where the hand holds it.
+            Vector3 size = art.Stretch ? seed.Size : laid * (seed.Size.z / laid.z);
+            if (!ArtDress.FitBox(root, new Bounds(Vector3.zero, size), art.Model, !art.Stretch, "Art", turn))
+                return false;
+
+            // Upright only told the kit which way is up. Laid in a weapon it does not stand, and the
+            // look harness must not expect it to.
+            if (turn != Quaternion.identity) root.Find("Art").GetComponent<ArtVisual>().Upright = false;
+
+            foreach (string box in new[] { "Body", "Grip" })
+            {
+                Transform piece = root.Find(box);
+                if (piece != null) Object.DestroyImmediate(piece.gameObject);
+            }
+
+            Debug.Log($"[WeaponFactory] {seed.Id} wears {ArtCatalog.Find(art.Model).File}.");
+            return true;
+        }
+
+        /// <summary>
+        /// Nothing draws a weapon in the hand yet - the view prefab has no reader - so the model is
+        /// also what the weapon's item looks like lying on the ground, which is where it is seen. Only
+        /// an empty slot is filled: a world prefab somebody chose stays.
+        /// </summary>
+        static void ShowOnGround(ItemDef item, GameObject model)
+        {
+            if (item == null || model == null || item.WorldPrefab != null) return;
+
+            var so = new SerializedObject(item);
+            so.FindProperty("_worldPrefab").objectReferenceValue = model;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(item);
         }
 
         /// <summary>

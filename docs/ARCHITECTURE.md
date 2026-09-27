@@ -7063,6 +7063,44 @@ that place them (PR 153, step 6c).
 - Whether a race car reads as the island's buggy at all. It is one entry in `ArtCatalog`. Going
   back to the SUV would mean moving the wheels, which is a handling change.
 
+## The weapons in the kits' clothes (#79, ART-PLAN T12)
+
+**Where a weapon is seen.** `WeaponDef.ViewPrefab` has no reader: nothing draws a weapon in the
+hand. A weapon is seen only lying on the ground, and there it was its item's 0.3 m category-coloured
+cube, because no item had a `WorldPrefab`. So `WeaponFactory` now does two things:
+
+1. It dresses each weapon's view prefab with a kit model, in place (`ArtDress.DressPrefab`), so the
+   GUID the weapon asset names survives. The `Art` child is the marker; a second run skips it.
+2. It puts that prefab in the weapon's item's `WorldPrefab`, but only when that slot is empty.
+   `WorldItem` already instantiates `WorldPrefab` under its visual root.
+
+Held-weapon drawing is a feature, not art, and is not part of this.
+
+**The fit.** The model replaces the `Body` box and the melee `Grip`, centred where the box was.
+
+- Kenney draws a gun lying along +Z with the muzzle forward, which is how the box lies.
+- The knife and the survival tools stand on their handles. A model taller than it is long gets
+  `Euler(90, 0, 0)`, which puts the tip at +Z and the handle at -Z, where the grip was. That needs
+  `ArtDress.FitBox` with a `Quaternion`; it is still a quarter turn, so the stretch does not shear.
+- Most weapons keep their proportions, scaled to the box's length.
+- Two have no model in any kit, so they are stretched to fill the old box. The machete is the knife
+  drawn out long. The three bats are the survival kit's small log, thinned to a club.
+- The chainsaw has no row and stays a box.
+
+The knife is `upright` in `ArtCatalog` only so the weapon pack learns its axis from it.
+`WeaponFactory` clears `ArtVisual.Upright` on a laid-down model, so `-lookTest` never expects a
+dropped knife to stand.
+
+**Harness.** `-weaponTest` checks that every carried weapon with a model shows it on the ground.
+The fit itself runs in the editor and is only logged: `[WeaponFactory] <id> wears <file>.`, 14
+times.
+
+**Not verified.** None of this has run in Unity. Nobody has seen:
+
+- which way the survival tools' heads point once the axis conversion is applied;
+- how a 1.25 m rifle looks on a `WorldItem` whose collider is the old 0.3 m box, dropped at a
+  random rotation, which may leave half of it in the ground.
+
 ---
 
 ## Data-driven content

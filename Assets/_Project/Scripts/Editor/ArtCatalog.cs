@@ -101,6 +101,9 @@ namespace EscapeWithYourFriends.EditorTools
             new("Kenney", "Car", "car-kit", "https://kenney.nl/assets/car-kit", true),
             new("Kenney", "Watercraft", "watercraft", "https://kenney.nl/assets/watercraft-pack", true),
 
+            // P4, the weapons (T12). Flat colours like the furniture: grey, dark, wood and the rest.
+            new("Kenney", "Weapon", "weapon", "https://kenney.nl/assets/weapon-pack", false),
+
             // The one kit still on flat colours: wood, carpet, metal, woodDark. See ArtLibrary.Remap.
             new("Kenney", "Furniture", "furniture", "https://kenney.nl/assets/furniture-kit", false),
 
@@ -119,6 +122,7 @@ namespace EscapeWithYourFriends.EditorTools
         const ArtCategory Small = ArtCategory.SmallProp;
         const ArtCategory Prop = ArtCategory.Prop;
         const ArtCategory Structure = ArtCategory.Structure;
+        const ArtCategory Weapon = ArtCategory.Weapon;
 
         const Measure Height = Measure.Height;
         const Measure Width = Measure.Width;
@@ -193,6 +197,21 @@ namespace EscapeWithYourFriends.EditorTools
             // An open race car, not the plan's SUV: see VehicleBuilder.Dress.
             new("Buggy", "Car", "race", ArtCategory.Vehicle),
             new("Boat", "Watercraft", "boat-speed-j", ArtCategory.Vehicle),
+
+            // --- the weapons (WeaponFactory.Art) -------------------------------------------------
+            // Fitted to the weapon's old box. The knife stands on its handle in the kit, and says so
+            // here so the weapon pack learns its axis from it; the guns lie along +z already.
+            new("Pistol", "Weapon", "pistol", Weapon),
+            new("PistolSilenced", "Weapon", "pistolSilencer", Weapon),
+            new("PistolAuto", "Weapon", "uziSilencer", Weapon),
+            new("Smg", "Weapon", "uziLong", Weapon),
+            new("Shotgun", "Weapon", "shotgun", Weapon),
+            new("Rifle", "Weapon", "sniper", Weapon),
+            new("Knife", "Weapon", "knife_sharp", Weapon, upright: true),
+            new("Axe", "Survival", "tool-axe", Weapon),
+            new("FireAxe", "Survival", "tool-axe-upgraded", Weapon),
+            new("Shovel", "Survival", "tool-shovel", Weapon),
+            new("Club", "Survival", "tree-log-small", Weapon),
         };
 
         public static Model Find(string id)

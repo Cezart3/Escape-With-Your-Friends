@@ -61,6 +61,14 @@ namespace EscapeWithYourFriends.EditorTools
                                   int quarterTurns = 0)
             => Place(parent, box, id, Quaternion.Euler(0f, 90f * quarterTurns, 0f), 1, 1, keepShape, name);
 
+        /// <summary>
+        /// <see cref="FitBox"/> with a turn that is not about the vertical: a knife the kit stands on
+        /// its handle, laid down along a weapon's box. Still a quarter turn, or the stretch shears.
+        /// </summary>
+        public static bool FitBox(Transform parent, Bounds box, string id, bool keepShape, string name,
+                                  Quaternion turn)
+            => Place(parent, box, id, turn, 1, 1, keepShape, name);
+
         /// <summary><see cref="Tile"/> into an explicit box in <paramref name="parent"/>'s space.</summary>
         public static bool TileBox(Transform parent, Bounds box, string id, float cell, string name)
         {

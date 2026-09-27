@@ -123,6 +123,12 @@ namespace EscapeWithYourFriends.Combat
             Check("every weapon in it is valid",
                   Enumerable.Range(1, catalog.Count).All(i => catalog.At((ushort)i).IsValid));
 
+            // #79: nothing draws a weapon in the hand yet, so its model is what its item looks like on
+            // the ground. WeaponFactory fills an empty world prefab with it.
+            Check("every carried weapon with a model shows it on the ground",
+                  Enumerable.Range(1, catalog.Count).Select(i => catalog.At((ushort)i))
+                            .All(d => d.Item == null || d.ViewPrefab == null || d.Item.WorldPrefab != null));
+
             // Both branches have to exist for the switch in ServerResolve to mean anything.
             WeaponDef anyMelee = First(catalog, WeaponKind.Melee, carried: true);
             WeaponDef anyGun = First(catalog, WeaponKind.Hitscan, carried: true);
