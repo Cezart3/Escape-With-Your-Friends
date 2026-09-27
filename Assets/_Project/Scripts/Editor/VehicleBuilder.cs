@@ -14,7 +14,8 @@ namespace EscapeWithYourFriends.EditorTools
     ///
     ///   Unity.exe -quit -batchmode -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.VehicleBuilder.Build
     ///
-    /// The shape is four cylinders and a box; none of that is the point. The *anchors* are: where
+    /// The shape is four cylinders and a box, under the car kit's race car once the art is in (see
+    /// <see cref="Dress"/>); none of that is the point. The *anchors* are: where
     /// four people sit, which way they face, and which patch of ground each of them is put down on
     /// when they get out. Those are numbers that will be moved by feel the first time somebody tries
     /// to drive with a friend's head in the way, and moving them in a generator produces a diff
@@ -80,13 +81,13 @@ namespace EscapeWithYourFriends.EditorTools
 
             // The thing you aim at, and the thing #60 will eventually hit people with. One box: a
             // chassis made of six colliders is six chances for a ragdoll to get wedged in a seam.
-            Primitive(root.transform, "Chassis", PrimitiveType.Cube,
-                      new Vector3(0f, 0.75f, 0f), new Vector3(1.9f, 0.7f, 3.6f), collider: true);
+            GameObject chassis = Primitive(root.transform, "Chassis", PrimitiveType.Cube,
+                                           new Vector3(0f, 0.75f, 0f), new Vector3(1.9f, 0.7f, 3.6f), collider: true);
 
             // A roll cage you can see over. Cosmetic and collider-free, like the revive machine's
             // rotor and for the same reason: scenery that can push a body is a catapult.
-            Primitive(root.transform, "Bar", PrimitiveType.Cube,
-                      new Vector3(0f, 1.75f, -0.3f), new Vector3(1.7f, 0.12f, 0.12f), collider: false);
+            GameObject bar = Primitive(root.transform, "Bar", PrimitiveType.Cube,
+                                       new Vector3(0f, 1.75f, -0.3f), new Vector3(1.7f, 0.12f, 0.12f), collider: false);
 
             var wheels = new List<WheelCollider>();
             var visuals = new List<Transform>();
@@ -102,6 +103,13 @@ namespace EscapeWithYourFriends.EditorTools
 
                 visuals.Add(wheel.transform);
                 wheels.Add(Wheel(root.transform, name + ".Collider", new Vector3(x, WheelRadius, z)));
+            }
+
+            // Last, so a machine without the car kit keeps the whole greybox.
+            if (Dress(root.transform, visuals))
+            {
+                ArtDress.Strip(chassis);
+                Object.DestroyImmediate(bar);
             }
 
             var seats = new List<Vehicle.Seat>();
@@ -161,6 +169,95 @@ namespace EscapeWithYourFriends.EditorTools
             root.AddComponent<VehicleUpgrades>().Configure(VehicleUpgradeFactory.Land());
 
             return root;
+        }
+
+        /// <summary>
+        /// The car kit's race car over the greybox (ART-PLAN T11). Only the looks change: the chassis
+        /// keeps its collider, and the wheel colliders and seats stay where the handling was tuned.
+        ///
+        /// The car is scaled so its axles are as far apart as the buggy's, which lands its wheels
+        /// within a few centimetres of the physics ones. Its own four wheels then move onto the
+        /// visuals <see cref="CarController"/> turns, centred on each axle and sized to the
+        /// collider, so the tyre that rolls is the one the ground touches.
+        ///
+        /// Not the plan's SUV. A closed car's wheel arches only line up with these axles at nearly
+        /// three metres wide, and four seated riders put their heads through its roof. Moving the
+        /// axles to fit a smaller car would retune the handling, and that is a playtest, not an art pass.
+        /// </summary>
+        static bool Dress(Transform root, List<Transform> visuals)
+        {
+            GameObject source = ArtLibrary.Source("Buggy");
+            if (source == null) return false;
+
+            var art = new GameObject("Art");
+            art.transform.SetParent(root, false);
+
+            var car = (GameObject)PrefabUtility.InstantiatePrefab(source);
+            car.transform.SetParent(art.transform, false);
+            car.transform.localPosition = Vector3.zero;
+
+            // Unpacked, because its wheels are about to leave it. The prefab is rebuilt from nothing
+            // on every run, so the link to the FBX is not worth anything to keep.
+            PrefabUtility.UnpackPrefabInstance(car, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+
+            var kit = new List<Renderer>();
+            foreach (Renderer renderer in car.GetComponentsInChildren<Renderer>(true))
+                if (renderer.name.StartsWith("wheel")) kit.Add(renderer);
+
+            List<Renderer> fronts = kit.FindAll(w => w.name.Contains("front"));
+            if (kit.Count != visuals.Count || fronts.Count * 2 != kit.Count)
+            {
+                Debug.LogWarning($"[VehicleBuilder] The car has {kit.Count} wheel(s), {fronts.Count} of them "
+                                 + $"front, the buggy {visuals.Count}; left as greybox.");
+                Object.DestroyImmediate(art);
+                return false;
+            }
+
+            // Measured on the model as imported, so the kit's units and axis never enter into it. The
+            // root is at the origin, unrotated, so world space is the buggy's space here.
+            Vector3 front = Mean(fronts.ConvertAll(w => w.bounds.center));
+            Vector3 back = Mean(kit.FindAll(w => !w.name.Contains("front")).ConvertAll(w => w.bounds.center));
+            Vector3 frontAxle = Mean(visuals.GetRange(0, 2).ConvertAll(v => v.localPosition));
+            Vector3 backAxle = Mean(visuals.GetRange(2, 2).ConvertAll(v => v.localPosition));
+
+            Vector3 along = front - back;
+            along.y = 0f;
+            // A yaw only. FromToRotation between opposite vectors may pick any axis, including one
+            // that turns the car over.
+            Quaternion turn = Quaternion.Euler(0f, Vector3.SignedAngle(along, Vector3.forward, Vector3.up), 0f);
+            float scale = (frontAxle - backAxle).magnitude / along.magnitude;
+
+            art.transform.localRotation = turn;
+            art.transform.localScale = Vector3.one * scale;
+            art.transform.localPosition = (frontAxle + backAxle) * 0.5f - turn * ((front + back) * 0.5f * scale);
+
+            foreach (Transform visual in visuals)
+            {
+                Renderer wheel = kit[0];
+                foreach (Renderer other in kit)
+                    if ((other.bounds.center - visual.position).sqrMagnitude
+                        < (wheel.bounds.center - visual.position).sqrMagnitude) wheel = other;
+                kit.Remove(wheel);
+
+                // The cylinder goes and its squash with it, so the wheel hangs under a plain pivot.
+                ArtDress.Strip(visual.gameObject);
+                visual.localScale = Vector3.one;
+
+                Transform tyre = wheel.transform;
+                tyre.SetParent(visual, true);
+                tyre.localScale *= WheelRadius / (wheel.bounds.size.y * 0.5f);
+                tyre.position += visual.position - wheel.bounds.center;
+            }
+
+            Debug.Log($"[VehicleBuilder] Dressed as {ArtCatalog.Find("Buggy").File}, x{scale:F2}.");
+            return true;
+        }
+
+        static Vector3 Mean(List<Vector3> points)
+        {
+            Vector3 sum = Vector3.zero;
+            foreach (Vector3 point in points) sum += point;
+            return points.Count > 0 ? sum / points.Count : sum;
         }
 
         /// <summary>

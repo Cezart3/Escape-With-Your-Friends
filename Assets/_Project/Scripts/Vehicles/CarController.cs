@@ -441,22 +441,29 @@ namespace EscapeWithYourFriends.Vehicles
             float radius = _wheels.Length > 0 && _wheels[0] != null ? _wheels[0].radius : 0.45f;
             float spin = ForwardSpeedVisual() / Mathf.Max(0.05f, radius) * Mathf.Rad2Deg * Time.deltaTime;
 
+            // Kept, not recomputed: the pose is rebuilt from scratch below every frame, so a roll
+            // that is not remembered is one frame's worth of turn and the wheels only twitch.
+            // Minus, because the laid-down axle points out of the car's left side and a positive
+            // turn about it rolls the tyre backwards.
+            _rolled = (_rolled - spin) % 360f;
+
             for (int i = 0; i < _wheelVisuals.Length; i++)
             {
                 Transform visual = _wheelVisuals[i];
                 if (visual == null) continue;
 
-                // The cylinders are laid on their side by a 90 degree roll, so the axle is local Y
-                // and the steering is a yaw applied on top of it.
+                // Read right to left: roll about the axle, lay the wheel on its side (the axle is
+                // its local Y), then steer about the car's vertical. Steering first would turn the
+                // wheel about its own axle, which is rolling it.
                 float steer = i < 2 ? _shownSteer.Value : 0f;
 
-                visual.localRotation = Quaternion.Euler(0f, 0f, 90f)
-                                       * Quaternion.Euler(0f, steer, 0f)
-                                       * Quaternion.Euler(0f, 0f, 0f);
-
-                visual.Rotate(Vector3.up, spin, Space.Self);
+                visual.localRotation = Quaternion.Euler(0f, steer, 0f)
+                                       * Quaternion.Euler(0f, 0f, 90f)
+                                       * Quaternion.Euler(0f, _rolled, 0f);
             }
         }
+
+        float _rolled;
 
         Vector3 _lastVisualPosition;
         bool _hasVisualPosition;

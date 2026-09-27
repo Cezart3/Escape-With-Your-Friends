@@ -829,7 +829,7 @@ namespace EscapeWithYourFriends.EditorTools
             float total = profile.TotalHeight;
 
             var instances = new TreeInstance[placed.Count];
-            var counts = new int[IslandFlora.SpeciesCount];
+            var counts = new int[prefabs.Length];
 
             for (int i = 0; i < placed.Count; i++)
             {
@@ -857,8 +857,13 @@ namespace EscapeWithYourFriends.EditorTools
 
             var line = new StringBuilder($"[TerrainGenerator] Scattered {placed.Count} plants in "
                                          + $"{stopwatch.ElapsedMilliseconds}ms (placement hash {HashFlora(placed):X8}):");
-            for (int i = 0; i < IslandFlora.SpeciesCount; i++)
-                line.Append($" {IslandFlora.SpeciesNames[i]} {counts[i]}");
+            for (int species = 0; species < IslandFlora.SpeciesCount; species++)
+            {
+                FloraModel[] variants = IslandFlora.Variants[species];
+                int sum = 0;
+                for (int v = 0; v < variants.Length; v++) sum += counts[IslandFlora.VariantBase[species] + v];
+                line.Append($" {IslandFlora.SpeciesNames[species]} {sum}");
+            }
 
             Debug.Log(line.ToString());
             ReportTriangles(prefabs, counts, profile);
@@ -977,7 +982,7 @@ namespace EscapeWithYourFriends.EditorTools
                 }
 
                 worst = Mathf.Max(worst, near);
-                line.Append($" {IslandFlora.SpeciesNames[i]} {near}/{far} tris x{counts[i]}");
+                line.Append($" {prefabs[i].name} {near}/{far} tris x{counts[i]}");
             }
 
             Debug.Log(line.ToString());

@@ -95,6 +95,7 @@ namespace EscapeWithYourFriends.AI
 
         NavMeshAgent _agent;
         Health _health;
+        NpcSkin _skin;
         NativeDef _def;
 
         NativeState _state = NativeState.Idle;
@@ -180,6 +181,7 @@ namespace EscapeWithYourFriends.AI
         {
             _health = GetComponent<Health>();
             _agent = GetComponent<NavMeshAgent>();
+            TryGetComponent(out _skin);
 
             NativeCatalog.Use(_catalog);
         }
@@ -302,6 +304,9 @@ namespace EscapeWithYourFriends.AI
                 // metres in fog. A role you cannot identify is a role you cannot plan against.
                 Paint(_head, def.MarkColour);
             }
+
+            // The skinned body, when it has one (T10): the boxes above are then transforms only.
+            if (_skin != null) _skin.Fit(size.y, def.MarkColour);
 
             if (_collider != null)
             {

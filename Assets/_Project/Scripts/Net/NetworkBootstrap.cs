@@ -129,6 +129,10 @@ namespace EscapeWithYourFriends.Net
             Audio.Music.Begin();
             Audio.Footsteps.Begin();
             Player.BodyAnimator.Begin();
+
+            // The global grade, for the same reason as the music: the menu is on screen too, and a
+            // look that only exists on the island is a look nobody sees until they press Host.
+            World.PostProcess.Begin();
             UnityEngine.SceneManagement.SceneManager.activeSceneChanged +=
                 (_, loaded) => Audio.Music.ForScene(loaded.name);
 
@@ -293,6 +297,7 @@ namespace EscapeWithYourFriends.Net
             World.DemoTest.Begin();
             World.LookTest.Begin();
             Player.AnimTest.Begin();
+            Player.SkinTest.Begin();
 
             Items.WorldItemTest.Begin();
             Items.CraftingTest.Begin();

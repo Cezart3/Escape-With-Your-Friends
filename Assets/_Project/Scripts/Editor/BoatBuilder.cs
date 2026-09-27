@@ -83,9 +83,9 @@ namespace EscapeWithYourFriends.EditorTools
 
             // One box for the whole hull, like the buggy's chassis: a hull made of six colliders is
             // six seams for a ragdoll to get wedged in.
-            Primitive(root.transform, "Hull", PrimitiveType.Cube,
-                      new Vector3(0f, DeckHeight * 0.5f, 0f),
-                      new Vector3(HalfBeam * 2f, DeckHeight, HalfLength * 2f), collider: true);
+            GameObject hull = Primitive(root.transform, "Hull", PrimitiveType.Cube,
+                                        new Vector3(0f, DeckHeight * 0.5f, 0f),
+                                        new Vector3(HalfBeam * 2f, DeckHeight, HalfLength * 2f), collider: true);
 
             // A bow and a console, both cosmetic and both collider-free. Scenery that can push a body
             // is a catapult, and a catapult on a boat is a man overboard.
@@ -95,9 +95,22 @@ namespace EscapeWithYourFriends.EditorTools
                                        collider: false);
             bow.transform.localRotation = Quaternion.Euler(-18f, 0f, 0f);
 
-            Primitive(root.transform, "Console", PrimitiveType.Cube,
-                      new Vector3(-0.45f, DeckHeight + 0.55f, 1.6f),
-                      new Vector3(0.7f, 1.1f, 0.25f), collider: false);
+            GameObject console = Primitive(root.transform, "Console", PrimitiveType.Cube,
+                                           new Vector3(-0.45f, DeckHeight + 0.55f, 1.6f),
+                                           new Vector3(0.7f, 1.1f, 0.25f), collider: false);
+
+            // The watercraft kit's speedboat, once the art is in (ART-PLAN T11). Its own proportions
+            // in the hull's footprint, standing on the keel: the kit draws it 1.78 across and 4.27
+            // long, near enough the hull's 2.4 by 6 that nothing has to be stretched. The hull keeps
+            // its collider, so the floats, the seats and every harness see the boat they saw before.
+            var footprint = new Bounds(new Vector3(0f, 1.5f, 0f), new Vector3(HalfBeam * 2f, 3f, HalfLength * 2f));
+            if (ArtDress.FitBox(root.transform, footprint, "Boat", keepShape: true, "Art"))
+            {
+                ArtDress.Strip(hull);
+                Object.DestroyImmediate(bow);
+                Object.DestroyImmediate(console);
+                Debug.Log($"[BoatBuilder] Dressed as {ArtCatalog.Find("Boat").File}.");
+            }
 
             var seats = new List<Vehicle.Seat>();
 

@@ -182,6 +182,9 @@ namespace EscapeWithYourFriends.World
         [Tooltip("Chance a suitable cell grows a bush, before the grove mask.")]
         public float BushDensity = 0.6f;
 
+        [Tooltip("Chance a suitable cell gets a rock, a log or a stump, before the grove mask.")]
+        public float GroundDensity = 0.22f;
+
         [Tooltip("Metres per cell of the grove noise. Roughly the size of one thicket or one clearing.")]
         public float GroveFeatureSize = 140f;
 

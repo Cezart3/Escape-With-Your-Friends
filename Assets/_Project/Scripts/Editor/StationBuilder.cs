@@ -43,6 +43,8 @@ namespace EscapeWithYourFriends.EditorTools
             if (Save(Campfire(), CampfirePath)) built++;
             if (Save(Filter(), FilterPath)) built++;
 
+            Dress();
+
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
@@ -124,6 +126,53 @@ namespace EscapeWithYourFriends.EditorTools
 
             Networked(root, CraftStation.Filter, radius: 3.5f);
             return root;
+        }
+
+        /// <summary>
+        /// The art pass (docs/ART-PLAN.md §4), on the saved prefabs, so the greybox above stays the
+        /// layout and a machine without the kits still gets working stations. The bench fills its
+        /// top's collider; the fire and the filter, which nothing collides with, keep their shape.
+        /// The flame stays: it is the emissive glow a fire is looked at for, and the pit has none.
+        /// </summary>
+        static void Dress()
+        {
+            ArtDress.DressPrefab(BenchPath, "Art", bench =>
+            {
+                // Kenney's bench is square and this one is long, so two stand side by side rather
+                // than one stretched to twice its width.
+                for (int side = 0; side < 2; side++)
+                {
+                    var half = new Bounds(new Vector3(side == 0 ? -0.55f : 0.55f, 0.575f, 0f), new Vector3(1.1f, 1.15f, 1f));
+                    if (!ArtDress.FitBox(bench, half, "Workbench", false, side == 0 ? "Art" : "Art.1")) return false;
+                }
+
+                foreach (string block in new[] { "Top", "LegLeft", "LegRight", "Vice" })
+                    ArtDress.Strip(bench.Find(block)?.gameObject);
+                return true;
+            });
+
+            ArtDress.DressPrefab(CampfirePath, "Art", fire =>
+            {
+                // Sized to the pit's footprint and a stone ring's height, not to the flat slab, which
+                // would squash it to a third of the fire it is.
+                if (!ArtDress.FitBox(fire, new Bounds(new Vector3(0f, 0.3f, 0f), new Vector3(1.6f, 0.6f, 1.6f)),
+                                     "CampfirePit", true, "Art")) return false;
+
+                foreach (string block in new[] { "Pit", "LogA", "LogB" })
+                    ArtDress.Strip(fire.Find(block)?.gameObject);
+                return true;
+            });
+
+            ArtDress.DressPrefab(FilterPath, "Art", filter =>
+            {
+                if (!ArtDress.Replace(filter, "BarrelOpen", "Art", true, "Barrel", "Lid")) return false;
+
+                // A bucket on the ground where the spout drips, in the spout's place.
+                if (ArtDress.FitBox(filter, new Bounds(new Vector3(0f, 0.18f, 0.7f), Vector3.one * 0.36f),
+                                    "Bucket", true, "Art.Bucket"))
+                    ArtDress.Strip(filter.Find("Spout")?.gameObject);
+                return true;
+            });
         }
 
         // ---------------------------------------------------------------- shared

@@ -6702,6 +6702,407 @@ This does not close #78. It closes the half of it that does not need a person to
 
 ---
 
+## Somebody else's models, and which way is up (#76, #78, #79)
+
+The playtest verdict on the first art pass was that carrying works and the look does not: trees
+"drawn in Paint", people "like Mario in 1990". Everything was procedural geometry or a Blender
+script's idea of a tree, painted from fifteen programmer colours. The acceptance is a human one -
+does it look made by artists, on a Radeon 760M at 60 fps - so this section records the machinery
+and the decisions, and `docs/ART-PLAN.md` holds the full argument, the licence table and the task
+list.
+
+**Kenney for everything static, Quaternius for people.** The build machine could not open any
+asset site, only GitHub. Kenney's whole library exists there as a CC0 mirror, so every model this
+pass uses was parsed for triangles, materials and size, and rendered and looked at, before it was
+chosen. No Quaternius file could be checked, and its people are the one thing Kenney cannot supply,
+so that is the only thing taken from it. The characters are the next section.
+
+**Four editor files, one direction.**
+
+| File | Job |
+|---|---|
+| `ArtCatalog` | Every model the game uses: id, kit, file, category, size in metres, whether it stands. |
+| `ArtExtract` | Copies exactly those files, plus each kit's colormap and **its own `License.txt`**, out of the zips you downloaded. Fails listing anything missing, with the nearest names in the zip. |
+| `ArtLibrary` | Imports them: one shared material per kit, scaled to the catalogue size, checked upright; builds the terrain tree prototypes. Replaces `ModelLibrary`. |
+| `ArtDress` | Hangs models on the greybox: `Fit` one model in a box, `Tile` a module across one. |
+
+The extractor exists because "somebody unzipped it into Assets" is a folder nobody can state the
+contents or the licence of. This one holds the catalogue and nothing else, and the licence file
+beside each kit is the one from the zip, not a claim about a web page.
+
+**The axis story, again.** The Blender pipeline shipped a forest lying on its back: its export was
+already Y-up, and "bake axis conversion" applied a second rotation. It was caught only because the
+importer logged bounds. Third-party kits are exported however their authors exported them, so this
+time nothing is assumed:
+
+- a model marked upright is measured after import, and if it lies down it is re-imported with
+  the other `bakeAxisConversion`; if it still lies down that is an error naming the file;
+- the setting a kit's trees prove is applied to the rest of that kit, because a bottle cannot
+  prove which way is up and was exported the same way as the palm. A prop is never imported before
+  the upright model that teaches its kit: `Source` imports the teacher first, so the answer does
+  not depend on which id somebody asked for;
+- if neither setting stands it up, the importer is put back as it was and the error names the file,
+  so a bad model does not leave its kit taught the wrong way;
+- `-lookTest` now checks it at run time too, on the terrain's tree prototypes, which it never
+  used to see at all.
+
+**Materials: the kit's atlas, not the palette.** Every current Kenney kit paints every model
+from one 512² `colormap.png`, so every slot in a kit is remapped to one `Kenney_<Kit>` material.
+Snapping the artist's colours onto `Palette` would have been the one-line change and the wrong
+one: fifteen programmer colours are how the island got its look. The one flat-coloured kit
+(furniture) gets a `Flat_<RRGGBB>` material per distinct colour, shared across kits. Colormaps
+import without mipmaps and uncompressed: a mip or a compression block of a swatch sheet averages
+neighbouring swatches, and a distant palm turns the colour of the rock beside it on the sheet.
+`Palette` stays, for what is still a primitive: bet spots, markers, the revive machine.
+
+**The greybox stays the layout.** `ArtDress` never moves a box. The box keeps its name, its
+collider and its transform; only its renderer goes, and the model hangs under it in an unscaled
+wrapper whose own scale does the fitting, so the model's root keeps the rotation and unit scale its
+importer gave it. That is why `-casinoTest` still measures the same doorway, the NavMesh (baked
+from colliders) is unchanged, and the POI validation sees the same footprints. Turns are quarter
+turns only: under a stretched parent, a quarter turn permutes the stretch and anything else
+shears. A box is stripped only after its model is in, so a machine without the kits builds the
+old greybox rather than an invisible building.
+
+A wall is a floor tile stood on its edge. For a structure module `Tile` turns it so its thinnest
+side faces the box's thinnest side, then grids it across the other two, which is how one Kenney
+plank tile is the casino's floor, its five walls and its sign. Anything else only ever turns about
+the vertical, to line its long side up with the box's: a stump or a crate whose thinnest side
+happens to be sideways would otherwise be laid on its flank. A model's own root translation is
+zeroed in its wrapper, because a kit file whose root sits off the origin would otherwise hang
+beside its box.
+
+**Stations are dressed on the saved prefab.** The chest, the bench, the fire, the filter, the
+shop counter and both cage windows are networked prefabs that scenes place and FishNet's
+spawnable list names by id. `ArtDress.DressPrefab` loads a saved prefab's contents, dresses them
+and saves over the same path, so the GUID and every file id inside survive a dressing, and a
+child called `Art` tells a re-run it has already been there. The builders that rebuild every run
+(storage, stations) dress after every save; the ones that build once (shop, cage windows, table)
+dress the prefab that is already there. `Replace` puts one model over several blocks that are one
+thing, turned a quarter if that lines its long side up with theirs. Where a block's collider is
+the object (the chest's body, the bench top, a counter), the model fills the collider rather than
+keeping Kenney's proportions: bumping into a bench that is not drawn there is worse than a bench
+a little wider than drawn. Kenney's workbench is square, so the long bench is two of them.
+
+**Lighting.** SSAO is a renderer feature written by `RenderTuning` on Medium and High, never Low.
+On Medium it runs after opaque, from depth alone, at half resolution with four samples, because the
+before-opaque mode needs a depth prepass an iGPU cannot pay for. HDR is now on for Medium: URP 17
+renders it into 32-bit R11G11B10, the same bandwidth as LDR, and without it the ACES curve had
+nothing to roll off and the bloom threshold could never be crossed. And `PostProcess` now switches
+post-processing on for the camera. Until now only `DrunkVision` did, so the global grade appeared
+the moment somebody got drunk and not before.
+
+It still would not have drawn. `ProjectSetup` makes the renderers with
+`ScriptableObject.CreateInstance<UniversalRendererData>()`, and that leaves `postProcessData` null:
+URP's own "Create > Rendering > URP Universal Renderer" menu fills it, the field carries no
+`[Reload]`, and a renderer without it builds no post-processing pass at all, whatever the camera or
+the volume says. So the grade, the bloom and `DrunkVision` itself had never been on screen.
+`RenderTuning` now gives every renderer that lacks it URP's own `PostProcessData.asset`, and
+`ProjectSetup` sets it at creation. The line to look for:
+
+```
+[RenderTuning] URP_Medium_Renderer had no post-processing data; it has URP's now.
+```
+
+**Measured.** Nothing yet. The build machine has no Unity and could not download a kit. The
+first run on the real machine prints, and belongs here:
+
+```
+[ArtExtract]   Copied N model(s) into Assets/_Project/Art/ThirdParty, 0 missing.
+[ArtLibrary]   48 of 48 models ready, 0 failed.
+[RenderTuning] SSAO on URP_Medium_Renderer (after opaque, depth, half res, 4 samples, Kawase).
+[LookTest]     N passed, 0 failed.
+[CasinoTest]   N passed, 0 failed.
+[ArtDress]     Dressed Assets/_Project/Prefabs/Stations/StorageChest.prefab, guid ... kept.
+```
+
+**Left out on purpose:** the natives and the NPCs (T10, on the same bodies); animals, vehicles, weapons and the plane (P4 in the plan);
+grass, which stays a billboard; an HDRI, which a 20-minute day cycle cannot use (§7).
+
+---
+
+## People over the ragdoll (#76, #77, ART-PLAN T9)
+
+The player was eleven primitives in a shirt colour. It is now a skinned Quaternius body, and the
+eleven primitives are still there underneath doing everything they did: colliders, masses,
+joints, every hit and every throw. They are just no longer drawn. Nothing about combat, carrying
+or the ragdoll changed, which was the point: the riskiest part of the art pass may not touch the
+physics that the game is built on.
+
+**Two editor steps, in this order.**
+
+| Step | What it makes |
+|---|---|
+| `CharacterArt.Build` | Extracts Universal Base Characters and Universal Animation Library out of their zips, imports every body and clip as Humanoid, paints the bodies, and writes `_Characters/Player.controller` and the `UpperBody` mask. |
+| `PlayerPrefabBuilder.BuildPlayerPrefab` | Puts every body `CharacterArt.Bodies()` accepts on the ragdoll, measures each against it, and adds `CharacterSkin`. |
+
+The controller is emptied and refilled in place on every `Build`, so its GUID survives and every
+prefab wearing it stays pointed at it. The player prefab still follows `Build`, because the bodies
+it wears are whatever `Build` imported.
+
+**Extracted by kind, not by name.** No Quaternius file name could be read from here, so unlike
+`ArtCatalog`'s Kenney list nothing is named. `CharacterArt` takes the zip whose name holds the
+pack's hint and the most FBX files, prefers a `Unity` or `FBX` folder when a file exists in
+several, and copies every FBX, every texture that is not a preview, and the licence. A zip
+without a licence is an error, not a warning. A body is any model that builds a human avatar,
+has a skinned mesh and stands 1.4-2.2 m; when the pack names some `FullBody`, only those count.
+At most four, because four players.
+
+**Import.** Humanoid, avatar from the model, axis conversion baked. A model that comes in a
+hundred times too big or small is rescaled by a power of ten; one that lies down is re-imported
+without the baked conversion, the same test as the Kenney trees. Clips take their names from the
+take (after the `|`), loop when the name says `Loop`, and keep root height and rotation locked, so
+a walk walks on the spot and the motor stays the only thing that moves a player.
+
+Materials are remapped to `Quaternius_<slot>`, painted from the texture the FBX embeds, else a PNG
+in the pack whose name matches the slot, else a flat colour and a warning. Eyebrows and lashes
+render both faces.
+
+**The controller.** Layer 0 is a 1D blend on `Speed` at the motor's own speeds (idle 0, walk 2.2,
+jog 4.5, sprint 7.5) plus `Seated`, `Air` and `Punch` from any state. Layer 1, `Carry`, is masked
+to the arms and weighted by `CarrySystem.IsCarrying`. A state whose clip is missing is left out
+rather than left empty, because an empty state is a T-pose; only a missing idle or walk fails
+the build. The carry pose is UAL's `Driving_Loop` (both hands forward on a wheel), and seated is
+the same clip whole: the library has nothing closer, and it is a guess until somebody looks.
+
+**Fitting a body to the ragdoll** (`PlayerPrefabBuilder.Wear`). Every bone is found through the
+avatar's own `humanDescription`, not by name, so a UE rig and a Rigify rig fit the same way. The
+body is turned to face +z if its toes point the other way and scaled so its hips are the
+ragdoll's hips (clamped 0.7-1.4). Then eleven links:
+
+| Physics bone | Model bone | Points at |
+|---|---|---|
+| Hips | Hips | Spine |
+| Chest | Chest | Neck |
+| Head | Neck | Head |
+| UpperArm.L/R | UpperArm | LowerArm |
+| LowerArm.L/R | LowerArm | Hand |
+| UpperLeg.L/R | UpperLeg | LowerLeg |
+| LowerLeg.L/R | LowerLeg | Foot |
+
+The physics head drives the model's *neck*, because the physics head pivots at the base of the
+neck. The rig's `.L` sits at +x with the nose at +z, which is a person's right, so sides are
+paired by which side of the body each arm is on rather than by name. Each link stores the model
+bone's rotation relative to its physics bone once the two point the same way; that offset is all
+there is.
+
+Skinned bounds are a 2.4 m cube on the hips, because a ragdoll goes a long way from its root and
+bounds that stay on the root cull a body lying three metres off.
+
+**The colour is a headband.** The bodies are textured and have no hair; there is no material on
+them a tint would not spoil (a green texture is green skin). `Band` bakes the mesh, takes the ring
+of vertices 7.5 cm under the crown, and fits a thin cylinder round it, parented to the head bone.
+The bands are what `PlayerIdentity` tints now. Which body a player wears is `ColorIndex % bodies`,
+so four players in a full lobby are, as far as the pack allows, four different people.
+
+**`CharacterSkin` at run time** (order 100, after the ragdoll and the motor):
+
+- *Standing*, the animator plays. `Speed` is measured from how far the root moved, like
+  `BodyAnimator`, so a spectator's copy needs nothing a spectator does not already have. Nothing
+  is networked.
+- *Limp*, the animator is switched off, every bone of the body is put back to its bind pose, and
+  the eleven linked bones are laid along their physics bones, parents first; the hips are placed
+  where the physics hips say. Restoring the bind pose first is what keeps the spine, collarbones
+  and hands from staying wherever the last clip froze them.
+- *Getting up* blends from the last limp pose to the animator's over 0.35 s. The frame the root
+  jumps to the hips counts as no movement, so standing up is not a sprint or a jump.
+- *Punch* is not triggered from a seat: the state machine will not take it there, and an unused
+  trigger stays set until you get out.
+- *Owner*: your own body is shadow-only while alive (the camera is in its head) and drawn when
+  dead, because death is third person.
+- *Headless*, the bodies are destroyed in `Awake`: fifteen thousand skinned triangles and an
+  animator per player buy a dedicated host nothing. `-skinTest` is the one exception.
+
+`BodyAnimator` still poses the physics bones. Nobody sees them, but their colliders are where
+your arms are.
+
+**`-skinTest`** (host, solo, either island). Per body: 11 links wired, a human avatar and a
+controller; triangles under the Character cap (16 000, raised from the plan's 15 000 because the
+female body is 15 060); at most three materials. Then: exactly one body shown and it is the one
+the colour slot picks; every primitive hidden; the colour on the band and not on the body; the
+owner's body shadow-only; standing still reads as still; a forced walk drives the blend and swings
+the thigh more than 10°; after a shove, limp, every link within 20° of its physics bone and hips,
+elbows and knees within 0.2 m of theirs; standing again gives the animator back; carrying brings
+the arm layer to full weight and turns the upper arm more than 20°.
+
+**Not verified.** Nothing here has run: the build machine has no Unity and could not download the
+packs. The UBC geometry was read from a glTF re-export, and the zip layout, the FBX names, where
+the textures live and whether Unity's avatar auto-mapping takes the UE rig are all unknown until
+`CharacterArt.Build` runs and prints. Every one of those logs what it found and fails with a
+message that says which.
+
+## The islanders in the same bodies (#76, ART-PLAN T10)
+
+The natives, the castaway and the barman were boxes. They now wear the players' Quaternius bodies,
+with no ragdoll under them: nobody here goes limp, so the animator has the body the whole time.
+
+**Dressing** (`CharacterArt.Dress`, called by each builder). The bodies go under a `Skin` child,
+inactive, each with its own band. Then the greybox loses its look: every other direct child keeps
+its transform and its collider and loses its `MeshRenderer` and `MeshFilter`. The transforms
+matter: `Native` still scales `_body` and `_head` per role, and a dart still leaves from the head.
+With no bodies imported or no controller, `Dress` touches nothing and says so, and the boxes stay
+rather than leave an invisible person.
+
+| NPC | Dressed by | Bodies | Band |
+|---|---|---|---|
+| Native | `NativeFactory` (rebuilt whole) | all | `Accent`, then the role's warpaint at spawn |
+| Castaway | `CastawayBuilder` (rebuilt whole) | the first | `Canvas` |
+| Barman | `CasinoFactory.Barman` | the second | `Dark`, where the hat was |
+
+The barman prefab is built once and kept, so an existing one is dressed in place through
+`ArtDress.DressPrefab` (marker `Skin`), GUID and all. That is why the controller is now refilled in
+place rather than recreated: a controller with a new GUID would leave the barman pointing at
+nothing, and nothing would rebuild him.
+
+**`NpcSkin` at run time** (order 100). Nothing is networked; everything is read off state every
+peer already has.
+
+- *Which body*: `ObjectId % bodies`, picked once the object is spawned. Before that the id is the
+  same placeholder on every object, and a camp would be four twins.
+- *Speed*: measured from how far the root moved, as `CharacterSkin` does.
+- *Seated*: the castaway's synced stage is `Aboard`. It boards by being parented to the plane's
+  `CarrySocket`, but only the server parents it; `NetworkTransform` does not sync the parent here.
+- *A single body* (the castaway, the barman) is shown at once, without waiting for the spawn.
+- *Dead*: `Health.State == Dead` plays `Death01` from any state. It does not loop, so a dead
+  native lies there until it despawns.
+- *Carrying*: the native's carry socket has a child. `Carryable` parents the carried hips there
+  on every peer, so the child count is the same everywhere. It drives the arm layer, as
+  `CarrySystem.IsCarrying` does for a player.
+- *Role*: `Native.ApplyShape` calls `Fit`, which scales every body so its crown is at the role's
+  height (1.7-1.92 m), and puts the role's `MarkColour` on the band. Warpaint was the one thing
+  that told a spearman from a blowgunner, and it still is.
+- *Headless*: the bodies are destroyed in `Awake`, as for the players. `-skinTest` is the
+  exception.
+
+**The controller** has a fifth parameter, `Dead`, and a `Dead` state on UAL's `Death01`. Players
+never set it; their death is the ragdoll.
+
+**Order.** `CharacterArt.Build` must run before `CasinoFactory.Build`, `NativeFactory.Build` and
+`CastawayBuilder.Build`. Any of them run first gives boxes and a warning, and a rerun after
+`Build` fixes it.
+
+**`-skinTest`** also checks every live `NpcSkin`: there is at least one (the barman and the
+castaway are both on the first island); each shows exactly one body, animated, with a controller
+and a human avatar; no `MeshRenderer` is left outside the bodies; the body is under the Character
+triangle cap; and a native's band carries its role's warpaint.
+
+**Left out, known:**
+
+- Natives do not swing. Their attacks are resolved on the server with no RPC, so a client has no
+  moment to play `Punch` on. The fix is an observer event per swing; it is not in this PR.
+- Nobody holds a spear or a blowgun. The weapon models are T12.
+- The castaway's waving arm is gone. It was the one thing that read from the air. UAL's file
+  names could not be read from here, so no wave clip is wired, and the castaway idles.
+- The castaway sits with `Driving_Loop`, like a seated player.
+
+**Not verified.** Nothing here has run, for the reason T9 gives.
+
+---
+
+## The vehicles in the kits' clothes (#79, ART-PLAN T11)
+
+The buggy and the boat are dressed by the builders that already make them, after the greybox is
+built and only when the kit is on disk. `ArtLibrary.Source` returning null leaves the old boxes.
+
+**Nothing physical moves.** The buggy's chassis box keeps its BoxCollider. `CarController`'s belly
+check reads that collider, so the box has to stay. The wheel colliders, the seats, the exits, the
+cargo socket, the hull collider and the six floats are the same numbers as before. The art only
+has to land on them.
+
+**The buggy** is the car kit's `race`, not the plan's SUV.
+
+- Every closed car in the kit has its wheel arches inside a body far wider than its track. Matching
+  the arches to the buggy's 1.56 m track and 2.5 m wheelbase makes the SUV 2.8 m wide.
+- Four seated riders would put their heads through a closed roof.
+- The race car is open. Scaled so its axles are the buggy's 2.5 m apart (×1.64), its wheels land
+  within 4 cm of the physics ones and its body is 1.97 m wide against the chassis's 1.9.
+
+`VehicleBuilder.Dress` works from the imported model, not from numbers copied out of the kit. The
+axis conversion and the unit scale never enter the sum.
+
+1. It unpacks the instance and finds the renderers whose names start with `wheel`. It tells front
+   from back by `front` in the name.
+2. It yaws the car so front is +Z, scales it to the wheelbase, and puts its axle midpoint on the
+   buggy's.
+3. It moves each kit wheel onto the nearest wheel visual, the transform `CarController` turns.
+4. The visual loses its cylinder and its (0.45, 0.16, 0.45) squash. The wheel is scaled to the
+   collider's 0.45 m radius and centred on the axle.
+
+A kit with a different wheel count is logged and left as greybox. The roll bar goes; it was cosmetic.
+
+**The wheel visuals were broken before this** and nobody could tell on a cylinder.
+
+- `CarController.Update` rebuilt the pose from scratch every frame, so the roll never accumulated.
+  The wheels twitched one frame's turn and stood still.
+- It applied the steer *before* laying the wheel on its side, which turned it about its own axle.
+
+It is now `Euler(0, steer, 0) * Euler(0, 0, 90) * Euler(0, _rolled, 0)`, read right to left: roll
+about the axle, lay the wheel down, steer about the car's vertical. `_rolled` accumulates. It is
+subtracted because the laid-down axle points out of the left side, and a positive turn about it
+rolls backwards. Clients are unchanged: speed still comes from the transform and steer from the
+`_shownSteer` SyncVar.
+
+**The boat** is the watercraft kit's `boat-speed-j`, fitted keeping its shape into the hull's
+2.4 × 6 footprint and standing on the keel.
+
+- It is drawn 1.78 × 4.27, so it comes out 2.4 × 1.69 × 5.76. The hull collider is 12 cm longer
+  at each end.
+- The kit points its bow at +Z; its narrow, raised end was measured there. `BoatBuilder` already
+  treats +Z as ahead.
+- Bow and Console go; both were cosmetic and collider-free.
+
+**Order.** Both builders rebuild their prefab from nothing, so they run before the terrain bakes
+that place them (PR 153, step 6c).
+
+**Not verified, and what to look at:**
+
+- Whether the kit's wheels import as separate renderers named `wheel-*`. The build log prints
+  `Dressed as race` if they do and `left as greybox` if not.
+- Whether the tyres roll the right way on screen. The sign was worked out, not watched.
+- Where the helm and bench riders sit relative to the speedboat's windscreen and floor.
+- Whether a race car reads as the island's buggy at all. It is one entry in `ArtCatalog`. Going
+  back to the SUV would mean moving the wheels, which is a handling change.
+
+## The weapons in the kits' clothes (#79, ART-PLAN T12)
+
+**Where a weapon is seen.** `WeaponDef.ViewPrefab` has no reader: nothing draws a weapon in the
+hand. A weapon is seen only lying on the ground, and there it was its item's 0.3 m category-coloured
+cube, because no item had a `WorldPrefab`. So `WeaponFactory` now does two things:
+
+1. It dresses each weapon's view prefab with a kit model, in place (`ArtDress.DressPrefab`), so the
+   GUID the weapon asset names survives. The `Art` child is the marker; a second run skips it.
+2. It puts that prefab in the weapon's item's `WorldPrefab`, but only when that slot is empty.
+   `WorldItem` already instantiates `WorldPrefab` under its visual root.
+
+Held-weapon drawing is a feature, not art, and is not part of this.
+
+**The fit.** The model replaces the `Body` box and the melee `Grip`, centred where the box was.
+
+- Kenney draws a gun lying along +Z with the muzzle forward, which is how the box lies.
+- The knife and the survival tools stand on their handles. A model taller than it is long gets
+  `Euler(90, 0, 0)`, which puts the tip at +Z and the handle at -Z, where the grip was. That needs
+  `ArtDress.FitBox` with a `Quaternion`; it is still a quarter turn, so the stretch does not shear.
+- Most weapons keep their proportions, scaled to the box's length.
+- Two have no model in any kit, so they are stretched to fill the old box. The machete is the knife
+  drawn out long. The three bats are the survival kit's small log, thinned to a club.
+- The chainsaw has no row and stays a box.
+
+The knife is `upright` in `ArtCatalog` only so the weapon pack learns its axis from it.
+`WeaponFactory` clears `ArtVisual.Upright` on a laid-down model, so `-lookTest` never expects a
+dropped knife to stand.
+
+**Harness.** `-weaponTest` checks that every carried weapon with a model shows it on the ground.
+The fit itself runs in the editor and is only logged: `[WeaponFactory] <id> wears <file>.`, 14
+times.
+
+**Not verified.** None of this has run in Unity. Nobody has seen:
+
+- which way the survival tools' heads point once the axis conversion is applied;
+- how a 1.25 m rifle looks on a `WorldItem` whose collider is the old 0.3 m box, dropped at a
+  random rotation, which may leave half of it in the ground.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**
