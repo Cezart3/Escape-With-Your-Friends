@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using EscapeWithYourFriends.Vehicles;
 using EscapeWithYourFriends.World;
 using FishNet.Component.Transforming;
@@ -247,6 +248,8 @@ namespace EscapeWithYourFriends.EditorTools
                 pieces.Add(piece.gameObject);
             }
 
+            // No catalogue row, no model: T14 keeps the greybox until a CC0 plane is found.
+            if (!ArtCatalog.Models.Any(m => m.Id == "Plane")) return;
             if (!ArtDress.FitBox(root, box, "Plane", true, "Art", PlaneTurns)) return;
 
             Transform art = root.Find("Art");
