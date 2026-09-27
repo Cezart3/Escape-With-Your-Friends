@@ -7478,30 +7478,33 @@ the shade side goes grey on both. So everything now wears one hand-written shade
 `Art/Stylized/Stylized.shader` (`EWYF/Stylized`):
 
 - **Two light bands.** The sun and every lamp go through one `smoothstep` around the terminator
-  (`_RampCentre` 0.05, `_RampSoftness` 0.08). Soft-shadow filtering is banded the same way, so a
-  shadow edge and a terminator look drawn by the same hand.
+  (`_RampCentre` 0.05, `_RampSoftness` 0.08). Cast shadows are deliberately not banded: the
+  attenuation carries the light's shadow strength (the moon's is 0.35) and URP's fade at the shadow
+  distance, and a step erases the first and turns the second into a ring around the camera.
 - **The shade side is ambient, tinted cool** (`_ShadowTint`), not a darker grey. The trilight
   ambient from `DayNightProfile` still drives it, so dawn and night behave as before.
 - **Painted detail per kit.** `_Detail` blends the texture toward its own read three mips up: the
-  broad colours without the brush strokes. The nature kit keeps 45%; the swatch atlases have no mips,
-  so on Kenney it is a no-op. `_Saturation` and `_Brightness` nudge a kit toward the rest.
+  broad colours without the brush strokes. The nature kit keeps 45%. The second fetch sits behind
+  `_DETAIL_SOFTEN`, which `StyleLook` turns on only where `_Detail` < 1, so nothing else pays for it. `_Saturation` and `_Brightness` nudge a kit toward the rest.
 - **Rim and one hard highlight.** A thin lit-side rim for silhouettes against the sea; a single
   stepped specular spot only above smoothness 0.3, so metal and gold shine and nothing else does.
-- **Passes**: forward (main-light cascades, additional lights and their shadows, soft-shadow
+- **Emission** behind `_EMISSION` (`_EmissionColor`), for the campfire flame `StationBuilder` lights.
+- **Passes**: forward (main-light cascades, per-pixel additional lights and their shadows, soft-shadow
   levels, SSAO-in-lighting, fog, instancing), ShadowCaster, DepthOnly, and DepthNormals for the High
   tier's SSAO. Forward renderer only, like every tier. One `UnityPerMaterial` buffer across all
   passes, so the SRP Batcher still takes it. Falls back to URP/Lit.
 
 **Property names are URP/Lit's** (`_BaseMap`, `_BaseColor`, `_Cutoff`, `_AlphaClip`, `_Cull`,
-`_Smoothness`, with `[MainTexture]`/`[MainColor]`). That is what makes the switch safe:
+`_Smoothness`, `_EmissionColor`, with `[MainTexture]`/`[MainColor]`; the alpha-clip toggle drives
+`_ALPHATEST_ON` like Lit's). That is what makes the switch safe:
 `StyleLook.Wear` sets `material.shader` on the existing asset and every texture, colour, cutout and
 cull the generators wrote survives. Same asset, same GUID, no prefab touched.
 
 **`StyleLook`** (`Scripts/Editor/StyleLook.cs`) holds the whole look in one table: the four shared
 numbers and a per-kit row by material-name prefix. `StyleLook.Apply` (batchmode, or
 EWYF/Art/Apply stylized look) walks `ThirdParty/_Materials`, `Art/Greybox` and `Art/Casino`.
-It also runs at the end of `ArtLibrary.BuildAll`, and `Palette.Named`, `ArtLibrary.NewLit` and the
-roulette wheel create on it, so nothing new lands on URP/Lit. Tuning is editing the table and
+It also runs at the end of `ArtLibrary.BuildAll`, and every generator that makes a material
+(`ArtLibrary`, `CharacterArt`, `Palette.Named`, the roulette wheel) creates it with `StyleLook.New`, so nothing new lands on URP/Lit. Tuning is editing the table and
 re-running Apply.
 
 **The grade stays the one volume `PostProcess` already builds** (ACES, small contrast and
@@ -7509,7 +7512,7 @@ saturation, warm white balance, cool-shadow split). It is global, one profile fo
 already unifies the kits at the output; nothing new was added there.
 
 **`-lookTest`** logs a shader histogram and gains a check: every `Kenney_*`, `Flat_*` and
-`Quaternius_*` material wears `EWYF/Stylized`. A generator that goes back to URP/Lit, or a shader
+`Quaternius_*` material, every palette entry and the roulette wheel wear `EWYF/Stylized`. A generator that goes back to URP/Lit, or a shader
 that fails to compile and falls back, fails it. The material budget is unchanged: the switch
 re-shades materials, it adds none.
 

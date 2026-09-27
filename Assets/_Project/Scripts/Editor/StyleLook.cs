@@ -40,14 +40,23 @@ namespace EscapeWithYourFriends.EditorTools
             ("Flat_", 1f, 1f, 1f),
         };
 
-        public static Shader Stylized => Shader.Find(ShaderName) ?? Shader.Find("Universal Render Pipeline/Lit");
+        static Shader _stylized;
+
+        /// <summary>The shared shader, or URP/Lit when it failed to import (Restyle reports that).</summary>
+        public static Shader Stylized
+        {
+            get
+            {
+                if (_stylized == null) _stylized = Shader.Find(ShaderName);
+                return _stylized != null ? _stylized : Shader.Find("Universal Render Pipeline/Lit");
+            }
+        }
 
         /// <summary>A new material already on the shared shader, instanced, matte.</summary>
         internal static Material New(string name)
         {
             var material = new Material(Stylized) { name = name };
             material.SetFloat("_Smoothness", 0.1f);
-            material.enableInstancing = true;
             Wear(material);
             return material;
         }
@@ -57,6 +66,11 @@ namespace EscapeWithYourFriends.EditorTools
         {
             Shader shader = Stylized;
             if (material.shader != shader) material.shader = shader;
+
+            // Instanced and saved whatever the shader: on the URP/Lit fallback the palette still
+            // needs both, and it has no other place that does them.
+            material.enableInstancing = true;
+            EditorUtility.SetDirty(material);
             if (shader.name != ShaderName) return;
 
             float detail = 1f, saturation = 1f, brightness = 1f;
@@ -68,6 +82,10 @@ namespace EscapeWithYourFriends.EditorTools
             }
 
             material.SetFloat("_Detail", detail);
+
+            // The second texture fetch is compiled in only where it changes something.
+            if (detail < 1f) material.EnableKeyword("_DETAIL_SOFTEN");
+            else material.DisableKeyword("_DETAIL_SOFTEN");
             material.SetFloat("_Saturation", saturation);
             material.SetFloat("_Brightness", brightness);
             material.SetFloat("_RampCentre", RampCentre);
@@ -79,9 +97,6 @@ namespace EscapeWithYourFriends.EditorTools
             // A material carried over from URP/Lit has the float right and the keyword possibly not.
             if (material.GetFloat("_AlphaClip") > 0.5f) material.EnableKeyword("_ALPHATEST_ON");
             else material.DisableKeyword("_ALPHATEST_ON");
-
-            material.enableInstancing = true;
-            EditorUtility.SetDirty(material);
         }
 
         /// <summary>Every kit material and every palette entry, re-shaded. Batchmode entry.</summary>
@@ -97,7 +112,7 @@ namespace EscapeWithYourFriends.EditorTools
         /// <summary>The walk itself, without saving or exiting. -1 when the shader is missing.</summary>
         internal static int Restyle()
         {
-            if (Shader.Find(ShaderName) == null)
+            if (Stylized.name != ShaderName)
             {
                 Debug.LogError($"[StyleLook] Shader '{ShaderName}' not found; is Art/Stylized/Stylized.shader "
                                + "imported without errors? Materials left on URP/Lit.");

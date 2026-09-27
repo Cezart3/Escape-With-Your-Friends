@@ -32,6 +32,16 @@ namespace EscapeWithYourFriends.World
         /// <summary>The island's one surface shader. See StyleLook in the editor scripts.</summary>
         const string Stylized = "EWYF/Stylized";
 
+        /// <summary>
+        /// Palette.Entries' names plus the roulette wheel: the rest of what StyleLook re-shades. A copy,
+        /// because Palette is an editor script; a palette entry missing here only goes unchecked.
+        /// </summary>
+        static readonly HashSet<string> Painted = new()
+        {
+            "Wood", "Stone", "Canvas", "Metal", "Accent", "Sand", "Leaf", "WoodDark", "LeafDark",
+            "Felt", "Skin", "Cloth", "Plastic", "Gold", "Dark", "RouletteWheel",
+        };
+
         /// <summary>Renderers wearing one material before the draw calls are worth instancing away.</summary>
         const int Repeated = 8;
 
@@ -120,11 +130,12 @@ namespace EscapeWithYourFriends.World
                 .OrderByDescending(g => g.Count())
                 .Select(g => $"{g.Key} x{g.Count()}")));
 
-            string[] offStyle = materials.Where(m => ThirdParty(m.name) && m.shader != null && m.shader.name != Stylized)
+            string[] offStyle = materials.Where(m => (ThirdParty(m.name) || Painted.Contains(m.name))
+                                                     && m.shader != null && m.shader.name != Stylized)
                                          .Select(m => $"{m.name} on {m.shader.name}")
                                          .ToArray();
 
-            Check($"every kit material wears {Stylized} ({string.Join(", ", offStyle.Take(5))})",
+            Check($"every kit and palette material wears {Stylized} ({string.Join(", ", offStyle.Take(5))})",
                   offStyle.Length == 0);
 
             Check($"the scene shares one palette ({materials.Count} materials, budget {Budget})",
