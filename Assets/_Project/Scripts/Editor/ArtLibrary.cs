@@ -366,7 +366,7 @@ namespace EscapeWithYourFriends.EditorTools
             var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (existing != null) return existing;
 
-            string texturePath = $"{pack.Folder}/colormap.png";
+            string texturePath = $"{pack.Folder}/{pack.AtlasFile}";
             if (AssetImporter.GetAtPath(texturePath) is TextureImporter textures)
             {
                 // No mipmaps: a mip of a swatch atlas averages neighbouring swatches, and a palm sixty

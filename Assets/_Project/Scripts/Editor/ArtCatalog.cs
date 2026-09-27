@@ -47,8 +47,14 @@ namespace EscapeWithYourFriends.EditorTools
             /// </summary>
             public readonly bool Textured;
 
+            /// <summary>
+            /// The atlas's file name when <see cref="Atlas"/> is set. Kenney's are all colormap.png;
+            /// Quaternius's pirate kit paints from Atlas_Pirate.png, a swatch sheet of the same kind.
+            /// </summary>
+            public readonly string AtlasFile;
+
             public Pack(string author, string name, string zipHint, string page, bool atlas,
-                        bool textured = false)
+                        bool textured = false, string atlasFile = "colormap.png")
             {
                 Author = author;
                 Name = name;
@@ -56,6 +62,7 @@ namespace EscapeWithYourFriends.EditorTools
                 Page = page;
                 Atlas = atlas;
                 Textured = textured;
+                AtlasFile = atlasFile;
             }
 
             public string Folder => $"{Root}/{Author}/{Name}";
@@ -121,6 +128,15 @@ namespace EscapeWithYourFriends.EditorTools
             new("Quaternius", "Nature", "Nature MegaKit",
                 "https://quaternius.com/packs/stylizednaturemegakit.html", false, textured: true),
 
+            // P6 V2: the palms, the props, the wreck and the cave's cliffs, by the same hand as the
+            // nature kit. Quaternius's download is a Google Drive folder that Drive zips as
+            // "drive-download-<date>.zip", so the hint is empty: any zip may be it, and the extractor
+            // takes the one holding the most of these files, which no Kenney zip holds. That zip has
+            // no licence file; ArtExtract then wants one saved beside it (see ArtExtract.LicenceFor).
+            // File names read from `unzip -l` of the zip, triangle counts from its glTF (2026-09-27).
+            new("Quaternius", "PirateKit", "", "https://quaternius.com/packs/piratekit.html", true,
+                atlasFile: "Atlas_Pirate.png"),
+
             // The people (T9). No entries in Models, so ArtExtract passes over them: their file names
             // were never seen, and CharacterArt extracts them by kind instead.
             new("Quaternius", "UniversalBaseCharacters", "basecharacter",
@@ -149,17 +165,23 @@ namespace EscapeWithYourFriends.EditorTools
         public static readonly Model[] Models =
         {
             // --- the island (IslandFlora.Variants) ---------------------------------------------
-            new("PalmStraight", "Pirate", "palm-straight", Tree, Height, 8.5f, true),
-            new("PalmBend", "Pirate", "palm-bend", Tree, Height, 7.5f, true),
-            new("PalmTall", "Pirate", "palm-detailed-straight", Tree, Height, 9.5f, true),
-            new("PalmLean", "Pirate", "palm-detailed-bend", Tree, Height, 8.5f, true),
+            // Quaternius's pirate kit has three palms (2 924-3 208 triangles); two slots share one at
+            // different sizes rather than dropping a variant weight IslandFlora was tuned with.
+            new("PalmStraight", "PirateKit", "Environment_PalmTree_1", Tree, Height, 8.5f, true),
+            new("PalmBend", "PirateKit", "Environment_PalmTree_2", Tree, Height, 7.5f, true),
+            new("PalmTall", "PirateKit", "Environment_PalmTree_3", Tree, Height, 9.5f, true),
+            new("PalmLean", "PirateKit", "Environment_PalmTree_1", Tree, Height, 7f, true),
+
+            // Placed nowhere. Kenney's pirate kit still supplies the rocks, the thatch and the crates,
+            // which cannot tell which way is up; its palm, which can, stays here to teach them.
+            new("KenneyPalm", "Pirate", "palm-straight", Tree, Height, 8.5f, true),
 
             // Quaternius's broadleaf and pine. Only the ones under 6 500 triangles: the twisted and
             // dead trees measure 5 600 to 10 100, and the jungle is the densest thing on the island.
             new("Broadleaf", "Nature", "CommonTree_1", Tree, Height, 9f, true),
             new("BroadleafTall", "Nature", "CommonTree_3", Tree, Height, 11f, true),
             new("BroadleafSmall", "Nature", "CommonTree_5", Tree, Height, 8f, true),
-            new("JunglePalm", "Pirate", "palm-detailed-bend", Tree, Height, 8f, true),
+            new("JunglePalm", "PirateKit", "Environment_PalmTree_2", Tree, Height, 8f, true),
 
             new("Pine", "Nature", "Pine_1", Tree, Height, 9f, true),
             new("PineWide", "Nature", "Pine_2", Tree, Height, 8.5f, true),
@@ -186,7 +208,7 @@ namespace EscapeWithYourFriends.EditorTools
             new("ThatchRoof", "Pirate", "structure-roof", Structure),
             new("BarCounter", "Furniture", "kitchenBar", Prop),
             new("BarStool", "Furniture", "stoolBar", Small, upright: true),
-            new("Bottle", "Pirate", "bottle", Small),
+            new("Bottle", "PirateKit", "Prop_Bottle_1", Small),
             new("CrateBottles", "Pirate", "crate-bottles", Prop),
             new("StringLights", "Holiday", "lights-colored", Prop),
             new("Lantern", "Holiday", "lantern", Small, upright: true),
@@ -198,18 +220,22 @@ namespace EscapeWithYourFriends.EditorTools
             new("Bedroll", "Survival", "bedroll", Small),
             new("BoxLarge", "Survival", "box-large", Prop),
             new("Box", "Survival", "box", Small),
-            new("Barrel", "Survival", "barrel", Prop),
+            new("Barrel", "PirateKit", "Prop_Barrel", Prop),
             new("BarrelOpen", "Survival", "barrel-open", Prop),
-            new("Bucket", "Survival", "bucket", Small),
-            new("Chest", "Survival", "chest", Prop),
+            new("Bucket", "PirateKit", "Prop_Bucket", Small),
+            new("Chest", "PirateKit", "Prop_Chest_Closed", Prop),
             new("Workbench", "Survival", "workbench", Prop),
             new("CampfirePit", "Survival", "campfire-pit", Prop),
             new("Signpost", "Survival", "signpost", Small, upright: true),
             new("Palisade", "Survival", "fence-fortified", Structure),
-            new("Wreck", "Pirate", "ship-wreck", ArtCategory.Wreck),
+            // A whole ship on its side under the hull's list, 20 636 triangles: one on the island.
+            new("Wreck", "PirateKit", "Ship_Large", ArtCategory.Wreck),
             new("Crate", "Pirate", "crate", Prop),
-            new("PirateBarrel", "Pirate", "barrel", Prop),
-            new("RowBoat", "Pirate", "boat-row-small", Prop),
+            new("PirateBarrel", "PirateKit", "Prop_Barrel", Prop),
+            // The wreck's small boat (5 578) and the cave's cliff face (8 596, three of them) are
+            // landmark pieces placed a handful of times, so they are budgeted as the wreck is.
+            new("RowBoat", "PirateKit", "Ship_Small", ArtCategory.Wreck),
+            new("Cliff", "PirateKit", "Environment_Cliff1", ArtCategory.Wreck),
 
             // --- the vehicles (VehicleBuilder, BoatBuilder) -----------------------------------------
             // An open race car, not the plan's SUV: see VehicleBuilder.Dress.

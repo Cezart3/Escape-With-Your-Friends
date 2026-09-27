@@ -42,6 +42,10 @@ until V1's rows go in. See ARCHITECTURE.md, "Textured kits".
 **V1 done (2026-09-28).** The Nature MegaKit is on both islands; see ARCHITECTURE.md, "The island's
 nature from Quaternius". `-lookTest` 10/0 on both. Waiting on the user's eye before V3.
 
+**V2 written, not run (2026-09-27).** Palms, props, the wreck, its boat and the cave cliffs from
+the Quaternius Pirate Kit; see ARCHITECTURE.md, "The island's pirate pieces from Quaternius". The
+zip has no licence: save the page's CC0 text as `<zip>.License.txt` beside it before `ArtExtract`.
+
 **Next, in order.** P6 below from V3, then T13 and T14.
 
 1. **V1, Stylized Nature MegaKit.** Download it from quaternius.com or its itch page, check that

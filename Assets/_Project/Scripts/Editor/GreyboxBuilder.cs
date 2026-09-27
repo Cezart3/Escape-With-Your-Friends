@@ -418,7 +418,7 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
-        /// Kenney's wreck, hung under the hull box so it keeps the hull's 28 degree list. It is taller
+        /// The pirate kit's large ship, hung under the hull box so it keeps the hull's 28 degree list. It is taller
         /// than the box - the box was a hull, the model has its masts - so it is fitted by footprint
         /// and allowed to rise, standing on the hull's floor.
         /// </summary>
@@ -450,8 +450,11 @@ namespace EscapeWithYourFriends.EditorTools
         {
             Transform t = root.transform;
 
-            foreach (string rock in new[] { "Rock.Left", "Rock.Right", "Rock.Lintel", "Rock.Back" })
-                ArtDress.Fit(Child(t, rock), "Rocks");
+            // Cliff faces on the three standing walls; the lintel lies flat, so it stays a rock.
+            foreach (string wall in new[] { "Rock.Left", "Rock.Right", "Rock.Back" })
+                ArtDress.Fit(Child(t, wall), "Cliff");
+
+            ArtDress.Fit(Child(t, "Rock.Lintel"), "Rocks");
         }
 
         /// <summary>A direct child by name, or an error naming the landmark - a renamed box is a layout change.</summary>
