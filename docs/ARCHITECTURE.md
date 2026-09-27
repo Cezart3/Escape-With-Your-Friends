@@ -6739,7 +6739,11 @@ time nothing is assumed:
 - a model marked upright is measured after import, and if it lies down it is re-imported with
   the other `bakeAxisConversion`; if it still lies down that is an error naming the file;
 - the setting a kit's trees prove is applied to the rest of that kit, because a bottle cannot
-  prove which way is up and was exported the same way as the palm;
+  prove which way is up and was exported the same way as the palm. A prop is never imported before
+  the upright model that teaches its kit: `Source` imports the teacher first, so the answer does
+  not depend on which id somebody asked for;
+- if neither setting stands it up, the importer is put back as it was and the error names the file,
+  so a bad model does not leave its kit taught the wrong way;
 - `-lookTest` now checks it at run time too, on the terrain's tree prototypes, which it never
   used to see at all.
 
@@ -6761,9 +6765,13 @@ turns only: under a stretched parent, a quarter turn permutes the stretch and an
 shears. A box is stripped only after its model is in, so a machine without the kits builds the
 old greybox rather than an invisible building.
 
-A wall is a floor tile stood on its edge. `Tile` turns the module so its thinnest side faces the
-box's thinnest side, then grids it across the other two, which is how one Kenney plank tile is the
-casino's floor, its five walls and its sign.
+A wall is a floor tile stood on its edge. For a structure module `Tile` turns it so its thinnest
+side faces the box's thinnest side, then grids it across the other two, which is how one Kenney
+plank tile is the casino's floor, its five walls and its sign. Anything else only ever turns about
+the vertical, to line its long side up with the box's: a stump or a crate whose thinnest side
+happens to be sideways would otherwise be laid on its flank. A model's own root translation is
+zeroed in its wrapper, because a kit file whose root sits off the origin would otherwise hang
+beside its box.
 
 **Stations are dressed on the saved prefab.** The chest, the bench, the fire, the filter, the
 shop counter and both cage windows are networked prefabs that scenes place and FishNet's
@@ -6784,6 +6792,18 @@ renders it into 32-bit R11G11B10, the same bandwidth as LDR, and without it the 
 nothing to roll off and the bloom threshold could never be crossed. And `PostProcess` now switches
 post-processing on for the camera. Until now only `DrunkVision` did, so the global grade appeared
 the moment somebody got drunk and not before.
+
+It still would not have drawn. `ProjectSetup` makes the renderers with
+`ScriptableObject.CreateInstance<UniversalRendererData>()`, and that leaves `postProcessData` null:
+URP's own "Create > Rendering > URP Universal Renderer" menu fills it, the field carries no
+`[Reload]`, and a renderer without it builds no post-processing pass at all, whatever the camera or
+the volume says. So the grade, the bloom and `DrunkVision` itself had never been on screen.
+`RenderTuning` now gives every renderer that lacks it URP's own `PostProcessData.asset`, and
+`ProjectSetup` sets it at creation. The line to look for:
+
+```
+[RenderTuning] URP_Medium_Renderer had no post-processing data; it has URP's now.
+```
 
 **Measured.** Nothing yet. The build machine has no Unity and could not download a kit. The
 first run on the real machine prints, and belongs here:

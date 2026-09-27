@@ -126,6 +126,14 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
+        /// Materials this command leaves alone: the palette's own, and the art pass's - every kit
+        /// material and the roulette wheel's face (#79). Snapping those to the nearest palette colour
+        /// would undo the art pass on every prefab it dressed.
+        /// </summary>
+        static bool Kept(string path)
+            => path.StartsWith(Folder) || path.StartsWith(ArtCatalog.Root) || path.StartsWith("Assets/_Project/Art/Casino");
+
+        /// <summary>
         /// Repaints every prefab that is wearing something that is not from here (#79).
         ///
         /// The factories are fixed, but most of them only build a prefab when it is missing, and
@@ -163,7 +171,7 @@ namespace EscapeWithYourFriends.EditorTools
 
                     for (int i = 0; i < worn.Length; i++)
                     {
-                        if (worn[i] != null && AssetDatabase.GetAssetPath(worn[i]).StartsWith(Folder))
+                        if (worn[i] != null && Kept(AssetDatabase.GetAssetPath(worn[i])))
                             continue;
 
                         worn[i] = worn[i] == null

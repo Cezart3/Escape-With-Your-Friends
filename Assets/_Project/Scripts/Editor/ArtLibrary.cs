@@ -67,6 +67,7 @@ namespace EscapeWithYourFriends.EditorTools
                               + (model.Upright ? ", upright" : "");
 
                 if (triangles > cap) { Debug.LogError(line + " - OVER ITS CAP."); failed++; }
+                else if (model.Upright && !ArtVisual.Standing(native.size)) { Debug.LogError(line + " - ON ITS SIDE."); failed++; }
                 else Debug.Log(line);
             }
 
@@ -86,6 +87,15 @@ namespace EscapeWithYourFriends.EditorTools
             if (Imported.TryGetValue(id, out GameObject cached) && cached != null) return cached;
 
             ArtCatalog.Model model = ArtCatalog.Find(id);
+
+            // A model that cannot tell which way is up takes its kit's word for it, so the kit has to
+            // have spoken first - in every entry point, not only BuildAll's standing-first order. A
+            // counter imported before the stool that flips its kit would be placed on the old setting
+            // and turn under its wrapper on the next run.
+            if (!model.Upright && !PackAxis.ContainsKey(model.Pack))
+                foreach (ArtCatalog.Model teacher in ArtCatalog.Models)
+                    if (teacher.Pack == model.Pack && teacher.Upright) { Source(teacher.Id); break; }
+
             GameObject source = Import(model);
             if (source != null) Imported[id] = source;
 
@@ -286,7 +296,8 @@ namespace EscapeWithYourFriends.EditorTools
 
             if (model.Upright && !ArtVisual.Standing(NativeBounds(asset).size))
             {
-                importer.bakeAxisConversion = !importer.bakeAxisConversion;
+                bool original = importer.bakeAxisConversion;
+                importer.bakeAxisConversion = !original;
                 importer.SaveAndReimport();
                 asset = AssetDatabase.LoadAssetAtPath<GameObject>(path);
 
@@ -295,8 +306,17 @@ namespace EscapeWithYourFriends.EditorTools
                     Debug.Log($"[ArtLibrary] {path} imported lying down; standing with bakeAxisConversion "
                               + $"{importer.bakeAxisConversion}. {pack.Name} was exported in a different up axis.");
                 else
+                {
+                    // Neither setting stands it, so the flip proved nothing: put it back, or the next
+                    // run starts from the flipped one and every model of the kit follows it over.
+                    // BuildAll counts it as failed.
+                    importer.bakeAxisConversion = original;
+                    importer.SaveAndReimport();
+                    asset = AssetDatabase.LoadAssetAtPath<GameObject>(path);
                     Debug.LogError($"[ArtLibrary] {path} lies down with bakeAxisConversion on and off "
-                                   + $"({size.x:F2}x{size.y:F2}x{size.z:F2}). The file itself is rotated.");
+                                   + $"({size.x:F2}x{size.y:F2}x{size.z:F2}). The file itself is rotated, or "
+                                   + "it is wider than it is tall and should not be marked upright.");
+                }
             }
 
             if (model.Upright && ArtVisual.Standing(NativeBounds(asset).size))

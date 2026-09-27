@@ -168,13 +168,47 @@ namespace EscapeWithYourFriends.EditorTools
             var renderer = so.FindProperty("m_RendererDataList").GetArrayElementAtIndex(0)
                              .objectReferenceValue as ScriptableRendererData;
             if (renderer == null) Debug.LogError($"[RenderTuning] {asset.name} has no renderer; no SSAO settings written.");
-            else Occlusion(renderer, tier.Occlusion);
+            else
+            {
+                if (renderer is UniversalRendererData universal) PostProcessing(universal);
+                Occlusion(renderer, tier.Occlusion);
+            }
 
             Debug.Log($"[RenderTuning] {asset.name}: render scale {tier.RenderScale}, "
                       + $"MSAA x{tier.Msaa}, HDR {(tier.Hdr ? "on" : "off")}, shadows "
                       + $"{tier.ShadowResolution}^2 over {tier.ShadowDistance}m in {tier.Cascades} "
                       + $"cascade(s), {(tier.SoftShadows ? "soft" : "hard")}, "
                       + $"{tier.LightsPerObject} lights per object.");
+        }
+
+        /// <summary>
+        /// The shaders and lookup textures every post-processing pass is built from. URP's own
+        /// "create renderer" menu fills it in; <c>CreateInstance</c>, which is how ProjectSetup made
+        /// these three, does not, and in URP 17 nothing reloads it later - the field has no
+        /// <c>[Reload]</c> attribute. Null means the renderer builds no post-processing pass at all
+        /// (UniversalRenderer: "No postProcessData means that post processes are disabled"), so the
+        /// grade, the bloom and DrunkVision's blur have never been drawn on any tier, whatever the
+        /// camera asked for.
+        /// </summary>
+        internal static PostProcessData DefaultPostProcess()
+            => AssetDatabase.LoadAssetAtPath<PostProcessData>(
+                UniversalRenderPipelineAsset.packagePath + "/Runtime/Data/PostProcessData.asset");
+
+        static void PostProcessing(UniversalRendererData renderer)
+        {
+            if (renderer.postProcessData != null) return;
+
+            PostProcessData data = DefaultPostProcess();
+            if (data == null)
+            {
+                Debug.LogError($"[RenderTuning] URP's PostProcessData.asset is missing; {renderer.name} "
+                               + "stays without post-processing.");
+                return;
+            }
+
+            renderer.postProcessData = data;
+            EditorUtility.SetDirty(renderer);
+            Debug.Log($"[RenderTuning] {renderer.name} had no post-processing data; it has URP's now.");
         }
 
         /// <summary>
@@ -204,10 +238,11 @@ namespace EscapeWithYourFriends.EditorTools
                     for (int i = features.arraySize - 1; i >= 0; i--)
                     {
                         if (features.GetArrayElementAtIndex(i).objectReferenceValue != ssao) continue;
+                        // Nulled first, then deleted once, the way URP's own RemoveComponent does it:
+                        // whether a delete of a live reference only nulls it has changed across Unity
+                        // versions, and a guessed second delete can take the next feature with it.
+                        features.GetArrayElementAtIndex(i).objectReferenceValue = null;
                         features.DeleteArrayElementAtIndex(i);
-                        // Deleting an object reference first nulls it; a second delete removes the slot.
-                        if (i < features.arraySize && features.GetArrayElementAtIndex(i).objectReferenceValue == null)
-                            features.DeleteArrayElementAtIndex(i);
                         if (i < map.arraySize) map.DeleteArrayElementAtIndex(i);
                     }
 

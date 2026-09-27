@@ -43,8 +43,9 @@ namespace EscapeWithYourFriends.EditorTools
 
         /// <summary>
         /// A module repeated across a greybox piece in a grid of roughly <paramref name="cell"/>
-        /// metres. The module is turned so its thinnest side faces the box's thinnest side, which is
-        /// how one floor tile becomes both the floor and, stood on its edge, the walls.
+        /// metres. A panel (a <see cref="ArtCategory.Structure"/>) is turned so its thinnest side faces
+        /// the box's thinnest side, which is how one floor tile becomes both the floor and, stood on
+        /// its edge, the walls. Anything else only turns about the vertical.
         /// </summary>
         public static bool Tile(GameObject piece, string id, float cell)
         {
@@ -69,13 +70,18 @@ namespace EscapeWithYourFriends.EditorTools
             Vector3 world = Vector3.Scale(box.size, parent.lossyScale);
             Vector3 native = ArtLibrary.NativeBounds(source).size;
 
-            // Thinnest to thinnest. FromToRotation between two different axes is an exact quarter
-            // turn, which is the only kind a stretched parent can carry without shearing.
+            // Thinnest to thinnest, for a panel: FromToRotation between two different axes is an exact
+            // quarter turn, which is the only kind a stretched parent can carry without shearing, and
+            // it is how one floor tile stands on its edge as a wall. Anything else keeps its feet on
+            // the ground and only turns about the vertical: a stump in a tall thin totem box would
+            // otherwise be laid on its side because the box is thinner across than the stump is tall.
             int thinModel = Smallest(native);
             int thinBox = Smallest(world);
-            Quaternion turn = thinModel == thinBox
-                ? Quaternion.identity
-                : Quaternion.FromToRotation(Axis(thinModel), Axis(thinBox));
+            Quaternion turn;
+            if (ArtCatalog.Find(id).Category == ArtCategory.Structure)
+                turn = thinModel == thinBox ? Quaternion.identity : Quaternion.FromToRotation(Axis(thinModel), Axis(thinBox));
+            else
+                turn = (native.x <= native.z) == (world.x <= world.z) ? Quaternion.identity : Quaternion.Euler(0f, 90f, 0f);
 
             // The grid runs across the two long sides of the box.
             int a = (thinBox + 1) % 3;
@@ -252,8 +258,11 @@ namespace EscapeWithYourFriends.EditorTools
                 // The model's middle is not its pivot; shift the wrapper so the middle lands on the cell.
                 wrapper.transform.localPosition = centre - turn * Vector3.Scale(local, native.center);
 
+                // At the origin of the wrapper, where NativeBounds measured it: an FBX whose root node
+                // carries a translation would otherwise land that far from its cell.
                 var instance = (GameObject)PrefabUtility.InstantiatePrefab(source);
                 instance.transform.SetParent(wrapper.transform, false);
+                instance.transform.localPosition = Vector3.zero;
 
                 Finish(wrapper, model, extents);
                 index++;

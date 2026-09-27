@@ -304,7 +304,9 @@ namespace EscapeWithYourFriends.EditorTools
                 if (r > 0.94f) colour = wood;
                 else if (r > 0.70f)
                 {
-                    float slot = turn * Pockets.Length;
+                    // Half a pocket on, so pocket s is centred on s steps the way RouletteWheel.PocketAt
+                    // rounds, rather than starting there and leaving the marker on a fret.
+                    float slot = turn * Pockets.Length + 0.5f;
                     int number = Pockets[Mathf.FloorToInt(slot) % Pockets.Length];
 
                     // Brass frets between the pockets, which is what makes it read as a wheel.

@@ -70,6 +70,8 @@ namespace EscapeWithYourFriends.EditorTools
             foreach (var (name, shadowDistance, cascades, renderScale) in Tiers)
             {
                 var rendererData = ScriptableObject.CreateInstance<UniversalRendererData>();
+                // What URP's own menu does and CreateInstance does not; see RenderTuning.PostProcessing.
+                rendererData.postProcessData = RenderTuning.DefaultPostProcess();
                 string rendererPath = $"{SettingsDir}/URP_{name}_Renderer.asset";
                 AssetDatabase.CreateAsset(rendererData, rendererPath);
 
