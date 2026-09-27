@@ -174,6 +174,12 @@ namespace EscapeWithYourFriends.EditorTools
                 AssetDatabase.CreateAsset(material, MaterialPath);
             }
 
+            // The island's one shader once PR 158's EWYF/Stylized exists. StyleLook.Apply also
+            // re-shades Art/Casino, but it runs before this factory, so the atlas would stay on
+            // URP/Lit. The shader's defaults are StyleLook's numbers.
+            Shader stylized = Shader.Find("EWYF/Stylized");
+            if (stylized != null && material.shader != stylized) material.shader = stylized;
+
             material.SetTexture("_BaseMap", atlas);
             material.mainTexture = atlas;
             material.SetColor("_BaseColor", Color.white);
