@@ -296,8 +296,8 @@ dress → `SaveAsPrefabAsset` on the same path, which keeps the GUID.
 | Old (builder) | New | Note |
 |---|---|---|
 | boar, deer, gull (`AnimalFactory`) | Quaternius animated animals if the species exist (LOCAL); else Kenney cube-pets `animal-hog`, `animal-deer`, `animal-parrot` | Your eye picks |
-| Buggy (`VehicleBuilder`) | car/suv (2 474 tris) + car/wheel-default ×4 (332 each) | Wheels separate (VERIFIED separate models) |
-| Boat (`BoatBuilder`) | watercraft/boat-fishing-small (237) or boat-speed-a (156) | |
+| Buggy (`VehicleBuilder`) | ~~car/suv + car/wheel-default ×4~~ → car/race (1 952 tris, its own four wheels) | Changed in T11: the SUV's wheel arches only meet the buggy's axles at 2.8 m wide, and riders' heads go through its roof |
+| Boat (`BoatBuilder`) | ~~boat-fishing-small or boat-speed-a~~ → watercraft/boat-speed-j (178) | 1.78 × 4.27, the hull's own proportions, so it fits unstretched |
 | Plane + parts (`PlaneBuilder`, `PlanePartBuilder`) | **unchanged for now** | Candidates: mfep biplane (CC0, SNIPPET, split in Blender) or scailman plane (CC-BY, parts separated, SNIPPET). Decide after you look |
 | pistol, rifle, shotgun, smg, knife (`WeaponFactory`) | weapon/pistol (350), weapon/sniper or machinegun (486), weapon/shotgun, weapon/uzi, weapon/knife_sharp | Flat-colour materials (grey, greyDark, dark, wood) |
 | hatchet, shovel | survival/tool-axe, survival/tool-shovel | |
@@ -482,7 +482,7 @@ starts an iGPU on **Low**. Medium is what it must hold when you choose it (#83 m
 | Medium prop (chest, barrel, crate, bench, campfire, table) | 800 | 236–572 |
 | Landmark, all dressing summed | 8 000 | casino ≈ 4–6 k estimated from tile counts |
 | Shipwreck | 2 500 | 2 282 |
-| Vehicle, body + wheels | 4 000 | SUV 2 474 + 4 × 332 |
+| Vehicle, body + wheels | 4 000 | race car 1 952, wheels included; speedboat 178 |
 | Character, LOD0 | 16 000 | UBC female 15 060, male 14 318; UAL mannequin 13 743 |
 | Animal | 1 500 | cube-pets 422–676 |
 | Held weapon | 2 000 | 84–1 660 |
@@ -521,8 +521,8 @@ hand.
 
 **Status:** T1–T8 written. Nothing has run in Unity: the build machine has none and could not
 download a kit. Everything has been type-checked, though, against Unity reference assemblies, the
-real URP 17.3 source and FishNet's, with no new errors. T9 and T10 are written the same way; T11
-onward waits for your eye on P1-P3.
+real URP 17.3 source and FishNet's, with no new errors. T9, T10 and T11 are written the same way;
+T12 onward waits for your eye on P1-P3.
 
 ### P1 — the most visible: nature, lighting, casino
 
@@ -596,8 +596,10 @@ without `-noNatives`), `-rescueTest`, `-casinoTest` `0 failed`.
 
 ### P4 — animals, vehicles, weapons (after your eye on P1–P3)
 
-**T11 · Sonnet · vehicles.** `VehicleBuilder` (SUV + 4 wheels mapped onto the existing wheel
-transforms), `BoatBuilder`. *Done:* `-carTest`, `-boatTest`, `-vehicleTest` `0 failed`.
+**T11 · vehicles.** Written. `VehicleBuilder` puts the car kit's race car over the chassis and
+moves its four wheels onto the wheel visuals; `BoatBuilder` fits boat-speed-j over the hull. No
+collider, wheel, seat or float moved. `CarController`'s wheel visuals roll and steer properly now
+(they only twitched). *Done:* `-carTest`, `-boatTest`, `-vehicleTest` `0 failed`.
 **T12 · Sonnet · weapons.** `WeaponFactory` models per §4. *Done:* `-weaponTest`, `-gunTest`,
 `-meleeTest` `0 failed`.
 **T13 · Sonnet · animals**, after you pick the pack. *Done:* `-animalTest` `0 failed`.

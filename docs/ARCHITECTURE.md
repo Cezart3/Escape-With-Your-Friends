@@ -6999,6 +6999,72 @@ triangle cap; and a native's band carries its role's warpaint.
 
 ---
 
+## The vehicles in the kits' clothes (#79, ART-PLAN T11)
+
+The buggy and the boat are dressed by the builders that already make them, after the greybox is
+built and only when the kit is on disk. `ArtLibrary.Source` returning null leaves the old boxes.
+
+**Nothing physical moves.** The buggy's chassis box keeps its BoxCollider. `CarController`'s belly
+check reads that collider, so the box has to stay. The wheel colliders, the seats, the exits, the
+cargo socket, the hull collider and the six floats are the same numbers as before. The art only
+has to land on them.
+
+**The buggy** is the car kit's `race`, not the plan's SUV.
+
+- Every closed car in the kit has its wheel arches inside a body far wider than its track. Matching
+  the arches to the buggy's 1.56 m track and 2.5 m wheelbase makes the SUV 2.8 m wide.
+- Four seated riders would put their heads through a closed roof.
+- The race car is open. Scaled so its axles are the buggy's 2.5 m apart (×1.64), its wheels land
+  within 4 cm of the physics ones and its body is 1.97 m wide against the chassis's 1.9.
+
+`VehicleBuilder.Dress` works from the imported model, not from numbers copied out of the kit. The
+axis conversion and the unit scale never enter the sum.
+
+1. It unpacks the instance and finds the renderers whose names start with `wheel`. It tells front
+   from back by `front` in the name.
+2. It yaws the car so front is +Z, scales it to the wheelbase, and puts its axle midpoint on the
+   buggy's.
+3. It moves each kit wheel onto the nearest wheel visual, the transform `CarController` turns.
+4. The visual loses its cylinder and its (0.45, 0.16, 0.45) squash. The wheel is scaled to the
+   collider's 0.45 m radius and centred on the axle.
+
+A kit with a different wheel count is logged and left as greybox. The roll bar goes; it was cosmetic.
+
+**The wheel visuals were broken before this** and nobody could tell on a cylinder.
+
+- `CarController.Update` rebuilt the pose from scratch every frame, so the roll never accumulated.
+  The wheels twitched one frame's turn and stood still.
+- It applied the steer *before* laying the wheel on its side, which turned it about its own axle.
+
+It is now `Euler(0, steer, 0) * Euler(0, 0, 90) * Euler(0, _rolled, 0)`, read right to left: roll
+about the axle, lay the wheel down, steer about the car's vertical. `_rolled` accumulates. It is
+subtracted because the laid-down axle points out of the left side, and a positive turn about it
+rolls backwards. Clients are unchanged: speed still comes from the transform and steer from the
+`_shownSteer` SyncVar.
+
+**The boat** is the watercraft kit's `boat-speed-j`, fitted keeping its shape into the hull's
+2.4 × 6 footprint and standing on the keel.
+
+- It is drawn 1.78 × 4.27, so it comes out 2.4 × 1.69 × 5.76. The hull collider is 12 cm longer
+  at each end.
+- The kit points its bow at +Z; its narrow, raised end was measured there. `BoatBuilder` already
+  treats +Z as ahead.
+- Bow and Console go; both were cosmetic and collider-free.
+
+**Order.** Both builders rebuild their prefab from nothing, so they run before the terrain bakes
+that place them (PR 153, step 6c).
+
+**Not verified, and what to look at:**
+
+- Whether the kit's wheels import as separate renderers named `wheel-*`. The build log prints
+  `Dressed as race` if they do and `left as greybox` if not.
+- Whether the tyres roll the right way on screen. The sign was worked out, not watched.
+- Where the helm and bench riders sit relative to the speedboat's windscreen and floor.
+- Whether a race car reads as the island's buggy at all. It is one entry in `ArtCatalog`. Going
+  back to the SUV would mean moving the wheels, which is a handling change.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**

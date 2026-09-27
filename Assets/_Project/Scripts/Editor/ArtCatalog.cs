@@ -97,6 +97,10 @@ namespace EscapeWithYourFriends.EditorTools
             new("Kenney", "Castle", "castle", "https://kenney.nl/assets/castle-kit", true),
             new("Kenney", "Holiday", "holiday", "https://kenney.nl/assets/holiday-kit", true),
 
+            // P4, the vehicles (T11).
+            new("Kenney", "Car", "car-kit", "https://kenney.nl/assets/car-kit", true),
+            new("Kenney", "Watercraft", "watercraft", "https://kenney.nl/assets/watercraft-pack", true),
+
             // The one kit still on flat colours: wood, carpet, metal, woodDark. See ArtLibrary.Remap.
             new("Kenney", "Furniture", "furniture", "https://kenney.nl/assets/furniture-kit", false),
 
@@ -184,6 +188,11 @@ namespace EscapeWithYourFriends.EditorTools
             new("Crate", "Pirate", "crate", Prop),
             new("PirateBarrel", "Pirate", "barrel", Prop),
             new("RowBoat", "Pirate", "boat-row-small", Prop),
+
+            // --- the vehicles (VehicleBuilder, BoatBuilder) -----------------------------------------
+            // An open race car, not the plan's SUV: see VehicleBuilder.Dress.
+            new("Buggy", "Car", "race", ArtCategory.Vehicle),
+            new("Boat", "Watercraft", "boat-speed-j", ArtCategory.Vehicle),
         };
 
         public static Model Find(string id)
