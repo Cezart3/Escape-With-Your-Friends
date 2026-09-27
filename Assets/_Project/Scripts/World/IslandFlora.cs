@@ -85,21 +85,20 @@ namespace EscapeWithYourFriends.World
             new[] { new FloraModel("PalmStraight", 0.30f), new FloraModel("PalmBend", 0.30f),
                     new FloraModel("PalmTall", 0.30f), new FloraModel("PalmLean", 0.30f) },
 
-            // The one species your eye has to sign off: round Kenney canopies may read as a park
-            // rather than a jungle. The swap is this line and ArtCatalog.
-            new[] { new FloraModel("JungleRound", 0.45f), new FloraModel("JungleTall", 0.40f),
-                    new FloraModel("JungleSmall", 0.34f), new FloraModel("JunglePalm", 0.30f) },
+            // Quaternius's Nature MegaKit (P6 V1), one Kenney palm kept so the jungle stays tropical.
+            new[] { new FloraModel("Broadleaf", 0.45f), new FloraModel("BroadleafTall", 0.40f),
+                    new FloraModel("BroadleafSmall", 0.36f), new FloraModel("JunglePalm", 0.30f) },
 
-            new[] { new FloraModel("Pine", 0.36f), new FloraModel("PineTall", 0.36f),
-                    new FloraModel("PineWide", 0.36f), new FloraModel("PineSmall", 0.30f) },
+            new[] { new FloraModel("Pine", 0.36f), new FloraModel("PineWide", 0.36f),
+                    new FloraModel("PineTall", 0.36f), new FloraModel("PineSparse", 0.34f) },
 
             // Nothing here is solid. A bush that blocks you is infuriating; a bush you walk through
             // is free cover, and a fern that stops a car is a bug report.
-            new[] { new FloraModel("Leafy", 0f), new FloraModel("Frond", 0f),
-                    new FloraModel("Grass", 0f), new FloraModel("Flowers", 0f) },
+            new[] { new FloraModel("Bush", 0f), new FloraModel("Fern", 0f),
+                    new FloraModel("Leafy", 0f), new FloraModel("Flowers", 0f) },
 
-            new[] { new FloraModel("Rocks", -1f), new FloraModel("RocksSmall", -1f),
-                    new FloraModel("RocksSand", -1f), new FloraModel("Log", -1f),
+            new[] { new FloraModel("Boulder", -1f), new FloraModel("BoulderSmall", -1f),
+                    new FloraModel("BoulderWide", -1f), new FloraModel("Log", -1f),
                     new FloraModel("Stump", -1f) },
         };
 

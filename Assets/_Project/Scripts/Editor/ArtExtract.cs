@@ -150,7 +150,9 @@ namespace EscapeWithYourFriends.EditorTools
         {
             if (!byName.TryGetValue(file, out List<ZipArchiveEntry> entries)) return null;
 
-            return entries.FirstOrDefault(e => e.FullName.IndexOf("fbx", StringComparison.OrdinalIgnoreCase) >= 0)
+            // Quaternius ships "FBX" and "FBX (Unity)" side by side; the second is exported Y-up.
+            return entries.FirstOrDefault(e => e.FullName.IndexOf("unity", StringComparison.OrdinalIgnoreCase) >= 0)
+                   ?? entries.FirstOrDefault(e => e.FullName.IndexOf("fbx", StringComparison.OrdinalIgnoreCase) >= 0)
                    ?? entries[0];
         }
 
