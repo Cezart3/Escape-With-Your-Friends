@@ -319,6 +319,7 @@ namespace EscapeWithYourFriends.AI
             Check($"the island has camps ({spawner.Camps.Count})", spawner.Camps.Count > 0);
 
             int day = 0, night = 0;
+            bool hostile = UnityEngine.SceneManagement.SceneManager.GetSceneByName("Island2").isLoaded;
 
             foreach (NativeSpawner.Camp camp in spawner.Camps)
             {
@@ -344,9 +345,14 @@ namespace EscapeWithYourFriends.AI
                 // Clearing it by a metre is not clearing it. A camp whose leash stops just short of
                 // where you wake up is a camp you are in a firefight with before anybody has picked
                 // up a weapon, which is the bug this number now has a margin for.
-                float edge = distance - camp.Radius - camp.Role.NightLeash;
-                Check($"{camp.Id} cannot reach the spawn at night ({edge:0}m of clear ground, want {Breathing})",
-                      edge > Breathing);
+                //
+                // The second island is the hostile one, and 512 m across: a headhunter chasing you back
+                // to the landing at night is the design. What stays a bug there is a camp that can see
+                // the landing, so it is measured with the night's notice instead of the night's leash.
+                float reach = hostile ? camp.Role.NightNotice : camp.Role.NightLeash;
+                float edge = distance - camp.Radius - reach;
+                Check($"{camp.Id} cannot {(hostile ? "see" : "reach")} the spawn at night "
+                      + $"({edge:0}m of clear ground, want {Breathing})", edge > Breathing);
 
                 day += camp.Population;
                 night += camp.Wanted(1f);

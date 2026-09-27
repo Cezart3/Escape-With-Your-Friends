@@ -323,6 +323,13 @@ namespace EscapeWithYourFriends.EditorTools
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
+            // NewScene unloads unused assets, and on a first bake after an art import that includes
+            // the POI catalog: profile.Pois reads null from here on. Everything below hangs off it -
+            // the landmarks, the herds, the native camps and the spawn ring - and each fell back to
+            // the origin, so the players woke up inside the village. Reattached once, for all of them.
+            if (profile.Pois == null)
+                profile.Pois = AssetDatabase.LoadAssetAtPath<POICatalog>(POIFactory.CatalogPathFor(profile));
+
             var island = new GameObject(TerrainObjectName);
             island.transform.position = profile.TerrainOrigin;
 

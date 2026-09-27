@@ -7295,6 +7295,35 @@ their names and their prefab GUIDs but now point at the Nature kit. `Rocks` stay
 
 ---
 
+## The players woke up inside the village (bug report, 2026-09-28)
+
+**Symptom.** On the first island a native camp stood where the players spawn.
+
+**Cause.** `TerrainGenerator.WriteScene` opens a fresh scene with `NewScene`, and that unloads
+unused assets. On the first bake after an art import, the POI catalog was one of them, so from
+then on `profile.Pois` read as null. Everything baked after that point hangs off the catalog, and
+each piece fell back to the origin:
+- the herds (`AnimalFactory.BakeZones`);
+- the native camps (`NativeFactory.BakeCamps`);
+- the spawn ring (`WriteSpawnPoints`).
+
+All three ended up at (0, 0), seven metres apart. `e1194e2` had patched the same null in
+`POIFactory.Bake` alone, so the landmarks were right and nothing else was.
+
+**Fix.** `WriteScene` reattaches the catalog right after `NewScene`, once, for every caller.
+
+**Test.** `-nativeTest` measures each camp against every spawn point and wants 25 m of clear
+ground beyond the camp's radius plus its night leash. The exception is the second island. It is
+the hostile one and 512 m across, and a headhunter chasing you to the landing at night is the
+design there. So on that island it measures with the night's notice instead: a camp may not *see*
+the landing.
+
+**Run.**
+- Island 1: camps at 331 m and 210 m from the base; `-nativeTest` 164/0.
+- Both islands: `-lookTest` 10/0.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**
