@@ -174,6 +174,21 @@ namespace EscapeWithYourFriends.AI
                 yield break;
             }
 
+            // T13. Every live animal draws its species' model or its boxes, never both, never none.
+            int modelled = 0, skins = 0;
+            bool oneLook = true;
+            foreach (Animal live in Animal.Live)
+            {
+                skins = live.SkinCount;
+                if (live.SkinRoot != null) modelled++;
+                if (!live.OneLook) oneLook = false;
+            }
+
+            Debug.Log($"[AnimalTest] {modelled} of {Animal.Live.Count} live animals wear a model "
+                      + $"({skins} species modelled in the prefab).");
+            Check("every animal draws one look: its model or its boxes", oneLook);
+            if (skins > 0) Check("the modelled species wear their models", modelled > 0);
+
             // ---------------------------------------------------------------- the behaviour
 
             yield return Flees(spawner, animals.Find("deer"), motor, health, stun);
