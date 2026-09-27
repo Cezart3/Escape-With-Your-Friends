@@ -172,12 +172,20 @@ namespace EscapeWithYourFriends.Player
 
             Check("standing again, the animator has it back", !skin.Tracking && worn.Animator.enabled);
 
+            // The arm itself, not only the weight this script wrote: an empty layer or a wrong mask
+            // leaves the arm where the idle has it.
+            int armIndex = Array.FindIndex(worn.Physics, t => t != null && t.name == "UpperArm.L");
+            Transform arm = armIndex >= 0 ? worn.Bones[armIndex] : null;
+            Quaternion down = arm != null ? arm.localRotation : Quaternion.identity;
+
             skin.ForceCarry = true;
             yield return new WaitForSeconds(1f);
 
             float weight = worn.Animator.layerCount > 1 ? worn.Animator.GetLayerWeight(1) : 0f;
+            float raised = arm != null ? Quaternion.Angle(down, arm.localRotation) : 0f;
             skin.ForceCarry = false;
-            Check($"carrying raises the arms (layer weight {weight:F2})", weight > 0.9f);
+            Check($"carrying raises the arms (layer weight {weight:F2}, upper arm {raised:F0} degrees)",
+                  weight > 0.9f && raised > 20f);
 
             // The NPCs (T10): the barman on one island, the castaway on the other, natives if on.
             NpcSkin[] npcs = NpcSkin.Live.Where(n => n != null).ToArray();

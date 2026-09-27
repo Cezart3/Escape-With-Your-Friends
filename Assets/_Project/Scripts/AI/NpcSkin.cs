@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using EscapeWithYourFriends.Combat;
 using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.Player;
-using EscapeWithYourFriends.Vehicles;
 using FishNet.Object;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -17,8 +16,8 @@ namespace EscapeWithYourFriends.AI
     /// body the whole time and all this does is tell it how fast the root is going, whether it is in
     /// a seat (the castaway, holding on in the plane), carrying (a native with somebody over its
     /// shoulder) or dead (a native, until it despawns). All of that is read off state every peer
-    /// already has - the transform, the parent, the carry socket, <see cref="Health"/> - so nothing
-    /// here is networked.
+    /// already has - the transform, the castaway's stage, the carry socket, <see cref="Health"/> -
+    /// so nothing here is networked.
     ///
     /// Which body is worn is the object id, the same on every peer, so a camp is not four twins.
     /// </summary>
@@ -53,13 +52,12 @@ namespace EscapeWithYourFriends.AI
 
         Health _health;
         NetworkObject _network;
+        Castaway _castaway;
 
         int _active = -1;
         Vector3 _wasAt;
         float _speed;
         float _carryWeight;
-        Transform _parent;
-        bool _seated;
 
         internal Body[] Bodies => _bodies;
         internal Body Active => _active >= 0 && _active < _bodies.Length ? _bodies[_active] : null;
@@ -90,6 +88,7 @@ namespace EscapeWithYourFriends.AI
 
             TryGetComponent(out _health);
             TryGetComponent(out _network);
+            TryGetComponent(out _castaway);
         }
 
         void OnEnable() => Live.Add(this);
@@ -124,7 +123,7 @@ namespace EscapeWithYourFriends.AI
             // Picked once the id is real: before the spawn it is the same placeholder on every object.
             if (_active < 0)
             {
-                if (_network != null && !_network.IsSpawned) return;
+                if (_bodies.Length > 1 && _network != null && !_network.IsSpawned) return;
 
                 _active = _network != null ? _network.ObjectId % _bodies.Length : 0;
                 for (int i = 0; i < _bodies.Length; i++)
@@ -139,21 +138,16 @@ namespace EscapeWithYourFriends.AI
             Vector3 moved = transform.position - _wasAt;
             _wasAt = transform.position;
 
-            // The castaway rides by being parented into the vehicle. Looked up when the parent changes,
-            // not every frame.
-            if (transform.parent != _parent)
-            {
-                _parent = transform.parent;
-                _seated = _parent != null && _parent.GetComponentInParent<Vehicle>() != null;
-            }
-
+            // The castaway rides parented into the plane, but only on the server: the parent is not
+            // synchronised. The stage is.
+            bool seated = _castaway != null && _castaway.Where == Castaway.Stage.Aboard;
             bool dead = _health != null && _health.State == LifeState.Dead;
 
             float measured = Mathf.Min(new Vector2(moved.x, moved.z).magnitude / dt, 12f);
             _speed = Mathf.Lerp(_speed, measured, 1f - Mathf.Exp(-8f * dt));
 
-            animator.SetFloat(SpeedId, _seated || dead ? 0f : _speed);
-            animator.SetBool(SeatedId, _seated);
+            animator.SetFloat(SpeedId, seated || dead ? 0f : _speed);
+            animator.SetBool(SeatedId, seated);
             animator.SetBool(DeadId, dead);
 
             if (animator.layerCount > 1)

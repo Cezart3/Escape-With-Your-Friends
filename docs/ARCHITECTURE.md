@@ -6904,7 +6904,10 @@ so four players in a full lobby are, as far as the pack allows, four different p
   the eleven linked bones are laid along their physics bones, parents first; the hips are placed
   where the physics hips say. Restoring the bind pose first is what keeps the spine, collarbones
   and hands from staying wherever the last clip froze them.
-- *Getting up* blends from the last limp pose to the animator's over 0.35 s.
+- *Getting up* blends from the last limp pose to the animator's over 0.35 s. The frame the root
+  jumps to the hips counts as no movement, so standing up is not a sprint or a jump.
+- *Punch* is not triggered from a seat: the state machine will not take it there, and an unused
+  trigger stays set until you get out.
 - *Owner*: your own body is shadow-only while alive (the camera is in its head) and drawn when
   dead, because death is third person.
 - *Headless*, the bodies are destroyed in `Awake`: fifteen thousand skinned triangles and an
@@ -6920,7 +6923,7 @@ the colour slot picks; every primitive hidden; the colour on the band and not on
 owner's body shadow-only; standing still reads as still; a forced walk drives the blend and swings
 the thigh more than 10°; after a shove, limp, every link within 20° of its physics bone and hips,
 elbows and knees within 0.2 m of theirs; standing again gives the animator back; carrying brings
-the arm layer to full weight.
+the arm layer to full weight and turns the upper arm more than 20°.
 
 **Not verified.** Nothing here has run: the build machine has no Unity and could not download the
 packs. The UBC geometry was read from a glTF re-export, and the zip layout, the FBX names, where
@@ -6957,8 +6960,9 @@ peer already has.
 - *Which body*: `ObjectId % bodies`, picked once the object is spawned. Before that the id is the
   same placeholder on every object, and a camp would be four twins.
 - *Speed*: measured from how far the root moved, as `CharacterSkin` does.
-- *Seated*: parented under a `Vehicle`. The castaway boards by being parented to the ride's
-  `CarrySocket`, so a parent change is the only time it is looked up.
+- *Seated*: the castaway's synced stage is `Aboard`. It boards by being parented to the plane's
+  `CarrySocket`, but only the server parents it; `NetworkTransform` does not sync the parent here.
+- *A single body* (the castaway, the barman) is shown at once, without waiting for the spawn.
 - *Dead*: `Health.State == Dead` plays `Death01` from any state. It does not loop, so a dead
   native lies there until it despawns.
 - *Carrying*: the native's carry socket has a child. `Carryable` parents the carried hips there

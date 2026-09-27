@@ -174,7 +174,10 @@ namespace EscapeWithYourFriends.Player
 
         void OnAttacked(WeaponDef weapon)
         {
-            if (weapon != null && weapon.Kind == WeaponKind.Melee && Active != null)
+            // Not from a seat: the state machine will not punch there, and a trigger nobody takes
+            // stays set, so the swing would play on the way out of the car.
+            if (weapon != null && weapon.Kind == WeaponKind.Melee && Active != null
+                && (_rider == null || !_rider.IsSeated))
                 Active.Animator.SetTrigger(PunchId);
         }
 
@@ -204,6 +207,10 @@ namespace EscapeWithYourFriends.Player
             }
             else
             {
+                // Getting up moves the root to where the hips landed, metres in one frame. That is not
+                // a sprint, and a drop to lower ground is not a jump.
+                if (_rise >= RiseTime) moved = Vector3.zero;
+
                 Drive(body, moved, dt);
                 if (_rise > 0f) Rise(body, dt);
             }
