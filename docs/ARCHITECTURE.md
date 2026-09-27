@@ -7253,6 +7253,48 @@ it.
 
 ---
 
+## The island's nature from Quaternius (#76, ART-PLAN P6 V1)
+
+The first kit to use the textured mode. Quaternius's Stylized Nature MegaKit, free Standard
+edition, CC0 (`License_Standard.txt`, copied as `License.txt`), replaces Kenney's jungle trees,
+pines, ground plants and loose rocks. The palms stay Kenney's, because the free edition has
+none, and one Kenney palm stays in the jungle so it still reads as tropical.
+
+**What was taken, measured in Blender before choosing:**
+
+| Species | Models | Triangles |
+|---|---|---|
+| JungleTree | CommonTree 1, 3, 5 + Kenney `palm-detailed-bend` | 6 265, 3 505, 3 182 |
+| HighlandTree | Pine 1, 2, 4, 5 | 3 947, 3 648, 3 370, 1 646 |
+| Bush | Bush_Common, Fern_1, Plant_1_Big, Flower_3_Group | 900, 288, 360, 755 |
+| Ground | Rock_Medium 1-3 + Kenney log and stump | 342, 244, 522 |
+
+The twisted trees (about 10 000 each) and the dead trees (5 600 to 6 600) were left out. The
+jungle is the densest thing on the island.
+
+**Caps.** `ArtVisual.Cap` went from 600 to 6 500 for a tree and from 300 to 1 000 for a plant.
+Quaternius's trees are real models, not Kenney's twelve-sided cones. What bounds the cost is
+`IslandProfile.TreeMaximumFullLOD` (60): the bake logs a worst case of 60 × 6 265 = 375 900
+triangles at full detail. That is comfortable on the 760M. The leaf cards are alpha-clipped and
+two-sided, and that overdraw is the cost to watch when the user plays on the iGPU.
+
+**`ArtExtract.Pick`** now prefers a path containing "unity". Quaternius ships `FBX/` and
+`FBX (Unity)/` with the same file names. Kenney zips have no such folder, so nothing else moved.
+
+**Ids.** New ids (`Broadleaf*`, `Pine*`, `Bush`, `Fern`, `Boulder*`). `Leafy` and `Flowers` kept
+their names and their prefab GUIDs but now point at the Nature kit. `Rocks` stays Kenney's for
+`GreyboxBuilder`. Eight prefabs that nothing references any more were deleted.
+
+**Run:**
+- `ArtExtract` copied 61 models, 0 missing.
+- `ArtLibrary.BuildAll`: 62 of 62 ready. Seven slots were painted from the kit's textures:
+  bark and rocks opaque, the leaves and flowers alpha-clipped.
+- Island 1: 15 012 plants. Island 2: 1 221.
+- Build clean.
+- `-lookTest` 10/0 on both islands: 26 and 16 distinct materials, under the budget of 48.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**

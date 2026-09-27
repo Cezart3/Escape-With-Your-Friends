@@ -41,8 +41,10 @@ namespace EscapeWithYourFriends.World
         /// <summary>LOD0 triangles, per model, at the size the art pass sold it at.</summary>
         public static int Cap(ArtCategory category) => category switch
         {
-            ArtCategory.Tree => 600,
-            ArtCategory.Plant => 300,
+            // Measured on Quaternius's Nature MegaKit (P6 V1): its trees are 1 600 to 6 300, its
+            // bushes up to 900. IslandProfile.TreeMaximumFullLOD (60) bounds what is drawn at once.
+            ArtCategory.Tree => 6500,
+            ArtCategory.Plant => 1000,
             ArtCategory.Rock => 600,
             ArtCategory.Log => 150,
             ArtCategory.SmallProp => 400,

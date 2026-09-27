@@ -116,6 +116,11 @@ namespace EscapeWithYourFriends.EditorTools
             // The one kit still on flat colours: wood, carpet, metal, woodDark. See ArtLibrary.Remap.
             new("Kenney", "Furniture", "furniture", "https://kenney.nl/assets/furniture-kit", false),
 
+            // P6 V1: the island's trees, bushes and rocks. The free Standard edition, CC0 (its
+            // License_Standard.txt). No palms in it, so the palms stay Kenney's.
+            new("Quaternius", "Nature", "Nature MegaKit",
+                "https://quaternius.com/packs/stylizednaturemegakit.html", false, textured: true),
+
             // The people (T9). No entries in Models, so ArtExtract passes over them: their file names
             // were never seen, and CharacterArt extracts them by kind instead.
             new("Quaternius", "UniversalBaseCharacters", "basecharacter",
@@ -149,25 +154,29 @@ namespace EscapeWithYourFriends.EditorTools
             new("PalmTall", "Pirate", "palm-detailed-straight", Tree, Height, 9.5f, true),
             new("PalmLean", "Pirate", "palm-detailed-bend", Tree, Height, 8.5f, true),
 
-            new("JungleRound", "Platformer", "tree", Tree, Height, 9f, true),
-            new("JungleTall", "Coaster", "tree-large", Tree, Height, 10f, true),
-            new("JungleSmall", "Coaster", "tree", Tree, Height, 6.5f, true),
+            // Quaternius's broadleaf and pine. Only the ones under 6 500 triangles: the twisted and
+            // dead trees measure 5 600 to 10 100, and the jungle is the densest thing on the island.
+            new("Broadleaf", "Nature", "CommonTree_1", Tree, Height, 9f, true),
+            new("BroadleafTall", "Nature", "CommonTree_3", Tree, Height, 11f, true),
+            new("BroadleafSmall", "Nature", "CommonTree_5", Tree, Height, 8f, true),
             new("JunglePalm", "Pirate", "palm-detailed-bend", Tree, Height, 8f, true),
 
-            new("Pine", "Survival", "tree", Tree, Height, 9f, true),
-            new("PineTall", "Survival", "tree-tall", Tree, Height, 12f, true),
-            new("PineWide", "Castle", "tree-large", Tree, Height, 10f, true),
-            new("PineSmall", "Castle", "tree-small", Tree, Height, 6f, true),
+            new("Pine", "Nature", "Pine_1", Tree, Height, 9f, true),
+            new("PineWide", "Nature", "Pine_2", Tree, Height, 8.5f, true),
+            new("PineTall", "Nature", "Pine_4", Tree, Height, 12f, true),
+            new("PineSparse", "Nature", "Pine_5", Tree, Height, 10f, true),
 
             // Ground plants are wider than they are tall, so they are sized across.
-            new("Leafy", "Pirate", "grass-plant", Plant, Width, 1.6f),
-            new("Frond", "Platformer", "plant", Plant, Width, 1.2f),
-            new("Grass", "Survival", "grass-large", Plant, Width, 1.0f),
-            new("Flowers", "Platformer", "flowers", Plant, Width, 1.2f),
+            new("Bush", "Nature", "Bush_Common", Plant, Width, 2.2f),
+            new("Fern", "Nature", "Fern_1", Plant, Width, 1.8f),
+            new("Leafy", "Nature", "Plant_1_Big", Plant, Width, 1.8f),
+            new("Flowers", "Nature", "Flower_3_Group", Plant, Width, 1.2f),
 
+            // Kenney's, kept for the greybox's rock (GreyboxBuilder).
             new("Rocks", "Pirate", "rocks-a", Rock, Width, 2.4f),
-            new("RocksSmall", "Pirate", "rocks-b", Rock, Width, 1.4f),
-            new("RocksSand", "Pirate", "rocks-sand-a", Rock, Width, 3.2f),
+            new("Boulder", "Nature", "Rock_Medium_1", Rock, Width, 2.4f),
+            new("BoulderSmall", "Nature", "Rock_Medium_2", Rock, Width, 1.4f),
+            new("BoulderWide", "Nature", "Rock_Medium_3", Rock, Width, 3.2f),
             new("Log", "Survival", "tree-log", Log, Width, 3f),
             new("Stump", "Survival", "tree-trunk", Log, Height, 0.8f),
 
