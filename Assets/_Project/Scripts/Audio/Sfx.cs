@@ -20,6 +20,10 @@ namespace EscapeWithYourFriends.Audio
         Spin,
         Crash,
         Click,
+        ReelStop,
+        Deal,
+        Win,
+        BigWin,
     }
 
     /// <summary>
@@ -31,13 +35,13 @@ namespace EscapeWithYourFriends.Audio
     /// also why nothing here is server-side. The host decides what happened; each machine makes its
     /// own noise about it.
     ///
-    /// The pool is eight sources because a burst of two players punching each other while a buggy
-    /// lands on them is about six overlapping sounds, and a ninth cutting off the oldest is what
-    /// every game does anyway.
+    /// The pool is twelve sources: a burst of two players punching each other while a buggy lands on
+    /// them is about six overlapping sounds, and a seven-reel cabinet stopping its reels under its
+    /// own spin is eight. A thirteenth cutting off the oldest is what every game does anyway.
     /// </summary>
     public static class Sfx
     {
-        const int Voices = 8;
+        const int Voices = 12;
 
         static readonly Dictionary<Sound, AudioClip> Clips = new();
 
@@ -119,6 +123,21 @@ namespace EscapeWithYourFriends.Audio
 
         // ---------------------------------------------------------------- the sounds themselves
 
+        static readonly float[] WinNotes = { 523f, 659f, 784f, 1047f };
+        static readonly float[] HighNotes = { 659f, 784f, 1047f, 1319f };
+
+        /// <summary>Notes one after another, <paramref name="step"/> seconds each, the last one ringing on.</summary>
+        static float Arpeggio(float t, float step, float[] notes, float volume)
+        {
+            int n = Mathf.Min(notes.Length - 1, (int)(t / step));
+            float local = t - n * step;
+            bool last = n == notes.Length - 1;
+            float hz = notes[n];
+
+            return (Synth.Sine(t, hz) * 0.7f + Synth.Sine(t, hz * 2f) * 0.2f) * volume
+                   * Synth.Decay(local, last ? 0.3f : step, last ? 3f : 2f);
+        }
+
         static AudioClip Build(Sound sound)
         {
             switch (sound)
@@ -191,6 +210,36 @@ namespace EscapeWithYourFriends.Audio
                 case Sound.Click:
                     return Synth.Clip("click", 0.06f, t =>
                         Synth.Sine(t, 1200f) * 0.25f * Synth.Decay(t, 0.06f, 18f));
+
+                // A reel landing: a low thunk with a click on its front edge.
+                case Sound.ReelStop:
+                    return Synth.Clip("reelstop", 0.12f, t =>
+                        (Synth.Sine(t, 120f - 50f * t / 0.12f) * 0.7f + Synth.White() * 0.35f * Synth.Decay(t, 0.03f, 6f))
+                        * Synth.Decay(t, 0.12f, 7f));
+
+                // A card snapped onto felt.
+                case Sound.Deal:
+                    return Synth.Clip("deal", 0.09f, t =>
+                        (Synth.White() * 0.5f + Synth.Sine(t, 2400f) * 0.15f) * Synth.Decay(t, 0.09f, 14f));
+
+                // Any win: a major arpeggio up, the last note left to ring.
+                case Sound.Win:
+                    return Synth.Clip("win", 0.60f, t => Arpeggio(t, 0.09f, WinNotes, 0.32f));
+
+                // A big win: the arpeggio twice, a step higher the second time, then a held chord that
+                // shimmers, with sparkles over the top. Under two seconds, so the banner outlasts it.
+                case Sound.BigWin:
+                    return Synth.Clip("bigwin", 1.80f, t =>
+                    {
+                        if (t < 0.32f) return Arpeggio(t, 0.08f, WinNotes, 0.3f) * Synth.Decay(t, 0.32f, 0.5f);
+                        if (t < 0.64f) return Arpeggio(t - 0.32f, 0.08f, HighNotes, 0.3f) * Synth.Decay(t - 0.32f, 0.32f, 0.5f);
+
+                        float held = t - 0.64f;
+                        float shimmer = 0.75f + 0.25f * Synth.Sine(held, 9f);
+                        float chord = (Synth.Sine(t, 1047f) + Synth.Sine(t, 1319f) + Synth.Sine(t, 1568f)) * 0.22f;
+                        float sparkle = Synth.Sine(t, 3000f + 1000f * Mathf.Sin(t * 37f)) * 0.06f * (Synth.Sine(t, 11f) > 0.6f ? 1f : 0f);
+                        return (chord * shimmer + sparkle) * Synth.Decay(held, 1.16f, 2.5f);
+                    });
 
                 default:
                     return null;

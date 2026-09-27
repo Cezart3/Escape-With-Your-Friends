@@ -33,13 +33,13 @@ namespace EscapeWithYourFriends.World
         const string Stylized = "EWYF/Stylized";
 
         /// <summary>
-        /// Palette.Entries' names plus the roulette wheel: the rest of what StyleLook re-shades. A copy,
+        /// Palette.Entries' names plus the casino's own (roulette wheel, slot atlas) and the flame: the rest of what StyleLook re-shades. A copy,
         /// because Palette is an editor script; a palette entry missing here only goes unchecked.
         /// </summary>
         static readonly HashSet<string> Painted = new()
         {
             "Wood", "Stone", "Canvas", "Metal", "Accent", "Sand", "Leaf", "WoodDark", "LeafDark",
-            "Felt", "Skin", "Cloth", "Plastic", "Gold", "Dark", "RouletteWheel", "Flame",
+            "Felt", "Skin", "Cloth", "Plastic", "Gold", "Dark", "RouletteWheel", "Flame", "SlotAtlas",
         };
 
         /// <summary>Renderers wearing one material before the draw calls are worth instancing away.</summary>

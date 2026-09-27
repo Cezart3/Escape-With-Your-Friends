@@ -7362,7 +7362,8 @@ cull the generators wrote survives. Same asset, same GUID, no prefab touched.
 numbers and a per-kit row by material-name prefix. `StyleLook.Apply` (batchmode, or
 EWYF/Art/Apply stylized look) walks `ThirdParty/_Materials`, `Art/Greybox` and `Art/Casino`.
 It also runs at the end of `ArtLibrary.BuildAll`, and every generator that makes a material
-(`ArtLibrary`, `CharacterArt`, `Palette.Named`, the roulette wheel) creates it with `StyleLook.New`, so nothing new lands on URP/Lit. Tuning is editing the table and
+(`ArtLibrary`, `CharacterArt`, `Palette.Named`, the roulette wheel, the slot cabinets' atlas)
+creates it with `StyleLook.New`, so nothing new lands on URP/Lit. Tuning is editing the table and
 re-running Apply.
 
 **The grade stays the one volume `PostProcess` already builds** (ACES, small contrast and
@@ -7382,6 +7383,158 @@ log's `Shader error in 'EWYF/Stylized'`.
 
 **Not covered: the terrain.** It stays on URP Terrain/Lit, so the ground under a banded rock is
 still smoothly shaded. A banded terrain shader is the next step if the seam shows.
+
+---
+
+## The slot cabinets (#159)
+
+Three cabinets along the casino's back wall, right of the bottles, each its own game. The names,
+symbols and numbers are ours; the mechanics are the genre's common stock.
+
+| Cabinet | Grid | How it pays | The extra |
+|---|---|---|---|
+| **Coconut Sevens** | 5x3 | 20 fixed lines, 3+ left to right; stars pay anywhere | Double-up card: red or black, up to 5 times |
+| **Wrath of the Volcano** | 6x5 | 8+ of a symbol anywhere; winners burst and the rest tumble | Lava orbs (x2-x100) multiply a paying sequence; 4 volcanoes give 15 free spins where the orbs add up |
+| **Reef Rush** | 7x7 | Clusters of 5+ touching; burst and tumble | A cell burst twice becomes a x2 spot, then x4 ... x128; 3+ chests give free spins where the spots never reset |
+
+**The game is arithmetic, and it lives in one file.** `SlotMath` takes a kind, a seed and a bet and
+returns every picture of the spin and the payout, with no Unity, no network and no clock in it. Two
+things follow. The harness can play 200 000 spins of each game in seconds. And a spin crosses the
+network as four bytes: the server rolls a seed, works the spin out, and sends the seed; every client
+replays all of it - a Volcano feature is a few hundred grids - and draws what the server already paid.
+That only works if the generator is ours, so `SlotRng` is SplitMix64 rather than `System.Random`, whose
+sequence belongs to whichever runtime is underneath.
+
+**Authority is the roulette wheel's.** The stake leaves the wallet on the press, `ServerSpin` decides
+everything before a reel moves, and the win is paid when the server's copy of the animation ends, so
+the chip counter never gives a spin away. Nothing a client sends can reach a seed. Chips only: the
+two doors between chips and money are still the cage's.
+
+**The numbers.** Every paytable is in hundredths of the bet; a spin sums in those and rounds down to
+chips once. Tuned by simulation under .NET 8 against the same file, several million spins each:
+
+| Cabinet | Return | Hits | Feature | Best seen |
+|---|---|---|---|---|
+| Coconut Sevens | 95.9% (the card is a fair 50/50 on top) | 34% | - | 300x |
+| Wrath of the Volcano | ~95.5% | 24% | 1 in ~440, ~31% of the return | ~2000x |
+| Reef Rush | ~95% | 34% | 1 in ~370, ~34% of the return | 5000x (the cap) |
+
+No spin pays past 5000x. The two feature games are volatile: a 200 000-spin sample lands anywhere
+from about 91% to 100%, which is why `-slotTest` checks a band and a golden number rather than 95.0.
+
+**One material.** Thirty-odd symbols in their own colours would be thirty materials against
+`LookTest`'s budget of 48. `SlotFactory` paints every colour into one 8x8 atlas and bakes each symbol
+as a copy of a primitive, or a few combined (the seven, the crown, the starfish), whose UVs all sit on
+its own texel. A symbol changing is a mesh swap. The cabinets themselves are palette boxes.
+
+**The screen is local.** Reels flicker and stop left to right, winners pulse and burst, tumbles fall
+into the gaps, Reef's spots grow with their multiplier. None of it is replicated and none of it
+decides anything; `-slotTest` reads the grid back off the cells to prove it stopped where the seed
+says. The board at the top of the screen (`SlotBoard`) takes over from the roulette board inside
+2.2 m of a cabinet and shows the running win, the free spins left and the multiplier.
+
+**Buttons** are nested `NetworkObject`s for `BetSpot`'s reason. Spin, Bet (10/20/50/100, cycling),
+and on Sevens Red and Black, which only the player who won may press, and only until they spin
+again.
+
+`-slotTest` (with `-scene island -noNatives -noAnimals`), host side: hand-built grids pay what the
+tables say; a seed plays the same spin twice; 20 000 fixed seeds win exactly what they won under
+.NET (the check that Mono and .NET agree, which is what a client's replay depends on); the three
+returns sit in their bands; three spins per cabinet pay what their seeds say and leave the screen on
+the last picture; the card doubles or takes the stake; the ledger balances; busy and broke are
+refused. A second process with `-slotTest -client` checks that it replays the host's spins to the
+host's wins and draws their last pictures.
+
+Run `SlotFactory.Build`, then the island bake with `-rebuildPois` so the three POIs place them.
+
+---
+
+## The blackjack table (#161)
+
+Four seats against the house along the casino's left wall, paid in the chips the wheel and the
+cabinets take. Standard rules and nothing clever: six decks shuffled fresh every round, blackjack
+pays 3:2, the dealer peeks under an ace or a ten and stands on every 17, soft ones included. Double
+on any first two cards, after a split too; split any two cards of the same value, once per seat;
+split aces take one card each, and 21 after a split is 21, not blackjack. No insurance, no surrender.
+
+**The rules are arithmetic, in one file**, like the slots. `BlackjackMath` holds totals, payouts and
+the seeded shoe (Fisher-Yates over `SlotRng`); `BlackjackRound` is one round from the deal to the
+dealer's last card, with no Unity in it. `BlackjackTable` drives it and owns the clock, the wallets
+and the wire. So the harness can play 200 000 rounds of basic strategy (`BlackjackStrategy`) in a few
+seconds: they return 99.5% of the first bet, the half percent a real table keeps.
+
+**What crosses the wire is the cards as they land, not the seed.** A slot sends its seed because the
+whole spin is decided before a reel moves; a blackjack seed would hand every client the hole card and
+the next card in the shoe. The round writes each card it shows into a log, `hand * 64 + card`, with a
+split written as its own entry, and the hole card goes in only when it turns over. The log is a
+`SyncList<int>` every peer rebuilds the hands from (`BlackjackMath.Rebuild`); bets, owners, the turn
+and the payouts are small synced lists beside it. The server shuffles from `System.Random` and nobody
+else sees the seed.
+
+**Authority is the wheel's.** A press on a seat's bet button takes 50 chips there and then, up to 500,
+and sits the player there (one seat each). The first bet opens a 10 s window; then the cards go out.
+A double or a split takes its stake when pressed. Hands act in seat order; a player who does nothing,
+walks off, dies or disconnects is stood after 20 s, and a hand whose owner is gone is paid to nobody.
+The dealer's cards go out one at a time, the payouts land, and the felt stays up five seconds before it
+clears.
+
+**The felt shows colour, the board shows ranks.** Cards are pre-placed palette slabs, eight a hand,
+shown face up or face down in blue; the faces are drawn by `CardFaces` (#163). `BlackjackBoard` takes the top of the screen within 2.2 m (after a slot cabinet, before the
+roulette board): the dealer's hand on the big line, yours under it with totals, and whose turn it is.
+Every seat has five buttons, each a nested `NetworkObject` for `BetSpot`'s reason: a big gold bet at
+the rail, and hit (green), stand (red), double (white), split (blue) behind it. The prompts only offer
+what the player may do right now.
+
+`-blackjackTest` (with `-scene island -noNatives -noAnimals`), host side: totals, the dealer's 17 and
+every payout on paper; the shoe is six whole decks and a seed is a shoe; scripted rounds for the
+peek, split eights with a double, split aces, a bust, seat order; 5000 random rounds end, never leak
+the hole card into the log, and rebuild from it to the server's hands; 200 000 fixed shoes by the
+chart net exactly what they did under .NET (Mono shuffles like .NET) and return 98.5-100.5%. Then
+rigged shoes through the real buttons: a hit to 21 against a dealer bust, a split and a double, a
+dealer blackjack, a player who times out, the board's strings, the ledger, and the refusals (short
+stack, the 500 cap, a second seat, betting after the deal, someone else's hand, a double without the
+chips). A second process with `-blackjackTest -client` watches three rounds and checks the dealer
+never showed two cards while players acted, and that every payout is what its own rebuilt cards make it.
+
+Run `BlackjackFactory.Build`, then the island bake with `-rebuildPois` so the `casino.blackjack` POI
+places it.
+
+---
+
+## Casino juice: card faces, big wins, sounds (#163)
+
+A win should feel like one. Three pieces, all generated in code, nothing checked in.
+
+**Card faces.** `CardFaces` draws all 52 faces into one 468x216 atlas at runtime: a 3x5 pixel font
+for the ranks, 7x7 suit glyphs, red and black ink on cream, point-filtered so the pixels read as part
+of the low-poly look. Each card is a quad whose UVs sit on its cell, so the whole table adds one
+material (a copy of the felt's Plastic wearing the atlas, same shader), and only once a hand is dealt;
+the prefab still wears palette materials only, so `-lookTest` sees no change. The seats fan their
+cards so only the right third of each shows under the next, so the index (rank over suit) lives there,
+top right as the player stands; the big rank and suit in the middle are for the dealer's row and the
+top card. The face plates are the old pips, resized to cover the card: rerun `BlackjackFactory.Build`.
+
+**Big wins.** `BigWin.Tier` grades a win by the stake multiple: 10x big, 25x mega, 50x epic. Every
+peer calls `BigWin.Celebrate` from the code that already knows, at the moment its own screen settles:
+the slot cabinet when its replayed spin ends, the roulette wheel from a new `RpcWon(win, staked)` it
+sends per winning player (the sum of their spin, so a straight-up hit is 36x, mega). Below the big tier
+that is just the win chime. Above it: the fanfare, 14/28/42 pooled octagon coins (32 triangles, no
+collider, no shadow, a hand-integrated bounce off the floor they came from), and `WinBanner` on the HUD
+for anybody within 10 m, the tier's name slamming in and the number counting up with an ease-out over
+2.5/3.5/5 s. The coins wear the palette's Gold, which `SlotFactory` now hands each cabinet and the
+cabinet registers on wake; the roulette wheel borrows it, so with no cabinet in the scene roulette
+still cheers but throws no coins. Rerun `SlotFactory.Build`.
+
+**Sounds.** Four more `Synth` clips: `ReelStop` (a thunk per reel landing, reels landing in the same
+frame share one), `Deal` (a snap for every card and the hole card turning), `Win` (a major arpeggio)
+and `BigWin` (the arpeggio twice then a shimmering chord, 1.8 s). The pool is twelve voices now, so a
+seven-reel stop does not cut its own spin. Two old gaps closed on the way: the host now hears its own
+roulette spin, and the blackjack payout chime plays on every peer instead of only on the server.
+
+`-audioTest` covers the new clips (every `Sound` is audible, bounded, built once). `-slotTest` checks
+the tier thresholds and that the count-up runs 0 to the win without going back. `-blackjackTest` reads
+the atlas back: every face inked, red suits red and black black, rank and suit inside the strip a fan
+leaves uncovered, 52 distinct faces. The banner, the coins and the sound are playtest questions.
 
 ---
 
