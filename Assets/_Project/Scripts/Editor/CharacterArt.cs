@@ -196,7 +196,7 @@ namespace EscapeWithYourFriends.EditorTools
         /// One entry per file name. Quaternius zips carry each model once per engine; the copy under a
         /// "Unity" folder wins, then one under "FBX", then whichever came first.
         /// </summary>
-        static ZipArchiveEntry[] Unique(ZipArchive zip, Func<ZipArchiveEntry, bool> wanted)
+        internal static ZipArchiveEntry[] Unique(ZipArchive zip, Func<ZipArchiveEntry, bool> wanted)
             => zip.Entries.Where(e => e.Name.Length > 0 && wanted(e))
                   .GroupBy(e => e.Name.ToLowerInvariant())
                   .Select(g => g.OrderByDescending(e => Has(e.FullName, "unity"))
@@ -204,7 +204,7 @@ namespace EscapeWithYourFriends.EditorTools
                                 .First())
                   .ToArray();
 
-        static bool IsTexture(ZipArchiveEntry entry)
+        internal static bool IsTexture(ZipArchiveEntry entry)
         {
             if (Extension(entry) is not (".png" or ".jpg" or ".jpeg" or ".tga")) return false;
 
@@ -370,7 +370,7 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>A base-colour texture named after the slot: "MI_Superhero_Male" finds "T_Superhero_Male_BaseColor".</summary>
-        static string BaseColour(ArtCatalog.Pack pack, string slot)
+        internal static string BaseColour(ArtCatalog.Pack pack, string slot)
         {
             string folder = $"{pack.Folder}/Textures";
             if (!Directory.Exists(folder)) return null;

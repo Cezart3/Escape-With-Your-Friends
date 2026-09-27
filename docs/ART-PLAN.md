@@ -10,6 +10,73 @@ This file is the plan: what replaces what, why, under which licence, at what cos
 `docs/CREDITS.md` carries the licence table on its own. `docs/ARCHITECTURE.md` gets a section per
 decision as each one lands.
 
+## Where it stands (handoff, 2026-09-27)
+
+Read this first if you are the session picking the art pass up.
+
+**Done and run.** P1 to P4 (all but T13 and T14) merged with PR 153 at `57ccad9`. A local session
+ran every step of that PR's run-this block on Unity 6000.3.23f1, and every harness passed. The
+counts are in the message of `eabf8a1`. That run fixed two things: `POIFactory.Bake` baked no
+landmarks on the first bake (`e1194e2`), and the Weapon Pack, gone from kenney.nl, was converted
+to FBX with Blender from the CC0 glTF mirror.
+
+**What the PR's run block got wrong** (so it is not copied again):
+
+- The combat pairs (`-weaponTest`, `-meleeTest`, `-gunTest`) run one pair at a time, as
+  `eabf8a1` records it: in the arena, and `-gunTest` with `-latency 100` on both sides. Three
+  pairs at once on the island cross-talk, which gave 26/2 and 110/2.
+- The carry pair needs `-carryTest 75 -reviveTest 90`, not 50/65. The client's death timer
+  starts when the client joins, about 20 s after the host.
+
+**Written, not run: P6's code.** `ArtCatalog.Pack` takes `textured: true`. For such a pack:
+
+- `ArtExtract` copies the zip's textures to `<pack>/Textures/`, and accepts any `licen*` file as
+  the licence;
+- `ArtLibrary.Remap` gives each material slot its own URP Lit material. The texture is the one
+  the FBX points at, or the file in `Textures/` named after the slot. It is capped at 1024, and
+  alpha-clipped and drawn from both sides when it has an alpha channel.
+
+It has been type-checked with Roslyn only. No pack uses it yet, so nothing on the island changes
+until V1's rows go in. See ARCHITECTURE.md, "Textured kits".
+
+**Next, in order.** P6 below, then T13 and T14.
+
+1. **V1, Stylized Nature MegaKit.** Download it from quaternius.com or its itch page, check that
+   the licence says CC0, and `unzip -l` it. Then:
+   - `ArtCatalog.Packs`: add
+     `new("Quaternius", "Nature", "<zip name substring>", "https://quaternius.com/packs/stylizednaturemegakit.html", false, textured: true)`.
+   - `ArtCatalog.Models`: one row per model taken, like the Kenney flora rows (`Measure.Height`,
+     a size in metres, `upright: true` for anything that stands).
+   - `IslandFlora.Variants`: swap the ids, keeping four per species and the collider radii.
+   - Run, in order: build (the compile check), `ArtExtract.Run`, `ArtLibrary.BuildAll`, both
+     bakes, build, then `-lookTest` on both islands. `BuildAll` should log "painted from" once
+     per slot, then "N of N models ready".
+   - `-lookTest` will likely need `LookTest.Budget` (48) raised, because a textured kit is a
+     material per slot. Raise it to what the log counts, no further. The triangle caps are in
+     `ArtVisual.Cap`.
+   - Then stop, and get the user to look at the island before V3.
+2. **V3, hair, hats and clothes for the bald bodies.** Find the Quaternius add-ons made for
+   Universal Base Characters. The work is in `CharacterArt` and `PlayerPrefabBuilder`. Test with
+   `-skinTest`; the character cap is 16 000 triangles.
+3. **V2, Quaternius Pirate Kit.** Swap the landmark and station rows in `ArtCatalog`. The dressing
+   code keeps the greybox layout and the GUIDs. Test with `-casinoTest`, `-lookTest`, and each
+   builder's "Dressed … guid … kept" line.
+4. **V4, Quaternius Cars against the race car.** This one is the user's eye. `VehicleBuilder`
+   measures the wheels on the model. Test with `-carTest` and `-vehicleTest`.
+5. **V6, wind sway, fog and the grade.** No assets; each one needs the user's eye.
+6. **V5, weapons.** They stay Kenney.
+7. **T13 (animals) and T14 (plane)** wait for the user's pick.
+
+**Prompt for the local session** (paste as is):
+
+```
+Read docs/ART-PLAN.md, "Where it stands (handoff)", and docs/WORKING-AGREEMENT.md. Do P6 V1, the
+Stylized Nature MegaKit, on a new branch off main: download it, add the pack with textured: true,
+the model rows and the IslandFlora swap, run the steps listed there, and fix what the logs say.
+Open a PR with the run's counts, and merge only when the build has no "error CS" and -lookTest
+passes on both islands. Then stop and ask me to look at the island before V3.
+```
+
 ---
 
 ## 0. The decisions, in eight lines
@@ -519,10 +586,8 @@ C#. **Sonnet** marks work concrete enough to delegate: Sonnet writes to the spec
 every Sonnet diff before it is committed. Nothing here edits a `.unity`, `.prefab` or `.asset` by
 hand.
 
-**Status:** T1–T8 written. Nothing has run in Unity: the build machine has none and could not
-download a kit. Everything has been type-checked, though, against Unity reference assemblies, the
-real URP 17.3 source and FishNet's, with no new errors. T9 to T12 are written the same way; T13
-and T14 wait for your pick.
+**Status:** T1 to T12 are written, run on Unity 6000.3.23f1 and merged (PR 153; see "Where it
+stands" at the top). T13 and T14 wait for your pick.
 
 ### P1 — the most visible: nature, lighting, casino
 
@@ -634,17 +699,13 @@ poly.pizza, opengameart.org, itch.io and sketchfab.com.
 
 Order by screen time: V1, V3, V2, V4, V6, V5.
 
-**Code it needs.** `ArtLibrary` knows two material modes, a Kenney atlas and flat colours. The
-MegaKit is textured, with separate leaf cards, so it needs a third mode: keep the pack's textures
-on URP Lit, and use alpha clip on the leaves. `CharacterArt` already paints bodies from pack
-textures and is the model for it.
+**Code it needs.** `ArtLibrary` knew two material modes, a Kenney atlas and flat colours. The
+MegaKit is textured, with separate leaf cards, so it needed a third mode, which is now written:
+`textured: true` on the pack (ARCHITECTURE.md, "Textured kits"). It has not run yet.
 
-**Before any of it starts:**
-
-- The file names. Either allow `quaternius.com` and `poly.pizza` in this environment's network
-  settings, so each model can be measured and rendered as the Kenney ones were, or download the
-  zips and paste `unzip -l` of each.
-- Your eye on PR 153 running, so P6 starts from what the lighting actually looks like.
+**Before it starts:** the zips. The cloud sessions cannot reach any asset site, so P6 runs in a
+local session, which can (the Quaternius zips for T9 came from itch). PR 153 has run, so the
+lighting P6 starts from is the real one.
 
 ---
 

@@ -7103,6 +7103,51 @@ times.
 
 ---
 
+## Textured kits: a third material mode (#76, ART-PLAN P6)
+
+`ArtLibrary` points every material slot an FBX brings at a shared material, and it had two ways
+to make that material:
+
+- one per Kenney kit, painted from the kit's `colormap.png` (`Atlas`);
+- one per distinct colour, for the older kits (`Flat_<hex>`).
+
+The Quaternius kits P6 moves to are neither. Each model is painted from its own textures, and
+the foliage is leaf cards with alpha. So a pack can now say `textured: true`. For such a pack:
+
+- **`ArtExtract`** copies every texture in the zip to `<pack>/Textures/`, one per file name,
+  preferring the copy under a `Unity` folder, then one under `FBX`. This is
+  `CharacterArt.Unique`, shared now. It also accepts any `licen*` `.txt` or `.md` as the licence,
+  because Quaternius does not always call it `License.txt`. The rule is unchanged: no licence in
+  the zip, no import.
+- **`ArtLibrary.TexturedMaterial`** makes one URP Lit material per slot, named
+  `<Author>_<Pack>_<slot>`. The texture comes from the first of these that exists:
+  - the one the FBX points at (Unity's importer looks in a `Textures` folder beside the model,
+    which is where extraction puts them);
+  - the file in `Textures/` named after the slot, found by `CharacterArt.BaseColour`, the lookup
+    that already paints the bodies.
+- The texture is capped at **1024**, the 760M's budget.
+- A texture **with an alpha channel** is taken for a leaf card. Its material is alpha-clipped at
+  0.5, queued as alpha test, and drawn from both sides, so a frond does not vanish edge-on.
+- A slot with **no texture** keeps its colour, with a warning in the log.
+
+Nothing else in the pipeline changes: the fit, the upright check, the per-kit axis, the collider
+and `ArtVisual` are the same for every mode.
+
+**Not verified.** It has been type-checked with Roslyn only. No pack sets the flag yet, so no
+material is made this way until P6 V1 adds the MegaKit, and nothing on the island changes before
+then.
+
+Left for the eye:
+
+- Leaf backs are lit with the front's normal, because URP Lit has no back-face flip.
+- An opaque texture that happens to carry an alpha channel gets clipped and drawn from both
+  sides. That costs a little and shows nothing, but the log names every one ("alpha-clipped,
+  both sides").
+- `-lookTest` counts these materials against `LookTest.Budget`, which will need raising once the
+  real count is known.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**
