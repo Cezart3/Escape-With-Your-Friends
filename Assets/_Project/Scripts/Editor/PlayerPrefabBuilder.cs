@@ -626,32 +626,11 @@ namespace EscapeWithYourFriends.EditorTools
         static CharacterSkin.Body Wear(GameObject model, Transform holder, Dictionary<string, Transform> bones,
                                        RuntimeAnimatorController controller)
         {
-            var instance = (GameObject)PrefabUtility.InstantiatePrefab(model);
-            PrefabUtility.UnpackPrefabInstance(instance, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
-            instance.name = model.name;
-
-            // Local rotation and scale are the importer's and stay; only the position is ours.
+            GameObject instance = CharacterArt.Put(model, holder);
             Transform body = instance.transform;
-            body.SetParent(holder, false);
-            body.localPosition = Vector3.zero;
-
             var animator = instance.GetComponent<Animator>();
-            HumanDescription human = animator.avatar.humanDescription;
-            Transform[] all = instance.GetComponentsInChildren<Transform>(true);
 
-            Transform Find(HumanBodyBones bone)
-            {
-                string name = HumanTrait.BoneName[(int)bone];
-                foreach (HumanBone entry in human.human)
-                    if (entry.humanName == name) return all.FirstOrDefault(t => t.name == entry.boneName);
-
-                return null;
-            }
-
-            Transform foot = Find(HumanBodyBones.LeftFoot);
-            Transform toes = Find(HumanBodyBones.LeftToes);
-            if (foot != null && toes != null && toes.position.z < foot.position.z)
-                body.rotation = Quaternion.AngleAxis(180f, Vector3.up) * body.rotation;
+            Transform Find(HumanBodyBones bone) => CharacterArt.Bone(animator, bone);
 
             Transform hips = Find(HumanBodyBones.Hips);
             float modelHips = hips != null ? hips.position.y - holder.position.y : 0f;
@@ -709,7 +688,7 @@ namespace EscapeWithYourFriends.EditorTools
             }
 
             Renderer[] renderers = instance.GetComponentsInChildren<Renderer>(true);
-            Renderer band = Band(Find(HumanBodyBones.Head), skinned);
+            Renderer band = CharacterArt.Band(Find(HumanBodyBones.Head), skinned, Palette.Named("Accent"), out _);
 
             instance.SetActive(false);
 
@@ -742,64 +721,6 @@ namespace EscapeWithYourFriends.EditorTools
         {
             string[] parts = path.Split('/');
             return parts.Length == 1 ? bones[parts[0]] : bones[parts[0]].Find(parts[1]);
-        }
-
-        /// <summary>
-        /// The player colour, as a headband. The bodies are textured and have no hair, so there is no
-        /// material on them that a tint would not spoil; a band is one small untextured ring that
-        /// reads from across the island. Sized to the skull it goes round, 7.5 cm under the crown.
-        /// </summary>
-        static Renderer Band(Transform head, SkinnedMeshRenderer[] skinned)
-        {
-            var points = new List<Vector3>();
-            var baked = new Mesh();
-
-            foreach (SkinnedMeshRenderer mesh in skinned)
-            {
-                mesh.BakeMesh(baked, true);
-                Matrix4x4 world = Matrix4x4.TRS(mesh.transform.position, mesh.transform.rotation, Vector3.one);
-
-                foreach (Vector3 vertex in baked.vertices)
-                {
-                    Vector3 point = world.MultiplyPoint3x4(vertex);
-                    if (point.y > head.position.y) points.Add(point);
-                }
-            }
-
-            Object.DestroyImmediate(baked);
-
-            Vector3 centre = head.position + Vector3.up * 0.12f;
-            Vector3 size = new(0.2f, 0.0225f, 0.235f);
-
-            if (points.Count > 20)
-            {
-                float y = points.Max(p => p.y) - 0.075f;
-                List<Vector3> ring = points.Where(p => Mathf.Abs(p.y - y) < 0.02f).ToList();
-
-                if (ring.Count > 8)
-                {
-                    float minX = ring.Min(p => p.x), maxX = ring.Max(p => p.x);
-                    float minZ = ring.Min(p => p.z), maxZ = ring.Max(p => p.z);
-                    centre = new Vector3((minX + maxX) * 0.5f, y, (minZ + maxZ) * 0.5f);
-                    size = new Vector3((maxX - minX) * 1.06f, 0.0225f, (maxZ - minZ) * 1.06f);
-                }
-            }
-            else
-            {
-                Debug.LogWarning($"[PlayerPrefabBuilder] Could not measure the skull above {head.name}; the band is a guess.");
-            }
-
-            GameObject band = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            band.name = "Band";
-            Object.DestroyImmediate(band.GetComponent<Collider>());
-
-            band.transform.SetPositionAndRotation(centre, Quaternion.identity);
-            band.transform.localScale = size;
-            band.transform.SetParent(head, true);
-
-            var renderer = band.GetComponent<Renderer>();
-            renderer.sharedMaterial = Palette.Named("Accent");
-            return renderer;
         }
 
         /// <summary>What a bone is wearing. Skin where skin shows, cloth everywhere else.</summary>

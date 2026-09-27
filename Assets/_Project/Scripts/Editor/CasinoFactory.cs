@@ -433,6 +433,9 @@ namespace EscapeWithYourFriends.EditorTools
                     PrefabUtility.SavePrefabAsset(existing);
                 }
 
+                // Built once and kept, so the body goes on in place (T10), GUID and all.
+                ArtDress.DressPrefab(BarmanPath, "Skin",
+                                     barman => CharacterArt.Dress(barman.gameObject, Palette.Named("Dark"), only: 1));
                 return false;
             }
 
@@ -461,6 +464,10 @@ namespace EscapeWithYourFriends.EditorTools
 
             root.AddComponent<NetworkObject>();
             root.AddComponent<ShopCounter>().Configure(shop);
+
+            // The people (T10): the players' other body from the castaway's, in a dark band where the
+            // hat was.
+            CharacterArt.Dress(root, Palette.Named("Dark"), only: 1);
 
             GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, BarmanPath, out bool success);
             Object.DestroyImmediate(root);

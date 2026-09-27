@@ -521,8 +521,8 @@ hand.
 
 **Status:** T1–T8 written. Nothing has run in Unity: the build machine has none and could not
 download a kit. Everything has been type-checked, though, against Unity reference assemblies, the
-real URP 17.3 source and FishNet's, with no new errors. T9 is written the same way; T10 onward is
-not started.
+real URP 17.3 source and FishNet's, with no new errors. T9 and T10 are written the same way; T11
+onward waits for your eye on P1-P3.
 
 ### P1 — the most visible: nature, lighting, casino
 
@@ -588,9 +588,11 @@ renderers off, identity tint re-pointed at a headband), `Player/SkinTest.cs` and
 `NetworkBootstrap`. *Done:* `-skinTest` `0 failed`; `-animTest`, `-impactTest`, `-carryTest 1`,
 `-reviveTest 1`, `-deathTest` unchanged.
 
-**T10 · Opus, then Sonnet · natives and NPCs.** `NativeFactory`, `CastawayBuilder`,
-`CasinoFactory.Barman` on the same skins. *Done:* `-nativeTest` (solo, without `-noNatives`),
-`-rescueTest`, `-casinoTest` `0 failed`.
+**T10 · Opus · natives and NPCs.** `NativeFactory`, `CastawayBuilder`, `CasinoFactory.Barman` on
+the same skins, through `CharacterArt.Dress` and a new `AI/NpcSkin` (no ragdoll; body by object id,
+speed, seated, carrying, `Death01`; a native's warpaint on its band). `-skinTest` checks them too.
+`CharacterArt.Build` now runs before the casino step. *Done:* `-skinTest`, `-nativeTest` (solo,
+without `-noNatives`), `-rescueTest`, `-casinoTest` `0 failed`.
 
 ### P4 — animals, vehicles, weapons (after your eye on P1–P3)
 

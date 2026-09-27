@@ -6836,8 +6836,9 @@ physics that the game is built on.
 | `CharacterArt.Build` | Extracts Universal Base Characters and Universal Animation Library out of their zips, imports every body and clip as Humanoid, paints the bodies, and writes `_Characters/Player.controller` and the `UpperBody` mask. |
 | `PlayerPrefabBuilder.BuildPlayerPrefab` | Puts every body `CharacterArt.Bodies()` accepts on the ragdoll, measures each against it, and adds `CharacterSkin`. |
 
-The controller is deleted and recreated on every `Build`, so its GUID changes and the prefab must
-be rebuilt after it. `-skinTest` fails loudly on a prefab that points at an old controller.
+The controller is emptied and refilled in place on every `Build`, so its GUID survives and every
+prefab wearing it stays pointed at it. The player prefab still follows `Build`, because the bodies
+it wears are whatever `Build` imported.
 
 **Extracted by kind, not by name.** No Quaternius file name could be read from here, so unlike
 `ArtCatalog`'s Kenney list nothing is named. `CharacterArt` takes the zip whose name holds the
@@ -6926,6 +6927,71 @@ packs. The UBC geometry was read from a glTF re-export, and the zip layout, the 
 the textures live and whether Unity's avatar auto-mapping takes the UE rig are all unknown until
 `CharacterArt.Build` runs and prints. Every one of those logs what it found and fails with a
 message that says which.
+
+## The islanders in the same bodies (#76, ART-PLAN T10)
+
+The natives, the castaway and the barman were boxes. They now wear the players' Quaternius bodies,
+with no ragdoll under them: nobody here goes limp, so the animator has the body the whole time.
+
+**Dressing** (`CharacterArt.Dress`, called by each builder). The bodies go under a `Skin` child,
+inactive, each with its own band. Then the greybox loses its look: every other direct child keeps
+its transform and its collider and loses its `MeshRenderer` and `MeshFilter`. The transforms
+matter: `Native` still scales `_body` and `_head` per role, and a dart still leaves from the head.
+With no bodies imported or no controller, `Dress` touches nothing and says so, and the boxes stay
+rather than leave an invisible person.
+
+| NPC | Dressed by | Bodies | Band |
+|---|---|---|---|
+| Native | `NativeFactory` (rebuilt whole) | all | `Accent`, then the role's warpaint at spawn |
+| Castaway | `CastawayBuilder` (rebuilt whole) | the first | `Canvas` |
+| Barman | `CasinoFactory.Barman` | the second | `Dark`, where the hat was |
+
+The barman prefab is built once and kept, so an existing one is dressed in place through
+`ArtDress.DressPrefab` (marker `Skin`), GUID and all. That is why the controller is now refilled in
+place rather than recreated: a controller with a new GUID would leave the barman pointing at
+nothing, and nothing would rebuild him.
+
+**`NpcSkin` at run time** (order 100). Nothing is networked; everything is read off state every
+peer already has.
+
+- *Which body*: `ObjectId % bodies`, picked once the object is spawned. Before that the id is the
+  same placeholder on every object, and a camp would be four twins.
+- *Speed*: measured from how far the root moved, as `CharacterSkin` does.
+- *Seated*: parented under a `Vehicle`. The castaway boards by being parented to the ride's
+  `CarrySocket`, so a parent change is the only time it is looked up.
+- *Dead*: `Health.State == Dead` plays `Death01` from any state. It does not loop, so a dead
+  native lies there until it despawns.
+- *Carrying*: the native's carry socket has a child. `Carryable` parents the carried hips there
+  on every peer, so the child count is the same everywhere. It drives the arm layer, as
+  `CarrySystem.IsCarrying` does for a player.
+- *Role*: `Native.ApplyShape` calls `Fit`, which scales every body so its crown is at the role's
+  height (1.7-1.92 m), and puts the role's `MarkColour` on the band. Warpaint was the one thing
+  that told a spearman from a blowgunner, and it still is.
+- *Headless*: the bodies are destroyed in `Awake`, as for the players. `-skinTest` is the
+  exception.
+
+**The controller** has a fifth parameter, `Dead`, and a `Dead` state on UAL's `Death01`. Players
+never set it; their death is the ragdoll.
+
+**Order.** `CharacterArt.Build` must run before `CasinoFactory.Build`, `NativeFactory.Build` and
+`CastawayBuilder.Build`. Any of them run first gives boxes and a warning, and a rerun after
+`Build` fixes it.
+
+**`-skinTest`** also checks every live `NpcSkin`: there is at least one (the barman and the
+castaway are both on the first island); each shows exactly one body, animated, with a controller
+and a human avatar; no `MeshRenderer` is left outside the bodies; the body is under the Character
+triangle cap; and a native's band carries its role's warpaint.
+
+**Left out, known:**
+
+- Natives do not swing. Their attacks are resolved on the server with no RPC, so a client has no
+  moment to play `Punch` on. The fix is an observer event per swing; it is not in this PR.
+- Nobody holds a spear or a blowgun. The weapon models are T12.
+- The castaway's waving arm is gone. It was the one thing that read from the air. UAL's file
+  names could not be read from here, so no wave clip is wired, and the castaway idles.
+- The castaway sits with `Driving_Loop`, like a seated player.
+
+**Not verified.** Nothing here has run, for the reason T9 gives.
 
 ---
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using EscapeWithYourFriends.AI;
 using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.World;
 using UnityEditor;
@@ -18,7 +19,9 @@ namespace EscapeWithYourFriends.EditorTools
     ///   Unity.exe -batchmode -quit -projectPath . -logFile characters.log
     ///     -executeMethod EscapeWithYourFriends.EditorTools.CharacterArt.Build -artZips "D:\Downloads\ewyf-art"
     ///
-    /// then <c>PlayerPrefabBuilder.BuildPlayerPrefab</c>, which dresses the ragdoll in what this made.
+    /// then <c>PlayerPrefabBuilder.BuildPlayerPrefab</c>, which dresses the ragdoll in what this made,
+    /// and <c>NativeFactory</c>, <c>CastawayBuilder</c> and <c>CasinoFactory</c>, which dress the NPCs
+    /// through <see cref="Dress"/> (T10).
     ///
     /// One command for three jobs - extract, import, build the controller - because none of them is
     /// useful alone and each depends on the one before. Unlike the Kenney kits, the file names inside
@@ -26,9 +29,8 @@ namespace EscapeWithYourFriends.EditorTools
     /// ART-PLAN §1), so extraction is by kind rather than by name: every FBX, the base-colour
     /// textures and the licence, and the log says exactly what it found.
     ///
-    /// The controller is deleted and made again on every run, which gives it a new GUID. That is
-    /// why the player prefab is rebuilt straight after, and why -skinTest fails on a body with no
-    /// controller rather than letting it stand in a T-pose.
+    /// The controller is emptied and refilled in place on every run, so its GUID - which every prefab
+    /// wearing it holds, including the barman, who is dressed once and never rebuilt - survives.
     /// </summary>
     public static class CharacterArt
     {
@@ -64,6 +66,9 @@ namespace EscapeWithYourFriends.EditorTools
         const string SeatedClip = "Driving_Loop";
         const string AirClip = "Jump_Loop";
         const string PunchClip = "Punch_Jab";
+
+        // Only natives die standing up; a player is a ragdoll by then.
+        const string DeathClip = "Death01";
 
         public static void Build()
         {
@@ -485,9 +490,9 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
-        /// The one controller every body shares. Four parameters, which is everything the rest of the
+        /// The one controller every body shares. Five parameters, which is everything the rest of the
         /// game already knows about a body: how fast it goes, whether it is off the ground, in a seat,
-        /// or throwing a punch. Carrying is a layer over the arms rather than a state, so a carrier
+        /// throwing a punch, or (a native) dead. Carrying is a layer over the arms rather than a state, so a carrier
         /// can still walk.
         /// </summary>
         static bool BuildController()
@@ -497,14 +502,18 @@ namespace EscapeWithYourFriends.EditorTools
 
             Debug.Log($"[CharacterArt] {clips.Count} clip(s) in the library.");
 
-            if (AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(ControllerPath) != null)
-                AssetDatabase.DeleteAsset(ControllerPath);
+            // Emptied rather than deleted, so the GUID every wearer holds stays good.
+            var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
+            if (controller == null) controller = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
+            while (controller.layers.Length > 0) controller.RemoveLayer(0);
+            while (controller.parameters.Length > 0) controller.RemoveParameter(0);
+            controller.AddLayer("Base Layer");
 
-            AnimatorController controller = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
             controller.AddParameter("Speed", AnimatorControllerParameterType.Float);
             controller.AddParameter("Airborne", AnimatorControllerParameterType.Bool);
             controller.AddParameter("Seated", AnimatorControllerParameterType.Bool);
             controller.AddParameter("Punch", AnimatorControllerParameterType.Trigger);
+            controller.AddParameter("Dead", AnimatorControllerParameterType.Bool);
 
             AnimatorState move = controller.CreateBlendTreeInController("Move", out BlendTree tree, 0);
             tree.blendType = BlendTreeType.Simple1D;
@@ -555,6 +564,14 @@ namespace EscapeWithYourFriends.EditorTools
                 recover.duration = 0.1f;
             }
 
+            clip = Clip(clips, DeathClip, missing);
+            if (clip != null)
+            {
+                AnimatorState dead = State(machine, "Dead", clip);
+                Quick(machine.AddAnyStateTransition(dead)).AddCondition(AnimatorConditionMode.If, 0f, "Dead");
+                Quick(dead.AddTransition(move)).AddCondition(AnimatorConditionMode.IfNot, 0f, "Dead");
+            }
+
             var mask = new AvatarMask { name = "UpperBody" };
             foreach (AvatarMaskBodyPart part in Enum.GetValues(typeof(AvatarMaskBodyPart)))
             {
@@ -602,6 +619,176 @@ namespace EscapeWithYourFriends.EditorTools
             transition.duration = 0.15f;
             transition.canTransitionToSelf = false;
             return transition;
+        }
+
+        // ------------------------------------------------------------------------------ wearing
+
+        /// <summary>
+        /// A body under <paramref name="parent"/>: instanced, unpacked, at the parent's origin and
+        /// facing its +z. Rotation and scale are otherwise the importer's.
+        /// </summary>
+        internal static GameObject Put(GameObject model, Transform parent)
+        {
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(model);
+            PrefabUtility.UnpackPrefabInstance(instance, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+            instance.name = model.name;
+
+            Transform body = instance.transform;
+            body.SetParent(parent, false);
+            body.localPosition = Vector3.zero;
+
+            var animator = instance.GetComponent<Animator>();
+            Transform foot = Bone(animator, HumanBodyBones.LeftFoot);
+            Transform toes = Bone(animator, HumanBodyBones.LeftToes);
+            if (foot != null && toes != null
+                && parent.InverseTransformPoint(toes.position).z < parent.InverseTransformPoint(foot.position).z)
+                body.localRotation = Quaternion.AngleAxis(180f, Vector3.up) * body.localRotation;
+
+            return instance;
+        }
+
+        /// <summary>
+        /// A body's bone through the avatar's own map rather than by name, so a UE rig and a Rigify
+        /// rig answer alike. Null when the avatar maps nothing there.
+        /// </summary>
+        internal static Transform Bone(Animator animator, HumanBodyBones bone)
+        {
+            string name = HumanTrait.BoneName[(int)bone];
+            foreach (HumanBone entry in animator.avatar.humanDescription.human)
+                if (entry.humanName == name)
+                    return animator.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == entry.boneName);
+
+            return null;
+        }
+
+        /// <summary>
+        /// A band round the skull, 7.5 cm under the crown: the one untextured thing on a body, so the
+        /// one thing a colour can go on. The bodies are textured and have no hair; tinting the skin
+        /// turns it green. Also returns how tall the body stands, which the band had to find anyway.
+        /// </summary>
+        internal static Renderer Band(Transform head, SkinnedMeshRenderer[] skinned, Material material, out float crown)
+        {
+            var points = new List<Vector3>();
+            var baked = new Mesh();
+
+            foreach (SkinnedMeshRenderer mesh in skinned)
+            {
+                mesh.BakeMesh(baked, true);
+                Matrix4x4 world = Matrix4x4.TRS(mesh.transform.position, mesh.transform.rotation, Vector3.one);
+
+                foreach (Vector3 vertex in baked.vertices)
+                {
+                    Vector3 point = world.MultiplyPoint3x4(vertex);
+                    if (point.y > head.position.y) points.Add(point);
+                }
+            }
+
+            UnityEngine.Object.DestroyImmediate(baked);
+
+            Vector3 centre = head.position + Vector3.up * 0.12f;
+            Vector3 size = new(0.2f, 0.0225f, 0.235f);
+            crown = head.position.y + 0.2f;
+
+            if (points.Count > 20)
+            {
+                crown = points.Max(p => p.y);
+                float y = crown - 0.075f;
+                List<Vector3> ring = points.Where(p => Mathf.Abs(p.y - y) < 0.02f).ToList();
+
+                if (ring.Count > 8)
+                {
+                    float minX = ring.Min(p => p.x), maxX = ring.Max(p => p.x);
+                    float minZ = ring.Min(p => p.z), maxZ = ring.Max(p => p.z);
+                    centre = new Vector3((minX + maxX) * 0.5f, y, (minZ + maxZ) * 0.5f);
+                    size = new Vector3((maxX - minX) * 1.06f, 0.0225f, (maxZ - minZ) * 1.06f);
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[CharacterArt] Could not measure the skull above {head.name}; the band is a guess.");
+            }
+
+            GameObject band = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            band.name = "Band";
+            UnityEngine.Object.DestroyImmediate(band.GetComponent<Collider>());
+
+            band.transform.SetPositionAndRotation(centre, Quaternion.identity);
+            band.transform.localScale = size;
+            band.transform.SetParent(head, true);
+
+            var renderer = band.GetComponent<Renderer>();
+            renderer.sharedMaterial = material;
+            return renderer;
+        }
+
+        /// <summary>
+        /// An NPC in the same bodies as the players (T10). Every body, or only the
+        /// <paramref name="only"/>th, goes under a <c>Skin</c> child, inactive until
+        /// <see cref="NpcSkin"/> picks one; each wears a band in <paramref name="band"/>. Then the
+        /// greybox goes: every other direct child loses its renderer, and keeps its transform and any
+        /// collider, because scripts aim from a head and hit a torso. False, with nothing touched, when
+        /// there is nothing to wear yet - the boxes stay rather than leave an invisible person.
+        /// </summary>
+        internal static bool Dress(GameObject root, Material band, Transform carrySocket = null, int only = -1)
+        {
+            GameObject[] models = Bodies();
+            var controller = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(ControllerPath);
+
+            if (models.Length == 0 || controller == null)
+            {
+                Debug.LogWarning($"[CharacterArt] No bodies or no controller, so {root.name} stays boxes. "
+                                 + "Run CharacterArt.Build first (docs/ART-PLAN.md T10).");
+                return false;
+            }
+
+            var holder = new GameObject("Skin").transform;
+            holder.SetParent(root.transform, false);
+
+            var bodies = new List<NpcSkin.Body>();
+            for (int i = 0; i < models.Length; i++)
+            {
+                if (only >= 0 && i != only % models.Length) continue;
+
+                GameObject instance = Put(models[i], holder);
+                var animator = instance.GetComponent<Animator>();
+                animator.runtimeAnimatorController = controller;
+                animator.applyRootMotion = false;
+                animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+
+                Transform head = Bone(animator, HumanBodyBones.Head);
+                if (head == null)
+                {
+                    Debug.LogError($"[CharacterArt] {models[i].name}'s avatar maps no head; not worn by {root.name}.");
+                    UnityEngine.Object.DestroyImmediate(instance);
+                    continue;
+                }
+
+                SkinnedMeshRenderer[] skinned = instance.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+                Renderer ring = Band(head, skinned, band, out float crown);
+
+                instance.SetActive(false);
+                bodies.Add(new NpcSkin.Body
+                {
+                    Root = instance,
+                    Animator = animator,
+                    Band = ring,
+                    Height = crown - holder.position.y,
+                    Scale = instance.transform.localScale,
+                });
+            }
+
+            if (bodies.Count == 0)
+            {
+                UnityEngine.Object.DestroyImmediate(holder.gameObject);
+                return false;
+            }
+
+            foreach (Transform child in root.transform)
+                if (child != holder) ArtDress.Strip(child.gameObject);
+
+            root.AddComponent<NpcSkin>().Configure(bodies.ToArray(), carrySocket);
+            Debug.Log($"[CharacterArt] {root.name} wears {string.Join(", ", bodies.Select(b => b.Root.name))}.");
+            return true;
         }
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Linq;
+using EscapeWithYourFriends.AI;
 using EscapeWithYourFriends.Combat;
 using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.Net;
@@ -177,6 +178,34 @@ namespace EscapeWithYourFriends.Player
             float weight = worn.Animator.layerCount > 1 ? worn.Animator.GetLayerWeight(1) : 0f;
             skin.ForceCarry = false;
             Check($"carrying raises the arms (layer weight {weight:F2})", weight > 0.9f);
+
+            // The NPCs (T10): the barman on one island, the castaway on the other, natives if on.
+            NpcSkin[] npcs = NpcSkin.Live.Where(n => n != null).ToArray();
+            Check($"the island's NPCs wear bodies ({npcs.Length} found)", npcs.Length > 0);
+
+            foreach (NpcSkin npc in npcs)
+            {
+                NpcSkin.Body on = npc.Active;
+                int showing = npc.Bodies.Count(b => b.Root != null && b.Root.activeSelf);
+                bool animated = on != null && on.Animator.enabled
+                                && on.Animator.runtimeAnimatorController != null
+                                && on.Animator.avatar != null && on.Animator.avatar.isHuman;
+                Check($"{npc.name} shows one animated body ({showing} shown)", showing == 1 && animated);
+
+                int boxes = npc.GetComponentsInChildren<MeshRenderer>(true)
+                               .Count(r => npc.Bodies.All(b => !r.transform.IsChildOf(b.Root.transform)));
+                Check($"{npc.name}'s greybox is not drawn ({boxes} box(es) left)", boxes == 0);
+
+                if (on == null) continue;
+
+                int triangles = ArtVisual.Triangles(on.Root);
+                Check($"{npc.name} is {triangles} triangles, cap {cap}", triangles <= cap);
+
+                if (npc.TryGetComponent(out Native _))
+                    Check($"{npc.name} wears its role's warpaint", on.Band.HasPropertyBlock());
+
+                Debug.Log($"[SkinTest] {npc.name}: {on.Root.name}, {triangles} triangles.");
+            }
 
             Finish();
         }
