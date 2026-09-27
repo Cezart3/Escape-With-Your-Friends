@@ -8,13 +8,12 @@ namespace EscapeWithYourFriends.EditorTools
     /// <summary>
     /// The plants the island is made of, as terrain tree prototypes.
     ///
-    /// This used to generate its own meshes from a handful of numbers, which was the right call
-    /// while nobody could open Blender from a terminal. <c>tools/blender/flora.py</c> now can, so
-    /// the meshes come from there through <see cref="ModelLibrary"/> and this file is only the list
-    /// of what the island wants and the grass texture, which is a texture and not a mesh.
+    /// The meshes are Kenney's, through <see cref="ArtLibrary"/> (docs/ART-PLAN.md §4). This file is
+    /// only the list of what the island wants and the grass texture, which is a texture and not a
+    /// mesh.
     ///
-    /// The generated trees are gone rather than kept as a fallback. Two flora pipelines is two
-    /// things to keep in step and one of them is always the one you are not looking at.
+    /// Neither the generated trees nor the Blender ones are kept as a fallback. Two flora pipelines
+    /// is two things to keep in step, and one of them is always the one you are not looking at.
     /// </summary>
     public static class FloraFactory
     {
@@ -38,13 +37,13 @@ namespace EscapeWithYourFriends.EditorTools
 
                 for (int variant = 0; variant < variants.Length; variant++)
                 {
-                    GameObject prefab = ModelLibrary.EnsurePrefab(variants[variant].Model,
-                                                                 variants[variant].Radius);
+                    GameObject prefab = ArtLibrary.EnsureFloraPrefab(variants[variant].Model,
+                                                                     variants[variant].Radius);
 
                     if (prefab == null)
                         throw new FileNotFoundException(
                             $"[FloraFactory] No model for {variants[variant].Model}. "
-                            + "Run tools/blender/flora.py in Blender, then bake again.");
+                            + "Run ArtExtract.Run -artZips <folder> (docs/ART-PLAN.md T0-T1), then bake again.");
 
                     prototypes[IslandFlora.VariantBase[species] + variant] = prefab;
                 }

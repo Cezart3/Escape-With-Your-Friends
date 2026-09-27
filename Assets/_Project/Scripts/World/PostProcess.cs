@@ -2,6 +2,7 @@ using EscapeWithYourFriends.Core;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.SceneManagement;
 
 namespace EscapeWithYourFriends.World
 {
@@ -53,7 +54,23 @@ namespace EscapeWithYourFriends.World
             volume.weight = 1f;
             volume.sharedProfile = profile;
 
+            // A volume is ignored by any camera that has not asked for post-processing, and the main
+            // camera is built in code by SceneBootstrap, which never asked. Until this line the only
+            // thing that asked was DrunkVision - so the grade above appeared the moment somebody got
+            // drunk and not before. Every scene load, in case a scene ever brings its own camera.
+            EnableOnCamera();
+            SceneManager.sceneLoaded += (_, _) => EnableOnCamera();
+
             Debug.Log("[PostProcess] Global look on: ACES, graded, bloom, vignette.");
+        }
+
+        static void EnableOnCamera()
+        {
+            Camera camera = Camera.main;
+            if (camera == null) return;
+
+            UniversalAdditionalCameraData data = camera.GetUniversalAdditionalCameraData();
+            if (data != null) data.renderPostProcessing = true;
         }
 
         /// <summary>

@@ -3,6 +3,7 @@ using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.World;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 namespace EscapeWithYourFriends.EditorTools
 {
@@ -42,6 +43,9 @@ namespace EscapeWithYourFriends.EditorTools
             public bool SoftShadows;
             public bool ExtraLightShadows;
             public int LightsPerObject;
+
+            /// <summary>0 none, 1 the cheap SSAO the 760M can carry, 2 the full one.</summary>
+            public int Occlusion;
         }
 
         static readonly Tier[] Tiers =
@@ -56,13 +60,20 @@ namespace EscapeWithYourFriends.EditorTools
                 SoftShadows = false, ExtraLightShadows = false, LightsPerObject = 2,
             },
 
-            // A laptop with a real GPU, or an older desktop card. Full resolution, soft shadows,
-            // still no MSAA: at 1080p it costs more than it returns on a game with no thin geometry.
+            // A laptop with a real GPU, an older desktop card, or the Radeon 760M when its owner asks
+            // for more than Low - the tier docs/ART-PLAN.md holds to 60 fps. Full resolution, soft
+            // shadows, still no MSAA: at 1080p it costs more than it returns on a game with no thin
+            // geometry.
+            //
+            // HDR on, and it is nearly free: URP 17 renders HDR into R11G11B10, the same 32 bits a
+            // pixel as LDR. Off, the ACES curve in PostProcess had nothing above 1.0 to roll off and
+            // the bloom's 1.05 threshold could never be crossed - the grade was half switched off
+            // on exactly the tier it was tuned for.
             new()
             {
-                Path = MediumPath, Hdr = false, Msaa = 1, RenderScale = 1f,
+                Path = MediumPath, Hdr = true, Msaa = 1, RenderScale = 1f,
                 ShadowResolution = 2048, ShadowDistance = 80f, Cascades = 2,
-                SoftShadows = true, ExtraLightShadows = false, LightsPerObject = 4,
+                SoftShadows = true, ExtraLightShadows = false, LightsPerObject = 4, Occlusion = 1,
             },
 
             // Anything current. The shadow distance is 150 rather than more because the fog closes at
@@ -71,7 +82,7 @@ namespace EscapeWithYourFriends.EditorTools
             {
                 Path = HighPath, Hdr = true, Msaa = 2, RenderScale = 1f,
                 ShadowResolution = 2048, ShadowDistance = 150f, Cascades = 4,
-                SoftShadows = true, ExtraLightShadows = true, LightsPerObject = 8,
+                SoftShadows = true, ExtraLightShadows = true, LightsPerObject = 8, Occlusion = 2,
             },
         };
 
@@ -154,11 +165,101 @@ namespace EscapeWithYourFriends.EditorTools
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(asset);
 
+            var renderer = so.FindProperty("m_RendererDataList").GetArrayElementAtIndex(0)
+                             .objectReferenceValue as ScriptableRendererData;
+            if (renderer == null) Debug.LogError($"[RenderTuning] {asset.name} has no renderer; no SSAO settings written.");
+            else Occlusion(renderer, tier.Occlusion);
+
             Debug.Log($"[RenderTuning] {asset.name}: render scale {tier.RenderScale}, "
                       + $"MSAA x{tier.Msaa}, HDR {(tier.Hdr ? "on" : "off")}, shadows "
                       + $"{tier.ShadowResolution}^2 over {tier.ShadowDistance}m in {tier.Cascades} "
                       + $"cascade(s), {(tier.SoftShadows ? "soft" : "hard")}, "
                       + $"{tier.LightsPerObject} lights per object.");
+        }
+
+        /// <summary>
+        /// Screen-space ambient occlusion, as a renderer feature on the tiers that can pay for it
+        /// (docs/ART-PLAN.md §7). It is what puts a dark line where a crate meets the sand and under
+        /// every eave, which is most of what separates "lit" from "painted" on flat-shaded models.
+        ///
+        /// Added the way URP's own inspector adds one - a sub-asset of the renderer plus an entry in
+        /// the feature map - because the map is how the renderer finds it again after a reload. The
+        /// settings class is internal to URP, so the fields are written by their serialized names;
+        /// a URP upgrade that renames one is reported rather than silently left at a default.
+        /// </summary>
+        static void Occlusion(ScriptableRendererData renderer, int level)
+        {
+            ScreenSpaceAmbientOcclusion ssao = null;
+            foreach (ScriptableRendererFeature feature in renderer.rendererFeatures)
+                if (feature is ScreenSpaceAmbientOcclusion found) ssao = found;
+
+            var data = new SerializedObject(renderer);
+            SerializedProperty features = data.FindProperty("m_RendererFeatures");
+            SerializedProperty map = data.FindProperty("m_RendererFeatureMap");
+
+            if (level == 0)
+            {
+                if (ssao != null)
+                {
+                    for (int i = features.arraySize - 1; i >= 0; i--)
+                    {
+                        if (features.GetArrayElementAtIndex(i).objectReferenceValue != ssao) continue;
+                        features.DeleteArrayElementAtIndex(i);
+                        // Deleting an object reference first nulls it; a second delete removes the slot.
+                        if (i < features.arraySize && features.GetArrayElementAtIndex(i).objectReferenceValue == null)
+                            features.DeleteArrayElementAtIndex(i);
+                        if (i < map.arraySize) map.DeleteArrayElementAtIndex(i);
+                    }
+
+                    data.ApplyModifiedPropertiesWithoutUndo();
+                    AssetDatabase.RemoveObjectFromAsset(ssao);
+                    Object.DestroyImmediate(ssao, true);
+                    EditorUtility.SetDirty(renderer);
+                }
+
+                Debug.Log($"[RenderTuning] SSAO: none on {renderer.name}.");
+                return;
+            }
+
+            if (ssao == null)
+            {
+                ssao = ScriptableObject.CreateInstance<ScreenSpaceAmbientOcclusion>();
+                ssao.name = "ScreenSpaceAmbientOcclusion";
+                AssetDatabase.AddObjectToAsset(ssao, renderer);
+                AssetDatabase.TryGetGUIDAndLocalFileIdentifier(ssao, out string _, out long id);
+
+                features.arraySize++;
+                features.GetArrayElementAtIndex(features.arraySize - 1).objectReferenceValue = ssao;
+                map.arraySize++;
+                map.GetArrayElementAtIndex(map.arraySize - 1).longValue = id;
+                data.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            bool cheap = level == 1;
+            var settings = new SerializedObject(ssao);
+
+            // Cheap: a multiply over the finished opaque image rather than an input to lighting, which
+            // is what lets it skip a depth prepass - the pass an integrated GPU cannot afford. Depth
+            // alone, normals rebuilt from it; half resolution; four samples; the Kawase blur.
+            Set(settings, "m_Settings.AfterOpaque", cheap);
+            Set(settings, "m_Settings.Source", cheap ? 0 : 1);          // Depth, DepthNormals
+            Set(settings, "m_Settings.NormalSamples", cheap ? 0 : 1);   // Low, Medium
+            Set(settings, "m_Settings.Downsample", cheap);
+            Set(settings, "m_Settings.Samples", cheap ? 2 : 1);         // Low (4), Medium (8)
+            Set(settings, "m_Settings.BlurQuality", cheap ? 2 : 1);     // Low (Kawase), Medium (Gaussian)
+            Set(settings, "m_Settings.Falloff", cheap ? 50f : 100f);
+
+            // Intensity and radius stay at URP's defaults (3.0 and 0.035). How dark the corners
+            // should be is a look decision for somebody with a screen, not a number to guess here.
+
+            settings.ApplyModifiedPropertiesWithoutUndo();
+            ssao.SetActive(true);
+            EditorUtility.SetDirty(ssao);
+            EditorUtility.SetDirty(renderer);
+
+            Debug.Log(cheap
+                ? $"[RenderTuning] SSAO on {renderer.name} (after opaque, depth, half res, 4 samples, Kawase)."
+                : $"[RenderTuning] SSAO on {renderer.name} (in lighting, depth-normals, full res, 8 samples).");
         }
 
         static void Set(SerializedObject so, string path, bool value)
