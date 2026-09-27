@@ -381,9 +381,9 @@ namespace EscapeWithYourFriends.EditorTools
                     if (worn == null || !seen.Add(worn.name)) continue;
                     if (AssetDatabase.GetAssetPath(worn).StartsWith(MaterialFolder)) continue;
 
-                    Material shared = pack.Atlas == ArtCatalog.Textured ? TexturedMaterial(worn, pack)
-                                      : pack.Atlas != null ? AtlasMaterial(pack)
-                                      : FlatMaterial(worn);
+                    Material shared = pack.Textured ? TexturedMaterial(worn, pack)
+                                    : pack.Atlas ? AtlasMaterial(pack)
+                                    : FlatMaterial(worn);
                     if (shared == null) continue;
 
                     importer.AddRemap(new AssetImporter.SourceAssetIdentifier(typeof(Material), worn.name), shared);
@@ -395,14 +395,14 @@ namespace EscapeWithYourFriends.EditorTools
             return changed;
         }
 
-        /// <summary>One material per kit, painted from the kit's swatch atlas.</summary>
+        /// <summary>One material per kit, painted from the kit's colormap.</summary>
         static Material AtlasMaterial(ArtCatalog.Pack pack)
         {
             string path = $"{MaterialFolder}/{pack.Author}_{pack.Name}.mat";
             var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (existing != null) return existing;
 
-            string texturePath = $"{pack.Folder}/{pack.Atlas}";
+            string texturePath = $"{pack.Folder}/colormap.png";
             if (AssetImporter.GetAtPath(texturePath) is TextureImporter textures)
             {
                 // No mipmaps: a mip of a swatch atlas averages neighbouring swatches, and a palm sixty
@@ -434,117 +434,6 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
-        /// One material per painted texture, for a pack that has real textures rather than a swatch
-        /// atlas (P6, the nature kit). Keyed by the texture, not the slot: every tree that wears
-        /// Bark_NormalTree wears the same material, so the forest still batches.
-        ///
-        /// The texture is whichever one the FBX importer already found for the slot; failing that,
-        /// the one in the pack's Textures folder whose name the slot's name contains, longest first
-        /// ("Leaves_NormalTree" over "Leaves"). A leaf card gets alpha clip, both faces, and mips that
-        /// keep their coverage, or a pine thins to nothing at forty metres.
-        /// </summary>
-        static Material TexturedMaterial(Material worn, ArtCatalog.Pack pack)
-        {
-            Texture2D texture = null;
-            if (TextureOf.TryGetValue(worn.name, out string named))
-                texture = AssetDatabase.LoadAssetAtPath<Texture2D>($"{pack.Folder}/Textures/{named}.png");
-
-            if (texture == null) texture = worn.mainTexture as Texture2D;
-            if (texture == null || !AssetDatabase.GetAssetPath(texture).StartsWith(pack.Folder))
-                texture = MatchTexture(worn.name, pack);
-
-            if (texture == null)
-            {
-                Debug.LogWarning($"[ArtLibrary] {pack.Name}: no texture for material '{worn.name}'; it keeps "
-                                 + "its flat colour. Name the texture it should wear and add it to the match.");
-                return FlatMaterial(worn);
-            }
-
-            string path = $"{MaterialFolder}/{pack.Author}_{pack.Name}_{texture.name}.mat";
-            var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
-            if (existing != null) return existing;
-
-            string texturePath = AssetDatabase.GetAssetPath(texture);
-            bool cutout = Cutout(texture.name);
-            bool twoSided = cutout || texture.name.StartsWith("Grass");
-
-            if (AssetImporter.GetAtPath(texturePath) is TextureImporter textures)
-            {
-
-                // Painted, not swatches: mips are right here. 1024 because the bark ships far larger
-                // than anything a 760M should hold for a tree trunk.
-                textures.mipmapEnabled = true;
-                textures.mipMapsPreserveCoverage = cutout;
-                textures.alphaTestReferenceValue = 0.5f;
-                textures.alphaIsTransparency = cutout;
-                textures.maxTextureSize = 1024;
-                textures.textureCompression = TextureImporterCompression.Compressed;
-                textures.wrapMode = TextureWrapMode.Repeat;
-                textures.sRGBTexture = true;
-                textures.SaveAndReimport();
-                texture = AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath);
-            }
-
-            Material material = NewLit($"{pack.Author}_{pack.Name}_{texture.name}");
-            material.SetTexture("_BaseMap", texture);
-            material.mainTexture = texture;
-            material.SetColor("_BaseColor", Color.white);
-
-            if (cutout)
-            {
-                material.SetFloat("_AlphaClip", 1f);
-                material.SetFloat("_Cutoff", 0.5f);
-                material.EnableKeyword("_ALPHATEST_ON");
-                material.renderQueue = (int)RenderQueue.AlphaTest;
-            }
-
-            // Grass blades are single planes with no alpha to cut: drawn from both sides, not clipped.
-            if (twoSided)
-            {
-                material.SetFloat("_Cull", (float)CullMode.Off);
-                material.doubleSidedGI = true;
-            }
-
-            return Save(material, path);
-        }
-
-        /// <summary>
-        /// The slots whose name does not say which texture they wear, read from the kit's own glTF
-        /// (2026-09-27, measured on the zip). The leaves wear the "_C" cutout sheets, and "Rocks"
-        /// wears Rocks_Diffuse. Checked before anything the FBX importer found, because the FBX
-        /// names the artist's desktop and the glTF is the one the kit renders its previews from.
-        /// </summary>
-        static readonly Dictionary<string, string> TextureOf = new()
-        {
-            { "Leaves_NormalTree", "Leaves_NormalTree_C" },
-            { "Leaves_Pine", "Leaf_Pine_C" },
-            { "Leaves_TwistedTree", "Leaves_TwistedTree_C" },
-            { "Rocks", "Rocks_Diffuse" },
-        };
-
-        /// <summary>
-        /// Leaf cards and petals. Measured, not guessed: every texture in the nature kit is RGBA, but
-        /// only these have alpha below one; the bark's channel is solid, and clipping it would only
-        /// cost the early depth test on every trunk.
-        /// </summary>
-        static bool Cutout(string texture)
-            => texture.StartsWith("Leaves") || texture.StartsWith("Leaf_") || texture.StartsWith("Flowers");
-
-        static Texture2D MatchTexture(string materialName, ArtCatalog.Pack pack)
-        {
-            string folder = $"{pack.Folder}/Textures";
-            if (!AssetDatabase.IsValidFolder(folder)) return null;
-
-            string wanted = materialName.ToLowerInvariant();
-
-            return AssetDatabase.FindAssets("t:Texture2D", new[] { folder })
-                                .Select(guid => AssetDatabase.LoadAssetAtPath<Texture2D>(AssetDatabase.GUIDToAssetPath(guid)))
-                                .Where(t => t != null && wanted.Contains(t.name.ToLowerInvariant()))
-                                .OrderByDescending(t => t.name.Length)
-                                .FirstOrDefault();
-        }
-
-        /// <summary>
         /// One material per distinct colour, across every flat-coloured kit. Two kits that both call
         /// something "wood" and picked the same brown share it; two that picked different browns do not,
         /// because the artist's brown is the point.
@@ -566,6 +455,70 @@ namespace EscapeWithYourFriends.EditorTools
             string name = worn.name.ToLowerInvariant();
             material.SetFloat("_Smoothness", name.Contains("metal") || name.Contains("grey") ? 0.45f : 0.1f);
 
+            return Save(material, path);
+        }
+
+        /// <summary>
+        /// One material per slot the artist named, for a kit painted from its own textures (the
+        /// Quaternius kits, ART-PLAN P6). The texture is the one the FBX points at, else the file in the
+        /// kit's Textures folder named after the slot, as <see cref="CharacterArt"/> finds a body's.
+        /// A texture with an alpha channel is a leaf card: clipped, and drawn from both sides so a
+        /// palm frond does not vanish edge-on.
+        /// </summary>
+        static Material TexturedMaterial(Material worn, ArtCatalog.Pack pack)
+        {
+            string slot = new(worn.name.Where(c => char.IsLetterOrDigit(c) || c == '_').ToArray());
+            string name = $"{pack.Author}_{pack.Name}_{slot}";
+            string path = $"{MaterialFolder}/{name}.mat";
+
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (existing != null) return existing;
+
+            Texture texture = worn.HasProperty("_BaseMap") ? worn.GetTexture("_BaseMap") : null;
+            if (texture == null) texture = worn.mainTexture;
+            string file = texture != null ? AssetDatabase.GetAssetPath(texture) : CharacterArt.BaseColour(pack, slot);
+
+            bool clip = false;
+            if (file != null && AssetImporter.GetAtPath(file) is TextureImporter importer)
+            {
+                // 1024 is the budget on the 760M (ART-PLAN §8); the kits ship 2048 and up.
+                clip = importer.DoesSourceTextureHaveAlpha();
+                if (importer.maxTextureSize != 1024 || importer.alphaIsTransparency != clip)
+                {
+                    importer.maxTextureSize = 1024;
+                    importer.alphaIsTransparency = clip;
+                    importer.SaveAndReimport();
+                }
+                texture = AssetDatabase.LoadAssetAtPath<Texture2D>(file);
+            }
+
+            Material material = NewLit(name);
+            if (texture == null)
+            {
+                // A slot can be a plain colour even in a textured kit. Kept, and said.
+                Color colour = worn.HasProperty("_BaseColor") ? worn.GetColor("_BaseColor") : worn.color;
+                material.SetColor("_BaseColor", colour);
+                material.color = colour;
+                Debug.LogWarning($"[ArtLibrary] {worn.name} ({pack.Name}): no texture in the FBX or in "
+                                 + $"{pack.Folder}/Textures; flat #{ColorUtility.ToHtmlStringRGB(colour)}.");
+                return Save(material, path);
+            }
+
+            material.SetTexture("_BaseMap", texture);
+            material.mainTexture = texture;
+            material.SetColor("_BaseColor", Color.white);
+
+            if (clip)
+            {
+                material.SetFloat("_AlphaClip", 1f);
+                material.SetFloat("_Cutoff", 0.5f);
+                material.EnableKeyword("_ALPHATEST_ON");
+                material.SetFloat("_Cull", 0f);
+                material.renderQueue = (int)RenderQueue.AlphaTest;
+            }
+
+            Debug.Log($"[ArtLibrary] {worn.name} ({pack.Name}) is painted from {file}"
+                      + (clip ? ", alpha-clipped, both sides." : "."));
             return Save(material, path);
         }
 

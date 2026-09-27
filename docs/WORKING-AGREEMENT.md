@@ -69,9 +69,8 @@ into the tree under the right epic.
 | #85–#89, #91, #93 | Steam. Needs the $100 Steam Direct fee, a tax interview (W-8BEN) and an appid. Up to 30 days of waiting. |
 | #90 | Demo gate shipped (`-demoTest`). Acceptance is "fun standalone, converts to wishlists": players, then Steam numbers. |
 | #29 | GATE: M1 playtest with four real players. The one that decides whether the game is fun. |
-| #6 | MCP for Unity. Needs the Editor open. |
 
-`#94`–`#104` are the milestone epics and `#104` is the roadmap. Do not close an epic; it closes when
+`#95`–`#104` are the milestone epics (M0, `#94`, is closed) and `#104` is the roadmap. Do not close an epic; it closes when
 its leaves do.
 
 ### Picking the next issue

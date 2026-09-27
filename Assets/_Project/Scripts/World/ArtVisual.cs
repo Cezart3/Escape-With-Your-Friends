@@ -41,18 +41,16 @@ namespace EscapeWithYourFriends.World
         /// <summary>LOD0 triangles, per model, at the size the art pass sold it at.</summary>
         public static int Cap(ArtCategory category) => category switch
         {
-            // P6 raised the nature and prop caps to what Quaternius's models measure (triangles
-            // counted from the kits' own glTF, 2026-09-27): trees 1 646-6 265, palms 2 924-3 208,
-            // plants 288-1 690, rocks 244-522, props 204-1 636, the large ship 20 636.
-            ArtCategory.Tree => 7000,
-            ArtCategory.Plant => 2000,
+            // Measured on Quaternius's Nature MegaKit (P6 V1): its trees are 1 600 to 6 300, its
+            // bushes up to 900. IslandProfile.TreeMaximumFullLOD (60) bounds what is drawn at once.
+            ArtCategory.Tree => 6500,
+            ArtCategory.Plant => 1000,
             ArtCategory.Rock => 600,
             ArtCategory.Log => 150,
-            ArtCategory.SmallProp => 600,
-            ArtCategory.Prop => 2000,
+            ArtCategory.SmallProp => 400,
+            ArtCategory.Prop => 800,
             ArtCategory.Structure => 1500,
-            // The wreck, the cave's cliff and the wrecked boat: one of each on the island.
-            ArtCategory.Wreck => 22000,
+            ArtCategory.Wreck => 2500,
             ArtCategory.Vehicle => 4000,
             // 16000, not the plan's 15000: Quaternius's female base body measures 15060 (ART-PLAN §1).
             ArtCategory.Character => 16000,
