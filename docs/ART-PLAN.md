@@ -645,6 +645,8 @@ Pirate Kit; the file names in `ArtCatalog` were read from `unzip -l` of those zi
 the pirate kit. V2's houses and docks are not placed: the shop is open-fronted and the native huts
 read better as palisades than as pirate-town houses; they are one `ArtDress` call each if wanted.
 V3 (hair, clothes) needs packs not downloaded yet. See ARCHITECTURE.md, "One hand across the island".
+V6's shading half is written too: every kit on one banded shader, `EWYF/Stylized`, tuned from one
+table in `StyleLook`. See ARCHITECTURE.md, "One shader for every kit".
 
 **Before any of it starts** (kept for the record; the file names are now known):
 

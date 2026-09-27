@@ -29,6 +29,9 @@ namespace EscapeWithYourFriends.World
         /// </summary>
         const int Budget = 48;
 
+        /// <summary>The island's one surface shader. See StyleLook in the editor scripts.</summary>
+        const string Stylized = "EWYF/Stylized";
+
         /// <summary>Renderers wearing one material before the draw calls are worth instancing away.</summary>
         const int Repeated = 8;
 
@@ -108,6 +111,21 @@ namespace EscapeWithYourFriends.World
             int thirdParty = materials.Count(m => ThirdParty(m.name));
             Debug.Log($"[LookTest] of those, {thirdParty} are the art pass's (Kenney_*, Flat_*, Quaternius_*) "
                       + $"and {materials.Count - thirdParty} are everything else.");
+
+            // One shader across every kit is what makes two artists' models read as one hand
+            // (docs/ART-PLAN.md P6, V6). StyleLook.Apply puts them there; this fails if a generator
+            // ever makes one on URP/Lit again, or the shader failed to compile and fell back.
+            Debug.Log("[LookTest] shaders: " + string.Join(", ", materials
+                .GroupBy(m => m.shader != null ? m.shader.name : "(none)")
+                .OrderByDescending(g => g.Count())
+                .Select(g => $"{g.Key} x{g.Count()}")));
+
+            string[] offStyle = materials.Where(m => ThirdParty(m.name) && m.shader != null && m.shader.name != Stylized)
+                                         .Select(m => $"{m.name} on {m.shader.name}")
+                                         .ToArray();
+
+            Check($"every kit material wears {Stylized} ({string.Join(", ", offStyle.Take(5))})",
+                  offStyle.Length == 0);
 
             Check($"the scene shares one palette ({materials.Count} materials, budget {Budget})",
                   materials.Count <= Budget);
