@@ -20,7 +20,7 @@ MonoBehaviour:
   _maxStack: 1
   _weight: 3.2
   _icon: {fileID: 0}
-  _worldPrefab: {fileID: 0}
+  _worldPrefab: {fileID: 5708676297218836568, guid: 65d41adc684fdbe429de1fa4c08d611d, type: 3}
   _effect: {fileID: 0}
   _useSeconds: 1.5
   _leavesBehind: {fileID: 0}
