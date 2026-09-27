@@ -365,6 +365,9 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_maxHealth").floatValue = 40f;
             });
 
+            // T13. After the colliders, so a model never brings one of its own into the count.
+            Animal.Skin[] skins = AnimalArt.Dress(root, catalog);
+
             var animal = root.AddComponent<Animal>();
             SetFields(animal, so =>
             {
@@ -372,6 +375,16 @@ namespace EscapeWithYourFriends.EditorTools
                 so.FindProperty("_body").objectReferenceValue = body.transform;
                 so.FindProperty("_head").objectReferenceValue = head.transform;
                 so.FindProperty("_collider").objectReferenceValue = collider;
+
+                SerializedProperty list = so.FindProperty("_skins");
+                list.arraySize = skins.Length;
+                for (int i = 0; i < skins.Length; i++)
+                {
+                    SerializedProperty entry = list.GetArrayElementAtIndex(i);
+                    entry.FindPropertyRelative("Species").stringValue = skins[i].Species;
+                    entry.FindPropertyRelative("Root").objectReferenceValue = skins[i].Root;
+                    entry.FindPropertyRelative("Animator").objectReferenceValue = skins[i].Animator;
+                }
             });
 
             return root;

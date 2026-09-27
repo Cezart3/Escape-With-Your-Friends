@@ -70,6 +70,20 @@ namespace EscapeWithYourFriends.AI
 
         [SerializeField] CapsuleCollider _collider;
 
+        [Tooltip("A model per species (#79, ART-PLAN T13). The one matching the species is shown and the "
+                 + "boxes hidden; a species with none keeps the boxes.")]
+        [SerializeField] Skin[] _skins = System.Array.Empty<Skin>();
+
+        [System.Serializable]
+        public class Skin
+        {
+            public string Species;
+            public GameObject Root;
+
+            /// <summary>Null when the model came without animations; it then only slides, like the box.</summary>
+            public Animator Animator;
+        }
+
         [Header("Behaviour")]
         [Tooltip("Seconds between sweeps for nearby players. Cheaper than every frame, still instant to a human.")]
         [SerializeField] float _senseInterval = 0.25f;
@@ -93,6 +107,32 @@ namespace EscapeWithYourFriends.AI
         float _despawnAt;
 
         Health _target;
+
+        Skin _skin;
+        Vector3 _wasAt;
+        float _speed;
+
+        static readonly int SpeedId = Animator.StringToHash("Speed");
+        static readonly int DeadId = Animator.StringToHash("Dead");
+
+        /// <summary>The model this animal is wearing, or null when it is still the boxes.</summary>
+        internal GameObject SkinRoot => _skin != null ? _skin.Root : null;
+
+        /// <summary>The species' model, or its boxes, is drawing, and never both. The harness reads it.</summary>
+        internal bool OneLook
+        {
+            get
+            {
+                bool boxes = _body != null && _body.TryGetComponent(out Renderer box) && box.enabled;
+                int models = 0;
+                foreach (Skin skin in _skins)
+                    if (skin.Root != null && skin.Root.activeSelf) models++;
+
+                return _skin == null ? boxes && models == 0 : !boxes && models == 1 && _skin.Root.activeSelf;
+            }
+        }
+
+        internal int SkinCount => _skins.Length;
 
         /// <summary>Every animal alive on this peer. The spawner counts it; the harness reads it.</summary>
         static readonly List<Animal> _live = new();
@@ -210,6 +250,19 @@ namespace EscapeWithYourFriends.AI
         {
             Vector3 size = def.BodySize;
 
+            _skin = null;
+            foreach (Skin skin in _skins)
+            {
+                bool match = skin.Root != null && skin.Species == def.Id;
+                if (match) _skin = skin;
+                if (skin.Root != null) skin.Root.SetActive(match);
+            }
+
+            // The boxes stay in the prefab for a species without a model, and so the colour below
+            // still has somewhere to go; they only stop drawing.
+            SetDrawn(_body, _skin == null);
+            SetDrawn(_head, _skin == null);
+
             if (_body != null)
             {
                 _body.localScale = size;
@@ -234,6 +287,32 @@ namespace EscapeWithYourFriends.AI
                 _collider.height = Mathf.Max(_collider.radius * 2f, size.y);
                 _collider.center = new Vector3(0f, size.y * 0.5f, 0f);
             }
+        }
+
+        static void SetDrawn(Transform part, bool drawn)
+        {
+            if (part != null && part.TryGetComponent(out Renderer renderer)) renderer.enabled = drawn;
+        }
+
+        /// <summary>
+        /// Every peer: how fast the transform is going, measured rather than read off the agent,
+        /// because a client has no agent - the same reason <see cref="NpcSkin"/> measures.
+        /// </summary>
+        void LateUpdate()
+        {
+            Animator animator = _skin != null ? _skin.Animator : null;
+            float dt = Time.deltaTime;
+            if (animator == null || dt <= 0f) return;
+
+            Vector3 moved = transform.position - _wasAt;
+            _wasAt = transform.position;
+
+            bool dead = _health != null && _health.State == LifeState.Dead;
+            float measured = Mathf.Min(new Vector2(moved.x, moved.z).magnitude / dt, 15f);
+            _speed = Mathf.Lerp(_speed, measured, 1f - Mathf.Exp(-8f * dt));
+
+            animator.SetFloat(SpeedId, dead ? 0f : _speed);
+            animator.SetBool(DeadId, dead);
         }
 
         static void Paint(Transform part, Color colour)
