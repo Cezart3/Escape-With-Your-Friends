@@ -7166,7 +7166,7 @@ Run `SlotFactory.Build`, then the island bake with `-rebuildPois` so the three P
 
 ---
 
-## The blackjack table (#ISSUE)
+## The blackjack table (#161)
 
 Four seats against the house along the casino's left wall, paid in the chips the wheel and the
 cabinets take. Standard rules and nothing clever: six decks shuffled fresh every round, blackjack
