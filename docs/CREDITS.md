@@ -13,10 +13,11 @@ never straight into the game.
 
 | Asset | Author | Source | Licence | Used for |
 |---|---|---|---|---|
-| Stylized Nature MegaKit (Standard) | Quaternius | https://quaternius.com/packs/stylizednaturemegakit.html | CC0 1.0 | Jungle trees, pines, bushes, ferns, grass, flowers, rocks |
-| Pirate Kit | Quaternius | https://quaternius.com/packs/piratekit.html | CC0 1.0 | Palms, the shipwreck, cave cliffs, barrels, chests, buckets, bottles, the wrecked boat |
-| Pirate Kit | Kenney | https://kenney.nl/assets/pirate-kit | CC0 1.0 | Thatched roofs, crates |
-| Survival Kit | Kenney | https://kenney.nl/assets/survival-kit | CC0 1.0 | Logs, stumps, floors and walls, the camp, tools |
+| Pirate Kit | Kenney | https://kenney.nl/assets/pirate-kit | CC0 1.0 | Palms, rocks, the shipwreck, thatched huts, bottles, crates |
+| Survival Kit | Kenney | https://kenney.nl/assets/survival-kit | CC0 1.0 | Pines, logs, stumps, grass, floors and walls, the camp, chests, tools |
+| Platformer Kit | Kenney | https://kenney.nl/assets/platformer-kit | CC0 1.0 | Jungle trees, plants, flowers |
+| Coaster Kit | Kenney | https://kenney.nl/assets/coaster-kit | CC0 1.0 | Jungle trees |
+| Castle Kit | Kenney | https://kenney.nl/assets/castle-kit | CC0 1.0 | Highland trees |
 | Furniture Kit | Kenney | https://kenney.nl/assets/furniture-kit | CC0 1.0 | The bar, bar stools, the roulette table |
 | Holiday Kit | Kenney | https://kenney.nl/assets/holiday-kit | CC0 1.0 | The casino's string lights, lanterns |
 
@@ -57,8 +58,3 @@ Recorded because the build machine could not open the authors' own pages (see `A
   that repository carried no licence for them, so this is evidence of shape, not of terms.
   `CharacterArt` refuses a zip without a licence file and copies the one it finds to
   `Assets/_Project/Art/ThirdParty/Quaternius/UniversalBaseCharacters/License.txt`.
-- **Quaternius Stylized Nature MegaKit**: `License_Standard.txt` inside the zip Cezar downloaded
-  (2026-09-27): "CC0 1.0 Universal (CC0 1.0) Public Domain Dedication".
-- **Quaternius Pirate Kit**: the download (a Google Drive folder, zipped by Drive) carries no licence
-  file. CC0 is what the pack's page states; `ArtExtract` writes that claim into the extracted
-  `License.txt` and logs a warning. **Check the page** before shipping.

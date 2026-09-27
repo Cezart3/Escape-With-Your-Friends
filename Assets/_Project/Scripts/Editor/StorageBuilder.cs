@@ -63,7 +63,7 @@ namespace EscapeWithYourFriends.EditorTools
 
             RegisterSpawnable(saved.GetComponent<NetworkObject>());
 
-            // The art pass (docs/ART-PLAN.md §4): one chest over the five blocks, stretched to
+            // The art pass (docs/ART-PLAN.md §4): one Kenney chest over the five blocks, stretched to
             // the body's collider so nobody bumps into a chest that is not there.
             ArtDress.DressPrefab(ChestPath, "Art", chest => ArtDress.Replace(chest, "Chest", "Art", false,
                 "Body", "Lid", "BandLeft", "BandRight", "Latch"));
