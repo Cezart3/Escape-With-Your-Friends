@@ -409,6 +409,12 @@ namespace EscapeWithYourFriends.EditorTools
                       casino + Offset(casinoFacing, -3.45f) + Offset(casinoFacing + 90f, 3.3f),
                       casinoFacing, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f, exact: true),
 
+                // The blackjack table along the left wall, dealer's side to the wall and the four
+                // seats facing the roulette table. Exact: the walkway between the two is under a metre.
+                Entry("casino.blackjack", BlackjackFactory.TablePath,
+                      casino + Offset(casinoFacing, -0.5f) + Offset(casinoFacing + 90f, -3.35f),
+                      casinoFacing + 90f, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f, exact: true),
+
                 Entry("village", GreyboxDir + "/NativeVillage.prefab", village, villageFacing,
                       pad: 24f, falloff: 20f, raise: 0.3f, maxSlope: 0.32f),
 

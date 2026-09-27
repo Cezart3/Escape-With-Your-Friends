@@ -7166,6 +7166,59 @@ Run `SlotFactory.Build`, then the island bake with `-rebuildPois` so the three P
 
 ---
 
+## The blackjack table (#ISSUE)
+
+Four seats against the house along the casino's left wall, paid in the chips the wheel and the
+cabinets take. Standard rules and nothing clever: six decks shuffled fresh every round, blackjack
+pays 3:2, the dealer peeks under an ace or a ten and stands on every 17, soft ones included. Double
+on any first two cards, after a split too; split any two cards of the same value, once per seat;
+split aces take one card each, and 21 after a split is 21, not blackjack. No insurance, no surrender.
+
+**The rules are arithmetic, in one file**, like the slots. `BlackjackMath` holds totals, payouts and
+the seeded shoe (Fisher-Yates over `SlotRng`); `BlackjackRound` is one round from the deal to the
+dealer's last card, with no Unity in it. `BlackjackTable` drives it and owns the clock, the wallets
+and the wire. So the harness can play 200 000 rounds of basic strategy (`BlackjackStrategy`) in a few
+seconds: they return 99.5% of the first bet, the half percent a real table keeps.
+
+**What crosses the wire is the cards as they land, not the seed.** A slot sends its seed because the
+whole spin is decided before a reel moves; a blackjack seed would hand every client the hole card and
+the next card in the shoe. The round writes each card it shows into a log, `hand * 64 + card`, with a
+split written as its own entry, and the hole card goes in only when it turns over. The log is a
+`SyncList<int>` every peer rebuilds the hands from (`BlackjackMath.Rebuild`); bets, owners, the turn
+and the payouts are small synced lists beside it. The server shuffles from `System.Random` and nobody
+else sees the seed.
+
+**Authority is the wheel's.** A press on a seat's bet button takes 50 chips there and then, up to 500,
+and sits the player there (one seat each). The first bet opens a 10 s window; then the cards go out.
+A double or a split takes its stake when pressed. Hands act in seat order; a player who does nothing,
+walks off, dies or disconnects is stood after 20 s, and a hand whose owner is gone is paid to nobody.
+The dealer's cards go out one at a time, the payouts land, and the felt stays up five seconds before it
+clears.
+
+**The felt shows colour, the board shows ranks.** Cards are pre-placed palette slabs, eight a hand,
+shown face up with a red or black pip or face down in blue; ranks on the card faces are an art job for
+later. `BlackjackBoard` takes the top of the screen within 2.2 m (after a slot cabinet, before the
+roulette board): the dealer's hand on the big line, yours under it with totals, and whose turn it is.
+Every seat has five buttons, each a nested `NetworkObject` for `BetSpot`'s reason: a big gold bet at
+the rail, and hit (green), stand (red), double (white), split (blue) behind it. The prompts only offer
+what the player may do right now.
+
+`-blackjackTest` (with `-scene island -noNatives -noAnimals`), host side: totals, the dealer's 17 and
+every payout on paper; the shoe is six whole decks and a seed is a shoe; scripted rounds for the
+peek, split eights with a double, split aces, a bust, seat order; 5000 random rounds end, never leak
+the hole card into the log, and rebuild from it to the server's hands; 200 000 fixed shoes by the
+chart net exactly what they did under .NET (Mono shuffles like .NET) and return 98.5-100.5%. Then
+rigged shoes through the real buttons: a hit to 21 against a dealer bust, a split and a double, a
+dealer blackjack, a player who times out, the board's strings, the ledger, and the refusals (short
+stack, the 500 cap, a second seat, betting after the deal, someone else's hand, a double without the
+chips). A second process with `-blackjackTest -client` watches three rounds and checks the dealer
+never showed two cards while players acted, and that every payout is what its own rebuilt cards make it.
+
+Run `BlackjackFactory.Build`, then the island bake with `-rebuildPois` so the `casino.blackjack` POI
+places it.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**

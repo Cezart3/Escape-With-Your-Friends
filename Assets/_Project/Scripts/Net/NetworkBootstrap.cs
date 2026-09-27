@@ -327,6 +327,7 @@ namespace EscapeWithYourFriends.Net
             Casino.CasinoTest.Begin();
             Casino.DrunkTest.Begin();
             Casino.SlotTest.Begin();
+            Casino.BlackjackTest.Begin();
             Player.SurvivalTest.Begin();
             Player.BuffTest.Begin();
             World.Island2Test.Begin();
@@ -352,6 +353,7 @@ namespace EscapeWithYourFriends.Net
 
             Casino.RouletteTest.Begin();
             Casino.SlotTest.Begin();
+            Casino.BlackjackTest.Begin();
             World.PlaneTest.Begin();
             AchievementTest.Begin();
             World.DemoTest.Begin();
