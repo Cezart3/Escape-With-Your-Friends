@@ -67,6 +67,12 @@ namespace EscapeWithYourFriends.EditorTools
         const string AirClip = "Jump_Loop";
         const string PunchClip = "Punch_Jab";
 
+        // The arms with something in the right hand: at rest, and using it.
+        const string GunClip = "Pistol_Idle_Loop";
+        const string ShootClip = "Pistol_Shoot";
+        const string BladeClip = "Sword_Idle";
+        const string SlashClip = "Sword_Attack";
+
         // Only natives die standing up; a player is a ragdoll by then.
         const string DeathClip = "Death01";
 
@@ -490,10 +496,11 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
-        /// The one controller every body shares. Five parameters, which is everything the rest of the
+        /// The one controller every body shares. Seven parameters, which is everything the rest of the
         /// game already knows about a body: how fast it goes, whether it is off the ground, in a seat,
-        /// throwing a punch, or (a native) dead. Carrying is a layer over the arms rather than a state, so a carrier
-        /// can still walk.
+        /// throwing a punch, (a native) dead, and what is in its hand and whether it is being used.
+        /// Carrying and holding a weapon are layers over the arms rather than states, so either can
+        /// still walk.
         /// </summary>
         static bool BuildController()
         {
@@ -514,6 +521,8 @@ namespace EscapeWithYourFriends.EditorTools
             controller.AddParameter("Seated", AnimatorControllerParameterType.Bool);
             controller.AddParameter("Punch", AnimatorControllerParameterType.Trigger);
             controller.AddParameter("Dead", AnimatorControllerParameterType.Bool);
+            controller.AddParameter("Armed", AnimatorControllerParameterType.Int);
+            controller.AddParameter("Fire", AnimatorControllerParameterType.Trigger);
 
             AnimatorState move = controller.CreateBlendTreeInController("Move", out BlendTree tree, 0);
             tree.blendType = BlendTreeType.Simple1D;
@@ -591,6 +600,8 @@ namespace EscapeWithYourFriends.EditorTools
             if (clip != null) State(layers[1].stateMachine, "Carry", clip);
             controller.layers = layers;
 
+            Armed(controller, mask, clips, missing);
+
             EditorUtility.SetDirty(controller);
             AssetDatabase.SaveAssets();
 
@@ -604,6 +615,50 @@ namespace EscapeWithYourFriends.EditorTools
 
             Debug.Log($"[CharacterArt] Built {ControllerPath}.");
             return ok;
+        }
+
+        /// <summary>
+        /// The arms of somebody holding a weapon, over whatever the legs are doing: layer 2, off until
+        /// CharacterSkin draws a weapon in the hand. Armed is 1 for a gun and 2 for a blade; Fire plays
+        /// the one that matches. Every Fire is taken, as Armed is only ever set to 1 or 2, so a shot
+        /// never waits in the trigger for the next weapon. All four clips or no layer.
+        /// </summary>
+        static void Armed(AnimatorController controller, AvatarMask mask,
+                          Dictionary<string, AnimationClip> clips, List<string> missing)
+        {
+            AnimationClip gun = Clip(clips, GunClip, missing), shoot = Clip(clips, ShootClip, missing);
+            AnimationClip blade = Clip(clips, BladeClip, missing), slash = Clip(clips, SlashClip, missing);
+            if (gun == null || shoot == null || blade == null || slash == null) return;
+
+            controller.AddLayer("Armed");
+            AnimatorControllerLayer[] layers = controller.layers;
+            layers[2].defaultWeight = 0f;
+            layers[2].avatarMask = mask;
+            AnimatorStateMachine machine = layers[2].stateMachine;
+
+            AnimatorState holdGun = State(machine, "Gun", gun);
+            AnimatorState holdBlade = State(machine, "Blade", blade);
+            machine.defaultState = holdGun;
+            Quick(holdGun.AddTransition(holdBlade)).AddCondition(AnimatorConditionMode.Equals, 2f, "Armed");
+            Quick(holdBlade.AddTransition(holdGun)).AddCondition(AnimatorConditionMode.Equals, 1f, "Armed");
+
+            foreach ((AnimationClip use, AnimatorState rest, int kind) in new[] { (shoot, holdGun, 1), (slash, holdBlade, 2) })
+            {
+                AnimatorState state = State(machine, use.name, use);
+                AnimatorStateTransition go = machine.AddAnyStateTransition(state);
+                go.hasExitTime = false;
+                go.duration = 0.05f;
+                go.canTransitionToSelf = true;
+                go.AddCondition(AnimatorConditionMode.If, 0f, "Fire");
+                go.AddCondition(AnimatorConditionMode.Equals, kind, "Armed");
+
+                AnimatorStateTransition back = state.AddTransition(rest);
+                back.hasExitTime = true;
+                back.exitTime = 0.85f;
+                back.duration = 0.1f;
+            }
+
+            controller.layers = layers;
         }
 
         static AnimatorState State(AnimatorStateMachine machine, string name, Motion motion)

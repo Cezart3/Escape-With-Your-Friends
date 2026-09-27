@@ -7195,12 +7195,30 @@ player wears:
   weapon stays in the bag. Nothing new is networked.
 - **Where.** On the humanoid avatar's `RightHand` bone. `Inventory.Changed` rebuilds it, as does
   switching bodies.
-- **Which way.** In `Awake`, before the animator first moves a bone, each body's hand is recorded
-  in the player's axes. The weapon is set so that at bind pose it points along the player's
-  forward, then it is parented to the hand.
-  - The arms drop from the T-pose by turning about the forward axis, so the weapon rolls about
-    its own length and still points ahead.
-  - This needs no per-rig numbers, and it works on any body the avatar maps.
+- **Which way.** Read off the hand's own bones, so it is right in whatever pose the clip puts
+  the hand in. The first version recorded the hand at bind pose and kept the weapon pointing the
+  player's forward from there. That held for arms down, but an aim pose would have held a gun
+  sideways.
+  - A gun points from the wrist (`RightHand`) through the knuckles (`RightMiddleProximal`), with
+    its top toward the thumb (`RightThumbProximal`).
+  - A blade stands out of the fist on the thumb side, with its edge the way the knuckles face.
+  - The hand closes on the palm, halfway from wrist to knuckles. It grips the back of a gun's
+    body, a third of the way up, or the last tenth of a blade, where WeaponFactory put its
+    handle (`GripPoint`).
+  - A rig without finger bones falls back to the forearm for "along" and the player's up for
+    "top".
+- **The arms.** A third controller layer, `Armed`, sits over the arms through the same
+  upper-body mask as `Carry`. Its states:
+  - `Pistol_Idle_Loop` for a gun and `Sword_Idle` for a blade, chosen by the int `Armed`
+    (1 is a gun, 2 is a blade).
+  - `Pistol_Shoot` and `Sword_Attack` on the trigger `Fire`.
+  - `CharacterSkin` fades the layer in while something is drawn in the hand, and out while
+    carrying or seated, where both hands are busy. `Weapon.Attacked` fires `Fire` when
+    something is in the hand. Bare fists keep the whole-body `Punch`.
+  - `Armed` is only ever set to 1 or 2, and each `Fire` transition wants one of them. So every
+    `Fire` is taken, and none waits in the trigger for the next weapon.
+  - `CharacterArt.Build` builds the layer only if all four clips are in the library, and warns
+    otherwise.
 - **Colliders.** Any collider or rigidbody in the prefab is switched off and destroyed. Under the
   hand, it would join the player's own collider and catch rays aimed past it.
 - **Visibility.** It follows the body's rule: shadow-only for the owner while alive, drawn for
@@ -7212,21 +7230,26 @@ plane, position and field of view. Those are feel decisions, left for a session 
 the screen.
 
 **Harness.** `-skinTest` gives the host the first weapon in the catalog that has a model, and
-selects it. It then checks three things:
+selects it. It then checks five things:
 
 - the weapon is drawn under the right hand bone;
 - it is shadow-only, since the host owns it;
-- it has no live collider.
+- it has no live collider;
+- the model's box is within 10 cm of the wrist;
+- a second later, the `Armed` layer is fully in. This fails until `CharacterArt.Build` has
+  re-run, since the controller is content.
 
 **Not verified.** Type-checked with Roslyn only.
 
 Left for the eye:
 
-- The grip. The prefab's origin is its box's centre, so a rifle is held at its middle.
-- How far the idle and the run clips twist the hand away from "ahead".
-- The roll: a pistol may be held on its side.
+- The grip fractions in `GripPoint`.
+- Whether the Quaternius thumb bone gives "up" for a gun, or a quarter turn off.
+- Whether a blade's edge faces the right way. That depends on which way the kit drew it.
+- Whether `Pistol_Idle_Loop` reads as holding a gun with the legs running underneath.
 
-Each of these is one offset in `Hold`, once somebody has looked at it.
+Each of these is one number or one sign in `Hold` or `GripPoint`, once somebody has looked at
+it.
 
 ---
 

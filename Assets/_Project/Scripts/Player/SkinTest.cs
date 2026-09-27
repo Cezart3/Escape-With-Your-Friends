@@ -214,6 +214,17 @@ namespace EscapeWithYourFriends.Player
                       drawn.Length > 0 && drawn.All(r => r.shadowCastingMode == ShadowCastingMode.ShadowsOnly));
                 Check("with no collider of its own",
                       held != null && held.GetComponentsInChildren<Collider>().All(c => !c.enabled));
+
+                // Wrist to model, in the hand's space: a grip read off the wrong bones lands a metre out.
+                Bounds? onHand = held != null && hand != null ? WorldItem.Drawn(hand, held) : null;
+                float gap = onHand is Bounds box ? Mathf.Sqrt(box.SqrDistance(Vector3.zero)) : float.PositiveInfinity;
+                Check($"the hand closes on it ({gap:F2} m from the wrist)", gap < 0.1f);
+
+                yield return new WaitForSeconds(1f);
+                float armedWeight = worn.Animator.layerCount > 2 ? worn.Animator.GetLayerWeight(2) : 0f;
+                Check($"and the arms hold it like a {(armed.Kind == WeaponKind.Melee ? "blade" : "gun")} " +
+                      $"(layer weight {armedWeight:F2}; re-run CharacterArt.Build if 0)",
+                      armedWeight > 0.9f && skin.ArmedWeight > 0.9f);
             }
 
             // The NPCs (T10): the barman on one island, the castaway on the other, natives if on.
