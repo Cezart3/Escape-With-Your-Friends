@@ -604,8 +604,12 @@ collider, wheel, seat or float moved. `CarController`'s wheel visuals roll and s
 §4. The view prefab has no reader, so the same prefab becomes the item's `WorldPrefab`: the weapon
 is seen lying on the ground. The chainsaw stays a box. *Done:* `-weaponTest`, `-gunTest`,
 `-meleeTest` `0 failed`.
-**T13 · Sonnet · animals**, after you pick the pack. *Done:* `-animalTest` `0 failed`.
-**T14 · Opus · plane**, after you pick the model.
+**T13 · animals.** Written, not run (PR 157). Deer from Quaternius's Ultimate Animated Animal Pack,
+the boar as its farm pig, animated from their own clips; the gull keeps its boxes. *Done:*
+`-animalTest` `0 failed`.
+**T14 · plane.** Written, not run (PR 157). One CC0 Quaternius propeller plane over the airframe;
+its propeller, engine and starboard wing move into the holes when the model has them as separate
+meshes. *Done:* `-planeTest`, `-flightTest` `0 failed`.
 
 ### P5 — optional
 

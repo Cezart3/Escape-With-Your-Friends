@@ -106,6 +106,9 @@ namespace EscapeWithYourFriends.EditorTools
             }
         }
 
+        const string QuaterniusNote = "CC0 1.0 Universal, as stated on the author's page. The zip carried no "
+                                      + "licence file; this line was written by ArtExtract.";
+
         public static readonly Pack[] Packs =
         {
             new("Kenney", "Pirate", "pirate", "https://kenney.nl/assets/pirate-kit", Colormap),
@@ -142,6 +145,18 @@ namespace EscapeWithYourFriends.EditorTools
             new("Quaternius", "PirateKit", "", "https://quaternius.com/packs/piratekit.html", "Atlas_Pirate.png",
                 "CC0 1.0 Universal, as stated on https://quaternius.com/packs/piratekit.html. The zip, "
                 + "a Google Drive download, carried no licence file; this line was written by ArtExtract."),
+
+            // P4, the animals (T13) and the plane (T14). NOT DOWNLOADED YET: these names are the
+            // packs' usual ones, not read from a zip. Empty hints, like the pirate kit: Quaternius's
+            // zips come out of Google Drive or Poly Pizza under any name, and the extractor takes
+            // whichever zip holds the files. A wrong file name fails ArtExtract with the zip's
+            // nearest names; the fix is the File in the row below. See ART-PLAN §9, T13/T14.
+            new("Quaternius", "Animals", "", "https://quaternius.com (Ultimate Animated Animal Pack)", null,
+                QuaterniusNote),
+            new("Quaternius", "FarmAnimals", "", "https://quaternius.com (Farm Animals, or poly.pizza \"Pig\" by Quaternius)",
+                null, QuaterniusNote),
+            new("Quaternius", "Plane", "", "https://poly.pizza (a CC0 propeller plane by Quaternius)", null,
+                QuaterniusNote),
 
             // The people (T9). No entries in Models, so ArtExtract passes over them: their file names
             // were never seen, and CharacterArt extracts them by kind instead.
@@ -244,6 +259,13 @@ namespace EscapeWithYourFriends.EditorTools
             // An open race car, not the plan's SUV: see VehicleBuilder.Dress.
             new("Buggy", "Car", "race", ArtCategory.Vehicle),
             new("Boat", "Watercraft", "boat-speed-j", ArtCategory.Vehicle),
+
+            // --- the animals (AnimalArt) and the plane (PlaneBuilder.Dress) ------------------------
+            // An animal's id is its species id with a capital; a species with no row keeps its boxes.
+            // The gull has none: no Quaternius bird was found to name.
+            new("Deer", "Animals", "Deer", ArtCategory.Animal),
+            new("Boar", "FarmAnimals", "Pig", ArtCategory.Animal),
+            new("Plane", "Plane", "Plane", ArtCategory.Vehicle),
 
             // --- the weapons (WeaponFactory.Art) -------------------------------------------------
             // Fitted to the weapon's old box. The knife stands on its handle in the kit, and says so
