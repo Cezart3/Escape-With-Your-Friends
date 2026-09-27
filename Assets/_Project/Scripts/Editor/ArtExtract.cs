@@ -54,8 +54,9 @@ namespace EscapeWithYourFriends.EditorTools
                 string zipPath = BestZip(zips, pack, wanted);
                 if (zipPath == null)
                 {
-                    missing.Add($"{pack.Author} {pack.Name}: no zip with '{pack.ZipHint}' in its name and "
-                                + $"any of its files in {folder} ({pack.Page})");
+                    string named = pack.ZipHint.Length > 0 ? $"with '{pack.ZipHint}' in its name and " : "";
+                    missing.Add($"{pack.Author} {pack.Name}: no zip {named}holding any of its files in {folder} "
+                                + $"({pack.Page})");
                     continue;
                 }
 
@@ -84,12 +85,15 @@ namespace EscapeWithYourFriends.EditorTools
                 {
                     // Every painted texture, into a Textures folder beside the models: that is one of
                     // the places Unity's FBX importer looks for a texture a material names, so the
-                    // embedded materials arrive already pointing at them. Normal maps stay behind -
-                    // nothing here imports tangents - and so does the glTF folder's second copy.
+                    // embedded materials arrive already pointing at them. Only the folder named
+                    // Textures, so the glTF folder's second copy cannot overwrite it; and normal maps
+                    // stay behind, since nothing here imports tangents. "_Normal." and not "Normal":
+                    // the broadleaf trees' own textures are called Bark_NormalTree and Leaves_NormalTree.
                     ZipArchiveEntry[] textures = zip.Entries
                         .Where(e => e.Name.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
-                                    && e.FullName.IndexOf("textures/", StringComparison.OrdinalIgnoreCase) >= 0
-                                    && e.Name.IndexOf("normal", StringComparison.OrdinalIgnoreCase) < 0)
+                                    && string.Equals(Path.GetFileName(Path.GetDirectoryName(e.FullName)), "Textures",
+                                                     StringComparison.OrdinalIgnoreCase)
+                                    && e.Name.IndexOf("_normal.", StringComparison.OrdinalIgnoreCase) < 0)
                         .ToArray();
 
                     if (textures.Length == 0) missing.Add($"{pack.Name}: no Textures/*.png in {Path.GetFileName(zipPath)}");
@@ -166,7 +170,7 @@ namespace EscapeWithYourFriends.EditorTools
         {
             if (!byName.TryGetValue(file, out List<ZipArchiveEntry> entries)) return null;
 
-            return entries.FirstOrDefault(e => e.FullName.IndexOf("unity", StringComparison.OrdinalIgnoreCase) >= 0)
+            return entries.FirstOrDefault(e => e.FullName.IndexOf("fbx (unity)", StringComparison.OrdinalIgnoreCase) >= 0)
                    ?? entries.FirstOrDefault(e => e.FullName.IndexOf("fbx", StringComparison.OrdinalIgnoreCase) >= 0)
                    ?? entries[0];
         }

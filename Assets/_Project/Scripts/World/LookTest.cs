@@ -149,6 +149,7 @@ namespace EscapeWithYourFriends.World
             var unmarked = new List<string>();
             var heavy = new List<string>();
             var lying = new List<string>();
+            var flat = new List<string>();
             int prototypes = 0;
 
             foreach (Terrain terrain in terrains)
@@ -167,6 +168,12 @@ namespace EscapeWithYourFriends.World
                         materials.Add(material);
                         if (material.shader == null || material.shader.name.Contains("InternalErrorShader"))
                             broken.Add($"{prefab.name}:{material.name}");
+
+                        // Every tree kit is painted from a texture, atlas or real, into a Kenney_ or
+                        // Quaternius_ material. Anything else is the FBX's own material, left there
+                        // because ArtLibrary never found the texture for it.
+                        if (!material.name.StartsWith("Kenney_") && !material.name.StartsWith("Quaternius_"))
+                            flat.Add($"{prefab.name}:{material.name}");
                     }
 
                     var visual = prefab.GetComponent<ArtVisual>();
@@ -188,6 +195,8 @@ namespace EscapeWithYourFriends.World
                   unmarked.Count == 0);
             Check($"no tree is over its triangle cap ({string.Join(", ", heavy.Take(5))})", heavy.Count == 0);
             Check($"and every tree is standing up ({string.Join(", ", lying.Take(5))})", lying.Count == 0);
+            Check($"and every tree wears its kit's texture ({string.Join(", ", flat.Distinct().Take(5))})",
+                  flat.Count == 0);
         }
 
         /// <summary>

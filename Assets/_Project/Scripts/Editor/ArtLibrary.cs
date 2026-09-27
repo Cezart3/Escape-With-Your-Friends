@@ -417,11 +417,14 @@ namespace EscapeWithYourFriends.EditorTools
             if (texture == null || !AssetDatabase.GetAssetPath(texture).StartsWith(pack.Folder))
                 texture = MatchTexture(worn.name, pack);
 
+            // No remap at all rather than a flat one: a remap into _Materials is never revisited
+            // (see Remap), so a flat fallback would outlive the missing texture. Left alone, the slot
+            // wears the FBX's own material, -lookTest fails the tree, and the next run tries again.
             if (texture == null)
             {
-                Debug.LogWarning($"[ArtLibrary] {pack.Name}: no texture for material '{worn.name}'; it keeps "
-                                 + "its flat colour. Name the texture it should wear and add it to the match.");
-                return FlatMaterial(worn);
+                Debug.LogError($"[ArtLibrary] {pack.Name}: no texture for material '{worn.name}' in "
+                               + $"{pack.Folder}/Textures. Run ArtExtract again, or add the slot to TextureOf.");
+                return null;
             }
 
             string path = $"{MaterialFolder}/{pack.Author}_{pack.Name}_{texture.name}.mat";
