@@ -24,6 +24,9 @@ namespace EscapeWithYourFriends.World
         /// <summary>Distinct materials allowed in one scene. See the class note.</summary>
         const int Budget = 40;
 
+        /// <summary>Renderers wearing one material before the draw calls are worth instancing away.</summary>
+        const int Repeated = 8;
+
         static bool _started;
 
         int _passed;
@@ -95,9 +98,13 @@ namespace EscapeWithYourFriends.World
             Check($"the scene shares one palette ({materials.Count} materials, budget {Budget})",
                   materials.Count <= Budget);
 
-            // Terrain, water and the sky are one object each, so instancing would buy them nothing.
-            // The check is about the thousands of crates, trees and rocks.
-            string[] uninstanced = worn_by.Where(pair => pair.Value > 1 && !pair.Key.enableInstancing)
+            // The check is about the thousands of crates, trees and rocks, not about the sea.
+            //
+            // "More than one renderer" was too strict and failed on water, which is two enormous
+            // meshes: GPU instancing and the SRP Batcher are mutually exclusive in URP, and for two
+            // draw calls the batcher is the better of the two. Instancing only starts paying at the
+            // point where the draw calls themselves are the cost, so that is where the check starts.
+            string[] uninstanced = worn_by.Where(pair => pair.Value > Repeated && !pair.Key.enableInstancing)
                                           .Select(pair => $"{pair.Key.name} x{pair.Value}")
                                           .ToArray();
 

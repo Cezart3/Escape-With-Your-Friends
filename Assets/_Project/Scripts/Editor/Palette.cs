@@ -38,6 +38,10 @@ namespace EscapeWithYourFriends.EditorTools
             ("Accent", new Color(0.72f, 0.28f, 0.22f), 0.20f),
             ("Sand", new Color(0.82f, 0.74f, 0.55f), 0.05f),
             ("Leaf", new Color(0.28f, 0.45f, 0.24f), 0.10f),
+            // The shaded halves. Two tones per material is the difference between a tree and a green
+            // cloud, and it costs one extra draw call for the whole island rather than one per plant.
+            ("WoodDark", new Color(0.28f, 0.20f, 0.13f), 0.10f),
+            ("LeafDark", new Color(0.19f, 0.33f, 0.18f), 0.08f),
             ("Felt", new Color(0.16f, 0.36f, 0.24f), 0.04f),
             ("Skin", new Color(0.78f, 0.60f, 0.47f), 0.15f),
             ("Cloth", new Color(0.32f, 0.38f, 0.48f), 0.08f),
@@ -47,6 +51,15 @@ namespace EscapeWithYourFriends.EditorTools
         };
 
         static readonly Dictionary<string, Material> Cache = new();
+
+        /// <summary>Whether this name is one of ours. Callers that got a name from a file ask first.</summary>
+        public static bool Has(string name)
+        {
+            foreach ((string entry, Color _, float __) in Entries)
+                if (entry == name) return true;
+
+            return false;
+        }
 
         /// <summary>The palette entry by name. Creates the asset the first time anybody asks.</summary>
         public static Material Named(string name)

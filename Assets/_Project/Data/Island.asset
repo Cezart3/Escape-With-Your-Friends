@@ -64,6 +64,7 @@ MonoBehaviour:
   JungleDensity: 0.95
   HighlandDensity: 0.9
   BushDensity: 0.6
+  GroundDensity: 0.22
   GroveFeatureSize: 140
   GroveFloor: 0.36
   GroveSpan: 0.14

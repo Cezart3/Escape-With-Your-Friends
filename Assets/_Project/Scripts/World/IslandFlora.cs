@@ -6,11 +6,38 @@ namespace EscapeWithYourFriends.World
     /// <summary>One placed plant, in world space. The caller converts to whatever it needs.</summary>
     public struct FloraInstance
     {
+        /// <summary>Index into the flat variant list - what the terrain stores per tree.</summary>
         public int Prototype;
+
+        /// <summary>Which rule placed it. Only for reporting; the terrain never sees this.</summary>
+        public int Species;
+
         public Vector3 Position;
         public float Rotation;
         public float Height;
         public float Width;
+    }
+
+    /// <summary>
+    /// One modelled plant. The mesh comes from <c>tools/blender/flora.py</c> through an FBX in
+    /// <c>Art/Models</c>; this is only what the island needs to know about it.
+    /// </summary>
+    public struct FloraModel
+    {
+        public string Model;
+
+        /// <summary>
+        /// Capsule radius in metres. Zero means no collider at all - you push through a bush. A
+        /// negative number means "take it from the mesh", which is right for a rock and wrong for a
+        /// tree, whose bounds are mostly canopy.
+        /// </summary>
+        public float Radius;
+
+        public FloraModel(string model, float radius)
+        {
+            Model = model;
+            Radius = radius;
+        }
     }
 
     /// <summary>
@@ -33,12 +60,66 @@ namespace EscapeWithYourFriends.World
         public const int JungleTree = 1;
         public const int HighlandTree = 2;
         public const int Bush = 3;
-        public const int SpeciesCount = 4;
+        public const int Ground = 4;
+        public const int SpeciesCount = 5;
 
-        public static readonly string[] SpeciesNames = { "Palm", "JungleTree", "HighlandTree", "Bush" };
+        public static readonly string[] SpeciesNames = { "Palm", "JungleTree", "HighlandTree", "Bush", "Ground" };
 
-        /// <summary>Which pass places each species. Bushes get the finer grid, to fill in under the canopy.</summary>
-        public static readonly bool[] IsUndergrowth = { false, false, false, true };
+        /// <summary>Which pass places each species. Undergrowth gets the finer grid, to fill in under the canopy.</summary>
+        public static readonly bool[] IsUndergrowth = { false, false, false, true, true };
+
+        /// <summary>
+        /// The models each species can be, in <see cref="SpeciesNames"/> order.
+        ///
+        /// Placement stays five rules; rendering gets seventeen prototypes. That split is the whole
+        /// trick: the rules are the expensive thing to tune - which ground a palm accepts, where the
+        /// pines stop - and variety is free once they are right, because a variant is a second
+        /// prefab in the same slot rather than a second rule.
+        ///
+        /// Four identical trees in a row is the single loudest tell that a forest was generated,
+        /// and it is the one the eye catches before it notices anything about the shapes themselves.
+        /// </summary>
+        public static readonly FloraModel[][] Variants =
+        {
+            new[] { new FloraModel("Palm_Tall", 0.30f), new FloraModel("Palm_Short", 0.30f) },
+
+            new[] { new FloraModel("Tree_Large", 0.45f), new FloraModel("Tree_Mid", 0.40f),
+                    new FloraModel("Tree_Small", 0.34f), new FloraModel("Tree_Dead", 0.30f) },
+
+            new[] { new FloraModel("Pine_Tall", 0.36f), new FloraModel("Pine_Mid", 0.32f) },
+
+            // Nothing here is solid. A bush that blocks you is infuriating; a bush you walk through
+            // is free cover, and a fern that stops a car is a bug report.
+            new[] { new FloraModel("Bush_Wide", 0f), new FloraModel("Bush_Small", 0f),
+                    new FloraModel("Bush_Berry", 0f), new FloraModel("Fern", 0f) },
+
+            new[] { new FloraModel("Rock_Mid", -1f), new FloraModel("Rock_Small", -1f),
+                    new FloraModel("Rock_Large", -1f), new FloraModel("Log", -1f),
+                    new FloraModel("Stump", -1f) },
+        };
+
+        /// <summary>First flat prototype index of each species. Filled once, read everywhere.</summary>
+        public static readonly int[] VariantBase = BuildVariantBase();
+
+        /// <summary>How many prototypes the terrain ends up with.</summary>
+        public static readonly int PrototypeCount =
+            VariantBase[SpeciesCount - 1] + Variants[SpeciesCount - 1].Length;
+
+        static int[] BuildVariantBase()
+        {
+            var bases = new int[SpeciesCount];
+            for (int i = 1; i < SpeciesCount; i++) bases[i] = bases[i - 1] + Variants[i - 1].Length;
+            return bases;
+        }
+
+        /// <summary>The species a flat prototype index belongs to. Reporting only.</summary>
+        public static int SpeciesOf(int prototype)
+        {
+            for (int i = SpeciesCount - 1; i >= 0; i--)
+                if (prototype >= VariantBase[i]) return i;
+
+            return 0;
+        }
 
         const int PlacementSalt = 771177;
         const int GroveSalt = 313131;
@@ -113,9 +194,15 @@ namespace EscapeWithYourFriends.World
 
                     float scale = Mathf.Lerp(_profile.FloraMinScale, _profile.FloraMaxScale, sizeRoll);
 
+                    // A third hash rather than more bits out of the second: every bit of `look` is
+                    // already spent, and reusing one would tie a tree's model to its size.
+                    FloraModel[] variants = Variants[species];
+                    uint pick = Hash(i, j, _shape.Salt(PlacementSalt + 4001 + species));
+
                     placed.Add(new FloraInstance
                     {
-                        Prototype = species,
+                        Prototype = VariantBase[species] + (int)(pick % (uint)variants.Length),
+                        Species = species,
                         Position = new Vector3(x, height, z),
                         Rotation = ((look >> 24) & 0xFF) / 255f * Mathf.PI * 2f,
                         Height = scale,
@@ -186,6 +273,15 @@ namespace EscapeWithYourFriends.World
                            * Band(height, 1f, 92f, 3f)
                            * Ceiling(slope, 0.75f, 0.2f)
                            * Mathf.Clamp01(grass * 0.9f + dirt + sand * 0.25f);
+
+                case Ground:
+                    // Rocks, logs and stumps. Sparse everywhere and thickest where the ground is
+                    // already bare, which is the half of the island the plant rules leave empty and
+                    // which currently reads as an untextured slope.
+                    return _profile.GroundDensity
+                           * Band(height, 0.8f, 120f, 2f)
+                           * Ceiling(slope, 0.85f, 0.25f)
+                           * Mathf.Clamp01(rock * 1.2f + dirt * 0.7f + grass * 0.25f + sand * 0.2f);
             }
 
             return 0f;

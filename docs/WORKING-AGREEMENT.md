@@ -207,6 +207,13 @@ Logging flags that make a failure readable: `-animalLog`, `-cameraLog`, `-clockL
 - **`-partTest` needs a pair and `-scene island2`.** The host gets `-partTest`; the client is just a
   warm body with no test flag. Run solo it fails "a second player joined to take the other end".
 - **Pair harnesses need the host up about twenty seconds before the client.**
+- **`-flightTest` needs `-scene island2`.** Solo, but the plane is only on the second island.
+- **`-chestTest` needs a pair.** Both processes take the flag; it moves an item between two bags.
+- **Six flags take a number, not a bare switch**, and are silently inert without one:
+  `-carryTest <seconds>`, `-reviveTest <n>`, `-deathTest <n>`, `-fallTest <seconds>`,
+  `-ghostTest <seconds>`, `-hudTest <seconds>`. A sweep that passes them as booleans prints nothing
+  at all and looks like a hang. Grep the source for the flag before adding it to a sweep:
+  `CommandLine.GetInt`/`GetFloat` means it takes an argument, `HasFlag` means it does not.
 - Timing measurements are sensitive to what else is running. If a check is a distance or a duration,
   give it the machine.
 - A harness that needs particular conditions should **check for them and say so**, not quietly

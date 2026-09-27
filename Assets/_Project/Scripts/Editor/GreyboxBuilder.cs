@@ -384,18 +384,24 @@ namespace EscapeWithYourFriends.EditorTools
             float slant = Mathf.Sqrt(half * half + rise * rise);
             float pitch = Mathf.Atan2(rise, half) * Mathf.Rad2Deg;
 
+            // The slabs hang off an empty named after the roof, so a building still has one child
+            // called "Roof" and not three called "Roof.something". CasinoTest asks for exactly that,
+            // and it was right to: "the casino has a roof" should not have to know how it is built.
+            var group = new GameObject(name);
+            group.transform.SetParent(root.transform, false);
+
             for (int side = 0; side < 2; side++)
             {
                 float sign = side == 0 ? 1f : -1f;
 
-                GameObject slab = Box(root, $"{name}.{(side == 0 ? "N" : "S")}", material,
+                GameObject slab = Box(group, $"{name}.{(side == 0 ? "N" : "S")}", material,
                                       eaves + new Vector3(0f, rise * 0.5f, sign * half * 0.5f),
                                       new Vector3(width, 0.18f, slant));
 
                 slab.transform.localRotation = Quaternion.Euler(sign * pitch, 0f, 0f);
             }
 
-            Box(root, $"{name}.Ridge", material, eaves + new Vector3(0f, rise, 0f),
+            Box(group, $"{name}.Ridge", material, eaves + new Vector3(0f, rise, 0f),
                 new Vector3(width * 1.02f, 0.2f, 0.28f), solid: false);
         }
 

@@ -289,6 +289,31 @@ namespace EscapeWithYourFriends.AI
         /// The camps as baked. The half of "not unfair" that no behaviour test can catch: a village
         /// patrolling the players' own fire is a broken map rather than a difficulty setting.
         /// </summary>
+        /// <summary>Metres of clear ground a camp's night leash has to stop short of a spawn point by.</summary>
+        const float Breathing = 25f;
+
+        /// <summary>
+        /// Distance to the nearest place a player can wake up. The scene's spawn points when it has
+        /// them, and the position handed in - where this test's own player stands - when it does not.
+        /// </summary>
+        static float Nearest(Vector3 from, Vector3 fallback)
+        {
+            float best = Vector3.Distance(from, fallback);
+
+            foreach (SceneSpawnPoints set in FindObjectsByType<SceneSpawnPoints>(FindObjectsSortMode.None))
+            {
+                if (set == null || set.Points == null) continue;
+
+                foreach (Transform point in set.Points)
+                {
+                    if (point == null) continue;
+                    best = Mathf.Min(best, Vector3.Distance(from, point.position));
+                }
+            }
+
+            return best;
+        }
+
         void Camps(NativeSpawner spawner, Vector3 spawnPoint)
         {
             Check($"the island has camps ({spawner.Camps.Count})", spawner.Camps.Count > 0);
@@ -303,17 +328,25 @@ namespace EscapeWithYourFriends.AI
                     continue;
                 }
 
-                float distance = Vector3.Distance(spawnPoint, camp.Centre);
+                // Against every spawn point, not just the one this test's player happens to stand on.
+                // Four people spawn in a ring around the fire and the nearest of them is the one who
+                // gets shot at, so the nearest of them is what the number has to mean.
+                float distance = Nearest(camp.Centre, spawnPoint);
 
                 Debug.Log($"[NativeTest]   camp {camp.Id,-18} {camp.Population}(+{camp.NightExtra})x "
                           + $"{camp.Role.Id,-11} within {camp.Radius:0}m, {distance:0}m from spawn");
 
                 Check($"{camp.Id} is manned", camp.Population > 0);
 
-                // The dead zone around the players' fire, and it is measured to the edge of the camp
-                // rather than to its centre plus the leash it would chase you with at night.
+                // The dead zone around the players' fire, measured to the edge of the camp rather
+                // than to its centre, plus the leash it would chase you with at night.
+                //
+                // Clearing it by a metre is not clearing it. A camp whose leash stops just short of
+                // where you wake up is a camp you are in a firefight with before anybody has picked
+                // up a weapon, which is the bug this number now has a margin for.
                 float edge = distance - camp.Radius - camp.Role.NightLeash;
-                Check($"{camp.Id} cannot reach the spawn at night ({edge:0}m of clear ground)", edge > 0f);
+                Check($"{camp.Id} cannot reach the spawn at night ({edge:0}m of clear ground, want {Breathing})",
+                      edge > Breathing);
 
                 day += camp.Population;
                 night += camp.Wanted(1f);

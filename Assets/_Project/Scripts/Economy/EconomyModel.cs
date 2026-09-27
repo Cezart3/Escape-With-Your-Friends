@@ -53,10 +53,21 @@ namespace EscapeWithYourFriends.Economy
         public const float HuntGatherSeconds = 15f;
 
         /// <summary>Minutes to get from the fire to a camp and back out of it alive.</summary>
-        public const float RaidTravelMinutes = 1.5f;
+        /// <remarks>
+        /// Three, not the ninety seconds this started at. The camps are across the island from the
+        /// base on purpose, and the walk back is the one you do carrying thirty kilos of somebody
+        /// else's belongings.
+        /// </remarks>
+        public const float RaidTravelMinutes = 3f;
 
         /// <summary>Seconds per native: the approach, the fight, and the pockets.</summary>
-        public const float RaidKillSeconds = 35f;
+        /// <remarks>
+        /// A minute each. Raiding priced itself out of the spread check at thirty-five seconds - it
+        /// paid three and a third times what hunting did, which is not "the risky option pays more",
+        /// it is "there is one thing to do". The loot was never the problem; six armed men in seven
+        /// minutes flat was.
+        /// </remarks>
+        public const float RaidKillSeconds = 60f;
 
         /// <summary>How many bodies a camp is good for before you are waiting on respawns.</summary>
         public const int BodiesPerRaid = 6;
