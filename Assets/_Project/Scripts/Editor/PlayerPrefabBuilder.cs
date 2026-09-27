@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using EscapeWithYourFriends.Combat;
 using EscapeWithYourFriends.Data;
 using EscapeWithYourFriends.Economy;
@@ -405,8 +406,20 @@ namespace EscapeWithYourFriends.EditorTools
             // Server-side net for bodies that end up outside the world. See #110.
             root.AddComponent<FallGuard>();
 
-            // Second to last, so its Awake sweep for renderers finds every body part.
+            // The Quaternius bodies over the ragdoll (T9), or null and the primitives stay.
+            Renderer[] bands = Skin(root, bones);
+
+            // Second to last, so its Awake sweep for renderers finds every body part. With bodies, it
+            // tints only their headbands: a colour over a textured body turns the skin with it.
             var identity = root.AddComponent<PlayerIdentity>();
+            if (bands != null)
+                SetFields(identity, so =>
+                {
+                    SerializedProperty tinted = so.FindProperty("_tintedRenderers");
+                    tinted.arraySize = bands.Length;
+                    for (int i = 0; i < bands.Length; i++)
+                        tinted.GetArrayElementAtIndex(i).objectReferenceValue = bands[i];
+                });
 
             // After the identity, because an abandoned body has to unregister itself from the roster
             // and wants the reference rather than a GetComponent at runtime.
@@ -505,6 +518,9 @@ namespace EscapeWithYourFriends.EditorTools
         ///
         /// Every detail here is mesh only - its collider is destroyed on the spot - so none of it
         /// changes a mass, a joint limit or how far a body flies when a car hits it.
+        ///
+        /// Since T9 this is the fallback: when <see cref="Skin"/> finds Quaternius bodies it hides all
+        /// of this under one of them, and it is only what you see on a build without the characters.
         /// </summary>
         static void Dress(Transform bone, GameObject mesh, string name)
         {
@@ -531,6 +547,259 @@ namespace EscapeWithYourFriends.EditorTools
                     Detail(bone, "Foot", new(0f, -0.42f, 0.06f), new(0.13f, 0.07f, 0.23f), "Dark");
                     break;
             }
+        }
+
+        /// <summary>
+        /// Which physics bone each model bone follows while limp, and the bone each points at. Parents
+        /// first. ".L" is paired with Left here and swapped in <see cref="Wear"/> when the model's
+        /// left is on the other side - which it is: the rig's ".L" sits at +x with the nose at +z,
+        /// which is a person's right.
+        ///
+        /// The head follows from the neck because that is where the physics head pivots (1.42 m,
+        /// the base of the neck), and the model's own head then rides on it as modelled.
+        /// </summary>
+        static readonly (string Physics, string PhysicsTo, HumanBodyBones Bone, HumanBodyBones To)[] Links =
+        {
+            ("Hips", "Chest", HumanBodyBones.Hips, HumanBodyBones.Spine),
+            ("Chest", "Head", HumanBodyBones.Chest, HumanBodyBones.Neck),
+            ("Head", "Head/Mesh", HumanBodyBones.Neck, HumanBodyBones.Head),
+            ("UpperArm.L", "LowerArm.L", HumanBodyBones.LeftUpperArm, HumanBodyBones.LeftLowerArm),
+            ("LowerArm.L", "LowerArm.L/Mesh", HumanBodyBones.LeftLowerArm, HumanBodyBones.LeftHand),
+            ("UpperArm.R", "LowerArm.R", HumanBodyBones.RightUpperArm, HumanBodyBones.RightLowerArm),
+            ("LowerArm.R", "LowerArm.R/Mesh", HumanBodyBones.RightLowerArm, HumanBodyBones.RightHand),
+            ("UpperLeg.L", "LowerLeg.L", HumanBodyBones.LeftUpperLeg, HumanBodyBones.LeftLowerLeg),
+            ("LowerLeg.L", "LowerLeg.L/Mesh", HumanBodyBones.LeftLowerLeg, HumanBodyBones.LeftFoot),
+            ("UpperLeg.R", "LowerLeg.R", HumanBodyBones.RightUpperLeg, HumanBodyBones.RightLowerLeg),
+            ("LowerLeg.R", "LowerLeg.R/Mesh", HumanBodyBones.RightLowerLeg, HumanBodyBones.RightFoot),
+        };
+
+        /// <summary>
+        /// Dresses the ragdoll in every body <see cref="CharacterArt"/> made (T9). The primitives stop
+        /// being drawn and stay everything else - colliders, masses, joints - so no number that tunes
+        /// a hit changes. Returns the headbands, which are what the player colour goes on, or null
+        /// when there is nothing to wear yet and the primitives remain the character.
+        /// </summary>
+        static Renderer[] Skin(GameObject root, Dictionary<string, Transform> bones)
+        {
+            GameObject[] models = CharacterArt.Bodies();
+            var controller = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(CharacterArt.ControllerPath);
+
+            if (models.Length == 0 || controller == null)
+            {
+                Debug.LogWarning("[PlayerPrefabBuilder] No Quaternius bodies or no animator controller, so the "
+                                 + "player stays primitives. Run CharacterArt.Build first (docs/ART-PLAN.md T9).");
+                return null;
+            }
+
+            var holder = new GameObject("Skin").transform;
+            holder.SetParent(root.transform, false);
+
+            var bodies = new List<CharacterSkin.Body>();
+            foreach (GameObject model in models)
+            {
+                CharacterSkin.Body body = Wear(model, holder, bones, controller);
+                if (body != null) bodies.Add(body);
+            }
+
+            if (bodies.Count == 0)
+            {
+                Object.DestroyImmediate(holder.gameObject);
+                Debug.LogWarning("[PlayerPrefabBuilder] No body could be fitted to the ragdoll; the player stays primitives.");
+                return null;
+            }
+
+            foreach (Renderer primitive in bones["Hips"].GetComponentsInChildren<Renderer>(true))
+                primitive.enabled = false;
+
+            root.AddComponent<CharacterSkin>().Configure(bodies.ToArray());
+
+            Debug.Log($"[PlayerPrefabBuilder] Skinned with {string.Join(", ", bodies.Select(b => b.Root.name))}.");
+            return bodies.Select(b => b.Band).ToArray();
+        }
+
+        /// <summary>
+        /// One body: stood on the player's feet, turned to face +z, scaled so its hips are the
+        /// ragdoll's hips, and every link measured at rest. Saved inactive - CharacterSkin switches
+        /// on the one the colour slot picks, and RagdollController, which grabs the first active
+        /// animator it finds, finds none and leaves the switching to it.
+        /// </summary>
+        static CharacterSkin.Body Wear(GameObject model, Transform holder, Dictionary<string, Transform> bones,
+                                       RuntimeAnimatorController controller)
+        {
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(model);
+            PrefabUtility.UnpackPrefabInstance(instance, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+            instance.name = model.name;
+
+            // Local rotation and scale are the importer's and stay; only the position is ours.
+            Transform body = instance.transform;
+            body.SetParent(holder, false);
+            body.localPosition = Vector3.zero;
+
+            var animator = instance.GetComponent<Animator>();
+            HumanDescription human = animator.avatar.humanDescription;
+            Transform[] all = instance.GetComponentsInChildren<Transform>(true);
+
+            Transform Find(HumanBodyBones bone)
+            {
+                string name = HumanTrait.BoneName[(int)bone];
+                foreach (HumanBone entry in human.human)
+                    if (entry.humanName == name) return all.FirstOrDefault(t => t.name == entry.boneName);
+
+                return null;
+            }
+
+            Transform foot = Find(HumanBodyBones.LeftFoot);
+            Transform toes = Find(HumanBodyBones.LeftToes);
+            if (foot != null && toes != null && toes.position.z < foot.position.z)
+                body.rotation = Quaternion.AngleAxis(180f, Vector3.up) * body.rotation;
+
+            Transform hips = Find(HumanBodyBones.Hips);
+            float modelHips = hips != null ? hips.position.y - holder.position.y : 0f;
+            if (modelHips <= 0.01f)
+            {
+                Debug.LogError($"[PlayerPrefabBuilder] {model.name} has no hips above its feet; skipped.");
+                Object.DestroyImmediate(instance);
+                return null;
+            }
+
+            float scale = Mathf.Clamp((bones["Hips"].position.y - holder.position.y) / modelHips, 0.7f, 1.4f);
+            body.localScale *= scale;
+
+            // The rig's ".L" is on +x; whichever of the model's arms is there is its partner.
+            Transform left = Find(HumanBodyBones.LeftUpperArm);
+            bool mirrored = left != null && left.position.x < holder.position.x;
+
+            var links = new List<(Transform Bone, Transform To, Transform Physics, Transform PhysicsTo)>();
+            foreach ((string physics, string physicsTo, HumanBodyBones bone, HumanBodyBones to) in Links)
+            {
+                Transform from = Find(mirrored ? Mirror(bone) : bone);
+                Transform end = Find(mirrored ? Mirror(to) : to);
+                if (from == null || end == null)
+                {
+                    Debug.LogError($"[PlayerPrefabBuilder] {model.name}'s avatar maps no {(from == null ? bone : to)}; skipped.");
+                    Object.DestroyImmediate(instance);
+                    return null;
+                }
+
+                links.Add((from, end, PhysicsBone(bones, physics), PhysicsBone(bones, physicsTo)));
+            }
+
+            var offsets = new Quaternion[links.Count];
+            for (int i = 0; i < links.Count; i++)
+            {
+                (Transform from, Transform to, Transform physics, Transform physicsTo) = links[i];
+                Quaternion align = Quaternion.FromToRotation(to.position - from.position,
+                                                             physicsTo.position - physics.position);
+                offsets[i] = Quaternion.Inverse(physics.rotation) * (align * from.rotation);
+            }
+
+            animator.runtimeAnimatorController = controller;
+            animator.applyRootMotion = false;
+            animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+
+            // A ragdoll goes a long way from its root. Bounds that stay on the root cull a body lying
+            // three metres from where it was standing.
+            SkinnedMeshRenderer[] skinned = instance.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            float span = 2.4f / Mathf.Max(1e-4f, hips.lossyScale.x);
+            foreach (SkinnedMeshRenderer mesh in skinned)
+            {
+                mesh.rootBone = hips;
+                mesh.localBounds = new Bounds(Vector3.zero, Vector3.one * span);
+                mesh.updateWhenOffscreen = false;
+            }
+
+            Renderer[] renderers = instance.GetComponentsInChildren<Renderer>(true);
+            Renderer band = Band(Find(HumanBodyBones.Head), skinned);
+
+            instance.SetActive(false);
+
+            return new CharacterSkin.Body
+            {
+                Root = instance,
+                Animator = animator,
+                Renderers = renderers,
+                Band = band,
+                Bones = links.Select(l => l.Bone).ToArray(),
+                To = links.Select(l => l.To).ToArray(),
+                Physics = links.Select(l => l.Physics).ToArray(),
+                PhysicsTo = links.Select(l => l.PhysicsTo).ToArray(),
+                Offsets = offsets,
+                Hips = hips,
+                HipsOffset = bones["Hips"].InverseTransformPoint(hips.position),
+            };
+        }
+
+        static HumanBodyBones Mirror(HumanBodyBones bone)
+        {
+            string name = bone.ToString();
+            if (name.StartsWith("Left")) return (HumanBodyBones)System.Enum.Parse(typeof(HumanBodyBones), "Right" + name.Substring(4));
+            if (name.StartsWith("Right")) return (HumanBodyBones)System.Enum.Parse(typeof(HumanBodyBones), "Left" + name.Substring(5));
+            return bone;
+        }
+
+        /// <summary>"LowerArm.L/Mesh": a physics bone, or a child of one.</summary>
+        static Transform PhysicsBone(Dictionary<string, Transform> bones, string path)
+        {
+            string[] parts = path.Split('/');
+            return parts.Length == 1 ? bones[parts[0]] : bones[parts[0]].Find(parts[1]);
+        }
+
+        /// <summary>
+        /// The player colour, as a headband. The bodies are textured and have no hair, so there is no
+        /// material on them that a tint would not spoil; a band is one small untextured ring that
+        /// reads from across the island. Sized to the skull it goes round, 7.5 cm under the crown.
+        /// </summary>
+        static Renderer Band(Transform head, SkinnedMeshRenderer[] skinned)
+        {
+            var points = new List<Vector3>();
+            var baked = new Mesh();
+
+            foreach (SkinnedMeshRenderer mesh in skinned)
+            {
+                mesh.BakeMesh(baked, true);
+                Matrix4x4 world = Matrix4x4.TRS(mesh.transform.position, mesh.transform.rotation, Vector3.one);
+
+                foreach (Vector3 vertex in baked.vertices)
+                {
+                    Vector3 point = world.MultiplyPoint3x4(vertex);
+                    if (point.y > head.position.y) points.Add(point);
+                }
+            }
+
+            Object.DestroyImmediate(baked);
+
+            Vector3 centre = head.position + Vector3.up * 0.12f;
+            Vector3 size = new(0.2f, 0.0225f, 0.235f);
+
+            if (points.Count > 20)
+            {
+                float y = points.Max(p => p.y) - 0.075f;
+                List<Vector3> ring = points.Where(p => Mathf.Abs(p.y - y) < 0.02f).ToList();
+
+                if (ring.Count > 8)
+                {
+                    float minX = ring.Min(p => p.x), maxX = ring.Max(p => p.x);
+                    float minZ = ring.Min(p => p.z), maxZ = ring.Max(p => p.z);
+                    centre = new Vector3((minX + maxX) * 0.5f, y, (minZ + maxZ) * 0.5f);
+                    size = new Vector3((maxX - minX) * 1.06f, 0.0225f, (maxZ - minZ) * 1.06f);
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[PlayerPrefabBuilder] Could not measure the skull above {head.name}; the band is a guess.");
+            }
+
+            GameObject band = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            band.name = "Band";
+            Object.DestroyImmediate(band.GetComponent<Collider>());
+
+            band.transform.SetPositionAndRotation(centre, Quaternion.identity);
+            band.transform.localScale = size;
+            band.transform.SetParent(head, true);
+
+            var renderer = band.GetComponent<Renderer>();
+            renderer.sharedMaterial = Palette.Named("Accent");
+            return renderer;
         }
 
         /// <summary>What a bone is wearing. Skin where skin shows, cloth everywhere else.</summary>

@@ -48,3 +48,8 @@ Recorded because the build machine could not open the authors' own pages (see `A
   re-uploaded at `github.com/J-Ponzo/gltf-universal-animation-library`.
 - **Universal Base Characters:** the Quaternius pack page, as quoted by search results. **Check the
   zip's licence file when downloading.**
+  Its geometry (65-joint UE skeleton, 14 318 / 15 060 triangles, three materials, no hair) was
+  read from a glTF re-export of the Superhero Male and Female found in a public game repository;
+  that repository carried no licence for them, so this is evidence of shape, not of terms.
+  `CharacterArt` refuses a zip without a licence file and copies the one it finds to
+  `Assets/_Project/Art/ThirdParty/Quaternius/UniversalBaseCharacters/License.txt`.

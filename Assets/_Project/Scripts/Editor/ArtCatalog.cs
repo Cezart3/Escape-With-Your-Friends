@@ -99,6 +99,13 @@ namespace EscapeWithYourFriends.EditorTools
 
             // The one kit still on flat colours: wood, carpet, metal, woodDark. See ArtLibrary.Remap.
             new("Kenney", "Furniture", "furniture", "https://kenney.nl/assets/furniture-kit", false),
+
+            // The people (T9). No entries in Models, so ArtExtract passes over them: their file names
+            // were never seen, and CharacterArt extracts them by kind instead.
+            new("Quaternius", "UniversalBaseCharacters", "basecharacter",
+                "https://quaternius.com/packs/universalbasecharacters.html", false),
+            new("Quaternius", "UniversalAnimationLibrary", "animationlibrary",
+                "https://quaternius.com/packs/universalanimationlibrary.html", false),
         };
 
         const ArtCategory Tree = ArtCategory.Tree;

@@ -146,9 +146,9 @@ namespace EscapeWithYourFriends.EditorTools
 
         // ZipArchive over a stream rather than ZipFile.OpenRead: ZipFile lives in an assembly Unity's
         // API profile has not always referenced, and this compiles against every one of them.
-        static ZipArchive Open(string path) => new(File.OpenRead(path), ZipArchiveMode.Read);
+        internal static ZipArchive Open(string path) => new(File.OpenRead(path), ZipArchiveMode.Read);
 
-        static void Copy(ZipArchiveEntry entry, string destination)
+        internal static void Copy(ZipArchiveEntry entry, string destination)
         {
             using Stream from = entry.Open();
             using FileStream to = File.Create(destination);

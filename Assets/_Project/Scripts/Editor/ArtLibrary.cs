@@ -420,7 +420,7 @@ namespace EscapeWithYourFriends.EditorTools
             return Save(material, path);
         }
 
-        static Material NewLit(string name)
+        internal static Material NewLit(string name)
         {
             Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
             var material = new Material(shader) { name = name };
@@ -431,7 +431,7 @@ namespace EscapeWithYourFriends.EditorTools
             return material;
         }
 
-        static Material Save(Material material, string path)
+        internal static Material Save(Material material, string path)
         {
             System.IO.Directory.CreateDirectory(MaterialFolder);
             AssetDatabase.CreateAsset(material, path);

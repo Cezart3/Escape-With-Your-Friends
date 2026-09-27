@@ -6715,8 +6715,7 @@ list.
 asset site, only GitHub. Kenney's whole library exists there as a CC0 mirror, so every model this
 pass uses was parsed for triangles, materials and size, and rendered and looked at, before it was
 chosen. No Quaternius file could be checked, and its people are the one thing Kenney cannot supply,
-so that is the only thing taken from it. The characters are designed in the plan (§6) and not built
-yet.
+so that is the only thing taken from it. The characters are the next section.
 
 **Four editor files, one direction.**
 
@@ -6817,9 +6816,116 @@ first run on the real machine prints, and belongs here:
 [ArtDress]     Dressed Assets/_Project/Prefabs/Stations/StorageChest.prefab, guid ... kept.
 ```
 
-**Left out on purpose:** the people (ART-PLAN §6, the riskiest part, and built on files nobody
-could open from here); animals, vehicles, weapons and the plane (P4 in the plan);
+**Left out on purpose:** the natives and the NPCs (T10, on the same bodies); animals, vehicles, weapons and the plane (P4 in the plan);
 grass, which stays a billboard; an HDRI, which a 20-minute day cycle cannot use (§7).
+
+---
+
+## People over the ragdoll (#76, #77, ART-PLAN T9)
+
+The player was eleven primitives in a shirt colour. It is now a skinned Quaternius body, and the
+eleven primitives are still there underneath doing everything they did: colliders, masses,
+joints, every hit and every throw. They are just no longer drawn. Nothing about combat, carrying
+or the ragdoll changed, which was the point: the riskiest part of the art pass may not touch the
+physics that the game is built on.
+
+**Two editor steps, in this order.**
+
+| Step | What it makes |
+|---|---|
+| `CharacterArt.Build` | Extracts Universal Base Characters and Universal Animation Library out of their zips, imports every body and clip as Humanoid, paints the bodies, and writes `_Characters/Player.controller` and the `UpperBody` mask. |
+| `PlayerPrefabBuilder.BuildPlayerPrefab` | Puts every body `CharacterArt.Bodies()` accepts on the ragdoll, measures each against it, and adds `CharacterSkin`. |
+
+The controller is deleted and recreated on every `Build`, so its GUID changes and the prefab must
+be rebuilt after it. `-skinTest` fails loudly on a prefab that points at an old controller.
+
+**Extracted by kind, not by name.** No Quaternius file name could be read from here, so unlike
+`ArtCatalog`'s Kenney list nothing is named. `CharacterArt` takes the zip whose name holds the
+pack's hint and the most FBX files, prefers a `Unity` or `FBX` folder when a file exists in
+several, and copies every FBX, every texture that is not a preview, and the licence. A zip
+without a licence is an error, not a warning. A body is any model that builds a human avatar,
+has a skinned mesh and stands 1.4-2.2 m; when the pack names some `FullBody`, only those count.
+At most four, because four players.
+
+**Import.** Humanoid, avatar from the model, axis conversion baked. A model that comes in a
+hundred times too big or small is rescaled by a power of ten; one that lies down is re-imported
+without the baked conversion, the same test as the Kenney trees. Clips take their names from the
+take (after the `|`), loop when the name says `Loop`, and keep root height and rotation locked, so
+a walk walks on the spot and the motor stays the only thing that moves a player.
+
+Materials are remapped to `Quaternius_<slot>`, painted from the texture the FBX embeds, else a PNG
+in the pack whose name matches the slot, else a flat colour and a warning. Eyebrows and lashes
+render both faces.
+
+**The controller.** Layer 0 is a 1D blend on `Speed` at the motor's own speeds (idle 0, walk 2.2,
+jog 4.5, sprint 7.5) plus `Seated`, `Air` and `Punch` from any state. Layer 1, `Carry`, is masked
+to the arms and weighted by `CarrySystem.IsCarrying`. A state whose clip is missing is left out
+rather than left empty, because an empty state is a T-pose; only a missing idle or walk fails
+the build. The carry pose is UAL's `Driving_Loop` (both hands forward on a wheel), and seated is
+the same clip whole: the library has nothing closer, and it is a guess until somebody looks.
+
+**Fitting a body to the ragdoll** (`PlayerPrefabBuilder.Wear`). Every bone is found through the
+avatar's own `humanDescription`, not by name, so a UE rig and a Rigify rig fit the same way. The
+body is turned to face +z if its toes point the other way and scaled so its hips are the
+ragdoll's hips (clamped 0.7-1.4). Then eleven links:
+
+| Physics bone | Model bone | Points at |
+|---|---|---|
+| Hips | Hips | Spine |
+| Chest | Chest | Neck |
+| Head | Neck | Head |
+| UpperArm.L/R | UpperArm | LowerArm |
+| LowerArm.L/R | LowerArm | Hand |
+| UpperLeg.L/R | UpperLeg | LowerLeg |
+| LowerLeg.L/R | LowerLeg | Foot |
+
+The physics head drives the model's *neck*, because the physics head pivots at the base of the
+neck. The rig's `.L` sits at +x with the nose at +z, which is a person's right, so sides are
+paired by which side of the body each arm is on rather than by name. Each link stores the model
+bone's rotation relative to its physics bone once the two point the same way; that offset is all
+there is.
+
+Skinned bounds are a 2.4 m cube on the hips, because a ragdoll goes a long way from its root and
+bounds that stay on the root cull a body lying three metres off.
+
+**The colour is a headband.** The bodies are textured and have no hair; there is no material on
+them a tint would not spoil (a green texture is green skin). `Band` bakes the mesh, takes the ring
+of vertices 7.5 cm under the crown, and fits a thin cylinder round it, parented to the head bone.
+The bands are what `PlayerIdentity` tints now. Which body a player wears is `ColorIndex % bodies`,
+so four players in a full lobby are, as far as the pack allows, four different people.
+
+**`CharacterSkin` at run time** (order 100, after the ragdoll and the motor):
+
+- *Standing*, the animator plays. `Speed` is measured from how far the root moved, like
+  `BodyAnimator`, so a spectator's copy needs nothing a spectator does not already have. Nothing
+  is networked.
+- *Limp*, the animator is switched off, every bone of the body is put back to its bind pose, and
+  the eleven linked bones are laid along their physics bones, parents first; the hips are placed
+  where the physics hips say. Restoring the bind pose first is what keeps the spine, collarbones
+  and hands from staying wherever the last clip froze them.
+- *Getting up* blends from the last limp pose to the animator's over 0.35 s.
+- *Owner*: your own body is shadow-only while alive (the camera is in its head) and drawn when
+  dead, because death is third person.
+- *Headless*, the bodies are destroyed in `Awake`: fifteen thousand skinned triangles and an
+  animator per player buy a dedicated host nothing. `-skinTest` is the one exception.
+
+`BodyAnimator` still poses the physics bones. Nobody sees them, but their colliders are where
+your arms are.
+
+**`-skinTest`** (host, solo, either island). Per body: 11 links wired, a human avatar and a
+controller; triangles under the Character cap (16 000, raised from the plan's 15 000 because the
+female body is 15 060); at most three materials. Then: exactly one body shown and it is the one
+the colour slot picks; every primitive hidden; the colour on the band and not on the body; the
+owner's body shadow-only; standing still reads as still; a forced walk drives the blend and swings
+the thigh more than 10°; after a shove, limp, every link within 20° of its physics bone and hips,
+elbows and knees within 0.2 m of theirs; standing again gives the animator back; carrying brings
+the arm layer to full weight.
+
+**Not verified.** Nothing here has run: the build machine has no Unity and could not download the
+packs. The UBC geometry was read from a glTF re-export, and the zip layout, the FBX names, where
+the textures live and whether Unity's avatar auto-mapping takes the UE rig are all unknown until
+`CharacterArt.Build` runs and prints. Every one of those logs what it found and fails with a
+message that says which.
 
 ---
 

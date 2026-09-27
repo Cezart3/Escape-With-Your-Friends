@@ -68,8 +68,16 @@ What was verified, and how:
 - **KayKit.** Official repositories under `github.com/KayKit-Game-Assets`, CC0 `LICENSE.txt`.
   Good characters, but no tropical nature, animals or vehicles. Not used; recorded because it was
   the third contender.
-- **Quaternius everything else** (Universal Base Characters, Ultimate Nature, Pirate Kit,
-  animals, guns): **SNIPPET only.** Every search result calls it CC0. No mirror with a licence
+- **Quaternius Universal Base Characters**, geometry only (added at T9). The Superhero Male and
+  Female bodies turned up as glTF inside a public game repository, and were parsed: a T-pose, a
+  UE-style skeleton of **65 joints** (`root`, `pelvis`, `spine_01`–`03`, `neck_01`, `Head`,
+  `clavicle`/`upperarm`/`lowerarm`/`hand`, `thigh`/`calf`/`foot`/`ball`, fingers), three meshes
+  (body, eyes, eyebrows) and **three materials** (`MI_Superhero_Male`/`Female`, `MI_Eyes`,
+  `MI_Hair_1`/`2`), and **no hair**. **14 318** triangles male, **15 060** female. Pelvis at
+  0.95 / 0.93 m and head at 1.60 / 1.55 m: the ragdoll's own scale. The body is UV-mapped across
+  the whole sheet but the re-export carries no texture, so the colour has to come from the pack's
+  own textures. The licence was not in that repository and stays **SNIPPET** until the zip is open.
+- **Quaternius everything else** (Ultimate Nature, Pirate Kit, animals, guns): **SNIPPET only.** Every search result calls it CC0. No mirror with a licence
   file was found, and no file names or triangle counts could be checked.
 
 **The honest consequence.** The licences of the Kenney kits and of UAL were read from a licence
@@ -356,7 +364,7 @@ kinematic. `BodyAnimator` writes procedural rotations onto the kinematic bones. 
    components, so nothing physical can change. `BodyAnimator` keeps posing the kinematic bones, so
    `-animTest` is unchanged.
 2. **Upright:** the body's `Animator` plays UAL clips from a controller that
-   `CharacterAnimatorBuilder` generates (no hand-made `.controller`). Its inputs are measured the
+   `CharacterArt` generates (no hand-made `.controller`). Its inputs are measured the
    way `BodyAnimator` already measures them, locally, with no network traffic: speed from distance
    travelled, airborne from vertical speed, `CarrySystem.IsCarrying`, `VehicleRider` seated, and
    a punch trigger.
@@ -365,19 +373,22 @@ kinematic. `BodyAnimator` writes procedural rotations onto the kinematic bones. 
    `model.rotation = physics.rotation * offset[i]`, with hips position too. The offsets are
    computed once at bind time by **aligning limb directions**, not by copying deltas. The ragdoll
    rests in a T-pose and the model in its bind pose (T or A), and copying deltas between different
-   rest poses puts a limp arm through the chest. Unmapped bones (spine, neck, hands, fingers) keep
-   their local pose and follow.
+   rest poses puts a limp arm through the chest. Unmapped bones (the rest of the spine,
+   collarbones, hands, fingers) are put back in their bind pose under it, so the offsets measured
+   at bind time stay exact. The physics head pivots at the base of the neck, so it drives the
+   model's neck, and the model's head rides on that as modelled.
 4. **Getting up:** the `Animator` resumes, and for 0.35 s each mapped bone is slerped from the last
    ragdoll pose to the animated one. There is no get-up clip in UAL (see below).
-5. **Bone lookup through the Humanoid avatar**, `Animator.GetBoneTransform(HumanBodyBones.LeftUpperLeg)`,
-   never by name. The UAL rig is Rigify-named (`DEF-thigh.L`, VERIFIED), and a name table would
+5. **Bone lookup through the Humanoid avatar** (its `humanDescription`, at build time), never by
+   name. The UAL rig is Rigify-named (`DEF-thigh.L`, VERIFIED), and a name table would
    break on the first differently exported body.
 6. **Headless servers never build it.** With no graphics device the skin is destroyed in `Awake`,
    so the host's CPU does not animate four people nobody on it can see. The harness flag keeps it.
-7. **Four players, four bodies.** Variant chosen by `ObjectId % 4`, the same rule
-   `BodyAnimator.Paint` uses today, so every peer agrees without traffic. `PlayerIdentity`'s tint
-   is pointed at one small accessory rather than the whole textured body. Tinting a texture by
-   the player colour would dye the skin.
+7. **Up to four bodies, one per colour.** Variant chosen by `PlayerIdentity.ColorIndex % bodies`,
+   which is already replicated, so every peer agrees without traffic. `PlayerIdentity`'s tint
+   is pointed at a **headband** generated at build time and sized to the skull, rather than the
+   whole textured body. Tinting a texture by the player colour would dye the skin, and the bodies
+   have no hair or cloth material of their own to take it.
 8. **The owner's own body** renders `ShadowsOnly`, the same rule as the primitives today, so you
    see your shadow and not the inside of your head.
 
@@ -398,10 +409,13 @@ water ever asks), `Hit_Chest` / `Hit_Head` (stun), `PickUp_Table` (picking an it
 
 **Harness: `-skinTest`** (solo, headless, forces the skin on):
 
-- every mapped bone resolves through the avatar;
-- LOD0 ≤ 15 000 triangles, ≤ 2 materials;
-- dragging the body makes the `Animator` speed rise and the model's thigh move;
-- ragdolled, every mapped limb points within 20° of its physics bone and the hips within 0.15 m;
+- every mapped bone resolves through the avatar, and the controller and band are wired;
+- LOD0 ≤ 16 000 triangles, ≤ 3 materials (body, eyes, eyebrows);
+- exactly one body shown, the colour slot's; the primitives not drawn; the colour on the band
+  and not on the body; the owner's own body shadow only;
+- a forced walking speed makes the `Animator` speed rise and the model's thigh swing;
+- ragdolled, every mapped limb points within 20° of its physics bone, and hips, elbows and knees
+  sit within 0.2 m of theirs;
 - after getting up the model stops tracking the physics bones;
 - carrying sets the carry layer's weight;
 - a headless host without the flag has no skin at all.
@@ -469,7 +483,7 @@ starts an iGPU on **Low**. Medium is what it must hold when you choose it (#83 m
 | Landmark, all dressing summed | 8 000 | casino ≈ 4–6 k estimated from tile counts |
 | Shipwreck | 2 500 | 2 282 |
 | Vehicle, body + wheels | 4 000 | SUV 2 474 + 4 × 332 |
-| Character, LOD0 | 15 000 | UAL mannequin 13 743 |
+| Character, LOD0 | 16 000 | UBC female 15 060, male 14 318; UAL mannequin 13 743 |
 | Animal | 1 500 | cube-pets 422–676 |
 | Held weapon | 2 000 | 84–1 660 |
 
@@ -507,7 +521,8 @@ hand.
 
 **Status:** T1–T8 written. Nothing has run in Unity: the build machine has none and could not
 download a kit. Everything has been type-checked, though, against Unity reference assemblies, the
-real URP 17.3 source and FishNet's, with no new errors. T9 onward is not started.
+real URP 17.3 source and FishNet's, with no new errors. T9 is written the same way; T10 onward is
+not started.
 
 ### P1 — the most visible: nature, lighting, casino
 
@@ -566,10 +581,11 @@ logs the GUID unchanged; `-chestTest`, `-craftTest`, `-shopTest` `0 failed`.
 
 ### P3 — people
 
-**T9 · Opus · `CharacterSkin`.** `Player/CharacterSkin.cs`, `Editor/CharacterAnimatorBuilder.cs`,
-`Editor/PlayerPrefabBuilder.cs` (skins under the root, primitives' renderers off, identity tint
-re-pointed), `Player/SkinTest.cs` and its line in `NetworkBootstrap`. Humanoid import for Q1/Q2
-in `ArtLibrary`. *Done:* `-skinTest` `0 failed`; `-animTest`, `-impactTest`, `-carryTest 1`,
+**T9 · Opus · `CharacterSkin`.** `Player/CharacterSkin.cs`, `Editor/CharacterArt.cs` (extract,
+humanoid import and the controller, in one command, instead of a separate
+`CharacterAnimatorBuilder`), `Editor/PlayerPrefabBuilder.cs` (skins under the root, primitives'
+renderers off, identity tint re-pointed at a headband), `Player/SkinTest.cs` and its line in
+`NetworkBootstrap`. *Done:* `-skinTest` `0 failed`; `-animTest`, `-impactTest`, `-carryTest 1`,
 `-reviveTest 1`, `-deathTest` unchanged.
 
 **T10 · Opus, then Sonnet · natives and NPCs.** `NativeFactory`, `CastawayBuilder`,
