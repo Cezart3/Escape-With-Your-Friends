@@ -40,13 +40,22 @@ namespace EscapeWithYourFriends.EditorTools
             /// </summary>
             public readonly bool Atlas;
 
-            public Pack(string author, string name, string zipHint, string page, bool atlas)
+            /// <summary>
+            /// Painted from its own textures, a material per slot the artist named: the Quaternius kits
+            /// (ART-PLAN P6). The zip's textures are copied to <c>Textures/</c> beside the models, and a
+            /// texture with an alpha channel is a leaf card, clipped. Leave <see cref="Atlas"/> false.
+            /// </summary>
+            public readonly bool Textured;
+
+            public Pack(string author, string name, string zipHint, string page, bool atlas,
+                        bool textured = false)
             {
                 Author = author;
                 Name = name;
                 ZipHint = zipHint;
                 Page = page;
                 Atlas = atlas;
+                Textured = textured;
             }
 
             public string Folder => $"{Root}/{Author}/{Name}";

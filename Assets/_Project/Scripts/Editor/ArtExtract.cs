@@ -87,9 +87,19 @@ namespace EscapeWithYourFriends.EditorTools
                     else Copy(colormap, $"{pack.Folder}/colormap.png");
                 }
 
+                if (pack.Textured)
+                {
+                    Directory.CreateDirectory($"{pack.Folder}/Textures");
+                    foreach (ZipArchiveEntry texture in CharacterArt.Unique(zip, CharacterArt.IsTexture))
+                        Copy(texture, $"{pack.Folder}/Textures/{texture.Name}");
+                }
+
                 // The licence travels with the models. A pack without one is not imported, because
                 // "the page said CC0" is the one claim this project could not check (ART-PLAN §1).
-                ZipArchiveEntry licence = Pick(byName, "license.txt");
+                // Kenney names it License.txt; Quaternius does not always, so any licen* text counts.
+                ZipArchiveEntry licence = Pick(byName, "license.txt")
+                    ?? zip.Entries.FirstOrDefault(e => e.Name.ToLowerInvariant() is var n && n.StartsWith("licen")
+                                                       && (n.EndsWith(".txt") || n.EndsWith(".md")));
                 if (licence == null) missing.Add($"{pack.Name}: no License.txt in {Path.GetFileName(zipPath)}");
                 else Copy(licence, $"{pack.Folder}/License.txt");
 
