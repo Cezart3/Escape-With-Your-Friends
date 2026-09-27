@@ -7148,6 +7148,38 @@ Left for the eye:
 
 ---
 
+## A long model on the ground gets a long box (#79)
+
+A pile on the ground is one networked `WorldItem`: a rigidbody, and a `BoxCollider` of 0.56 m made
+by `WorldItemBuilder`. The model the item wears (`ItemDef.WorldPrefab`) is drawn inside that box
+and has no collider of its own. Since the weapons were dressed (T12), a rifle, a shotgun and a
+shovel are longer than the box. They balanced inside a cube, and after the drop's random rotation
+they lay half in the sand.
+
+`WorldItem.Fit` runs whenever the visual is rebuilt:
+
+- If the model is **longer than the box** on any axis, the box becomes the model's own bounds.
+  The bounds are every renderer's local bounds, carried into the item's axes. The minimum is
+  0.06 m per axis, because a knife-thin box on a terrain collider jitters. The rifle lies as long
+  as it looks, on its flat side.
+- Anything **smaller** keeps the cube, on purpose: a berry is picked up by its box, not by its
+  pixels. The box goes back to the cube if a pile ever changes to a smaller kind.
+
+It runs on every peer, as the visual does, so a client's interaction ray hits the same box the
+server simulates.
+
+**Harness.** `-itemTest` drops the item whose world model is the longest in the catalog (a rifle,
+with the weapons dressed), tilted by 45°. It checks that the box holds the whole model. If no
+item wears a model, the check is skipped and the log says so.
+
+**Not verified.** Type-checked with Roslyn only. `Renderer.localBounds` is missing from the old
+reference assemblies, but is in Unity 6000.3's own source, so it was checked by name there.
+
+Left for the eye: whether a rifle now rests flat, and how a pistol looks in the 0.56 m cube. A
+pistol is shorter than the cube, so it floats as before.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**

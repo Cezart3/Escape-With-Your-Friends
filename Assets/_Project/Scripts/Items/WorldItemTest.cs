@@ -212,6 +212,31 @@ namespace EscapeWithYourFriends.Items
                 }
             }
 
+            // ---------------------------------------------------------------- long models
+
+            // The longest model any item wears (a rifle, once the weapons are dressed), dropped
+            // tilted. Its box must hold all of it, or it balances in the pile's cube half in the sand.
+            ItemDef longest = catalog.Items.Where(d => d != null && d.WorldPrefab != null)
+                                     .OrderByDescending(d => WorldItem.Drawn(d.WorldPrefab.transform, d.WorldPrefab)
+                                                                      is Bounds b ? WorldItem.Longest(b.size) : 0f)
+                                     .FirstOrDefault();
+
+            if (longest == null)
+                Debug.Log("[WorldItemTest] No item wears a world model; the long-model check is skipped.");
+            else
+            {
+                WorldItem lying = WorldItemSpawner.Drop(new ItemStack(catalog.IndexOf(longest), 1),
+                                                        taker.transform.position + Vector3.up * 1.5f,
+                                                        Quaternion.Euler(0f, 0f, 45f));
+                yield return new WaitForSeconds(SettleTime);
+
+                bool held = lying != null && lying.IsSpawned && lying.Box is BoxCollider box
+                            && lying.Visual != null && WorldItem.Drawn(box.transform, lying.Visual) is Bounds drawn
+                            && new Bounds(box.center, box.size + Vector3.one * 0.02f) is var room
+                            && room.Contains(drawn.min) && room.Contains(drawn.max);
+                Check($"the box around a dropped {longest.Id} holds its whole model", held);
+            }
+
             string line = $"[WorldItemTest] {_passed} passed, {_failed} failed. "
                           + $"{Live()} stack(s) on the ground. "
                           + $"owner: {owner.Describe()}"
