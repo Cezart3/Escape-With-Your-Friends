@@ -34,7 +34,7 @@ namespace EscapeWithYourFriends.EditorTools
         /// </summary>
         static readonly (string Prefix, float Detail, float Saturation, float Brightness)[] Kits =
         {
-            ("Quaternius_NatureMegaKit_", 0.45f, 0.92f, 1.0f),
+            ("Quaternius_Nature_", 0.45f, 0.92f, 1.0f),
             ("Quaternius_", 1f, 0.95f, 1.0f),
             ("Kenney_", 1f, 1f, 1f),
             ("Flat_", 1f, 1f, 1f),

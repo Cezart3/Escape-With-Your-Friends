@@ -1,0 +1,19 @@
+	Weapon Pack
+
+	Created/distributed by Kenney (www.kenney.nl)
+
+			------------------------------
+
+	License: (Creative Commons Zero, CC0)
+	http://creativecommons.org/publicdomain/zero/1.0/
+
+	You can use this content for personal, educational, and commercial purposes.
+
+	Support by crediting 'Kenney' or 'www.kenney.nl' (this is not a requirement)
+
+			------------------------------
+
+	Provenance note (added by the EWYF build, not by Kenney): the Weapon Pack is no longer
+	downloadable from kenney.nl (https://kenney.nl/assets/weapon-pack returns 404). These FBX files
+	were converted with Blender 5.2 from the glTF-binary copies in the CC0 mirror
+	https://github.com/shorepine/kenney (3d/weapon), whose LICENSE.txt is Kenney's CC0 licence.

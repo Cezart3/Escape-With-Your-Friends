@@ -297,9 +297,72 @@ namespace EscapeWithYourFriends.Items
 
             _visual.transform.localPosition = Vector3.zero;
             _visual.transform.localRotation = Quaternion.identity;
+            Fit(prefab != null ? _visual : null);
 
             name = def != null ? $"WorldItem ({def.Id})" : "WorldItem";
         }
+
+        /// <summary>The thinnest the box gets. A knife-thin box on a terrain collider jitters.</summary>
+        const float MinThickness = 0.06f;
+
+        Vector3 _restSize, _restCentre;
+        bool _rested;
+
+        internal GameObject Visual => _visual;
+        internal Collider Box => _collider;
+
+        /// <summary>
+        /// Stretches the box to a model longer than it. A rifle used to keep the pile's cube: balanced
+        /// inside it, and half in the sand once the drop's random rotation had its way. It now lies as
+        /// long as it looks, on its flat side. A smaller model keeps the cube, which is generous on
+        /// purpose: a berry is picked up by the box, not by its pixels.
+        /// </summary>
+        void Fit(GameObject visual)
+        {
+            if (_collider is not BoxCollider box) return;
+
+            if (!_rested)
+            {
+                _restSize = box.size;
+                _restCentre = box.center;
+                _rested = true;
+            }
+
+            box.size = _restSize;
+            box.center = _restCentre;
+
+            if (visual == null || Drawn(box.transform, visual) is not Bounds drawn) return;
+            if (Longest(drawn.size) <= Longest(_restSize)) return;
+
+            box.center = drawn.center;
+            box.size = Vector3.Max(drawn.size, Vector3.one * MinThickness);
+        }
+
+        /// <summary>Every renderer under <paramref name="visual"/>, boxed in <paramref name="space"/>'s local axes.</summary>
+        internal static Bounds? Drawn(Transform space, GameObject visual)
+        {
+            Bounds? all = null;
+            foreach (Renderer renderer in visual.GetComponentsInChildren<Renderer>())
+            {
+                Bounds local = renderer.localBounds;
+                for (int i = 0; i < 8; i++)
+                {
+                    var corner = new Vector3((i & 1) * 2 - 1, (i & 2) - 1, (i & 4) / 2 - 1);
+                    Vector3 point = space.InverseTransformPoint(
+                        renderer.transform.TransformPoint(local.center + Vector3.Scale(local.extents, corner)));
+
+                    if (all is Bounds grown)
+                    {
+                        grown.Encapsulate(point);
+                        all = grown;
+                    }
+                    else all = new Bounds(point, Vector3.zero);
+                }
+            }
+            return all;
+        }
+
+        internal static float Longest(Vector3 size) => Mathf.Max(size.x, Mathf.Max(size.y, size.z));
 
         /// <summary>
         /// A coloured cube, until there is art. Colour by category rather than by item so a glance

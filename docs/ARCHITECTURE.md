@@ -7103,57 +7103,224 @@ times.
 
 ---
 
-## One hand across the island: Quaternius nature and pirate kits (#79, ART-PLAN P6)
+## Textured kits: a third material mode (#76, ART-PLAN P6)
 
-The Kenney pass left the island in four artists' hands. P6 moves what is on screen most to one:
-Quaternius, who already made the people. The **ids did not change**. `IslandFlora.Variants`,
-`GreyboxBuilder`, `StationBuilder` and `StorageBuilder` still ask for `PalmStraight`, `Pine`,
-`Leafy`, `Barrel`, `Chest`, `Wreck`; only the `ArtCatalog` rows behind them moved. That is the
-whole point of the catalogue, and why this change is mostly one table.
+`ArtLibrary` points every material slot an FBX brings at a shared material, and it had two ways
+to make that material:
 
-**What moved.** Palms: the pirate kit's three `Environment_PalmTree_*` (the free nature kit has no
-palms). Jungle trees and pines: the nature kit's `CommonTree_*` and `Pine_*`. Undergrowth: `Bush_Common`,
-`Fern_1`, `Grass_Wispy_Tall`, `Flower_4_Group`. Rocks: `Rock_Medium_*`. Props: the pirate kit's
-barrel, closed chest, bucket and bottle. The wreck is the pirate kit's `Ship_Large` under the hull's
-28 degree list, the debris boat its `Ship_Small`, and the cave's three standing walls a new `Cliff`
-id (`Environment_Cliff1`). Logs, stumps, crates, thatch, floors and the casino stay Kenney: the free
-nature kit has no logs, and nothing in the pirate kit tiles into a wall.
+- one per Kenney kit, painted from the kit's `colormap.png` (`Atlas`);
+- one per distinct colour, for the older kits (`Flat_<hex>`).
 
-**A third way to paint a pack.** `Pack.Atlas` was a bool; it is now what the pack is painted
-from. A file name is a swatch atlas, one shared material per pack, exactly as before: Kenney's
-`colormap.png`, and the pirate kit's `Atlas_Pirate.png`, which is the same idea. Null is flat
-colours. `ArtCatalog.Textured` is new and is the nature kit: real painted bark and leaf textures,
-one material per texture (not per slot, so every tree in bark shares one and the forest still
-batches). `ArtExtract` copies the kit's `Textures/*.png` (normal maps left behind: no tangents are
-imported) into a `Textures` folder beside the models, one of the places Unity's FBX importer looks,
-so the embedded materials arrive pointing at them. `ArtLibrary.TexturedMaterial` takes that
-texture, or failing it the one whose name the material's name contains, longest first. A texture
-with alpha is a leaf card: alpha clip at 0.5, both faces drawn, and mips that preserve coverage,
-without which a pine thins to bare branches at forty metres. Painted textures get mips and a
-1024 cap; swatch atlases still get neither.
+The Quaternius kits P6 moves to are neither. Each model is painted from its own textures, and
+the foliage is leaf cards with alpha. So a pack can now say `textured: true`. For such a pack:
 
-**The "FBX (Unity)" folder.** Quaternius ships a second FBX export made for Unity. `ArtExtract.Pick`
-prefers a path that says "unity" over one that says "fbx". The up-axis check still runs on it.
+- **`ArtExtract`** copies every texture in the zip to `<pack>/Textures/`, one per file name,
+  preferring the copy under a `Unity` folder, then one under `FBX`. This is
+  `CharacterArt.Unique`, shared now. It also accepts any `licen*` `.txt` or `.md` as the licence,
+  because Quaternius does not always call it `License.txt`. The rule is unchanged: no licence in
+  the zip, no import.
+- **`ArtLibrary.TexturedMaterial`** makes one URP Lit material per slot, named
+  `<Author>_<Pack>_<slot>`. The texture comes from the first of these that exists:
+  - the one the FBX points at (Unity's importer looks in a `Textures` folder beside the model,
+    which is where extraction puts them);
+  - the file in `Textures/` named after the slot, found by `CharacterArt.BaseColour`, the lookup
+    that already paints the bodies.
+- The texture is capped at **1024**, the 760M's budget.
+- A texture **with an alpha channel** is taken for a leaf card. Its material is alpha-clipped at
+  0.5, queued as alpha test, and drawn from both sides, so a frond does not vanish edge-on.
+- A slot with **no texture** keeps its colour, with a warning in the log.
 
-**The licence the zip does not carry.** Quaternius's downloads are Google Drive folders, and Drive
-zips the pirate kit as `drive-download-<date>.zip` with no licence file. `Pack.LicenceNote` lets
-the catalogue say, in its own words, where the licence was read; `ArtExtract` writes that into
-`License.txt` and warns. A pack without a note is still refused. The empty `ZipHint` on the pirate
-kit matches any zip; the extractor already picks the one that holds the most of the wanted files,
-and no Kenney zip holds any of these.
+Nothing else in the pipeline changes: the fit, the upright check, the per-kit axis, the collider
+and `ArtVisual` are the same for every mode.
 
-**Measured, not guessed.** The triangle counts, the texture each material wears and which
-textures really have alpha were read from the kits' own glTF on Cezar's machine. Two things came
-out of it. The leaves' materials do not name their textures (`Leaves_Pine` wears `Leaf_Pine_C`,
-`Rocks` wears `Rocks_Diffuse`), so `ArtLibrary.TextureOf` says so, ahead of whatever the FBX
-importer found. And every texture is RGBA while only the leaves and flowers have alpha below one,
-so cutout is decided by name (`ArtLibrary.Cutout`), not by the channel; grass is two-sided but not
-clipped.
+**Not verified.** It has been type-checked with Roslyn only. No pack sets the flag yet, so no
+material is made this way until P6 V1 adds the MegaKit, and nothing on the island changes before
+then.
 
-**The caps.** Quaternius models are denser than Kenney's: trees 1 646-6 265 triangles, palms about
-3 000, plants up to 1 690, the large ship 20 636, against Kenney's 400-odd. `ArtVisual.Cap` is set
-just over those. The terrain bake's "Triangle budget" and "Worst case" lines say what the forest
-costs, and 60 fps on the 760M decides whether the heavy `CommonTree_1` and `_2` stay.
+Left for the eye:
+
+- Leaf backs are lit with the front's normal, because URP Lit has no back-face flip.
+- An opaque texture that happens to carry an alpha channel gets clipped and drawn from both
+  sides. That costs a little and shows nothing, but the log names every one ("alpha-clipped,
+  both sides").
+- `-lookTest` counts these materials against `LookTest.Budget`, which will need raising once the
+  real count is known.
+
+---
+
+## A long model on the ground gets a long box (#79)
+
+A pile on the ground is one networked `WorldItem`: a rigidbody, and a `BoxCollider` of 0.56 m made
+by `WorldItemBuilder`. The model the item wears (`ItemDef.WorldPrefab`) is drawn inside that box
+and has no collider of its own. Since the weapons were dressed (T12), a rifle, a shotgun and a
+shovel are longer than the box. They balanced inside a cube, and after the drop's random rotation
+they lay half in the sand.
+
+`WorldItem.Fit` runs whenever the visual is rebuilt:
+
+- If the model is **longer than the box** on any axis, the box becomes the model's own bounds.
+  The bounds are every renderer's local bounds, carried into the item's axes. The minimum is
+  0.06 m per axis, because a knife-thin box on a terrain collider jitters. The rifle lies as long
+  as it looks, on its flat side.
+- Anything **smaller** keeps the cube, on purpose: a berry is picked up by its box, not by its
+  pixels. The box goes back to the cube if a pile ever changes to a smaller kind.
+
+It runs on every peer, as the visual does, so a client's interaction ray hits the same box the
+server simulates.
+
+**Harness.** `-itemTest` drops the item whose world model is the longest in the catalog (a rifle,
+with the weapons dressed), tilted by 45°. It checks that the box holds the whole model. If no
+item wears a model, the check is skipped and the log says so.
+
+**Not verified.** Type-checked with Roslyn only. `Renderer.localBounds` is missing from the old
+reference assemblies, but is in Unity 6000.3's own source, so it was checked by name there.
+
+Left for the eye: whether a rifle now rests flat, and how a pistol looks in the 0.56 m cube. A
+pistol is shorter than the cube, so it floats as before.
+
+---
+
+## The weapon in the hand (#79)
+
+Until now nothing drew a held weapon. `WeaponDef.ViewPrefab` had no reader, so a player with a
+rifle selected looked empty-handed to everybody.
+
+`CharacterSkin.Hold` now draws the selected slot's weapon in the right hand of the body the
+player wears:
+
+- **Which weapon.** It is read off `Inventory`, whose slots and selected index already replicate
+  to every peer. The selected index was replicated for exactly this, as the comment on
+  `_selected` says. The item goes through `WeaponCatalog.ForItem`, and the model is the weapon's
+  `ViewPrefab`: the same dressed prefab it wears on the ground (T12). An item that is not a
+  weapon stays in the bag. Nothing new is networked.
+- **Where.** On the humanoid avatar's `RightHand` bone. `Inventory.Changed` rebuilds it, as does
+  switching bodies.
+- **Which way.** Read off the hand's own bones, so it is right in whatever pose the clip puts
+  the hand in. The first version recorded the hand at bind pose and kept the weapon pointing the
+  player's forward from there. That held for arms down, but an aim pose would have held a gun
+  sideways.
+  - A gun points from the wrist (`RightHand`) through the knuckles (`RightMiddleProximal`), with
+    its top toward the thumb (`RightThumbProximal`).
+  - A blade stands out of the fist on the thumb side, with its edge the way the knuckles face.
+  - The hand closes on the palm, halfway from wrist to knuckles. It grips the back of a gun's
+    body, a third of the way up, or the last tenth of a blade, where WeaponFactory put its
+    handle (`GripPoint`).
+  - A rig without finger bones falls back to the forearm for "along" and the player's up for
+    "top".
+- **The arms.** A third controller layer, `Armed`, sits over the arms through the same
+  upper-body mask as `Carry`. Its states:
+  - `Pistol_Idle_Loop` for a gun and `Sword_Idle` for a blade, chosen by the int `Armed`
+    (1 is a gun, 2 is a blade).
+  - `Pistol_Shoot` and `Sword_Attack` on the trigger `Fire`.
+  - `CharacterSkin` fades the layer in while something is drawn in the hand, and out while
+    carrying or seated, where both hands are busy. The model is hidden for as long. `Weapon.Attacked` fires `Fire` when
+    something is in the hand. Bare fists keep the whole-body `Punch`.
+  - `Armed` is only ever set to 1 or 2, and each `Fire` transition wants one of them. So every
+    `Fire` is taken, and none waits in the trigger for the next weapon.
+  - `CharacterArt.Build` builds the layer only if all four clips are in the library, and warns
+    otherwise.
+- **Colliders.** Any collider or rigidbody in the prefab is switched off and destroyed. Under the
+  hand, it would join the player's own collider and catch rays aimed past it.
+- **Visibility.** It follows the body's rule: shadow-only for the owner while alive, drawn for
+  everybody else.
+
+**Not done: a first-person view model.** The owner sees their weapon only as a shadow, like
+their own body, because the camera is inside the head. A camera-held model needs its own near
+plane, position and field of view. Those are feel decisions, left for a session that can see
+the screen.
+
+**Harness.** `-skinTest` gives the host the first weapon in the catalog that has a model, and
+selects it. It then checks five things:
+
+- the weapon is drawn under the right hand bone;
+- it is shadow-only, since the host owns it;
+- it has no live collider;
+- the model's box is within 10 cm of the wrist;
+- a second later, the `Armed` layer is fully in. This fails until `CharacterArt.Build` has
+  re-run, since the controller is content.
+
+**Not verified.** Type-checked with Roslyn only.
+
+Left for the eye:
+
+- The grip fractions in `GripPoint`.
+- Whether the Quaternius thumb bone gives "up" for a gun, or a quarter turn off.
+- Whether a blade's edge faces the right way. That depends on which way the kit drew it.
+- Whether `Pistol_Idle_Loop` reads as holding a gun with the legs running underneath.
+
+Each of these is one number or one sign in `Hold` or `GripPoint`, once somebody has looked at
+it.
+
+---
+
+## The island's nature from Quaternius (#76, ART-PLAN P6 V1)
+
+The first kit to use the textured mode. Quaternius's Stylized Nature MegaKit, free Standard
+edition, CC0 (`License_Standard.txt`, copied as `License.txt`), replaces Kenney's jungle trees,
+pines, ground plants and loose rocks. The palms stay Kenney's, because the free edition has
+none, and one Kenney palm stays in the jungle so it still reads as tropical.
+
+**What was taken, measured in Blender before choosing:**
+
+| Species | Models | Triangles |
+|---|---|---|
+| JungleTree | CommonTree 1, 3, 5 + Kenney `palm-detailed-bend` | 6 265, 3 505, 3 182 |
+| HighlandTree | Pine 1, 2, 4, 5 | 3 947, 3 648, 3 370, 1 646 |
+| Bush | Bush_Common, Fern_1, Plant_1_Big, Flower_3_Group | 900, 288, 360, 755 |
+| Ground | Rock_Medium 1-3 + Kenney log and stump | 342, 244, 522 |
+
+The twisted trees (about 10 000 each) and the dead trees (5 600 to 6 600) were left out. The
+jungle is the densest thing on the island.
+
+**Caps.** `ArtVisual.Cap` went from 600 to 6 500 for a tree and from 300 to 1 000 for a plant.
+Quaternius's trees are real models, not Kenney's twelve-sided cones. What bounds the cost is
+`IslandProfile.TreeMaximumFullLOD` (60): the bake logs a worst case of 60 × 6 265 = 375 900
+triangles at full detail. That is comfortable on the 760M. The leaf cards are alpha-clipped and
+two-sided, and that overdraw is the cost to watch when the user plays on the iGPU.
+
+**`ArtExtract.Pick`** now prefers a path containing "unity". Quaternius ships `FBX/` and
+`FBX (Unity)/` with the same file names. Kenney zips have no such folder, so nothing else moved.
+
+**Ids.** New ids (`Broadleaf*`, `Pine*`, `Bush`, `Fern`, `Boulder*`). `Leafy` and `Flowers` kept
+their names and their prefab GUIDs but now point at the Nature kit. `Rocks` stays Kenney's for
+`GreyboxBuilder`. Eight prefabs that nothing references any more were deleted.
+
+**Run:**
+- `ArtExtract` copied 61 models, 0 missing.
+- `ArtLibrary.BuildAll`: 62 of 62 ready. Seven slots were painted from the kit's textures:
+  bark and rocks opaque, the leaves and flowers alpha-clipped.
+- Island 1: 15 012 plants. Island 2: 1 221.
+- Build clean.
+- `-lookTest` 10/0 on both islands: 26 and 16 distinct materials, under the budget of 48.
+
+---
+
+## The players woke up inside the village (bug report, 2026-09-28)
+
+**Symptom.** On the first island a native camp stood where the players spawn.
+
+**Cause.** `TerrainGenerator.WriteScene` opens a fresh scene with `NewScene`, and that unloads
+unused assets. On the first bake after an art import, the POI catalog was one of them, so from
+then on `profile.Pois` read as null. Everything baked after that point hangs off the catalog, and
+each piece fell back to the origin:
+- the herds (`AnimalFactory.BakeZones`);
+- the native camps (`NativeFactory.BakeCamps`);
+- the spawn ring (`WriteSpawnPoints`).
+
+All three ended up at (0, 0), seven metres apart. `e1194e2` had patched the same null in
+`POIFactory.Bake` alone, so the landmarks were right and nothing else was.
+
+**Fix.** `WriteScene` reattaches the catalog right after `NewScene`, once, for every caller.
+
+**Test.** `-nativeTest` measures each camp against every spawn point and wants 25 m of clear
+ground beyond the camp's radius plus its night leash. The exception is the second island. It is
+the hostile one and 512 m across, and a headhunter chasing you to the landing at night is the
+design there. So on that island it measures with the night's notice instead: a camp may not *see*
+the landing.
+
+**Run.**
+- Island 1: camps at 331 m and 210 m from the base; `-nativeTest` 164/0.
+- Both islands: `-lookTest` 10/0.
 
 ---
 

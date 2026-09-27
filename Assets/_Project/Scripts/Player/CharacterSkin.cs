@@ -2,6 +2,7 @@ using System;
 using EscapeWithYourFriends.Combat;
 using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.Data;
+using EscapeWithYourFriends.Items;
 using EscapeWithYourFriends.Vehicles;
 using FishNet.Object;
 using UnityEngine;
@@ -72,6 +73,11 @@ namespace EscapeWithYourFriends.Player
         static readonly int AirborneId = Animator.StringToHash("Airborne");
         static readonly int SeatedId = Animator.StringToHash("Seated");
         static readonly int PunchId = Animator.StringToHash("Punch");
+        static readonly int ArmedId = Animator.StringToHash("Armed");
+        static readonly int FireId = Animator.StringToHash("Fire");
+
+        /// <summary>The controller's layers over the arms (CharacterArt.BuildController).</summary>
+        const int CarryLayer = 1, ArmedLayer = 2;
 
         [SerializeField] Body[] _bodies = Array.Empty<Body>();
 
@@ -82,6 +88,16 @@ namespace EscapeWithYourFriends.Player
         PlayerIdentity _identity;
         NetworkObject _network;
         Health _health;
+        Inventory _inventory;
+
+        // The selected weapon, in the right hand (see Hold).
+        GameObject _held;
+        GameObject _heldPrefab;
+        Transform _heldHand;
+        Renderer[] _heldRenderers = Array.Empty<Renderer>();
+
+        /// <summary>What the hand holds, as the controller's Armed parameter: 0 nothing, 1 a gun, 2 a blade.</summary>
+        int _armed;
 
         // Every transform of every body and its bind pose, captured before anything animates them.
         // Restored under the limp pose, so the bones between the linked ones - spine, neck,
@@ -93,6 +109,7 @@ namespace EscapeWithYourFriends.Player
         Vector3 _wasAt;
         float _speed;
         float _carryWeight;
+        float _armedWeight;
         float _rise;
         Quaternion[] _last;
         Vector3 _lastHips;
@@ -100,6 +117,12 @@ namespace EscapeWithYourFriends.Player
 
         internal Body[] Bodies => _bodies;
         internal Body Active => _active >= 0 && _active < _bodies.Length ? _bodies[_active] : null;
+
+        /// <summary>The weapon drawn in the hand, if any. The harness reads it.</summary>
+        internal GameObject Held => _held;
+
+        /// <summary>How far the arms are into holding it. The harness reads it.</summary>
+        internal float ArmedWeight => _armedWeight;
 
         /// <summary>Whether the body is following the ragdoll this frame. The harness reads it.</summary>
         internal bool Tracking { get; private set; }
@@ -152,9 +175,11 @@ namespace EscapeWithYourFriends.Player
             TryGetComponent(out _identity);
             TryGetComponent(out _network);
             TryGetComponent(out _health);
+            TryGetComponent(out _inventory);
 
             if (_weapon != null) _weapon.Attacked += OnAttacked;
             if (_identity != null) _identity.IdentityChanged += OnIdentity;
+            if (_inventory != null) _inventory.Changed += Hold;
 
             Show(_identity != null ? _identity.ColorIndex % _bodies.Length : 0);
             _wasAt = transform.position;
@@ -164,6 +189,7 @@ namespace EscapeWithYourFriends.Player
         {
             if (_weapon != null) _weapon.Attacked -= OnAttacked;
             if (_identity != null) _identity.IdentityChanged -= OnIdentity;
+            if (_inventory != null) _inventory.Changed -= Hold;
         }
 
         void OnIdentity(PlayerIdentity identity)
@@ -175,10 +201,13 @@ namespace EscapeWithYourFriends.Player
         void OnAttacked(WeaponDef weapon)
         {
             // Not from a seat: the state machine will not punch there, and a trigger nobody takes
-            // stays set, so the swing would play on the way out of the car.
-            if (weapon != null && weapon.Kind == WeaponKind.Melee && Active != null
-                && (_rider == null || !_rider.IsSeated))
-                Active.Animator.SetTrigger(PunchId);
+            // stays set, so the swing would play on the way out of the car. Something in the hand is
+            // used by the arms; bare fists are the whole body's punch.
+            if (Active == null || (_rider != null && _rider.IsSeated)) return;
+
+            Animator animator = Active.Animator;
+            if (_armed > 0 && animator.layerCount > ArmedLayer) animator.SetTrigger(FireId);
+            else if (weapon != null && weapon.Kind == WeaponKind.Melee) animator.SetTrigger(PunchId);
         }
 
         void Show(int index)
@@ -190,6 +219,81 @@ namespace EscapeWithYourFriends.Player
             _last = new Quaternion[_bodies[index].Bones.Length];
             _rise = 0f;
             _hidden = null;
+            Hold();
+        }
+
+        static Transform Hand(Body body)
+            => body.Animator != null && body.Animator.avatar != null && body.Animator.avatar.isHuman
+                ? body.Animator.GetBoneTransform(HumanBodyBones.RightHand)
+                : null;
+
+        /// <summary>
+        /// Draws the selected weapon in the right hand. Read off the replicated inventory, so every peer
+        /// draws everybody's, and nothing new is networked. The model is the weapon's view prefab, the
+        /// one it also wears on the ground; an item that is not a weapon stays in the bag.
+        ///
+        /// The grip is read off the hand itself, so it is right in any pose the clip has it in: a gun
+        /// points from the wrist through the knuckles with its top to the thumb, and a blade stands out
+        /// of the fist on the thumb side with its edge the way the knuckles face. The hand closes on
+        /// the back of a gun's body, or the end of a blade's handle (<see cref="GripPoint"/>).
+        /// </summary>
+        void Hold()
+        {
+            Body body = Active;
+            ItemDef item = _inventory != null && _inventory.SlotCount > 0 ? _inventory.Selected.Def : null;
+            WeaponDef weapon = item != null && WeaponCatalog.Active != null ? WeaponCatalog.Active.ForItem(item) : null;
+            GameObject prefab = weapon != null ? weapon.ViewPrefab : null;
+            Transform hand = body != null ? Hand(body) : null;
+            bool melee = weapon != null && weapon.Kind == WeaponKind.Melee;
+            _armed = prefab == null || hand == null ? 0 : melee ? 2 : 1;
+
+            if (prefab == _heldPrefab && hand == _heldHand) return;
+
+            if (_held != null) Destroy(_held);
+            _held = null;
+            _heldPrefab = prefab;
+            _heldHand = hand;
+            _heldRenderers = Array.Empty<Renderer>();
+            if (prefab == null || hand == null) return;
+
+            _held = Instantiate(prefab);
+            _held.name = $"Held ({weapon.Id})";
+
+            // A collider under the hand would join the player's own and catch every ray aimed past it.
+            foreach (Collider collider in _held.GetComponentsInChildren<Collider>(true))
+            {
+                collider.enabled = false;
+                Destroy(collider);
+            }
+            foreach (Rigidbody rigidbody in _held.GetComponentsInChildren<Rigidbody>(true))
+            {
+                rigidbody.isKinematic = true;
+                Destroy(rigidbody);
+            }
+
+            Transform knuckle = body.Animator.GetBoneTransform(HumanBodyBones.RightMiddleProximal);
+            Transform thumb = body.Animator.GetBoneTransform(HumanBodyBones.RightThumbProximal);
+            Vector3 along = knuckle != null ? knuckle.position - hand.position : hand.position - hand.parent.position;
+            Vector3 side = Vector3.ProjectOnPlane(thumb != null ? thumb.position - hand.position : transform.up, along);
+            Vector3 palm = knuckle != null ? Vector3.Lerp(hand.position, knuckle.position, 0.5f) : hand.position;
+
+            _held.transform.rotation = melee ? Quaternion.LookRotation(side, -along) : Quaternion.LookRotation(along, side);
+            _held.transform.position += palm - _held.transform.TransformPoint(GripPoint(_held, melee));
+            _held.transform.SetParent(hand, true);
+            _heldRenderers = _held.GetComponentsInChildren<Renderer>(true);
+
+            // Now, not at LateUpdate: otherwise the owner sees their own weapon for one frame.
+            _hidden = null;
+            Visibility(body);
+        }
+
+        /// <summary>Where the hand closes on a model, in its own space. It lies along +z, tip forward (WeaponFactory).</summary>
+        static Vector3 GripPoint(GameObject model, bool melee)
+        {
+            if (WorldItem.Drawn(model.transform, model) is not Bounds drawn) return Vector3.zero;
+            return melee
+                ? new Vector3(drawn.center.x, drawn.center.y, drawn.min.z + drawn.size.z * 0.1f)
+                : new Vector3(drawn.center.x, drawn.min.y + drawn.size.y * 0.3f, drawn.center.z - drawn.size.z * 0.2f);
         }
 
         void LateUpdate()
@@ -257,11 +361,21 @@ namespace EscapeWithYourFriends.Player
             animator.SetBool(AirborneId, !seated && Mathf.Abs(moved.y / dt) > AirborneSpeed);
             animator.SetBool(SeatedId, seated);
 
-            if (animator.layerCount > 1)
+            bool carrying = ForceCarry || (_carry != null && _carry.IsCarrying);
+            if (animator.layerCount > CarryLayer)
             {
-                bool carrying = ForceCarry || (_carry != null && _carry.IsCarrying);
                 _carryWeight = Mathf.MoveTowards(_carryWeight, carrying ? 1f : 0f, dt * 4f);
-                animator.SetLayerWeight(1, _carryWeight);
+                animator.SetLayerWeight(CarryLayer, _carryWeight);
+            }
+
+            // Both hands on a load, or on a wheel, is not holding a weapon: it is put away, and
+            // Armed keeps its last value while the layer fades, so the arms leave the pose they were in.
+            if (_held != null && _held.activeSelf == (carrying || seated)) _held.SetActive(!carrying && !seated);
+            if (animator.layerCount > ArmedLayer)
+            {
+                _armedWeight = Mathf.MoveTowards(_armedWeight, _armed > 0 && !carrying && !seated ? 1f : 0f, dt * 6f);
+                animator.SetLayerWeight(ArmedLayer, _armedWeight);
+                if (_armed > 0) animator.SetInteger(ArmedId, _armed);
             }
         }
 
@@ -294,6 +408,9 @@ namespace EscapeWithYourFriends.Player
                 if (renderer != null) renderer.shadowCastingMode = mode;
 
             if (body.Band != null) body.Band.shadowCastingMode = mode;
+
+            foreach (Renderer renderer in _heldRenderers)
+                if (renderer != null) renderer.shadowCastingMode = mode;
         }
     }
 }

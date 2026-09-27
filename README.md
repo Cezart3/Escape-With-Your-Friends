@@ -168,7 +168,6 @@ These are idempotent and already applied; re-run them after a clean clone.
 
 This project is built with [Claude Code](https://claude.com/claude-code) driving the terminal.
 
-- **MCP for Unity** ([CoplayDev/unity-mcp](https://github.com/CoplayDev/unity-mcp)) — editor control, scene and asset operations, console reading, test runs. **Requires the Unity Editor to be open.**
 - **blender-mcp** ([ahujasid/blender-mcp](https://github.com/ahujasid/blender-mcp)) — low-poly modelling, plus CC0 assets from Poly Haven.
 
 What the agent cannot do: playtesting, tuning game feel, and final art direction. Those stay human.

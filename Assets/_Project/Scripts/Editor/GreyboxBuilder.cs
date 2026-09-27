@@ -418,7 +418,7 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
-        /// The pirate kit's large ship, hung under the hull box so it keeps the hull's 28 degree list. It is taller
+        /// Kenney's wreck, hung under the hull box so it keeps the hull's 28 degree list. It is taller
         /// than the box - the box was a hull, the model has its masts - so it is fitted by footprint
         /// and allowed to rise, standing on the hull's floor.
         /// </summary>
@@ -443,18 +443,15 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
-        /// Cliff faces stretched over the standing stone boxes and a rock over the lintel, which is
-        /// what the boxes were standing in for. The inside - floor, ceiling, the ore - stays greybox:
-        /// it is dark in there.
+        /// Rock masses stretched over the stone boxes, which is what the boxes were standing in for.
+        /// The inside - floor, ceiling, the ore - stays greybox: it is dark in there.
         /// </summary>
         static void DressCave(GameObject root)
         {
             Transform t = root.transform;
 
-            foreach (string wall in new[] { "Rock.Left", "Rock.Right", "Rock.Back" })
-                ArtDress.Fit(Child(t, wall), "Cliff");
-
-            ArtDress.Fit(Child(t, "Rock.Lintel"), "Rocks");
+            foreach (string rock in new[] { "Rock.Left", "Rock.Right", "Rock.Lintel", "Rock.Back" })
+                ArtDress.Fit(Child(t, rock), "Rocks");
         }
 
         /// <summary>A direct child by name, or an error naming the landmark - a renamed box is a layout change.</summary>

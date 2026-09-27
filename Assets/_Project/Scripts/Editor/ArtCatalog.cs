@@ -18,12 +18,6 @@ namespace EscapeWithYourFriends.EditorTools
     {
         public const string Root = "Assets/_Project/Art/ThirdParty";
 
-        /// <summary>The one swatch atlas every current Kenney kit is painted from.</summary>
-        public const string Colormap = "colormap.png";
-
-        /// <summary>A pack painted with real textures rather than one atlas. See <see cref="Pack.Atlas"/>.</summary>
-        public const string Textured = "Textures";
-
         public readonly struct Pack
         {
             public readonly string Author;
@@ -41,30 +35,27 @@ namespace EscapeWithYourFriends.EditorTools
             public readonly string Page;
 
             /// <summary>
-            /// How the pack is painted. A file name: every model is painted from that one swatch atlas
-            /// (<see cref="Colormap"/> for every current Kenney kit). Null: a material per colour, as in
-            /// the older kits. <see cref="Textured"/>: real painted textures, one per material, which
-            /// the extractor copies whole and the importer matches to each material by name.
+            /// Whether every model in the pack is painted from one <c>colormap.png</c>. True for every
+            /// current Kenney kit; false for the older ones that still use a material per colour.
             /// </summary>
-            public readonly string Atlas;
+            public readonly bool Atlas;
 
             /// <summary>
-            /// What the licence file says when the zip carries none. Null means a zip without one is
-            /// refused. Set only for a pack whose page states the licence and whose download (a Google
-            /// Drive folder, zipped by Drive) drops the file; ArtExtract writes this into License.txt
-            /// and says so in the log, so the claim is visibly ours and not the zip's.
+            /// Painted from its own textures, a material per slot the artist named: the Quaternius kits
+            /// (ART-PLAN P6). The zip's textures are copied to <c>Textures/</c> beside the models, and a
+            /// texture with an alpha channel is a leaf card, clipped. Leave <see cref="Atlas"/> false.
             /// </summary>
-            public readonly string LicenceNote;
+            public readonly bool Textured;
 
-            public Pack(string author, string name, string zipHint, string page, string atlas,
-                        string licenceNote = null)
+            public Pack(string author, string name, string zipHint, string page, bool atlas,
+                        bool textured = false)
             {
                 Author = author;
                 Name = name;
                 ZipHint = zipHint;
                 Page = page;
                 Atlas = atlas;
-                LicenceNote = licenceNote;
+                Textured = textured;
             }
 
             public string Folder => $"{Root}/{Author}/{Name}";
@@ -108,47 +99,34 @@ namespace EscapeWithYourFriends.EditorTools
 
         public static readonly Pack[] Packs =
         {
-            new("Kenney", "Pirate", "pirate", "https://kenney.nl/assets/pirate-kit", Colormap),
-            new("Kenney", "Survival", "survival", "https://kenney.nl/assets/survival-kit", Colormap),
-            new("Kenney", "Platformer", "platformer", "https://kenney.nl/assets/platformer-kit", Colormap),
-            new("Kenney", "Coaster", "coaster", "https://kenney.nl/assets/coaster-kit", Colormap),
-            new("Kenney", "Castle", "castle", "https://kenney.nl/assets/castle-kit", Colormap),
-            new("Kenney", "Holiday", "holiday", "https://kenney.nl/assets/holiday-kit", Colormap),
+            new("Kenney", "Pirate", "pirate", "https://kenney.nl/assets/pirate-kit", true),
+            new("Kenney", "Survival", "survival", "https://kenney.nl/assets/survival-kit", true),
+            new("Kenney", "Platformer", "platformer", "https://kenney.nl/assets/platformer-kit", true),
+            new("Kenney", "Coaster", "coaster", "https://kenney.nl/assets/coaster-kit", true),
+            new("Kenney", "Castle", "castle", "https://kenney.nl/assets/castle-kit", true),
+            new("Kenney", "Holiday", "holiday", "https://kenney.nl/assets/holiday-kit", true),
 
             // P4, the vehicles (T11).
-            new("Kenney", "Car", "car-kit", "https://kenney.nl/assets/car-kit", Colormap),
-            new("Kenney", "Watercraft", "watercraft", "https://kenney.nl/assets/watercraft-pack", Colormap),
+            new("Kenney", "Car", "car-kit", "https://kenney.nl/assets/car-kit", true),
+            new("Kenney", "Watercraft", "watercraft", "https://kenney.nl/assets/watercraft-pack", true),
 
             // P4, the weapons (T12). Flat colours like the furniture: grey, dark, wood and the rest.
-            new("Kenney", "Weapon", "weapon", "https://kenney.nl/assets/weapon-pack", null),
+            new("Kenney", "Weapon", "weapon", "https://kenney.nl/assets/weapon-pack", false),
 
             // The one kit still on flat colours: wood, carpet, metal, woodDark. See ArtLibrary.Remap.
-            new("Kenney", "Furniture", "furniture", "https://kenney.nl/assets/furniture-kit", null),
+            new("Kenney", "Furniture", "furniture", "https://kenney.nl/assets/furniture-kit", false),
 
-            // P6 (ART-PLAN §9): one hand across the island. File names below were read from the zips
-            // Cezar downloaded (`unzip -l`, 2026-09-27), not guessed.
-            //
-            // The nature kit is the free Standard tier: 68 of its 116 models, and no palms, which is
-            // why the palms come from the pirate kit by the same author. Painted textures, with leaf
-            // cards that need alpha clip. Its zip holds an "FBX (Unity)" folder, which ArtExtract
-            // prefers over the plain "FBX" one.
-            new("Quaternius", "NatureMegaKit", "nature", "https://quaternius.com/packs/stylizednaturemegakit.html",
-                Textured),
-
-            // Quaternius's own download is a Google Drive folder, and Drive zips it as
-            // "drive-download-<date>.zip" with no licence file in it. An empty hint matches any zip;
-            // the extractor then takes the one holding the most of these files, which no Kenney zip
-            // does. Painted from one small swatch atlas, like a Kenney kit.
-            new("Quaternius", "PirateKit", "", "https://quaternius.com/packs/piratekit.html", "Atlas_Pirate.png",
-                "CC0 1.0 Universal, as stated on https://quaternius.com/packs/piratekit.html. The zip, "
-                + "a Google Drive download, carried no licence file; this line was written by ArtExtract."),
+            // P6 V1: the island's trees, bushes and rocks. The free Standard edition, CC0 (its
+            // License_Standard.txt). No palms in it, so the palms stay Kenney's.
+            new("Quaternius", "Nature", "Nature MegaKit",
+                "https://quaternius.com/packs/stylizednaturemegakit.html", false, textured: true),
 
             // The people (T9). No entries in Models, so ArtExtract passes over them: their file names
             // were never seen, and CharacterArt extracts them by kind instead.
             new("Quaternius", "UniversalBaseCharacters", "basecharacter",
-                "https://quaternius.com/packs/universalbasecharacters.html", null),
+                "https://quaternius.com/packs/universalbasecharacters.html", false),
             new("Quaternius", "UniversalAnimationLibrary", "animationlibrary",
-                "https://quaternius.com/packs/universalanimationlibrary.html", null),
+                "https://quaternius.com/packs/universalanimationlibrary.html", false),
         };
 
         const ArtCategory Tree = ArtCategory.Tree;
@@ -171,38 +149,34 @@ namespace EscapeWithYourFriends.EditorTools
         public static readonly Model[] Models =
         {
             // --- the island (IslandFlora.Variants) ---------------------------------------------
-            // Quaternius since P6. The ids are the Kenney pass's, so IslandFlora and every builder
-            // that places one of these is unchanged; only where the id points moved.
-            new("PalmStraight", "PirateKit", "Environment_PalmTree_1", Tree, Height, 8.5f, true),
-            new("PalmBend", "PirateKit", "Environment_PalmTree_2", Tree, Height, 7.5f, true),
-            new("PalmTall", "PirateKit", "Environment_PalmTree_3", Tree, Height, 9.5f, true),
-            new("PalmLean", "PirateKit", "Environment_PalmTree_2", Tree, Height, 8.5f, true),
+            new("PalmStraight", "Pirate", "palm-straight", Tree, Height, 8.5f, true),
+            new("PalmBend", "Pirate", "palm-bend", Tree, Height, 7.5f, true),
+            new("PalmTall", "Pirate", "palm-detailed-straight", Tree, Height, 9.5f, true),
+            new("PalmLean", "Pirate", "palm-detailed-bend", Tree, Height, 8.5f, true),
 
-            new("JungleRound", "NatureMegaKit", "CommonTree_1", Tree, Height, 9f, true),
-            new("JungleTall", "NatureMegaKit", "CommonTree_2", Tree, Height, 10f, true),
-            new("JungleSmall", "NatureMegaKit", "CommonTree_5", Tree, Height, 6.5f, true),
-            new("JunglePalm", "PirateKit", "Environment_PalmTree_3", Tree, Height, 8f, true),
+            // Quaternius's broadleaf and pine. Only the ones under 6 500 triangles: the twisted and
+            // dead trees measure 5 600 to 10 100, and the jungle is the densest thing on the island.
+            new("Broadleaf", "Nature", "CommonTree_1", Tree, Height, 9f, true),
+            new("BroadleafTall", "Nature", "CommonTree_3", Tree, Height, 11f, true),
+            new("BroadleafSmall", "Nature", "CommonTree_5", Tree, Height, 8f, true),
+            new("JunglePalm", "Pirate", "palm-detailed-bend", Tree, Height, 8f, true),
 
-            new("Pine", "NatureMegaKit", "Pine_1", Tree, Height, 9f, true),
-            new("PineTall", "NatureMegaKit", "Pine_3", Tree, Height, 12f, true),
-            new("PineWide", "NatureMegaKit", "Pine_2", Tree, Height, 10f, true),
-            new("PineSmall", "NatureMegaKit", "Pine_5", Tree, Height, 6f, true),
+            new("Pine", "Nature", "Pine_1", Tree, Height, 9f, true),
+            new("PineWide", "Nature", "Pine_2", Tree, Height, 8.5f, true),
+            new("PineTall", "Nature", "Pine_4", Tree, Height, 12f, true),
+            new("PineSparse", "Nature", "Pine_5", Tree, Height, 10f, true),
 
             // Ground plants are wider than they are tall, so they are sized across.
-            new("Leafy", "NatureMegaKit", "Bush_Common", Plant, Width, 1.6f),
-            new("Frond", "NatureMegaKit", "Fern_1", Plant, Width, 1.2f),
-            new("Grass", "NatureMegaKit", "Grass_Wispy_Tall", Plant, Width, 1.0f),
-            new("Flowers", "NatureMegaKit", "Flower_4_Group", Plant, Width, 1.2f),
+            new("Bush", "Nature", "Bush_Common", Plant, Width, 2.2f),
+            new("Fern", "Nature", "Fern_1", Plant, Width, 1.8f),
+            new("Leafy", "Nature", "Plant_1_Big", Plant, Width, 1.8f),
+            new("Flowers", "Nature", "Flower_3_Group", Plant, Width, 1.2f),
 
-            new("Rocks", "NatureMegaKit", "Rock_Medium_1", Rock, Width, 2.4f),
-            new("RocksSmall", "NatureMegaKit", "Rock_Medium_2", Rock, Width, 1.4f),
-            new("RocksSand", "NatureMegaKit", "Rock_Medium_3", Rock, Width, 3.2f),
-
-            // Placed nowhere. Kenney's pirate kit still supplies the thatch and the crates, which
-            // cannot tell which way is up; its palm, which can, stays in the catalogue to teach them.
-            new("KenneyPalm", "Pirate", "palm-straight", Tree, Height, 8.5f, true),
-
-            // The free nature kit has no log or stump, so these two stay Kenney's for now.
+            // Kenney's, kept for the greybox's rock (GreyboxBuilder).
+            new("Rocks", "Pirate", "rocks-a", Rock, Width, 2.4f),
+            new("Boulder", "Nature", "Rock_Medium_1", Rock, Width, 2.4f),
+            new("BoulderSmall", "Nature", "Rock_Medium_2", Rock, Width, 1.4f),
+            new("BoulderWide", "Nature", "Rock_Medium_3", Rock, Width, 3.2f),
             new("Log", "Survival", "tree-log", Log, Width, 3f),
             new("Stump", "Survival", "tree-trunk", Log, Height, 0.8f),
 
@@ -212,7 +186,7 @@ namespace EscapeWithYourFriends.EditorTools
             new("ThatchRoof", "Pirate", "structure-roof", Structure),
             new("BarCounter", "Furniture", "kitchenBar", Prop),
             new("BarStool", "Furniture", "stoolBar", Small, upright: true),
-            new("Bottle", "PirateKit", "Prop_Bottle_1", Small),
+            new("Bottle", "Pirate", "bottle", Small),
             new("CrateBottles", "Pirate", "crate-bottles", Prop),
             new("StringLights", "Holiday", "lights-colored", Prop),
             new("Lantern", "Holiday", "lantern", Small, upright: true),
@@ -224,21 +198,18 @@ namespace EscapeWithYourFriends.EditorTools
             new("Bedroll", "Survival", "bedroll", Small),
             new("BoxLarge", "Survival", "box-large", Prop),
             new("Box", "Survival", "box", Small),
-            new("Barrel", "PirateKit", "Prop_Barrel", Prop),
+            new("Barrel", "Survival", "barrel", Prop),
             new("BarrelOpen", "Survival", "barrel-open", Prop),
-            new("Bucket", "PirateKit", "Prop_Bucket", Small),
-            new("Chest", "PirateKit", "Prop_Chest_Closed", Prop),
+            new("Bucket", "Survival", "bucket", Small),
+            new("Chest", "Survival", "chest", Prop),
             new("Workbench", "Survival", "workbench", Prop),
             new("CampfirePit", "Survival", "campfire-pit", Prop),
             new("Signpost", "Survival", "signpost", Small, upright: true),
             new("Palisade", "Survival", "fence-fortified", Structure),
-            new("Wreck", "PirateKit", "Ship_Large", ArtCategory.Wreck),
+            new("Wreck", "Pirate", "ship-wreck", ArtCategory.Wreck),
             new("Crate", "Pirate", "crate", Prop),
-            new("PirateBarrel", "PirateKit", "Prop_Barrel", Prop),
-            new("RowBoat", "PirateKit", "Ship_Small", ArtCategory.Wreck),
-            // A cliff face for the cave's walls. Filed with the wreck: one landmark piece, placed once,
-            // allowed what a landmark costs rather than what a rock scattered a thousand times does.
-            new("Cliff", "PirateKit", "Environment_Cliff1", ArtCategory.Wreck),
+            new("PirateBarrel", "Pirate", "barrel", Prop),
+            new("RowBoat", "Pirate", "boat-row-small", Prop),
 
             // --- the vehicles (VehicleBuilder, BoatBuilder) -----------------------------------------
             // An open race car, not the plan's SUV: see VehicleBuilder.Dress.

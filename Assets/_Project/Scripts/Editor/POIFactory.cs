@@ -82,8 +82,18 @@ namespace EscapeWithYourFriends.EditorTools
         /// </summary>
         public static int Bake(IslandProfile profile, POISpawner spawner)
         {
-            POICatalog catalog = profile.Pois;
-            if (catalog == null || spawner == null) return 0;
+            // By path, not only through the profile: WriteScene's NewScene unloads unused assets, and
+            // on a first bake after an art import that took the catalog with it. profile.Pois then
+            // reads as null, and the island shipped with no landmarks and no error.
+            POICatalog catalog = profile.Pois != null
+                ? profile.Pois
+                : AssetDatabase.LoadAssetAtPath<POICatalog>(CatalogPathFor(profile));
+            if (catalog == null || spawner == null)
+            {
+                Debug.LogError($"[POIFactory] No catalog at {CatalogPathFor(profile)} or no spawner; "
+                               + "the island has no points of interest.");
+                return 0;
+            }
 
             var shape = new IslandShape(profile);
             var so = new SerializedObject(spawner);
