@@ -54,8 +54,8 @@ namespace EscapeWithYourFriends.EditorTools
                 string zipPath = BestZip(zips, pack, wanted);
                 if (zipPath == null)
                 {
-                    missing.Add($"{pack.Author} {pack.Name}: no zip with '{pack.ZipHint}' in its name in {folder} "
-                                + $"({pack.Page})");
+                    missing.Add($"{pack.Author} {pack.Name}: no zip with '{pack.ZipHint}' in its name and "
+                                + $"any of its files in {folder} ({pack.Page})");
                     continue;
                 }
 
@@ -80,18 +80,43 @@ namespace EscapeWithYourFriends.EditorTools
                     copied++;
                 }
 
-                if (pack.Atlas)
+                if (pack.Atlas == ArtCatalog.Textured)
                 {
-                    ZipArchiveEntry colormap = Pick(byName, "colormap.png");
-                    if (colormap == null) missing.Add($"{pack.Name}: no colormap.png in {Path.GetFileName(zipPath)}");
-                    else Copy(colormap, $"{pack.Folder}/colormap.png");
+                    // Every painted texture, into a Textures folder beside the models: that is one of
+                    // the places Unity's FBX importer looks for a texture a material names, so the
+                    // embedded materials arrive already pointing at them. Normal maps stay behind -
+                    // nothing here imports tangents - and so does the glTF folder's second copy.
+                    ZipArchiveEntry[] textures = zip.Entries
+                        .Where(e => e.Name.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+                                    && e.FullName.IndexOf("textures/", StringComparison.OrdinalIgnoreCase) >= 0
+                                    && e.Name.IndexOf("normal", StringComparison.OrdinalIgnoreCase) < 0)
+                        .ToArray();
+
+                    if (textures.Length == 0) missing.Add($"{pack.Name}: no Textures/*.png in {Path.GetFileName(zipPath)}");
+                    Directory.CreateDirectory($"{pack.Folder}/Textures");
+                    foreach (ZipArchiveEntry texture in textures) Copy(texture, $"{pack.Folder}/Textures/{texture.Name}");
+                }
+                else if (pack.Atlas != null)
+                {
+                    ZipArchiveEntry atlas = Pick(byName, pack.Atlas.ToLowerInvariant());
+                    if (atlas == null) missing.Add($"{pack.Name}: no {pack.Atlas} in {Path.GetFileName(zipPath)}");
+                    else Copy(atlas, $"{pack.Folder}/{pack.Atlas}");
                 }
 
                 // The licence travels with the models. A pack without one is not imported, because
-                // "the page said CC0" is the one claim this project could not check (ART-PLAN §1).
-                ZipArchiveEntry licence = Pick(byName, "license.txt");
-                if (licence == null) missing.Add($"{pack.Name}: no License.txt in {Path.GetFileName(zipPath)}");
-                else Copy(licence, $"{pack.Folder}/License.txt");
+                // "the page said CC0" is the one claim this project could not check (ART-PLAN §1) -
+                // unless the catalogue says, in words it owns, where the licence was read instead.
+                ZipArchiveEntry licence = Pick(byName, "license.txt")
+                                          ?? zip.Entries.FirstOrDefault(e => e.Name.StartsWith("license",
+                                                                             StringComparison.OrdinalIgnoreCase));
+                if (licence != null) Copy(licence, $"{pack.Folder}/License.txt");
+                else if (pack.LicenceNote != null)
+                {
+                    File.WriteAllText($"{pack.Folder}/License.txt", pack.LicenceNote + "\n");
+                    Debug.LogWarning($"[ArtExtract] {pack.Name}: the zip has no licence file. Wrote the catalogue's "
+                                     + $"note instead - check it against {pack.Page}.");
+                }
+                else missing.Add($"{pack.Name}: no License.txt in {Path.GetFileName(zipPath)}");
 
                 Debug.Log($"[ArtExtract] {pack.Author} {pack.Name} <- {Path.GetFileName(zipPath)}");
             }
@@ -134,13 +159,15 @@ namespace EscapeWithYourFriends.EditorTools
         /// <summary>
         /// One entry by file name, wherever it sits in the zip. When a name appears more than once
         /// the copy under an "FBX" folder wins: a Kenney zip has a colormap beside each format, and
-        /// the FBX's is the one its UVs were laid out against.
+        /// the FBX's is the one its UVs were laid out against. Over that, a folder that says "Unity":
+        /// Quaternius ships an "FBX (Unity)" export beside the plain one, made for this importer.
         /// </summary>
         static ZipArchiveEntry Pick(Dictionary<string, List<ZipArchiveEntry>> byName, string file)
         {
             if (!byName.TryGetValue(file, out List<ZipArchiveEntry> entries)) return null;
 
-            return entries.FirstOrDefault(e => e.FullName.IndexOf("fbx", StringComparison.OrdinalIgnoreCase) >= 0)
+            return entries.FirstOrDefault(e => e.FullName.IndexOf("unity", StringComparison.OrdinalIgnoreCase) >= 0)
+                   ?? entries.FirstOrDefault(e => e.FullName.IndexOf("fbx", StringComparison.OrdinalIgnoreCase) >= 0)
                    ?? entries[0];
         }
 

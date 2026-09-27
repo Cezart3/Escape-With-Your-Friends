@@ -639,7 +639,14 @@ MegaKit is textured, with separate leaf cards, so it needs a third mode: keep th
 on URP Lit, and use alpha clip on the leaves. `CharacterArt` already paints bodies from pack
 textures and is the model for it.
 
-**Before any of it starts:**
+**Status (2026-09-27):** V1 and part of V2 are written, on a branch stacked on PR 153. Cezar
+downloaded the Stylized Nature MegaKit (free Standard tier, 68 of 116 models, **no palms**) and the
+Pirate Kit; the file names in `ArtCatalog` were read from `unzip -l` of those zips. Palms come from
+the pirate kit. V2's houses and docks are not placed: the shop is open-fronted and the native huts
+read better as palisades than as pirate-town houses; they are one `ArtDress` call each if wanted.
+V3 (hair, clothes) needs packs not downloaded yet. See ARCHITECTURE.md, "One hand across the island".
+
+**Before any of it starts** (kept for the record; the file names are now known):
 
 - The file names. Either allow `quaternius.com` and `poly.pizza` in this environment's network
   settings, so each model can be measured and rendered as the Kenney ones were, or download the

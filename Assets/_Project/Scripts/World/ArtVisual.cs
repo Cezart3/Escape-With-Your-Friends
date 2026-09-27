@@ -41,14 +41,17 @@ namespace EscapeWithYourFriends.World
         /// <summary>LOD0 triangles, per model, at the size the art pass sold it at.</summary>
         public static int Cap(ArtCategory category) => category switch
         {
-            ArtCategory.Tree => 600,
-            ArtCategory.Plant => 300,
-            ArtCategory.Rock => 600,
+            // P6 raised the nature and prop caps: Quaternius models are denser than Kenney's. The
+            // numbers are estimates from the glTF buffer sizes, not counts; BuildAll prints the real
+            // ones, and these come back down to what they are once the terrain budget line is read.
+            ArtCategory.Tree => 8000,
+            ArtCategory.Plant => 2500,
+            ArtCategory.Rock => 1500,
             ArtCategory.Log => 150,
-            ArtCategory.SmallProp => 400,
-            ArtCategory.Prop => 800,
+            ArtCategory.SmallProp => 1500,
+            ArtCategory.Prop => 3000,
             ArtCategory.Structure => 1500,
-            ArtCategory.Wreck => 2500,
+            ArtCategory.Wreck => 12000,
             ArtCategory.Vehicle => 4000,
             // 16000, not the plan's 15000: Quaternius's female base body measures 15060 (ART-PLAN §1).
             ArtCategory.Character => 16000,

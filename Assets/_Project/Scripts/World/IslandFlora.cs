@@ -81,12 +81,13 @@ namespace EscapeWithYourFriends.World
         /// </summary>
         public static readonly FloraModel[][] Variants =
         {
-            // Kenney's pirate kit (docs/ART-PLAN.md §4). Ids are ArtCatalog's; sizes live there too.
+            // Quaternius's pirate kit since P6 (docs/ART-PLAN.md §9). Ids are ArtCatalog's; the model
+            // behind each id, and its size, live there.
             new[] { new FloraModel("PalmStraight", 0.30f), new FloraModel("PalmBend", 0.30f),
                     new FloraModel("PalmTall", 0.30f), new FloraModel("PalmLean", 0.30f) },
 
-            // The one species your eye has to sign off: round Kenney canopies may read as a park
-            // rather than a jungle. The swap is this line and ArtCatalog.
+            // The one species your eye has to sign off: the nature kit's broadleaf canopies may read
+            // as a temperate wood rather than a jungle. The swap is ArtCatalog.
             new[] { new FloraModel("JungleRound", 0.45f), new FloraModel("JungleTall", 0.40f),
                     new FloraModel("JungleSmall", 0.34f), new FloraModel("JunglePalm", 0.30f) },
 

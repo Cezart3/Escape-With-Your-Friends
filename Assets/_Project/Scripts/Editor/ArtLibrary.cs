@@ -345,7 +345,9 @@ namespace EscapeWithYourFriends.EditorTools
                     if (worn == null || !seen.Add(worn.name)) continue;
                     if (AssetDatabase.GetAssetPath(worn).StartsWith(MaterialFolder)) continue;
 
-                    Material shared = pack.Atlas ? AtlasMaterial(pack) : FlatMaterial(worn);
+                    Material shared = pack.Atlas == ArtCatalog.Textured ? TexturedMaterial(worn, pack)
+                                      : pack.Atlas != null ? AtlasMaterial(pack)
+                                      : FlatMaterial(worn);
                     if (shared == null) continue;
 
                     importer.AddRemap(new AssetImporter.SourceAssetIdentifier(typeof(Material), worn.name), shared);
@@ -357,14 +359,14 @@ namespace EscapeWithYourFriends.EditorTools
             return changed;
         }
 
-        /// <summary>One material per kit, painted from the kit's colormap.</summary>
+        /// <summary>One material per kit, painted from the kit's swatch atlas.</summary>
         static Material AtlasMaterial(ArtCatalog.Pack pack)
         {
             string path = $"{MaterialFolder}/{pack.Author}_{pack.Name}.mat";
             var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (existing != null) return existing;
 
-            string texturePath = $"{pack.Folder}/colormap.png";
+            string texturePath = $"{pack.Folder}/{pack.Atlas}";
             if (AssetImporter.GetAtPath(texturePath) is TextureImporter textures)
             {
                 // No mipmaps: a mip of a swatch atlas averages neighbouring swatches, and a palm sixty
@@ -393,6 +395,86 @@ namespace EscapeWithYourFriends.EditorTools
             material.SetColor("_BaseColor", Color.white);
 
             return Save(material, path);
+        }
+
+        /// <summary>
+        /// One material per painted texture, for a pack that has real textures rather than a swatch
+        /// atlas (P6, the nature kit). Keyed by the texture, not the slot: every tree that wears
+        /// Bark_NormalTree wears the same material, so the forest still batches.
+        ///
+        /// The texture is whichever one the FBX importer already found for the slot; failing that,
+        /// the one in the pack's Textures folder whose name the slot's name contains, longest first
+        /// ("Leaves_NormalTree" over "Leaves"). A texture with alpha is a leaf card: alpha clip, both
+        /// faces, and mips that keep their coverage, or a pine thins to nothing at forty metres.
+        /// </summary>
+        static Material TexturedMaterial(Material worn, ArtCatalog.Pack pack)
+        {
+            var texture = worn.mainTexture as Texture2D;
+            if (texture == null || !AssetDatabase.GetAssetPath(texture).StartsWith(pack.Folder))
+                texture = MatchTexture(worn.name, pack);
+
+            if (texture == null)
+            {
+                Debug.LogWarning($"[ArtLibrary] {pack.Name}: no texture for material '{worn.name}'; it keeps "
+                                 + "its flat colour. Name the texture it should wear and add it to the match.");
+                return FlatMaterial(worn);
+            }
+
+            string path = $"{MaterialFolder}/{pack.Author}_{pack.Name}_{texture.name}.mat";
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (existing != null) return existing;
+
+            string texturePath = AssetDatabase.GetAssetPath(texture);
+            bool cutout = false;
+
+            if (AssetImporter.GetAtPath(texturePath) is TextureImporter textures)
+            {
+                cutout = textures.DoesSourceTextureHaveAlpha();
+
+                // Painted, not swatches: mips are right here. 1024 because the bark ships far larger
+                // than anything a 760M should hold for a tree trunk.
+                textures.mipmapEnabled = true;
+                textures.mipMapsPreserveCoverage = cutout;
+                textures.alphaTestReferenceValue = 0.5f;
+                textures.alphaIsTransparency = cutout;
+                textures.maxTextureSize = 1024;
+                textures.textureCompression = TextureImporterCompression.Compressed;
+                textures.wrapMode = TextureWrapMode.Repeat;
+                textures.sRGBTexture = true;
+                textures.SaveAndReimport();
+                texture = AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath);
+            }
+
+            Material material = NewLit($"{pack.Author}_{pack.Name}_{texture.name}");
+            material.SetTexture("_BaseMap", texture);
+            material.mainTexture = texture;
+            material.SetColor("_BaseColor", Color.white);
+
+            if (cutout)
+            {
+                material.SetFloat("_AlphaClip", 1f);
+                material.SetFloat("_Cutoff", 0.5f);
+                material.EnableKeyword("_ALPHATEST_ON");
+                material.SetFloat("_Cull", (float)CullMode.Off);
+                material.doubleSidedGI = true;
+                material.renderQueue = (int)RenderQueue.AlphaTest;
+            }
+
+            return Save(material, path);
+        }
+
+        static Texture2D MatchTexture(string materialName, ArtCatalog.Pack pack)
+        {
+            string folder = $"{pack.Folder}/Textures";
+            if (!AssetDatabase.IsValidFolder(folder)) return null;
+
+            string wanted = materialName.ToLowerInvariant();
+
+            return AssetDatabase.FindAssets("t:Texture2D", new[] { folder })
+                                .Select(guid => AssetDatabase.LoadAssetAtPath<Texture2D>(AssetDatabase.GUIDToAssetPath(guid)))
+                                .Where(t => t != null && wanted.Contains(t.name.ToLowerInvariant()))
+                                .OrderByDescending(t => t.name.Length)
+                                .FirstOrDefault();
         }
 
         /// <summary>

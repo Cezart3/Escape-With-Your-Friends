@@ -7103,6 +7103,54 @@ times.
 
 ---
 
+## One hand across the island: Quaternius nature and pirate kits (#79, ART-PLAN P6)
+
+The Kenney pass left the island in four artists' hands. P6 moves what is on screen most to one:
+Quaternius, who already made the people. The **ids did not change**. `IslandFlora.Variants`,
+`GreyboxBuilder`, `StationBuilder` and `StorageBuilder` still ask for `PalmStraight`, `Pine`,
+`Leafy`, `Barrel`, `Chest`, `Wreck`; only the `ArtCatalog` rows behind them moved. That is the
+whole point of the catalogue, and why this change is mostly one table.
+
+**What moved.** Palms: the pirate kit's three `Environment_PalmTree_*` (the free nature kit has no
+palms). Jungle trees and pines: the nature kit's `CommonTree_*` and `Pine_*`. Undergrowth: `Bush_Common`,
+`Fern_1`, `Grass_Wispy_Tall`, `Flower_4_Group`. Rocks: `Rock_Medium_*`. Props: the pirate kit's
+barrel, closed chest, bucket and bottle. The wreck is the pirate kit's `Ship_Large` under the hull's
+28 degree list, the debris boat its `Ship_Small`, and the cave's three standing walls a new `Cliff`
+id (`Environment_Cliff1`). Logs, stumps, crates, thatch, floors and the casino stay Kenney: the free
+nature kit has no logs, and nothing in the pirate kit tiles into a wall.
+
+**A third way to paint a pack.** `Pack.Atlas` was a bool; it is now what the pack is painted
+from. A file name is a swatch atlas, one shared material per pack, exactly as before: Kenney's
+`colormap.png`, and the pirate kit's `Atlas_Pirate.png`, which is the same idea. Null is flat
+colours. `ArtCatalog.Textured` is new and is the nature kit: real painted bark and leaf textures,
+one material per texture (not per slot, so every tree in bark shares one and the forest still
+batches). `ArtExtract` copies the kit's `Textures/*.png` (normal maps left behind: no tangents are
+imported) into a `Textures` folder beside the models, one of the places Unity's FBX importer looks,
+so the embedded materials arrive pointing at them. `ArtLibrary.TexturedMaterial` takes that
+texture, or failing it the one whose name the material's name contains, longest first. A texture
+with alpha is a leaf card: alpha clip at 0.5, both faces drawn, and mips that preserve coverage,
+without which a pine thins to bare branches at forty metres. Painted textures get mips and a
+1024 cap; swatch atlases still get neither.
+
+**The "FBX (Unity)" folder.** Quaternius ships a second FBX export made for Unity. `ArtExtract.Pick`
+prefers a path that says "unity" over one that says "fbx". The up-axis check still runs on it.
+
+**The licence the zip does not carry.** Quaternius's downloads are Google Drive folders, and Drive
+zips the pirate kit as `drive-download-<date>.zip` with no licence file. `Pack.LicenceNote` lets
+the catalogue say, in its own words, where the licence was read; `ArtExtract` writes that into
+`License.txt` and warns. A pack without a note is still refused. The empty `ZipHint` on the pirate
+kit matches any zip; the extractor already picks the one that holds the most of the wanted files,
+and no Kenney zip holds any of these.
+
+**The caps.** Quaternius models are denser than Kenney's. `ArtVisual.Cap` for trees, plants, rocks,
+props and the wreck went up to numbers estimated from the glTF buffer sizes (a `CommonTree` is a
+few thousand triangles, not 400). They are ceilings for `BuildAll` to report against, not a budget
+anyone signed: the real counts are the first thing its log prints, and the terrain bake's
+"Triangle budget" and "Worst case" lines say what the forest costs. That, and 60 fps on the 760M,
+is the decision this change hands back.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**
