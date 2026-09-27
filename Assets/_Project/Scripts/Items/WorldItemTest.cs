@@ -23,7 +23,8 @@ namespace EscapeWithYourFriends.Items
     /// </summary>
     public class WorldItemTest : MonoBehaviour
     {
-        const float WaitForSecondPlayer = 12f;
+        // 30, not 12: a pair's client starts about 20 s after the host (WORKING-AGREEMENT), and 12 ran out first.
+        const float WaitForSecondPlayer = 30f;
         const float SettleTime = 1.5f;
 
         static bool _started;

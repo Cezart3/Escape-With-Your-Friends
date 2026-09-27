@@ -281,7 +281,10 @@ namespace EscapeWithYourFriends.Player
             _held.transform.position += palm - _held.transform.TransformPoint(GripPoint(_held, melee));
             _held.transform.SetParent(hand, true);
             _heldRenderers = _held.GetComponentsInChildren<Renderer>(true);
+
+            // Now, not at LateUpdate: otherwise the owner sees their own weapon for one frame.
             _hidden = null;
+            Visibility(body);
         }
 
         /// <summary>Where the hand closes on a model, in its own space. It lies along +z, tip forward (WeaponFactory).</summary>

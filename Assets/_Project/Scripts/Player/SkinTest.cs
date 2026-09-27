@@ -202,8 +202,11 @@ namespace EscapeWithYourFriends.Player
                 inventory.Add(armed.Item, 1);
                 int slot = Enumerable.Range(0, inventory.SlotCount).FirstOrDefault(s => inventory[s].Def == armed.Item);
                 inventory.ServerSelect(slot);
-                yield return null;
-                yield return null;
+
+                // On a host the inventory's Changed comes on the client pass of the next network tick,
+                // not the next frame, and a headless frame is far shorter than a tick.
+                for (float waited = 0f; skin.Held == null && waited < 2f; waited += Time.deltaTime)
+                    yield return null;
 
                 GameObject held = skin.Held;
                 Transform hand = worn.Animator.GetBoneTransform(HumanBodyBones.RightHand);
