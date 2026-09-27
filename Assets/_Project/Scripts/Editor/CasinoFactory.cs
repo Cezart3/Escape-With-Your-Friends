@@ -61,6 +61,12 @@ namespace EscapeWithYourFriends.EditorTools
 
             DressTable();
 
+            // Both cage windows get the bar's counter, the same one the bar in the shack has. The bars
+            // and the sign stay: the sign's colour is what tells buying chips from cashing them out.
+            foreach (string window in new[] { BuyWindowPath, CashWindowPath })
+                ArtDress.DressPrefab(window, "Art", cage => ArtDress.ReplaceTiled(cage, "BarCounter", "Art", 1f,
+                    "Counter", "Top"));
+
             if (Barman(EnsureBar())) built++;
 
             AssetDatabase.SaveAssets();

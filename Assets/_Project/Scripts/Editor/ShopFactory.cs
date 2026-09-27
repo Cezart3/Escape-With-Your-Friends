@@ -76,6 +76,11 @@ namespace EscapeWithYourFriends.EditorTools
             ShopDef shop = EnsureShop();
             bool built = EnsureCounter(shop);
 
+            // The art pass (docs/ART-PLAN.md §4), in place, because this prefab is only ever built
+            // once: the counter and its top become a run of Kenney bar counters on their collider.
+            ArtDress.DressPrefab(CounterPath, "Art", counter => ArtDress.ReplaceTiled(counter, "BarCounter", "Art", 1f,
+                "Counter", "Top"));
+
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 

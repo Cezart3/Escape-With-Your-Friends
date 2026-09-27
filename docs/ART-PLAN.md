@@ -263,11 +263,11 @@ There are two helpers (`ArtDress`, §8 T5):
 | Prefab (builder) | New | Note |
 |---|---|---|
 | StorageChest (`StorageBuilder`) | survival/chest | Has open/close clips; wiring them is a later nicety |
-| CraftingBench (`StationBuilder`) | survival/workbench | |
+| CraftingBench (`StationBuilder`) | survival/workbench ×2 | Kenney's bench is square; two side by side fill the long top's collider |
 | Campfire (`StationBuilder`) | survival/campfire-pit | Light and heat components untouched |
-| WaterFilter (`StationBuilder`) | survival/barrel-open + survival/bucket | |
-| ShopCounter (`ShopFactory`) | furniture/kitchenBar | |
-| ChipWindow / CashWindow (`CasinoFactory`) | survival/structure + survival/signpost | The sign colour still tells them apart |
+| WaterFilter (`StationBuilder`) | survival/barrel-open + survival/bucket | The bucket stands in the spout's place |
+| ShopCounter (`ShopFactory`) | furniture/kitchenBar, a run of three | Shelf, posts and sign unchanged |
+| ChipWindow / CashWindow (`CasinoFactory`) | furniture/kitchenBar, a run of two | Not structure + signpost: the frame would leave the counter's collider undrawn. Bars and sign unchanged; the sign colour still tells them apart |
 | ReviveMachine | unchanged | A sci-fi joke machine; nothing free fits it better than the joke |
 | HangPoint, WorldItem | unchanged | Gameplay markers |
 
@@ -505,9 +505,9 @@ C#. **Sonnet** marks work concrete enough to delegate: Sonnet writes to the spec
 every Sonnet diff before it is committed. Nothing here edits a `.unity`, `.prefab` or `.asset` by
 hand.
 
-**Status after the first session:** T1–T6 written, plus T7 (all six landmarks). Nothing is
-compiled or run: the build machine has no Unity and could not download a kit. T8 onward is not
-started.
+**Status:** T1–T8 written. Nothing has run in Unity: the build machine has none and could not
+download a kit. Everything has been type-checked, though, against Unity reference assemblies, the
+real URP 17.3 source and FishNet's, with no new errors. T9 onward is not started.
 
 ### P1 — the most visible: nature, lighting, casino
 

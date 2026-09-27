@@ -6765,6 +6765,18 @@ A wall is a floor tile stood on its edge. `Tile` turns the module so its thinnes
 box's thinnest side, then grids it across the other two, which is how one Kenney plank tile is the
 casino's floor, its five walls and its sign.
 
+**Stations are dressed on the saved prefab.** The chest, the bench, the fire, the filter, the
+shop counter and both cage windows are networked prefabs that scenes place and FishNet's
+spawnable list names by id. `ArtDress.DressPrefab` loads a saved prefab's contents, dresses them
+and saves over the same path, so the GUID and every file id inside survive a dressing, and a
+child called `Art` tells a re-run it has already been there. The builders that rebuild every run
+(storage, stations) dress after every save; the ones that build once (shop, cage windows, table)
+dress the prefab that is already there. `Replace` puts one model over several blocks that are one
+thing, turned a quarter if that lines its long side up with theirs. Where a block's collider is
+the object (the chest's body, the bench top, a counter), the model fills the collider rather than
+keeping Kenney's proportions: bumping into a bench that is not drawn there is worse than a bench
+a little wider than drawn. Kenney's workbench is square, so the long bench is two of them.
+
 **Lighting.** SSAO is a renderer feature written by `RenderTuning` on Medium and High, never Low.
 On Medium it runs after opaque, from depth alone, at half resolution with four samples, because the
 before-opaque mode needs a depth prepass an iGPU cannot pay for. HDR is now on for Medium: URP 17
@@ -6782,10 +6794,11 @@ first run on the real machine prints, and belongs here:
 [RenderTuning] SSAO on URP_Medium_Renderer (after opaque, depth, half res, 4 samples, Kawase).
 [LookTest]     N passed, 0 failed.
 [CasinoTest]   N passed, 0 failed.
+[ArtDress]     Dressed Assets/_Project/Prefabs/Stations/StorageChest.prefab, guid ... kept.
 ```
 
 **Left out on purpose:** the people (ART-PLAN §6, the riskiest part, and built on files nobody
-could open from here); stations, animals, vehicles, weapons and the plane (P2 and P4 in the plan);
+could open from here); animals, vehicles, weapons and the plane (P4 in the plan);
 grass, which stays a billboard; an HDRI, which a 20-minute day cycle cannot use (§7).
 
 ---

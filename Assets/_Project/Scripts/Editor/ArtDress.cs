@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using EscapeWithYourFriends.World;
 using UnityEditor;
 using UnityEngine;
@@ -87,6 +88,102 @@ namespace EscapeWithYourFriends.EditorTools
             counts[b] = countB;
 
             return Place(parent, box, id, turn, counts, false, name);
+        }
+
+        /// <summary>
+        /// One model over several greybox blocks that are together one thing: a chest's body, lid,
+        /// bands and latch are one chest. The blocks are direct children of <paramref name="root"/>
+        /// and keep their names and colliders; their looks go once the model is in.
+        ///
+        /// The model is turned a quarter if that puts its long side along the blocks' long side.
+        /// Without <paramref name="keepShape"/> it fills the blocks' box, which is what a block whose
+        /// collider is the thing itself wants: a bench you bump into where there is no bench is worse
+        /// than a bench a little wider than Kenney drew it.
+        /// </summary>
+        public static bool Replace(Transform root, string id, string name, bool keepShape, params string[] blocks)
+        {
+            var pieces = new List<GameObject>();
+            if (!Blocks(root, id, blocks, pieces, out Bounds box)) return false;
+
+            GameObject source = ArtLibrary.Source(id);
+            if (source == null) return false;
+
+            Vector3 native = ArtLibrary.NativeBounds(source).size;
+            int turns = (native.x >= native.z) == (box.size.x >= box.size.z) ? 0 : 1;
+
+            if (!FitBox(root, box, id, keepShape, name, turns)) return false;
+
+            foreach (GameObject piece in pieces) Strip(piece);
+            return true;
+        }
+
+        /// <summary><see cref="Replace"/>, with the module repeated across the blocks as <see cref="Tile"/> does.</summary>
+        public static bool ReplaceTiled(Transform root, string id, string name, float cell, params string[] blocks)
+        {
+            var pieces = new List<GameObject>();
+            if (!Blocks(root, id, blocks, pieces, out Bounds box)) return false;
+            if (!TileBox(root, box, id, cell, name)) return false;
+
+            foreach (GameObject piece in pieces) Strip(piece);
+            return true;
+        }
+
+        /// <summary>The named direct children of <paramref name="root"/>, and one box around all of them in its space.</summary>
+        static bool Blocks(Transform root, string id, string[] names, List<GameObject> pieces, out Bounds box)
+        {
+            box = default;
+
+            foreach (string block in names)
+            {
+                Transform piece = root.Find(block);
+                if (piece == null || !piece.TryGetComponent(out MeshFilter filter) || filter.sharedMesh == null) continue;
+
+                Bounds mesh = filter.sharedMesh.bounds;
+                Matrix4x4 local = Matrix4x4.TRS(piece.localPosition, piece.localRotation, piece.localScale);
+
+                for (int corner = 0; corner < 8; corner++)
+                {
+                    var sign = new Vector3((corner & 1) == 0 ? -1f : 1f, (corner & 2) == 0 ? -1f : 1f, (corner & 4) == 0 ? -1f : 1f);
+                    Vector3 point = local.MultiplyPoint3x4(mesh.center + Vector3.Scale(mesh.extents, sign));
+
+                    if (pieces.Count == 0 && corner == 0) box = new Bounds(point, Vector3.zero);
+                    else box.Encapsulate(point);
+                }
+
+                pieces.Add(piece.gameObject);
+            }
+
+            if (pieces.Count > 0) return true;
+
+            Debug.LogWarning($"[ArtDress] {root.name} has none of {string.Join(", ", names)} to put '{id}' over.");
+            return false;
+        }
+
+        /// <summary>
+        /// Dresses a saved prefab in place: load its contents, <paramref name="dress"/> them, save over
+        /// the same path. The GUID and every file id inside survive, so the scenes that place it and
+        /// FishNet's spawnable list that names it never notice. Skipped when the root already has a
+        /// child called <paramref name="marker"/>, which is how a re-run knows it has been here.
+        /// </summary>
+        public static bool DressPrefab(string path, string marker, System.Func<Transform, bool> dress)
+        {
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(path) == null) return false;
+
+            GameObject root = PrefabUtility.LoadPrefabContents(path);
+
+            try
+            {
+                if (root.transform.Find(marker) != null || !dress(root.transform)) return false;
+
+                PrefabUtility.SaveAsPrefabAsset(root, path, out bool saved);
+                if (!saved) Debug.LogError($"[ArtDress] Could not save the dressed {path}.");
+                else Debug.Log($"[ArtDress] Dressed {path}, guid {AssetDatabase.AssetPathToGUID(path)} kept.");
+                return saved;
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
         }
 
         /// <summary>

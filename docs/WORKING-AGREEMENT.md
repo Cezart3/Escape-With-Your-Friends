@@ -157,7 +157,8 @@ Other editor entry points, same shape, different `-executeMethod`:
 - Third-party art (`docs/ART-PLAN.md`): `ArtExtract.Run -artZips <folder>` copies the catalogued
   files out of the downloaded kits, then `ArtLibrary.BuildAll` imports and reports them. Both before
   any bake. `RenderTuning.Apply` writes the URP tiers, SSAO included; `CasinoFactory.Build` dresses
-  the roulette table in place.
+  the roulette table and the cage windows in place; `StorageBuilder.Build`, `StationBuilder.Build`
+  and `ShopFactory.Build` dress the chest, the three stations and the shop counter.
 
 ### Running a harness
 
