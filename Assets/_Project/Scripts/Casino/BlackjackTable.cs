@@ -62,11 +62,11 @@ namespace EscapeWithYourFriends.Casino
         [Header("The felt, set by BlackjackFactory")]
         [Tooltip("CardsShown per hand, hands in BlackjackMath order, the dealer's last.")]
         [SerializeField] Renderer[] _cards;
-        [SerializeField] Renderer[] _pips;
+
+        [Tooltip("A face plate on each card, drawn with CardFaces.")]
+        [SerializeField] Renderer[] _faces;
         [SerializeField] Material _face;
         [SerializeField] Material _back;
-        [SerializeField] Material _red;
-        [SerializeField] Material _black;
 
         readonly SyncVar<int> _phase = new();
         readonly SyncVar<int> _turn = new(-1);
@@ -105,6 +105,8 @@ namespace EscapeWithYourFriends.Casino
         int _feltRound = -1;
         int _feltCount = -1;
         bool _feltHole;
+        MeshFilter[] _faceMeshes;
+        BlackjackPhase _heardPhase;
         List<int>[] _hands = BlackjackMath.Rebuild(new List<int>());
 
         public BlackjackPhase Phase => (BlackjackPhase)_phase.Value;
@@ -155,6 +157,9 @@ namespace EscapeWithYourFriends.Casino
         {
             base.OnStartClient();
             All.Add(this);
+
+            // A player who walks in on a paid table did not see it paid.
+            _heardPhase = Phase;
         }
 
         public override void OnStopClient()
@@ -342,7 +347,6 @@ namespace EscapeWithYourFriends.Casino
                 if (wallet != null && wallet.Chips == 0) Net.Achievements.ServerAward(owner, Net.Achievements.LostItAll);
             }
 
-            if (paid > 0) Audio.Sfx.Play(Audio.Sound.Coin, transform.position);
         }
 
         void Clear()
@@ -392,6 +396,15 @@ namespace EscapeWithYourFriends.Casino
         {
             if (IsServerStarted) Timeouts();
             Draw();
+
+            // Every peer rings its own table when the hands are paid; the server's Settle is heard by nobody else.
+            if (Phase == _heardPhase) return;
+            _heardPhase = Phase;
+            if (Phase != BlackjackPhase.Done) return;
+
+            bool anyWin = false;
+            for (int hand = 0; hand < BlackjackMath.Hands; hand++) anyWin |= PaidOn(hand) > BetOn(hand);
+            if (anyWin) Audio.Sfx.Play(Audio.Sound.Win, transform.position);
         }
 
         /// <summary>Stands a hand whose player has run out of time or is no longer there.</summary>
@@ -424,14 +437,19 @@ namespace EscapeWithYourFriends.Casino
         }
 
         /// <summary>
-        /// Cards face up, the hole card face down, the rest hidden. A card shows its colour and not
-        /// its rank: the board at the top of the screen reads the hands out.
+        /// Cards face up with their <see cref="CardFaces"/> face, the hole card face down, the rest
+        /// hidden. A new card or the hole card turning snaps; a cleared felt does not.
         /// </summary>
         void Draw()
         {
             if (_cards == null || _cards.Length == 0) return;
 
             if (_feltRound == _round.Value && _feltCount == _log.Count && _feltHole == _holeDown.Value) return;
+
+            if (_feltRound == _round.Value && (_log.Count > _feltCount || (_feltHole && !_holeDown.Value)))
+                Audio.Sfx.Play(Audio.Sound.Deal, transform.position);
+
+            _faceMeshes ??= System.Array.ConvertAll(_faces ?? new Renderer[0], f => f != null ? f.GetComponent<MeshFilter>() : null);
 
             _feltRound = _round.Value;
             _feltCount = _log.Count;
@@ -457,23 +475,24 @@ namespace EscapeWithYourFriends.Casino
                     _cards[at].enabled = on;
                     if (on) _cards[at].sharedMaterial = faceDown ? _back : _face;
 
-                    if (_pips == null || at >= _pips.Length || _pips[at] == null) continue;
+                    if (_faces == null || at >= _faces.Length || _faces[at] == null) continue;
 
-                    _pips[at].enabled = on && !faceDown;
-                    if (on && !faceDown) _pips[at].sharedMaterial = BlackjackMath.IsRed(cards[i]) ? _red : _black;
+                    _faces[at].enabled = on && !faceDown;
+                    if (!on || faceDown) continue;
+
+                    _faces[at].sharedMaterial = CardFaces.Material(_face);
+                    if (_faceMeshes[at] != null) _faceMeshes[at].sharedMesh = CardFaces.Mesh(cards[i]);
                 }
             }
         }
 
         /// <summary>Editor-time setup. See <c>BlackjackFactory</c>.</summary>
-        public void Configure(Renderer[] cards, Renderer[] pips, Material face, Material back, Material red, Material black)
+        public void Configure(Renderer[] cards, Renderer[] faces, Material face, Material back)
         {
             _cards = cards;
-            _pips = pips;
+            _faces = faces;
             _face = face;
             _back = back;
-            _red = red;
-            _black = black;
         }
     }
 }

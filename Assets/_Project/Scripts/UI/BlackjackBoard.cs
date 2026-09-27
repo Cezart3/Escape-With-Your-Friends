@@ -10,8 +10,8 @@ namespace EscapeWithYourFriends.UI
 {
     /// <summary>
     /// The board over the blackjack table, in the slot board's place: the dealer's cards on the big
-    /// line, yours under it, and whose turn it is. The cards on the felt show only their colour, so
-    /// this is where a player reads the ranks.
+    /// line, yours under it, and whose turn it is, with the totals the felt's card faces leave to
+    /// arithmetic.
     /// </summary>
     public class BlackjackBoard
     {

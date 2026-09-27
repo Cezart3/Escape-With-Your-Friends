@@ -284,8 +284,15 @@ namespace EscapeWithYourFriends.Casino
         {
             int paid = 0;
 
+            // Each player's spin as a whole, for the win chime: a number hit under a spread of
+            // outside bets is still a big win, just a smaller one.
+            var staked = new Dictionary<NetworkObject, int>();
+            var won = new Dictionary<NetworkObject, int>();
+
             foreach (Bet bet in _bets)
             {
+                if (bet.Owner != null) staked[bet.Owner] = staked.TryGetValue(bet.Owner, out int s) ? s + bet.Chips : bet.Chips;
+
                 if (!Wins(bet.Kind, result, bet.Number)) continue;
                 if (bet.Owner == null) continue;
 
@@ -297,7 +304,10 @@ namespace EscapeWithYourFriends.Casino
                 int back = bet.Chips * (Payout(bet.Kind) + 1);
                 wallet.ServerPayChips(back);
                 paid += back;
+                won[bet.Owner] = won.TryGetValue(bet.Owner, out int w) ? w + back : back;
             }
+
+            foreach (KeyValuePair<NetworkObject, int> winner in won) RpcWon(winner.Value, staked[winner.Key]);
 
             Debug.Log($"[Roulette] {result} {(result == 0 ? "green" : IsRed(result) ? "red" : "black")}. "
                       + $"{Staked} staked, {paid} paid out across {_bets.Count} bet(s).");
@@ -332,14 +342,21 @@ namespace EscapeWithYourFriends.Casino
         /// mid-spin on 0.
         /// </summary>
         [ObserversRpc(ExcludeServer = true)]
-        void RpcSpinTo(int result, float seconds)
+        void RpcSpinTo(int result, float seconds) => Animate(result, seconds);
+
+        /// <summary>Somebody at the table got <paramref name="win"/> back on <paramref name="staked"/>. Every peer cheers.</summary>
+        [ObserversRpc]
+        void RpcWon(int win, int staked)
         {
-            Audio.Sfx.Play(Audio.Sound.Spin, transform.position);
-            Animate(result, seconds);
+            Vector3 over = _wheel != null ? _wheel.position + Vector3.up * 0.3f : transform.position + Vector3.up;
+            BigWin.Celebrate(over, transform.position.y, win, staked);
         }
 
         void Animate(int result, float seconds)
         {
+            // Here rather than in the RPC, so the host hears its own wheel too.
+            Audio.Sfx.Play(Audio.Sound.Spin, transform.position);
+
             if (_wheel == null) return;
 
             _spinSeconds = Mathf.Max(0.1f, seconds);
@@ -362,7 +379,10 @@ namespace EscapeWithYourFriends.Casino
             if (_ball != null)
                 _ball.localRotation = Quaternion.Euler(0f, -Mathf.Lerp(_spinFrom, _spinTo, eased) * 2f, 0f);
 
-            if (t >= 1f) _spinStarted = -1f;
+            if (t < 1f) return;
+
+            _spinStarted = -1f;
+            Audio.Sfx.Play(Audio.Sound.ReelStop, _ball != null ? _ball.position : transform.position);
         }
 
         /// <summary>True while this peer's own wheel is still turning. Local, like the animation.</summary>

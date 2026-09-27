@@ -18,8 +18,9 @@ namespace EscapeWithYourFriends.EditorTools
     /// Front to +z, where the four seats are; the dealer's side is -z, against the wall. Every seat
     /// has a big bet button at the rail and four small ones behind it - hit, stand, double, split -
     /// each its own nested <see cref="NetworkObject"/>. The cards are pre-placed and hidden, eight a
-    /// hand, and the table shows and colours them; all of it wears palette materials, so the table
-    /// adds nothing to <c>LookTest</c>'s budget.
+    /// hand, each with a face plate the table dresses in <c>CardFaces</c> at runtime. The prefab
+    /// wears palette materials only, so it adds nothing to <c>LookTest</c>'s budget; the card atlas
+    /// is one material more, and only once a hand is dealt.
     ///
     /// Always rebuilds, like <c>SlotFactory</c>: nothing here is dressed by hand.
     /// </summary>
@@ -59,7 +60,7 @@ namespace EscapeWithYourFriends.EditorTools
             Block(t, "Tray", new Vector3(0f, Top + 0.02f, -0.34f), new Vector3(0.44f, 0.04f, 0.1f), "Gold", solid: false);
 
             var cards = new List<Renderer>();
-            var pips = new List<Renderer>();
+            var faces = new List<Renderer>();
 
             for (int hand = 0; hand <= BlackjackMath.Dealer; hand++)
             {
@@ -78,20 +79,20 @@ namespace EscapeWithYourFriends.EditorTools
                     Vector3 at = first + new Vector3(i * step, 0.004f + i * 0.002f, dealer ? 0f : -i * 0.004f);
 
                     GameObject card = Block(t, $"Card{hand}.{i}", at, CardSize, "Plastic", solid: false);
-                    GameObject pip = Block(t, $"Pip{hand}.{i}", at + new Vector3(-0.018f, 0.0025f, 0.028f),
-                                           new Vector3(0.016f, 0.002f, 0.016f), "Accent", solid: false);
+                    // The face plate sits just above the card's top; the table swaps its mesh for a CardFaces quad.
+                    GameObject face = Block(t, $"Face{hand}.{i}", at + new Vector3(0f, 0.0021f, 0f),
+                                            new Vector3(0.058f, 0.001f, 0.088f), "Plastic", solid: false);
 
                     card.GetComponent<Renderer>().enabled = false;
-                    pip.GetComponent<Renderer>().enabled = false;
+                    face.GetComponent<Renderer>().enabled = false;
                     cards.Add(card.GetComponent<Renderer>());
-                    pips.Add(pip.GetComponent<Renderer>());
+                    faces.Add(face.GetComponent<Renderer>());
                 }
             }
 
             root.AddComponent<NetworkObject>();
-            root.AddComponent<BlackjackTable>().Configure(cards.ToArray(), pips.ToArray(),
-                                                          Palette.Named("Plastic"), Palette.Named("Cloth"),
-                                                          Palette.Named("Accent"), Palette.Named("Dark"));
+            root.AddComponent<BlackjackTable>().Configure(cards.ToArray(), faces.ToArray(),
+                                                          Palette.Named("Plastic"), Palette.Named("Cloth"));
 
             (BlackjackPress press, string colour, float x)[] small =
             {

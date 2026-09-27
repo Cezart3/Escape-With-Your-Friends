@@ -200,6 +200,15 @@ namespace EscapeWithYourFriends.Casino
 
             Check($"a spot goes marked, x2, x4 ... and stops at x{SlotMath.Reef.MaxSpot} ({string.Join(" ", seen)})",
                   seen[0] == 1 && seen[1] == 2 && seen[2] == 4 && seen[6] == 64 && seen[7] == 128 && seen[9] == 128);
+
+            // The big-win tiers: by the stake multiple, and the banner's count lands on the win.
+            Check("9x is an ordinary win, 10x big, 25x mega, 50x epic",
+                  BigWin.Tier(900, 100) == 0 && BigWin.Tier(1000, 100) == 1 && BigWin.Tier(2500, 100) == 2
+                  && BigWin.Tier(5000, 100) == 3 && BigWin.Tier(100, 0) == 0);
+
+            int[] counted = Enumerable.Range(0, 11).Select(i => BigWin.Counted(3600, i * 0.35f, 3.5f)).ToArray();
+            Check($"the banner counts up from 0 to the win without going back ({string.Join(" ", counted)})",
+                  counted[0] == 0 && counted[10] == 3600 && counted.Zip(counted.Skip(1), (a, b) => a <= b).All(x => x));
         }
 
         IEnumerator Replays()

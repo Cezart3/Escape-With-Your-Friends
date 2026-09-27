@@ -54,6 +54,9 @@ namespace EscapeWithYourFriends.Casino
         [SerializeField] Mesh _cardRed;
         [SerializeField] Mesh _cardBlack;
 
+        [Tooltip("The palette's gold, for the big-win coins.")]
+        [SerializeField] Material _coin;
+
         readonly SyncVar<int> _betIndex = new();
         readonly SyncVar<bool> _busy = new();
         readonly SyncVar<int> _lastSeed = new();
@@ -87,6 +90,7 @@ namespace EscapeWithYourFriends.Casino
         float _frameStarted;
         int[] _shown;
         float _nextFlicker;
+        int _reelsStopped;
         Vector3[] _home;
 
         public SlotKind Kind => _kind;
@@ -146,6 +150,8 @@ namespace EscapeWithYourFriends.Casino
 
         void Awake()
         {
+            if (_coin != null) BigWin.Gold = _coin;
+
             _shown = new int[SlotMath.Cols(_kind) * SlotMath.Rows(_kind)];
             _home = new Vector3[_cells != null ? _cells.Length : 0];
             for (int i = 0; i < _home.Length; i++)
@@ -313,6 +319,7 @@ namespace EscapeWithYourFriends.Casino
             _playing = result;
             _frame = 0;
             _frameStarted = Time.time;
+            _reelsStopped = 0;
             if (_card != null && _cardBack != null) _card.sharedMesh = _cardBack;
             Audio.Sfx.Play(Audio.Sound.Spin, transform.position);
         }
@@ -333,6 +340,7 @@ namespace EscapeWithYourFriends.Casino
             {
                 _frameStarted += frame.Seconds;
                 _frame++;
+                _reelsStopped = 0;
 
                 SlotFrame next = _playing.Frames[_frame];
                 if (next.Drop) Audio.Sfx.Play(Audio.Sound.Spin, transform.position, 0.6f);
@@ -341,6 +349,20 @@ namespace EscapeWithYourFriends.Casino
             }
 
             float t = Time.time - _frameStarted;
+
+            // One thunk per reel as it lands; reels that land in the same frame share one.
+            if (frame.Drop)
+            {
+                int stopped = 0;
+                for (int col = 0; col < Cols; col++) if (t >= StopAt(frame, col, Cols)) stopped++;
+
+                if (stopped > _reelsStopped)
+                {
+                    _reelsStopped = stopped;
+                    Audio.Sfx.Play(Audio.Sound.ReelStop, transform.position, 0.8f);
+                }
+            }
+
             if (t < frame.Seconds)
             {
                 Draw(frame, _frame > 0 ? _playing.Frames[_frame - 1] : null, t);
@@ -351,11 +373,15 @@ namespace EscapeWithYourFriends.Casino
             _playing = null;
             DrawStill(frame);
 
-            if (Played.Win > 0) Audio.Sfx.Play(Audio.Sound.Coin, transform.position, 1f, 1.3f);
+            BigWin.Celebrate(transform.TransformPoint(0f, 1.5f, 0.3f), transform.position.y, Played.Win, Played.Bet);
         }
 
         /// <summary>How long a drop's reels spin before the last one stops.</summary>
         static float SpinTime(SlotFrame frame) => Mathf.Min(1.1f, frame.Seconds * 0.6f);
+
+        /// <summary>When reel <paramref name="col"/> of a drop lands, left to right.</summary>
+        static float StopAt(SlotFrame frame, int col, int cols)
+            => (frame.Drop ? SpinTime(frame) : 0f) * (0.45f + 0.55f * col / Mathf.Max(1, cols - 1));
 
         void Draw(SlotFrame frame, SlotFrame previous, float t)
         {
@@ -363,7 +389,6 @@ namespace EscapeWithYourFriends.Casino
 
             int rows = Rows;
             int cols = Cols;
-            float spin = frame.Drop ? SpinTime(frame) : 0f;
             bool flicker = Time.time >= _nextFlicker;
             if (flicker) _nextFlicker = Time.time + 0.06f;
 
@@ -375,7 +400,7 @@ namespace EscapeWithYourFriends.Casino
                 int col = i / rows;
                 int row = i % rows;
 
-                float stopAt = spin * (0.45f + 0.55f * col / Mathf.Max(1, cols - 1));
+                float stopAt = StopAt(frame, col, cols);
 
                 if (t < stopAt)
                 {
@@ -458,7 +483,7 @@ namespace EscapeWithYourFriends.Casino
         /// <summary>Editor-time setup. See <c>SlotFactory</c>.</summary>
         public void Configure(SlotKind kind, Transform[] cells, Mesh[] meshes, float[] scales, float cellSize,
                               MeshFilter[] spots, Mesh spotMarked, Mesh spotHot,
-                              MeshFilter card, Mesh cardBack, Mesh cardRed, Mesh cardBlack)
+                              MeshFilter card, Mesh cardBack, Mesh cardRed, Mesh cardBlack, Material coin)
         {
             _kind = kind;
             _cells = cells;
@@ -473,6 +498,7 @@ namespace EscapeWithYourFriends.Casino
             _cardBack = cardBack;
             _cardRed = cardRed;
             _cardBlack = cardBlack;
+            _coin = coin;
         }
     }
 }

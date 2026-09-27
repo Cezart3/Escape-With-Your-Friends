@@ -404,7 +404,7 @@ namespace EscapeWithYourFriends.EditorTools
             root.AddComponent<NetworkObject>();
             root.AddComponent<SlotMachine>().Configure(
                 kind, cells, meshes, scales, cell, spots, Meshes[SpotMarked.Name], Meshes[SpotHot.Name],
-                card, Meshes[CardBack.Name], Meshes[CardRed.Name], Meshes[CardBlack.Name]);
+                card, Meshes[CardBack.Name], Meshes[CardRed.Name], Meshes[CardBlack.Name], Palette.Named("Gold"));
 
             // The buttons, along the ledge: spin on the right where a hand falls, the stake on the
             // left, and on Sevens the two card colours between them.

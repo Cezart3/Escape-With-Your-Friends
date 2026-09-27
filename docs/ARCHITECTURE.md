@@ -7196,8 +7196,7 @@ The dealer's cards go out one at a time, the payouts land, and the felt stays up
 clears.
 
 **The felt shows colour, the board shows ranks.** Cards are pre-placed palette slabs, eight a hand,
-shown face up with a red or black pip or face down in blue; ranks on the card faces are an art job for
-later. `BlackjackBoard` takes the top of the screen within 2.2 m (after a slot cabinet, before the
+shown face up or face down in blue; the faces are drawn by `CardFaces` (#163). `BlackjackBoard` takes the top of the screen within 2.2 m (after a slot cabinet, before the
 roulette board): the dealer's hand on the big line, yours under it with totals, and whose turn it is.
 Every seat has five buttons, each a nested `NetworkObject` for `BetSpot`'s reason: a big gold bet at
 the rail, and hit (green), stand (red), double (white), split (blue) behind it. The prompts only offer
@@ -7216,6 +7215,43 @@ never showed two cards while players acted, and that every payout is what its ow
 
 Run `BlackjackFactory.Build`, then the island bake with `-rebuildPois` so the `casino.blackjack` POI
 places it.
+
+---
+
+## Casino juice: card faces, big wins, sounds (#163)
+
+A win should feel like one. Three pieces, all generated in code, nothing checked in.
+
+**Card faces.** `CardFaces` draws all 52 faces into one 468x216 atlas at runtime: a 3x5 pixel font
+for the ranks, 7x7 suit glyphs, red and black ink on cream, point-filtered so the pixels read as part
+of the low-poly look. Each card is a quad whose UVs sit on its cell, so the whole table adds one
+material (a copy of the felt's Plastic wearing the atlas, same shader), and only once a hand is dealt;
+the prefab still wears palette materials only, so `-lookTest` sees no change. The seats fan their
+cards so only the right third of each shows under the next, so the index (rank over suit) lives there,
+top right as the player stands; the big rank and suit in the middle are for the dealer's row and the
+top card. The face plates are the old pips, resized to cover the card: rerun `BlackjackFactory.Build`.
+
+**Big wins.** `BigWin.Tier` grades a win by the stake multiple: 10x big, 25x mega, 50x epic. Every
+peer calls `BigWin.Celebrate` from the code that already knows, at the moment its own screen settles:
+the slot cabinet when its replayed spin ends, the roulette wheel from a new `RpcWon(win, staked)` it
+sends per winning player (the sum of their spin, so a straight-up hit is 36x, mega). Below the big tier
+that is just the win chime. Above it: the fanfare, 14/28/42 pooled octagon coins (32 triangles, no
+collider, no shadow, a hand-integrated bounce off the floor they came from), and `WinBanner` on the HUD
+for anybody within 10 m, the tier's name slamming in and the number counting up with an ease-out over
+2.5/3.5/5 s. The coins wear the palette's Gold, which `SlotFactory` now hands each cabinet and the
+cabinet registers on wake; the roulette wheel borrows it, so with no cabinet in the scene roulette
+still cheers but throws no coins. Rerun `SlotFactory.Build`.
+
+**Sounds.** Four more `Synth` clips: `ReelStop` (a thunk per reel landing, reels landing in the same
+frame share one), `Deal` (a snap for every card and the hole card turning), `Win` (a major arpeggio)
+and `BigWin` (the arpeggio twice then a shimmering chord, 1.8 s). The pool is twelve voices now, so a
+seven-reel stop does not cut its own spin. Two old gaps closed on the way: the host now hears its own
+roulette spin, and the blackjack payout chime plays on every peer instead of only on the server.
+
+`-audioTest` covers the new clips (every `Sound` is audible, bounded, built once). `-slotTest` checks
+the tier thresholds and that the count-up runs 0 to the win without going back. `-blackjackTest` reads
+the atlas back: every face inked, red suits red and black black, rank and suit inside the strip a fan
+leaves uncovered, 52 distinct faces. The banner, the coins and the sound are playtest questions.
 
 ---
 

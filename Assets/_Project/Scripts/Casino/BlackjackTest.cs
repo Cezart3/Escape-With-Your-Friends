@@ -175,6 +175,52 @@ namespace EscapeWithYourFriends.Casino
             Check($"a shoe is six whole decks ({shoe.Length} cards)", shoe.Length == 312 && counts.All(n => n == 6));
             Check("the same seed is the same shoe", shoe.SequenceEqual(BlackjackMath.Shoe(12345)));
             Check("and another seed is another", !shoe.SequenceEqual(BlackjackMath.Shoe(12346)));
+
+            Faces();
+        }
+
+        /// <summary>The card atlas, read back as pixels: every face inked in its own colour, and its index where the fan leaves it showing.</summary>
+        void Faces()
+        {
+            Color32[] atlas = CardFaces.Pixels();
+            var looks = new HashSet<string>();
+            bool inked = true, coloured = true, indexed = true;
+
+            for (int card = 0; card < 52; card++)
+            {
+                Color32 ink = BlackjackMath.IsRed(card) ? CardFaces.Red : CardFaces.Black;
+                Color32 other = BlackjackMath.IsRed(card) ? CardFaces.Black : CardFaces.Red;
+                int x0 = BlackjackMath.Rank(card) * CardFaces.CellW;
+                int top = CardFaces.Height - 1 - BlackjackMath.Suit(card) * CardFaces.CellH;
+
+                var look = new System.Text.StringBuilder();
+                int ours = 0, theirs = 0, strip = 0;
+
+                for (int y = 0; y < CardFaces.CellH; y++)
+                for (int x = 0; x < CardFaces.CellW; x++)
+                {
+                    Color32 c = atlas[(top - y) * CardFaces.Width + x0 + x];
+                    bool mine = c.r == ink.r && c.g == ink.g && c.b == ink.b;
+                    bool wrong = c.r == other.r && c.g == other.g && c.b == other.b;
+
+                    look.Append(mine ? '#' : '.');
+                    if (mine) ours++;
+                    if (wrong) theirs++;
+
+                    // The strip the next card in a seat's fan leaves showing: the right third, top half.
+                    if (mine && x >= CardFaces.CellW * 2 / 3 && y < CardFaces.CellH / 2) strip++;
+                }
+
+                inked &= ours > 40;
+                coloured &= theirs == 0;
+                indexed &= strip > 12;
+                looks.Add(look.ToString());
+            }
+
+            Check("every card face has ink on it", inked);
+            Check("red suits print red and black suits black", coloured);
+            Check("every face shows rank and suit in the strip a fan leaves uncovered", indexed);
+            Check($"no two faces look alike ({looks.Count} distinct)", looks.Count == 52);
         }
 
         void Scripted()
