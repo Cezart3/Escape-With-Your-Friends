@@ -71,6 +71,9 @@ namespace EscapeWithYourFriends.EditorTools
                 else Debug.Log(line);
             }
 
+            // Materials made before the shared shader existed are re-shaded in place.
+            if (StyleLook.Restyle() < 0) failed++;
+
             AssetDatabase.SaveAssets();
             Debug.Log($"[ArtLibrary] {ArtCatalog.Models.Length - failed} of {ArtCatalog.Models.Length} models ready, "
                       + $"{failed} failed.");
@@ -486,16 +489,11 @@ namespace EscapeWithYourFriends.EditorTools
             return Save(material, path);
         }
 
-        internal static Material NewLit(string name)
-        {
-            Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            var material = new Material(shader) { name = name };
-
-            // Flat-shaded low poly under a hard sun: a specular sheen on every leaf reads as plastic.
-            material.SetFloat("_Smoothness", 0.1f);
-            material.enableInstancing = true;
-            return material;
-        }
+        /// <summary>
+        /// A new kit material, on the island's one shader (<see cref="StyleLook"/>). Matte: flat-shaded
+        /// low poly under a hard sun with a sheen on every leaf reads as plastic.
+        /// </summary>
+        internal static Material NewLit(string name) => StyleLook.New(name);
 
         internal static Material Save(Material material, string path)
         {
