@@ -115,7 +115,10 @@ namespace EscapeWithYourFriends.Casino
             Wallet.ResetLedger();
             yield return new WaitForSeconds(0.3f);
 
-            int money = Wallet.TotalInWallets();
+            // The wallets present now, not every wallet: a pair's client joins mid-test, and its
+            // starting grant is minted into the totals while the host is still at the cabinets.
+            Wallet[] present = FindObjectsByType<Wallet>(FindObjectsSortMode.None);
+            int money = present.Sum(w => w.Balance);
             int chips = wallet.Chips;
 
             foreach (SlotMachine machine in machines.OrderBy(m => m.Kind))
@@ -128,9 +131,11 @@ namespace EscapeWithYourFriends.Casino
             player.ServerTeleport(sevens.transform.position + sevens.transform.forward * 1f, 0f);
             yield return Gambling(sevens, wallet, actor);
 
-            Check($"money never moved at the cabinets ({money} before, {Wallet.TotalInWallets()} after)",
-                  Wallet.TotalInWallets() == money);
-            Check("and the ledger called none of it income", Wallet.Minted == 0 && Wallet.Burned == 0 && Wallet.Exchanged == 0);
+            int after = present.Sum(w => w.Balance);
+            int joined = FindObjectsByType<Wallet>(FindObjectsSortMode.None).Except(present).Sum(w => w.Balance);
+            Check($"money never moved at the cabinets ({money} before, {after} after)", after == money);
+            Check($"and the ledger called none of it income (minted {Wallet.Minted}, {joined} of it a joiner's grant)",
+                  Wallet.Minted == joined && Wallet.Burned == 0 && Wallet.Exchanged == 0);
             Check($"every chip is accounted for ({Wallet.Staked} staked, {Wallet.PaidOut} paid, {wallet.Chips} held)",
                   wallet.Chips == chips - Wallet.Staked + Wallet.PaidOut);
 
