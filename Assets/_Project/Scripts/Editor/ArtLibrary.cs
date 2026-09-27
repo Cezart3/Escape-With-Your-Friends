@@ -71,14 +71,15 @@ namespace EscapeWithYourFriends.EditorTools
                 else Debug.Log(line);
             }
 
-            // Materials made before the shared shader existed are re-shaded in place.
-            if (StyleLook.Restyle() < 0) failed++;
+            // Materials made before the shared shader existed are re-shaded in place. Its own failure,
+            // not a model's: StyleLook logs why.
+            bool styled = StyleLook.Restyle() >= 0;
 
             AssetDatabase.SaveAssets();
             Debug.Log($"[ArtLibrary] {ArtCatalog.Models.Length - failed} of {ArtCatalog.Models.Length} models ready, "
                       + $"{failed} failed.");
 
-            if (Application.isBatchMode) EditorApplication.Exit(failed == 0 ? 0 : 1);
+            if (Application.isBatchMode) EditorApplication.Exit(failed == 0 && styled ? 0 : 1);
         }
 
         /// <summary>

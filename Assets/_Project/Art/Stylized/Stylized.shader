@@ -106,6 +106,7 @@ Shader "EWYF/Stylized"
             #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
             #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
             #pragma multi_compile_fragment _ _SCREEN_SPACE_OCCLUSION
+            #pragma multi_compile_fragment _ _LIGHT_COOKIES
             #pragma multi_compile_fog
             #pragma multi_compile_instancing
 
@@ -186,11 +187,13 @@ Shader "EWYF/Stylized"
                 half3 view = SafeNormalize(GetWorldSpaceViewDir(input.positionWS));
 
                 float4 shadowCoord = TransformWorldToShadowCoord(input.positionWS);
-                Light sun = GetMainLight(shadowCoord);
+                // The overload with the position is the one that fades shadows out near the shadow
+                // distance (and applies a main-light cookie); the shadowCoord-only one cuts them off.
+                Light sun = GetMainLight(shadowCoord, input.positionWS, half4(1, 1, 1, 1));
 
-                // Not banded: the attenuation already carries the light's shadow strength (the moon's
-                // is 0.35) and URP's fade at the shadow distance, and a step would erase the first and
-                // turn the second into a ring that follows the camera.
+                // Not banded: the attenuation carries the light's shadow strength (the moon's is 0.35)
+                // and that distance fade, and a step would erase the first and turn the second into a
+                // ring that follows the camera.
                 half shadow = sun.shadowAttenuation * sun.distanceAttenuation;
                 half lit = Band(dot(normal, sun.direction)) * shadow;
 

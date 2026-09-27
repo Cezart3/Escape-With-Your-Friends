@@ -36,8 +36,6 @@ namespace EscapeWithYourFriends.EditorTools
         {
             ("Quaternius_Nature_", 0.45f, 0.92f, 1.0f),
             ("Quaternius_", 1f, 0.95f, 1.0f),
-            ("Kenney_", 1f, 1f, 1f),
-            ("Flat_", 1f, 1f, 1f),
         };
 
         static Shader _stylized;
@@ -48,7 +46,8 @@ namespace EscapeWithYourFriends.EditorTools
             get
             {
                 if (_stylized == null) _stylized = Shader.Find(ShaderName);
-                return _stylized != null ? _stylized : Shader.Find("Universal Render Pipeline/Lit");
+                return _stylized != null ? _stylized
+                       : Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
             }
         }
 
@@ -57,6 +56,27 @@ namespace EscapeWithYourFriends.EditorTools
         {
             var material = new Material(Stylized) { name = name };
             material.SetFloat("_Smoothness", 0.1f);
+            Wear(material);
+            return material;
+        }
+
+        /// <summary>
+        /// A material of its own that glows, in the palette folder beside the entries but not one of
+        /// them, so nothing snaps onto it. The campfire flame's.
+        /// </summary>
+        internal static Material Glowing(string name, Color colour, Color emission)
+        {
+            string path = $"{Palette.Folder}/{name}.mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = New(name);
+                AssetDatabase.CreateAsset(material, path);
+            }
+
+            material.SetColor("_BaseColor", colour);
+            material.SetColor("_EmissionColor", emission);
+            material.EnableKeyword("_EMISSION");
             Wear(material);
             return material;
         }
@@ -97,6 +117,10 @@ namespace EscapeWithYourFriends.EditorTools
             // A material carried over from URP/Lit has the float right and the keyword possibly not.
             if (material.GetFloat("_AlphaClip") > 0.5f) material.EnableKeyword("_ALPHATEST_ON");
             else material.DisableKeyword("_ALPHATEST_ON");
+
+            // Palette entries are shared by everything of that colour, so none of them may glow. Gold
+            // carried the campfire's emission for a year; see Glowing.
+            if (Palette.Has(material.name)) material.DisableKeyword("_EMISSION");
         }
 
         /// <summary>Every kit material and every palette entry, re-shaded. Batchmode entry.</summary>
