@@ -28,7 +28,7 @@ Kenney: www.kenney.nl · https://www.kenney.nl/donate
 |---|---|---|---|---|
 | Watercraft Pack | Kenney | https://kenney.nl/assets/watercraft-pack | CC0 1.0 | The boat |
 | Car Kit | Kenney | https://kenney.nl/assets/car-kit | CC0 1.0 | The buggy |
-| Weapon Pack | Kenney | https://kenney.nl/assets/weapon-pack | CC0 1.0 | Firearms, knife |
+| Weapon Pack | Kenney | https://kenney.nl/assets/weapon-pack (gone; see below) | CC0 1.0 | Firearms, knife |
 | Universal Base Characters | Quaternius | https://quaternius.com/packs/universalbasecharacters.html | CC0 1.0 | Players, natives, NPCs |
 | Universal Animation Library | Quaternius | https://quaternius.com/packs/universalanimationlibrary.html | CC0 1.0 | Every human animation |
 
@@ -43,10 +43,15 @@ Recorded because the build machine could not open the authors' own pages (see `A
   CC0) … You can use this content for personal, educational, and commercial purposes."*
   `ArtExtract` copies each kit's own `License.txt` next to its models, so the copy in
   `Assets/_Project/Art/ThirdParty/` is the one from the zip you downloaded.
-- **Universal Animation Library:** the CC0 1.0 legal code shipped with the free edition, as
-  re-uploaded at `github.com/J-Ponzo/gltf-universal-animation-library`.
-- **Universal Base Characters:** the Quaternius pack page, as quoted by search results. **Check the
-  zip's licence file when downloading.**
+- **Weapon Pack:** no longer on kenney.nl (the page 404s, and it is not on Kenney's itch). The FBX
+  in `Assets/_Project/Art/ThirdParty/Kenney/Weapon/` were converted with Blender 5.2 from the
+  glTF-binary copies in `github.com/shorepine/kenney` (`3d/weapon`), a Kenney all-in-1 dump under
+  Kenney's CC0 licence. Its `License.txt` says so.
+- **Universal Animation Library:** downloaded from `quaternius.itch.io/universal-animation-library`
+  (Standard). Its `License.txt`: *"CC0 1.0 Universal (CC0 1.0) Public Domain Dedication"*.
+- **Universal Base Characters:** downloaded from `quaternius.itch.io/universal-base-characters`
+  (Standard). Its `License_Standard.txt` says the same: *"CC0 1.0 Universal (CC0 1.0) Public Domain
+  Dedication"*.
   Its geometry (65-joint UE skeleton, 14 318 / 15 060 triangles, three materials, no hair) was
   read from a glTF re-export of the Superhero Male and Female found in a public game repository;
   that repository carried no licence for them, so this is evidence of shape, not of terms.
