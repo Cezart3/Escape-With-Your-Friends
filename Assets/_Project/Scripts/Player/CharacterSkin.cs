@@ -365,8 +365,9 @@ namespace EscapeWithYourFriends.Player
                 animator.SetLayerWeight(CarryLayer, _carryWeight);
             }
 
-            // Both hands on a load, or on a wheel, is not holding a weapon. Armed keeps its last
-            // value while the layer fades, so the arms leave the pose they were in.
+            // Both hands on a load, or on a wheel, is not holding a weapon: it is put away, and
+            // Armed keeps its last value while the layer fades, so the arms leave the pose they were in.
+            if (_held != null && _held.activeSelf == (carrying || seated)) _held.SetActive(!carrying && !seated);
             if (animator.layerCount > ArmedLayer)
             {
                 _armedWeight = Mathf.MoveTowards(_armedWeight, _armed > 0 && !carrying && !seated ? 1f : 0f, dt * 6f);

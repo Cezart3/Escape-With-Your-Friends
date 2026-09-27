@@ -7213,7 +7213,7 @@ player wears:
     (1 is a gun, 2 is a blade).
   - `Pistol_Shoot` and `Sword_Attack` on the trigger `Fire`.
   - `CharacterSkin` fades the layer in while something is drawn in the hand, and out while
-    carrying or seated, where both hands are busy. `Weapon.Attacked` fires `Fire` when
+    carrying or seated, where both hands are busy. The model is hidden for as long. `Weapon.Attacked` fires `Fire` when
     something is in the hand. Bare fists keep the whole-body `Punch`.
   - `Armed` is only ever set to 1 or 2, and each `Fire` transition wants one of them. So every
     `Fire` is taken, and none waits in the trigger for the next weapon.
