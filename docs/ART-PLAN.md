@@ -611,6 +611,41 @@ is seen lying on the ground. The chainsaw stays a box. *Done:* `-weaponTest`, `-
 
 Mixamo *Carrying* and *Getting Up* through your browser, dropped into the same controller.
 
+### P6 — stylised, but detailed enough to sell
+
+Your call after seeing the Kenney car: stay stylised, not semi-realistic, but lift everything that
+reads as a toy. The Kenney pass stays the base. Its pipeline (catalogue, extraction, fit to the
+greybox, harnesses) and the lighting fixes carry over, and P6 is mostly rows swapped in
+`ArtCatalog` and `IslandFlora`.
+
+**One principal author: Quaternius.** The people are already Quaternius. One hand across the whole
+island reads as designed; four kits from four artists read as an asset flip. Every pack below is
+CC0 by its page. None has been opened: this machine's network policy blocks quaternius.com,
+poly.pizza, opengameart.org, itch.io and sketchfab.com.
+
+| # | What | Pack | Why |
+|---|---|---|---|
+| V1 | Palms, jungle trees, bushes, plants, rocks, grass | [Stylized Nature MegaKit](https://quaternius.com/packs/stylizednaturemegakit.html) (110+ models, palms included, textured) | On screen everywhere. Painted textures instead of flat colour |
+| V2 | Huts, docks, crates, barrels, chests, the wreck, the casino shack | [Pirate Kit](https://quaternius.com/packs/piratekit.html) (70+) | The island's buildings in the same hand as the trees |
+| V3 | People: hair, hats, clothes | Universal Base Characters stays; add-ons to find | The bodies are bald. A bald cast reads as placeholder faster than anything else |
+| V4 | Buggy | [Cars](https://quaternius.com/packs/cars.html) against the Kenney race car | Your eye decides |
+| V5 | Weapons | Kenney stays unless a Quaternius pack matches | Only seen on the ground |
+| V6 | No new assets: foliage wind sway, fog, the grade re-tuned to the new palette | — | Life and depth for free on the 760M. Each needs your eye |
+
+Order by screen time: V1, V3, V2, V4, V6, V5.
+
+**Code it needs.** `ArtLibrary` knows two material modes, a Kenney atlas and flat colours. The
+MegaKit is textured, with separate leaf cards, so it needs a third mode: keep the pack's textures
+on URP Lit, and use alpha clip on the leaves. `CharacterArt` already paints bodies from pack
+textures and is the model for it.
+
+**Before any of it starts:**
+
+- The file names. Either allow `quaternius.com` and `poly.pizza` in this environment's network
+  settings, so each model can be measured and rendered as the Kenney ones were, or download the
+  zips and paste `unzip -l` of each.
+- Your eye on PR 153 running, so P6 starts from what the lighting actually looks like.
+
 ---
 
 ## 10. What only you can judge
