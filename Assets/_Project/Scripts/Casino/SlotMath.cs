@@ -1,0 +1,668 @@
+using System;
+using System.Collections.Generic;
+
+namespace EscapeWithYourFriends.Casino
+{
+    /// <summary>The three cabinets in the shack. Each one is a whole game in <see cref="SlotMath"/>.</summary>
+    public enum SlotKind
+    {
+        /// <summary>Five reels, three rows, twenty lines, fruit and sevens, and a double-or-nothing card.</summary>
+        Sevens,
+
+        /// <summary>Six by five, pays anywhere, symbols tumble, lava orbs multiply the lot.</summary>
+        Volcano,
+
+        /// <summary>Seven by seven, clusters of five or more, and every spot that pops twice starts multiplying.</summary>
+        Reef,
+    }
+
+    /// <summary>
+    /// A tiny deterministic generator (SplitMix64). Not <see cref="System.Random"/>: that one's
+    /// sequence for a given seed is an implementation detail of whichever runtime is underneath, and
+    /// the whole point here is that the host and every client, Mono or IL2CPP, get the same spin out
+    /// of the same seed.
+    /// </summary>
+    public struct SlotRng
+    {
+        ulong _state;
+
+        public SlotRng(int seed) => _state = (ulong)(uint)seed * 0x9E3779B97F4A7C15UL + 0x2545F4914F6CDD1DUL;
+
+        public uint Next()
+        {
+            _state += 0x9E3779B97F4A7C15UL;
+            ulong z = _state;
+            z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9UL;
+            z = (z ^ (z >> 27)) * 0x94D049BB133111EBUL;
+            return (uint)((z ^ (z >> 31)) >> 32);
+        }
+
+        /// <summary>0 to <paramref name="max"/>-1. The modulo bias is under one in a million for any range used here.</summary>
+        public int Range(int max) => (int)(Next() % (uint)max);
+
+        /// <summary>An index into <paramref name="weights"/>, picked in proportion to them.</summary>
+        public int Pick(int[] weights, int total)
+        {
+            int roll = Range(total);
+            for (int i = 0; i < weights.Length; i++)
+            {
+                roll -= weights[i];
+                if (roll < 0) return i;
+            }
+
+            return weights.Length - 1;
+        }
+    }
+
+    /// <summary>
+    /// One picture of the machine. A spin is a list of these: the reels landing, then each tumble,
+    /// then each free spin and its tumbles. A client plays them in order for <see cref="Seconds"/>
+    /// each, which is also how the server knows how long to wait before it pays.
+    /// </summary>
+    public sealed class SlotFrame
+    {
+        /// <summary>Symbol per cell, <c>col * rows + row</c>, row 0 at the top.</summary>
+        public int[] Grid;
+
+        /// <summary>The cells that paid in this picture. They vanish before the next one.</summary>
+        public bool[] Winning;
+
+        /// <summary>Everything won so far this spin, in hundredths of the bet.</summary>
+        public long RunningPct;
+
+        /// <summary>The multiplier worth showing: the orbs' sum or the free-spin total (Volcano), 0 if none.</summary>
+        public int Multiplier;
+
+        /// <summary>Reef's multiplier spots, per cell: 0 nothing, 1 marked, 2..128 the multiplier. Null elsewhere.</summary>
+        public int[] Spots;
+
+        /// <summary>Free spins still to play after this one, or -1 in the base game.</summary>
+        public int FreeSpinsLeft = -1;
+
+        /// <summary>True when this picture is a fresh drop - the reels spin before it shows.</summary>
+        public bool Drop;
+
+        /// <summary>How long this picture stays up.</summary>
+        public float Seconds;
+    }
+
+    /// <summary>What one press of the spin button came to. Everything in it follows from the seed.</summary>
+    public sealed class SlotResult
+    {
+        public SlotKind Kind;
+        public int Seed;
+        public int Bet;
+
+        /// <summary>Chips handed back, stake not included. Zero on a loss.</summary>
+        public int Win;
+
+        /// <summary>The same in hundredths of the bet, before rounding down to whole chips.</summary>
+        public long WinPct;
+
+        public int FreeSpins;
+        public bool Capped;
+        public readonly List<SlotFrame> Frames = new();
+
+        public float Seconds
+        {
+            get
+            {
+                float total = 0f;
+                foreach (SlotFrame frame in Frames) total += frame.Seconds;
+                return total;
+            }
+        }
+    }
+
+    /// <summary>
+    /// The three games, as pure arithmetic: a seed and a bet in, every picture and the payout out.
+    /// No Unity, no network, no clock - which is what lets the harness play a million spins of each
+    /// in a few seconds and hold the return to player to a number, and what lets a client replay a
+    /// spin from four bytes instead of being sent the grids.
+    ///
+    /// **The names, symbols and numbers are ours.** The mechanics are the genre's common stock -
+    /// fixed lines with a double-up card, pay-anywhere with tumbles and multiplier orbs, clusters
+    /// with sticky multiplier spots - and none of that is anybody's to own. Nothing here borrows a
+    /// title, a character, a symbol set or a paytable.
+    ///
+    /// Every paytable is in hundredths of the total bet, so a win of 25 is a quarter of the stake.
+    /// A spin's pays are summed in those units and rounded down to chips once, at the end.
+    /// </summary>
+    public static class SlotMath
+    {
+        /// <summary>Stakes a cabinet offers, in chips. The bet button cycles through them.</summary>
+        public static readonly int[] Bets = { 10, 20, 50, 100 };
+
+        /// <summary>No spin pays more than this many times the bet. Keeps a lucky night finite.</summary>
+        public const int MaxWinX = 5000;
+
+        public static int Cols(SlotKind kind) => kind switch { SlotKind.Sevens => 5, SlotKind.Volcano => 6, _ => 7 };
+        public static int Rows(SlotKind kind) => kind switch { SlotKind.Sevens => 3, SlotKind.Volcano => 5, _ => 7 };
+
+        public static string Title(SlotKind kind) => kind switch
+        {
+            SlotKind.Sevens => "Coconut Sevens",
+            SlotKind.Volcano => "Wrath of the Volcano",
+            _ => "Reef Rush",
+        };
+
+        public static SlotResult Spin(SlotKind kind, int seed, int bet)
+        {
+            var result = new SlotResult { Kind = kind, Seed = seed, Bet = bet };
+            var rng = new SlotRng(seed);
+
+            switch (kind)
+            {
+                case SlotKind.Sevens: Sevens.Play(ref rng, result); break;
+                case SlotKind.Volcano: Volcano.Play(ref rng, result); break;
+                default: Reef.Play(ref rng, result); break;
+            }
+
+            long cap = MaxWinX * 100L;
+            if (result.WinPct >= cap)
+            {
+                result.WinPct = cap;
+                result.Capped = true;
+            }
+
+            result.Win = (int)(bet * result.WinPct / 100);
+            return result;
+        }
+
+        /// <summary>What a frame's running total reads as, in chips.</summary>
+        public static int Chips(int bet, long pct) => (int)(bet * Math.Min(pct, MaxWinX * 100L) / 100);
+
+        static int Count(int[] grid, int symbol)
+        {
+            int n = 0;
+            foreach (int s in grid) if (s == symbol) n++;
+            return n;
+        }
+
+        static int Sum(int[] weights)
+        {
+            int total = 0;
+            foreach (int w in weights) total += w;
+            return total;
+        }
+
+        // ================================================================ Coconut Sevens
+
+        /// <summary>
+        /// The classic. Five reels, three rows, twenty fixed lines read left to right, and a star that
+        /// pays wherever it lands. No wild and no bonus round: the extra is the double-up card, which
+        /// is <see cref="SlotMachine"/>'s, not the reels'.
+        /// </summary>
+        public static class Sevens
+        {
+            public const int Lime = 0, Coconut = 1, Mango = 2, Papaya = 3, Pineapple = 4, Melon = 5, Seven = 6, Star = 7;
+            public const int Symbols = 8;
+
+            public static readonly string[] Names =
+                { "Lime", "Coconut", "Mango", "Papaya", "Pineapple", "Melon", "Seven", "Star" };
+
+            /// <summary>Row per reel, for each of the twenty lines. Row 0 is the top.</summary>
+            public static readonly int[][] Lines =
+            {
+                new[] { 1, 1, 1, 1, 1 }, new[] { 0, 0, 0, 0, 0 }, new[] { 2, 2, 2, 2, 2 },
+                new[] { 0, 1, 2, 1, 0 }, new[] { 2, 1, 0, 1, 2 }, new[] { 1, 0, 0, 0, 1 },
+                new[] { 1, 2, 2, 2, 1 }, new[] { 0, 0, 1, 2, 2 }, new[] { 2, 2, 1, 0, 0 },
+                new[] { 1, 2, 1, 0, 1 }, new[] { 1, 0, 1, 2, 1 }, new[] { 0, 1, 1, 1, 0 },
+                new[] { 2, 1, 1, 1, 2 }, new[] { 0, 1, 0, 1, 0 }, new[] { 2, 1, 2, 1, 2 },
+                new[] { 1, 1, 0, 1, 1 }, new[] { 1, 1, 2, 1, 1 }, new[] { 0, 0, 2, 0, 0 },
+                new[] { 2, 2, 0, 2, 2 }, new[] { 0, 2, 2, 2, 0 },
+            };
+
+            /// <summary>Per symbol, what 3, 4 and 5 in a row on one line pay, in hundredths of the total bet.</summary>
+            public static readonly int[][] Pays =
+            {
+                new[] { 90, 250, 1000 },     // lime
+                new[] { 90, 250, 1000 },     // coconut
+                new[] { 100, 250, 1000 },    // mango
+                new[] { 100, 250, 1000 },    // papaya
+                new[] { 250, 1000, 2500 },   // pineapple
+                new[] { 250, 1000, 2500 },   // melon
+                new[] { 500, 5000, 25000 },  // seven
+            };
+
+            /// <summary>Stars anywhere: 3, 4, 5 of them, in hundredths of the total bet.</summary>
+            public static readonly int[] StarPays = { 500, 2500, 12500 };
+
+            public static readonly int[] Weights = { 20, 20, 20, 20, 10, 10, 4, 3 };
+            static readonly int WeightTotal = Sum(Weights);
+
+            public static void Play(ref SlotRng rng, SlotResult result)
+            {
+                var grid = new int[15];
+                for (int i = 0; i < grid.Length; i++) grid[i] = rng.Pick(Weights, WeightTotal);
+
+                var winning = new bool[15];
+                long pct = Evaluate(grid, winning);
+
+                result.WinPct = pct;
+                result.Frames.Add(new SlotFrame
+                {
+                    Grid = grid, Winning = winning, RunningPct = pct, Drop = true,
+                    Seconds = pct > 0 ? 3.2f : 2.4f,
+                });
+            }
+
+            /// <summary>Line pays plus the stars. Public so the harness can hand it grids it built.</summary>
+            public static long Evaluate(int[] grid, bool[] winning)
+            {
+                long pct = 0;
+
+                foreach (int[] line in Lines)
+                {
+                    int first = grid[line[0]];
+                    if (first == Star) continue;
+
+                    int run = 1;
+                    while (run < 5 && grid[run * 3 + line[run]] == first) run++;
+                    if (run < 3) continue;
+
+                    pct += Pays[first][run - 3];
+                    if (winning != null)
+                        for (int c = 0; c < run; c++) winning[c * 3 + line[c]] = true;
+                }
+
+                int stars = 0;
+                foreach (int s in grid) if (s == Star) stars++;
+
+                if (stars >= 3)
+                {
+                    pct += StarPays[Math.Min(stars, 5) - 3];
+                    if (winning != null)
+                        for (int i = 0; i < grid.Length; i++) if (grid[i] == Star) winning[i] = true;
+                }
+
+                return pct;
+            }
+        }
+
+        // ================================================================ Wrath of the Volcano
+
+        /// <summary>
+        /// Six by five, and a symbol pays if there are eight or more of it anywhere. Winners burst,
+        /// the rest fall, new ones drop in, and it goes again until nothing pays. Lava orbs carry a
+        /// multiplier; when a sequence has paid, every orb still on screen adds into one multiplier
+        /// for the lot. Four volcanoes start fifteen free spins, where the orbs keep adding up.
+        /// </summary>
+        public static class Volcano
+        {
+            public const int Cols = 6, Rows = 5, Cells = Cols * Rows;
+
+            public const int Obsidian = 0, Jade = 1, Amber = 2, Ruby = 3, Pearl = 4, Drum = 5, Mask = 6, Idol = 7, Crown = 8;
+            public const int Peak = 9, Orb = 10;
+            public const int Payers = 9;
+
+            public static readonly string[] Names =
+                { "Obsidian", "Jade", "Amber", "Ruby", "Pearl", "Drum", "Mask", "Idol", "Crown", "Volcano", "Lava orb" };
+
+            /// <summary>Per symbol, 8-9, 10-11 and 12+ anywhere, in hundredths of the bet.</summary>
+            public static readonly int[][] Pays =
+            {
+                new[] { 30, 85, 230 },
+                new[] { 45, 105, 460 },
+                new[] { 55, 115, 575 },
+                new[] { 90, 140, 920 },
+                new[] { 115, 170, 1150 },
+                new[] { 170, 230, 1380 },
+                new[] { 230, 575, 1725 },
+                new[] { 290, 1150, 2875 },
+                new[] { 1150, 2875, 5750 },
+            };
+
+            /// <summary>Volcanoes anywhere on the first drop: 4, 5, 6+, in hundredths of the bet.</summary>
+            public static readonly int[] PeakPays = { 300, 500, 10000 };
+
+            public const int FreeSpins = 15;
+            public const int Retrigger = 5;
+
+            /// <summary>Everything but orbs. Orbs are rolled separately so their rate is one number.</summary>
+            public static readonly int[] Weights = { 300, 280, 260, 240, 220, 170, 150, 130, 100, 36 };
+            static readonly int WeightTotal = Sum(Weights);
+
+            /// <summary>Free spins lean on the low symbols, so the screen pays more often while the orbs pile up.</summary>
+            public static readonly int[] FreeWeights = { 380, 340, 290, 240, 210, 160, 140, 115, 90, 20 };
+            static readonly int FreeTotal = Sum(FreeWeights);
+
+            /// <summary>An orb in this many thousandths of cells, base game and free spins.</summary>
+            public const int OrbPerMille = 12;
+            public const int FreeOrbPerMille = 50;
+
+            public static readonly int[] OrbValues = { 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 50, 100 };
+            public static readonly int[] OrbWeights = { 300, 200, 150, 110, 80, 60, 40, 25, 15, 10, 6, 3, 1 };
+            static readonly int OrbTotal = Sum(OrbWeights);
+
+            public static void Play(ref SlotRng rng, SlotResult result)
+            {
+                var orbs = new int[Cells];
+                var grid = new int[Cells];
+                for (int i = 0; i < Cells; i++) grid[i] = Roll(ref rng, orbs, i, false);
+
+                int peaks = Count(grid, Peak);
+                long total = Sequence(ref rng, result, grid, orbs, 0, -1, 0, out _);
+
+                if (peaks >= 4)
+                {
+                    long scatter = PeakPays[Math.Min(peaks, 6) - 4];
+                    total += scatter;
+                    result.Frames[result.Frames.Count - 1].RunningPct = total;
+
+                    int left = FreeSpins;
+                    result.FreeSpins = FreeSpins;
+                    int running = 0;
+
+                    while (left > 0 && total < MaxWinX * 100L)
+                    {
+                        left--;
+                        orbs = new int[Cells];
+                        grid = new int[Cells];
+                        for (int i = 0; i < Cells; i++) grid[i] = Roll(ref rng, orbs, i, true);
+
+                        if (Count(grid, Peak) >= 3)
+                        {
+                            left += Retrigger;
+                            result.FreeSpins += Retrigger;
+                        }
+
+                        total = Sequence(ref rng, result, grid, orbs, total, left, running, out running);
+                    }
+                }
+
+                result.WinPct = total;
+            }
+
+            static int Roll(ref SlotRng rng, int[] orbs, int cell, bool free)
+            {
+                if (rng.Range(1000) < (free ? FreeOrbPerMille : OrbPerMille))
+                {
+                    orbs[cell] = OrbValues[rng.Pick(OrbWeights, OrbTotal)];
+                    return Orb;
+                }
+
+                orbs[cell] = 0;
+                return free ? rng.Pick(FreeWeights, FreeTotal) : rng.Pick(Weights, WeightTotal);
+            }
+
+            /// <summary>
+            /// One drop and all its tumbles. Returns the running total after it. In free spins,
+            /// <paramref name="freeLeft"/> is not -1 and the orbs of every paying sequence add into
+            /// <paramref name="runningMultiplier"/>, which then multiplies that sequence.
+            /// </summary>
+            static long Sequence(ref SlotRng rng, SlotResult result, int[] grid, int[] orbs,
+                                 long before, int freeLeft, int runningMultiplier, out int runningAfter)
+            {
+                long raw = 0;
+                bool first = true;
+                float pace = freeLeft >= 0 ? 0.75f : 1f;
+
+                while (true)
+                {
+                    var winning = new bool[Cells];
+                    long pays = Evaluate(grid, winning);
+                    raw += pays;
+
+                    var frame = new SlotFrame
+                    {
+                        Grid = (int[])grid.Clone(), Winning = winning, Drop = first, FreeSpinsLeft = freeLeft,
+                        RunningPct = before + raw, Multiplier = runningMultiplier,
+                        Seconds = (first ? 1.6f : 0.9f) * pace,
+                    };
+                    result.Frames.Add(frame);
+                    first = false;
+
+                    if (pays == 0) break;
+                    Tumble(ref rng, grid, orbs, winning, freeLeft >= 0);
+                }
+
+                int orbSum = 0;
+                foreach (int o in orbs) orbSum += o;
+
+                runningAfter = runningMultiplier;
+
+                if (raw > 0 && orbSum > 0)
+                {
+                    int multiplier = freeLeft >= 0 ? (runningAfter += orbSum) : orbSum;
+
+                    // The orbs going off: one more picture, the grid as it settled, with the total.
+                    result.Frames.Add(new SlotFrame
+                    {
+                        Grid = (int[])grid.Clone(), Winning = new bool[Cells], FreeSpinsLeft = freeLeft,
+                        RunningPct = before + raw * multiplier, Multiplier = multiplier, Seconds = 1.4f * pace,
+                    });
+
+                    return before + raw * multiplier;
+                }
+
+                return before + raw;
+            }
+
+            public static long Evaluate(int[] grid, bool[] winning)
+            {
+                var counts = new int[Payers];
+                foreach (int s in grid) if (s < Payers) counts[s]++;
+
+                long pct = 0;
+                for (int s = 0; s < Payers; s++)
+                {
+                    int n = counts[s];
+                    if (n < 8) continue;
+
+                    pct += Pays[s][n >= 12 ? 2 : n >= 10 ? 1 : 0];
+                    if (winning != null)
+                        for (int i = 0; i < grid.Length; i++) if (grid[i] == s) winning[i] = true;
+                }
+
+                return pct;
+            }
+
+            /// <summary>Winners out, everything above falls, new symbols in on top. Orbs and volcanoes fall like anything else.</summary>
+            static void Tumble(ref SlotRng rng, int[] grid, int[] orbs, bool[] winning, bool free)
+            {
+                for (int c = 0; c < Cols; c++)
+                {
+                    int write = Rows - 1;
+                    for (int r = Rows - 1; r >= 0; r--)
+                    {
+                        int i = c * Rows + r;
+                        if (winning[i]) continue;
+
+                        int to = c * Rows + write;
+                        grid[to] = grid[i];
+                        orbs[to] = orbs[i];
+                        write--;
+                    }
+
+                    for (; write >= 0; write--)
+                    {
+                        int i = c * Rows + write;
+                        grid[i] = Roll(ref rng, orbs, i, free);
+                    }
+                }
+            }
+        }
+
+        // ================================================================ Reef Rush
+
+        /// <summary>
+        /// Seven by seven. Five or more of a kind touching edge to edge pay, burst and tumble. Every
+        /// cell a winner bursts out of gets marked; burst out of a marked cell again and it becomes
+        /// a x2 spot, then x4, and so on to x128. A cluster over spots is multiplied by their sum.
+        /// Three pearl chests start free spins, and in free spins the spots never reset.
+        /// </summary>
+        public static class Reef
+        {
+            public const int Cols = 7, Rows = 7, Cells = Cols * Rows;
+
+            public const int Kelp = 0, Shell = 1, Star = 2, Urchin = 3, Puffer = 4, Clown = 5, Octopus = 6, Chest = 7;
+            public const int Payers = 7;
+
+            public static readonly string[] Names =
+                { "Kelp", "Shell", "Starfish", "Urchin", "Pufferfish", "Clownfish", "Octopus", "Pearl chest" };
+
+            /// <summary>What a cluster of 5 of each symbol pays, in hundredths of the bet. Bigger clusters scale it by <see cref="Size"/>.</summary>
+            public static readonly int[] Base = { 60, 75, 95, 120, 180, 240, 360 };
+
+            /// <summary>Scale per cluster size from 5 to 15+, in tenths.</summary>
+            public static readonly int[] Size = { 10, 15, 20, 30, 40, 60, 90, 130, 180, 250, 400 };
+
+            public static readonly int[] FreeSpinsFor = { 10, 12, 15, 20, 30 };
+            public const int MaxSpot = 128;
+
+            public static readonly int[] Weights = { 240, 220, 200, 180, 150, 130, 110, 7 };
+            static readonly int WeightTotal = Sum(Weights);
+            static readonly int[] FreeWeights = { 370, 315, 240, 172, 122, 92, 72, 5 };
+            static readonly int FreeTotal = Sum(FreeWeights);
+
+            public static void Play(ref SlotRng rng, SlotResult result)
+            {
+                var spots = new int[Cells];
+                var grid = new int[Cells];
+                for (int i = 0; i < Cells; i++) grid[i] = rng.Pick(Weights, WeightTotal);
+
+                int chests = Count(grid, Chest);
+                long total = Sequence(ref rng, result, grid, spots, Weights, WeightTotal, 0, -1);
+
+                if (chests >= 3)
+                {
+                    int left = FreeSpinsFor[Math.Min(chests, 7) - 3];
+                    result.FreeSpins = left;
+
+                    // Spots carry over from the triggering spin into the feature, then persist.
+                    while (left > 0 && total < MaxWinX * 100L)
+                    {
+                        left--;
+                        grid = new int[Cells];
+                        for (int i = 0; i < Cells; i++) grid[i] = rng.Pick(FreeWeights, FreeTotal);
+
+                        int more = Count(grid, Chest);
+                        if (more >= 3)
+                        {
+                            int extra = FreeSpinsFor[Math.Min(more, 7) - 3];
+                            left += extra;
+                            result.FreeSpins += extra;
+                        }
+
+                        total = Sequence(ref rng, result, grid, spots, FreeWeights, FreeTotal, total, left);
+                    }
+                }
+
+                result.WinPct = total;
+            }
+
+            static long Sequence(ref SlotRng rng, SlotResult result, int[] grid, int[] spots,
+                                 int[] weights, int weightTotal, long before, int freeLeft)
+            {
+                long running = before;
+                bool first = true;
+                float pace = freeLeft >= 0 ? 0.75f : 1f;
+
+                while (true)
+                {
+                    var winning = new bool[Cells];
+                    long pays = Evaluate(grid, spots, winning);
+                    running += pays;
+
+                    result.Frames.Add(new SlotFrame
+                    {
+                        Grid = (int[])grid.Clone(), Winning = winning, Spots = (int[])spots.Clone(),
+                        RunningPct = running, Drop = first, FreeSpinsLeft = freeLeft,
+                        Seconds = (first ? 1.6f : 0.9f) * pace,
+                    });
+                    first = false;
+
+                    if (pays == 0) break;
+
+                    Mark(spots, winning);
+                    Tumble(ref rng, grid, winning, weights, weightTotal);
+                }
+
+                return running;
+            }
+
+            /// <summary>Every cell that just burst: unmarked becomes marked, marked becomes x2, a multiplier doubles.</summary>
+            public static void Mark(int[] spots, bool[] winning)
+            {
+                for (int i = 0; i < spots.Length; i++)
+                {
+                    if (!winning[i]) continue;
+                    spots[i] = spots[i] == 0 ? 1 : Math.Min(MaxSpot, spots[i] * 2);
+                }
+            }
+
+            /// <summary>
+            /// Every cluster of five or more, each paid its size's rate times the sum of the multiplier
+            /// spots under it (a plain mark is not a multiplier). Spots are read, not changed.
+            /// </summary>
+            public static long Evaluate(int[] grid, int[] spots, bool[] winning)
+            {
+                var seen = new bool[Cells];
+                var stack = new int[Cells];
+                var members = new int[Cells];
+                long pct = 0;
+
+                for (int start = 0; start < Cells; start++)
+                {
+                    if (seen[start]) continue;
+                    int symbol = grid[start];
+                    seen[start] = true;
+                    if (symbol >= Payers) continue;
+
+                    int size = 0, top = 0;
+                    stack[top++] = start;
+
+                    while (top > 0)
+                    {
+                        int i = stack[--top];
+                        members[size++] = i;
+
+                        int c = i / Rows, r = i % Rows;
+                        Push(c - 1, r); Push(c + 1, r); Push(c, r - 1); Push(c, r + 1);
+                    }
+
+                    if (size < 5) continue;
+
+                    int multiplier = 0;
+                    for (int m = 0; m < size; m++)
+                        if (spots != null && spots[members[m]] >= 2) multiplier += spots[members[m]];
+
+                    long pay = (long)Base[symbol] * Size[Math.Min(size, 15) - 5] / 10;
+                    pct += pay * Math.Max(1, multiplier);
+
+                    if (winning != null)
+                        for (int m = 0; m < size; m++) winning[members[m]] = true;
+
+                    void Push(int c, int r)
+                    {
+                        if (c < 0 || c >= Cols || r < 0 || r >= Rows) return;
+                        int j = c * Rows + r;
+                        if (seen[j] || grid[j] != symbol) return;
+                        seen[j] = true;
+                        stack[top++] = j;
+                    }
+                }
+
+                return pct;
+            }
+
+            static void Tumble(ref SlotRng rng, int[] grid, bool[] winning, int[] weights, int weightTotal)
+            {
+                for (int c = 0; c < Cols; c++)
+                {
+                    int write = Rows - 1;
+                    for (int r = Rows - 1; r >= 0; r--)
+                    {
+                        int i = c * Rows + r;
+                        if (winning[i]) continue;
+                        grid[c * Rows + write] = grid[i];
+                        write--;
+                    }
+
+                    for (; write >= 0; write--) grid[c * Rows + write] = rng.Pick(weights, weightTotal);
+                }
+            }
+        }
+    }
+}

@@ -156,6 +156,50 @@ MonoBehaviour:
     PadRaise: 0
     MaxSlope: 0.3
     AllowUnderwater: 0
+  - Id: casino.slots.sevens
+    PrefabPath: Assets/_Project/Prefabs/Stations/SlotSevens.prefab
+    Position: {x: -273.2562, y: -75.584206}
+    Yaw: 82
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 0
+    PadFalloff: 0
+    PadRaise: 0
+    MaxSlope: 0.3
+    AllowUnderwater: 0
+  - Id: casino.slots.volcano
+    PrefabPath: Assets/_Project/Prefabs/Stations/SlotVolcano.prefab
+    Position: {x: -273.09818, y: -76.67279}
+    Yaw: 82
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 0
+    PadFalloff: 0
+    PadRaise: 0
+    MaxSlope: 0.3
+    AllowUnderwater: 0
+  - Id: casino.slots.reef
+    PrefabPath: Assets/_Project/Prefabs/Stations/SlotReef.prefab
+    Position: {x: -272.94016, y: -77.76138}
+    Yaw: 82
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 0
+    PadFalloff: 0
+    PadRaise: 0
+    MaxSlope: 0.3
+    AllowUnderwater: 0
+  - Id: casino.blackjack
+    PrefabPath: Assets/_Project/Prefabs/Stations/BlackjackTable.prefab
+    Position: {x: -270.97604, y: -70.75658}
+    Yaw: 172
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 0
+    PadFalloff: 0
+    PadRaise: 0
+    MaxSlope: 0.3
+    AllowUnderwater: 0
   - Id: village
     PrefabPath: Assets/_Project/Prefabs/World/NativeVillage.prefab
     Position: {x: 130, y: 205}
