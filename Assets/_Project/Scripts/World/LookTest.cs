@@ -39,7 +39,7 @@ namespace EscapeWithYourFriends.World
         static readonly HashSet<string> Painted = new()
         {
             "Wood", "Stone", "Canvas", "Metal", "Accent", "Sand", "Leaf", "WoodDark", "LeafDark",
-            "Felt", "Skin", "Cloth", "Plastic", "Gold", "Dark", "RouletteWheel",
+            "Felt", "Skin", "Cloth", "Plastic", "Gold", "Dark", "RouletteWheel", "Flame",
         };
 
         /// <summary>Renderers wearing one material before the draw calls are worth instancing away.</summary>
@@ -124,7 +124,9 @@ namespace EscapeWithYourFriends.World
 
             // One shader across every kit is what makes two artists' models read as one hand
             // (docs/ART-PLAN.md P6, V6). StyleLook.Apply puts them there; this fails if a generator
-            // ever makes one on URP/Lit again, or the shader failed to compile and fell back.
+            // ever makes one on URP/Lit again, or StyleLook fell back because the shader did not
+            // import. A shader that imports but fails to compile for the player keeps its name, so
+            // that case is the build log's "Shader error in 'EWYF/Stylized'", not this check.
             Debug.Log("[LookTest] shaders: " + string.Join(", ", materials
                 .GroupBy(m => m.shader != null ? m.shader.name : "(none)")
                 .OrderByDescending(g => g.Count())
