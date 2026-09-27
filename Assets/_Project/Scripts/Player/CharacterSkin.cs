@@ -2,6 +2,7 @@ using System;
 using EscapeWithYourFriends.Combat;
 using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.Data;
+using EscapeWithYourFriends.Items;
 using EscapeWithYourFriends.Vehicles;
 using FishNet.Object;
 using UnityEngine;
@@ -82,6 +83,16 @@ namespace EscapeWithYourFriends.Player
         PlayerIdentity _identity;
         NetworkObject _network;
         Health _health;
+        Inventory _inventory;
+
+        // The selected weapon, in the right hand (see Hold).
+        GameObject _held;
+        GameObject _heldPrefab;
+        Transform _heldHand;
+        Renderer[] _heldRenderers = Array.Empty<Renderer>();
+
+        /// <summary>Per body: its right hand in the player's axes, at bind pose.</summary>
+        Quaternion[] _handRest;
 
         // Every transform of every body and its bind pose, captured before anything animates them.
         // Restored under the limp pose, so the bones between the linked ones - spine, neck,
@@ -100,6 +111,9 @@ namespace EscapeWithYourFriends.Player
 
         internal Body[] Bodies => _bodies;
         internal Body Active => _active >= 0 && _active < _bodies.Length ? _bodies[_active] : null;
+
+        /// <summary>The weapon drawn in the hand, if any. The harness reads it.</summary>
+        internal GameObject Held => _held;
 
         /// <summary>Whether the body is following the ragdoll this frame. The harness reads it.</summary>
         internal bool Tracking { get; private set; }
@@ -152,9 +166,19 @@ namespace EscapeWithYourFriends.Player
             TryGetComponent(out _identity);
             TryGetComponent(out _network);
             TryGetComponent(out _health);
+            TryGetComponent(out _inventory);
+
+            // Captured here, before the animator first moves a bone, like _rest above.
+            _handRest = new Quaternion[_bodies.Length];
+            for (int i = 0; i < _bodies.Length; i++)
+            {
+                Transform hand = Hand(_bodies[i]);
+                _handRest[i] = hand != null ? Quaternion.Inverse(transform.rotation) * hand.rotation : Quaternion.identity;
+            }
 
             if (_weapon != null) _weapon.Attacked += OnAttacked;
             if (_identity != null) _identity.IdentityChanged += OnIdentity;
+            if (_inventory != null) _inventory.Changed += Hold;
 
             Show(_identity != null ? _identity.ColorIndex % _bodies.Length : 0);
             _wasAt = transform.position;
@@ -164,6 +188,7 @@ namespace EscapeWithYourFriends.Player
         {
             if (_weapon != null) _weapon.Attacked -= OnAttacked;
             if (_identity != null) _identity.IdentityChanged -= OnIdentity;
+            if (_inventory != null) _inventory.Changed -= Hold;
         }
 
         void OnIdentity(PlayerIdentity identity)
@@ -189,6 +214,59 @@ namespace EscapeWithYourFriends.Player
             _active = index;
             _last = new Quaternion[_bodies[index].Bones.Length];
             _rise = 0f;
+            _hidden = null;
+            Hold();
+        }
+
+        static Transform Hand(Body body)
+            => body.Animator != null && body.Animator.avatar != null && body.Animator.avatar.isHuman
+                ? body.Animator.GetBoneTransform(HumanBodyBones.RightHand)
+                : null;
+
+        /// <summary>
+        /// Draws the selected weapon in the right hand. Read off the replicated inventory, so every peer
+        /// draws everybody's, and nothing new is networked. The model is the weapon's view prefab, the
+        /// one it also wears on the ground; an item that is not a weapon stays in the bag.
+        ///
+        /// It is laid along the player's forward as the hand was at bind pose, then carried by the hand.
+        /// An arm dropping from the T-pose turns about the forward axis, so the weapon rolls about its
+        /// own length and still points ahead.
+        /// </summary>
+        void Hold()
+        {
+            Body body = Active;
+            ItemDef item = _inventory != null && _inventory.SlotCount > 0 ? _inventory.Selected.Def : null;
+            WeaponDef weapon = item != null && WeaponCatalog.Active != null ? WeaponCatalog.Active.ForItem(item) : null;
+            GameObject prefab = weapon != null ? weapon.ViewPrefab : null;
+            Transform hand = body != null ? Hand(body) : null;
+
+            if (prefab == _heldPrefab && hand == _heldHand) return;
+
+            if (_held != null) Destroy(_held);
+            _held = null;
+            _heldPrefab = prefab;
+            _heldHand = hand;
+            _heldRenderers = Array.Empty<Renderer>();
+            if (prefab == null || hand == null) return;
+
+            _held = Instantiate(prefab);
+            _held.name = $"Held ({weapon.Id})";
+
+            // A collider under the hand would join the player's own and catch every ray aimed past it.
+            foreach (Collider collider in _held.GetComponentsInChildren<Collider>(true))
+            {
+                collider.enabled = false;
+                Destroy(collider);
+            }
+            foreach (Rigidbody rigidbody in _held.GetComponentsInChildren<Rigidbody>(true))
+            {
+                rigidbody.isKinematic = true;
+                Destroy(rigidbody);
+            }
+
+            _held.transform.SetPositionAndRotation(hand.position, hand.rotation * Quaternion.Inverse(_handRest[_active]));
+            _held.transform.SetParent(hand, true);
+            _heldRenderers = _held.GetComponentsInChildren<Renderer>(true);
             _hidden = null;
         }
 
@@ -294,6 +372,9 @@ namespace EscapeWithYourFriends.Player
                 if (renderer != null) renderer.shadowCastingMode = mode;
 
             if (body.Band != null) body.Band.shadowCastingMode = mode;
+
+            foreach (Renderer renderer in _heldRenderers)
+                if (renderer != null) renderer.shadowCastingMode = mode;
         }
     }
 }

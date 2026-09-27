@@ -7180,6 +7180,56 @@ pistol is shorter than the cube, so it floats as before.
 
 ---
 
+## The weapon in the hand (#79)
+
+Until now nothing drew a held weapon. `WeaponDef.ViewPrefab` had no reader, so a player with a
+rifle selected looked empty-handed to everybody.
+
+`CharacterSkin.Hold` now draws the selected slot's weapon in the right hand of the body the
+player wears:
+
+- **Which weapon.** It is read off `Inventory`, whose slots and selected index already replicate
+  to every peer. The selected index was replicated for exactly this, as the comment on
+  `_selected` says. The item goes through `WeaponCatalog.ForItem`, and the model is the weapon's
+  `ViewPrefab`: the same dressed prefab it wears on the ground (T12). An item that is not a
+  weapon stays in the bag. Nothing new is networked.
+- **Where.** On the humanoid avatar's `RightHand` bone. `Inventory.Changed` rebuilds it, as does
+  switching bodies.
+- **Which way.** In `Awake`, before the animator first moves a bone, each body's hand is recorded
+  in the player's axes. The weapon is set so that at bind pose it points along the player's
+  forward, then it is parented to the hand.
+  - The arms drop from the T-pose by turning about the forward axis, so the weapon rolls about
+    its own length and still points ahead.
+  - This needs no per-rig numbers, and it works on any body the avatar maps.
+- **Colliders.** Any collider or rigidbody in the prefab is switched off and destroyed. Under the
+  hand, it would join the player's own collider and catch rays aimed past it.
+- **Visibility.** It follows the body's rule: shadow-only for the owner while alive, drawn for
+  everybody else.
+
+**Not done: a first-person view model.** The owner sees their weapon only as a shadow, like
+their own body, because the camera is inside the head. A camera-held model needs its own near
+plane, position and field of view. Those are feel decisions, left for a session that can see
+the screen.
+
+**Harness.** `-skinTest` gives the host the first weapon in the catalog that has a model, and
+selects it. It then checks three things:
+
+- the weapon is drawn under the right hand bone;
+- it is shadow-only, since the host owns it;
+- it has no live collider.
+
+**Not verified.** Type-checked with Roslyn only.
+
+Left for the eye:
+
+- The grip. The prefab's origin is its box's centre, so a rifle is held at its middle.
+- How far the idle and the run clips twist the hand away from "ahead".
+- The roll: a pistol may be held on its side.
+
+Each of these is one offset in `Hold`, once somebody has looked at it.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**

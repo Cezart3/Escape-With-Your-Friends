@@ -4,6 +4,8 @@ using System.Linq;
 using EscapeWithYourFriends.AI;
 using EscapeWithYourFriends.Combat;
 using EscapeWithYourFriends.Core;
+using EscapeWithYourFriends.Data;
+using EscapeWithYourFriends.Items;
 using EscapeWithYourFriends.Net;
 using EscapeWithYourFriends.World;
 using UnityEngine;
@@ -186,6 +188,33 @@ namespace EscapeWithYourFriends.Player
             skin.ForceCarry = false;
             Check($"carrying raises the arms (layer weight {weight:F2}, upper arm {raised:F0} degrees)",
                   weight > 0.9f && raised > 20f);
+
+            // Held: the selected weapon in the right hand, off the replicated inventory.
+            var inventory = player.GetComponent<Inventory>();
+            WeaponCatalog weapons = WeaponCatalog.Active;
+            WeaponDef armed = weapons == null ? null
+                : Enumerable.Range(1, weapons.Count).Select(i => weapons.At((ushort)i))
+                            .FirstOrDefault(d => d != null && d.Item != null && d.ViewPrefab != null);
+            Check("a weapon with a model is in the catalog (run WeaponFactory.Build)", armed != null && inventory != null);
+
+            if (armed != null && inventory != null)
+            {
+                inventory.Add(armed.Item, 1);
+                int slot = Enumerable.Range(0, inventory.SlotCount).FirstOrDefault(s => inventory[s].Def == armed.Item);
+                inventory.ServerSelect(slot);
+                yield return null;
+                yield return null;
+
+                GameObject held = skin.Held;
+                Transform hand = worn.Animator.GetBoneTransform(HumanBodyBones.RightHand);
+                Renderer[] drawn = held != null ? held.GetComponentsInChildren<Renderer>() : Array.Empty<Renderer>();
+                Check($"the selected {armed.Id} is drawn in the right hand",
+                      hand != null && held != null && held.transform.IsChildOf(hand) && drawn.Length > 0);
+                Check("and, like your own body, only as a shadow",
+                      drawn.Length > 0 && drawn.All(r => r.shadowCastingMode == ShadowCastingMode.ShadowsOnly));
+                Check("with no collider of its own",
+                      held != null && held.GetComponentsInChildren<Collider>().All(c => !c.enabled));
+            }
 
             // The NPCs (T10): the barman on one island, the castaway on the other, natives if on.
             NpcSkin[] npcs = NpcSkin.Live.Where(n => n != null).ToArray();
