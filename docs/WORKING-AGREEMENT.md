@@ -184,14 +184,14 @@ or `island2`, `-quitAfter <seconds>`, `-noNatives`, `-noAnimals`, `-botMove`, `-
 ### The test flags
 
 ```
--abductTest   -achievementTest -animalTest  -audioTest    -boatTest      -buffTest    -carryTest
--carTest
+-abductTest   -achievementTest -animalTest  -audioTest    -blackjackTest -boatTest    -buffTest
+-carryTest   -carTest
 -casinoTest   -chestTest   -chipsTest    -conditionTest -craftTest   -deathTest
 -demoTest    -drunkTest   -economyTest -endTest      -fallTest      -fishTest    -flightTest
 -ghostTest    -gunTest     -hudTest      -impactTest    -invTest     -itemTest     -lookTest
 -lootTest     -machineTest -meleeTest    -menuTest      -moneyTest   -nativeTest   -partTest
 -planeTest    -prisonTest  -rescueTest   -reviveTest    -rouletteTest -saveTest
--settingsTest -shopTest    -statTest     -uiTest        -upgradeTest -vehicleTest
+-settingsTest -shopTest    -slotTest     -statTest      -uiTest      -upgradeTest  -vehicleTest
 -vehicleUpgradeTest        -voiceTest    -voyageTest    -weaponTest
 ```
 

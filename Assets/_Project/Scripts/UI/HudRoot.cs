@@ -44,6 +44,9 @@ namespace EscapeWithYourFriends.UI
         readonly FishingBar _fishing = new();
         readonly InventoryScreen _inventory = new();
         readonly CasinoBoard _casino = new();
+        readonly SlotBoard _slots = new();
+        readonly BlackjackBoard _blackjack = new();
+        readonly WinBanner _win = new();
         readonly EndingPanel _ending = new();
         readonly SettingsScreen _settings = new();
 
@@ -101,6 +104,9 @@ namespace EscapeWithYourFriends.UI
             _purse.Build(root);
             _fishing.Build(root);
             _casino.Build(root);
+            _slots.Build(root);
+            _blackjack.Build(root);
+            _win.Build(root);
             _ending.Build(root);
 
             // Its own canvas, above this one, and the only one in the game with a raycaster on it.
@@ -137,8 +143,20 @@ namespace EscapeWithYourFriends.UI
 
                 // Off the camera rather than the body: it is what the player is actually looking
                 // through, and it survives the body being replaced by a ghost and back (#26).
-                _casino.Refresh(_camera != null ? CasinoBoard.Nearest(_camera.transform.position) : null,
+                // A cabinet within arm's reach takes the top of the screen from the roulette board,
+                // whose reach covers the whole room.
+                // The blackjack table the same way, between the two.
+                Casino.SlotMachine slot = _camera != null ? SlotBoard.Nearest(_camera.transform.position) : null;
+                _slots.Refresh(slot, local.Purse);
+                Casino.BlackjackTable blackjack = _camera != null && slot == null
+                    ? BlackjackBoard.Nearest(_camera.transform.position)
+                    : null;
+                _blackjack.Refresh(blackjack, local.Purse);
+                _casino.Refresh(_camera != null && slot == null && blackjack == null
+                                    ? CasinoBoard.Nearest(_camera.transform.position)
+                                    : null,
                                 local.Purse);
+                _win.Refresh(_camera);
 
                 // Last, so it covers the rest of the HUD rather than sharing the screen with it.
                 _ending.Refresh();

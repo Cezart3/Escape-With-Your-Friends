@@ -326,6 +326,8 @@ namespace EscapeWithYourFriends.Net
             Casino.RouletteTest.Begin();
             Casino.CasinoTest.Begin();
             Casino.DrunkTest.Begin();
+            Casino.SlotTest.Begin();
+            Casino.BlackjackTest.Begin();
             Player.SurvivalTest.Begin();
             Player.BuffTest.Begin();
             World.Island2Test.Begin();
@@ -350,6 +352,8 @@ namespace EscapeWithYourFriends.Net
             if (args.ConnectionState != LocalConnectionState.Started) return;
 
             Casino.RouletteTest.Begin();
+            Casino.SlotTest.Begin();
+            Casino.BlackjackTest.Begin();
             World.PlaneTest.Begin();
             AchievementTest.Begin();
             World.DemoTest.Begin();
