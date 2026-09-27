@@ -27,7 +27,6 @@ Kenney: www.kenney.nl · https://www.kenney.nl/donate
 
 | Asset | Author | Source | Licence | For |
 |---|---|---|---|---|
-| Modular Cave Kit | Kenney | https://kenney.nl/assets/modular-cave-kit | CC0 1.0 | The cave mouth |
 | Watercraft Pack | Kenney | https://kenney.nl/assets/watercraft-pack | CC0 1.0 | The boat |
 | Car Kit | Kenney | https://kenney.nl/assets/car-kit | CC0 1.0 | The buggy |
 | Weapon Pack | Kenney | https://kenney.nl/assets/weapon-pack | CC0 1.0 | Firearms, knife |

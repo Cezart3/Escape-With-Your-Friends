@@ -154,6 +154,10 @@ Other editor entry points, same shape, different `-executeMethod`:
   actions asset. **Required whenever you add or rename an action.**
 - The island, POIs, shop stock, sky, item and native catalogues each have a factory under
   `Scripts/Editor/`. Content is generated, never hand-placed.
+- Third-party art (`docs/ART-PLAN.md`): `ArtExtract.Run -artZips <folder>` copies the catalogued
+  files out of the downloaded kits, then `ArtLibrary.BuildAll` imports and reports them. Both before
+  any bake. `RenderTuning.Apply` writes the URP tiers, SSAO included; `CasinoFactory.Build` dresses
+  the roulette table in place.
 
 ### Running a harness
 
@@ -221,7 +225,7 @@ Logging flags that make a failure readable: `-animalLog`, `-cameraLog`, `-clockL
 
 ### Ports
 
-One port per concurrent process, never reused inside a session. **Consumed through 8181.** See §5
+One port per concurrent process, never reused inside a session. **Consumed through 8190.** See §5
 for the split when two accounts are running.
 
 ---

@@ -97,6 +97,7 @@ namespace EscapeWithYourFriends.EditorTools
             Cylinder(root, "Fire.Ring", "Stone", new Vector3(0f, 0.12f, 0f), new Vector3(2f, 0.12f, 2f), solid: false);
             Box(root, "Fire.Logs", "Wood", new Vector3(0f, 0.3f, 0f), new Vector3(0.9f, 0.3f, 0.9f), solid: false);
 
+            DressBaseCamp(root);
             return root;
         }
 
@@ -131,6 +132,7 @@ namespace EscapeWithYourFriends.EditorTools
                     new Vector3(0.5f, 0.5f, 0.5f), solid: false);
 
             Empty(root, "NpcStand", new Vector3(0f, 0f, -0.4f));
+            DressShop(root);
             return root;
         }
 
@@ -232,7 +234,232 @@ namespace EscapeWithYourFriends.EditorTools
 
             Empty(root, "TableSeat", new Vector3(0f, 0f, 1.6f));
             Empty(root, "BarNpcStand", new Vector3(-2.6f, 0f, -3.62f));
+
+            DressCasino(root);
             return root;
+        }
+
+        /// <summary>
+        /// The art pass on the shack (docs/ART-PLAN.md §4). It runs after the blockout rather than
+        /// instead of it, so every box above is still the layout: CasinoTest still finds a floor, a
+        /// roof, three walls and a doorway it can measure, and the NavMesh still bakes from the same
+        /// colliders. What changes is what you see - plank floors and walls, a thatched roof, a real
+        /// bar with real stools, a string of coloured bulbs where the bottle chandelier hung.
+        ///
+        /// When the kits have not been extracted yet, every call below logs what is missing and
+        /// leaves that box as it was, so a greybox build still works on a machine without the art.
+        /// </summary>
+        static void DressCasino(GameObject root)
+        {
+            Transform t = root.transform;
+
+            if (ArtDress.Tile(Child(t, "Floor"), "Floor", 2.2f))
+                for (int i = 0; i < 5; i++) ArtDress.Strip(Child(t, $"Floor.Plank{i}"));
+
+            // One floor tile, stood on its edge, is a plank wall. ArtDress turns it to face the wall.
+            foreach (string wall in new[] { "Wall.Back", "Wall.Left", "Wall.Right", "Wall.FrontLeft",
+                                            "Wall.FrontRight", "Door.Lintel" })
+                ArtDress.Tile(Child(t, wall), "Floor", 1.6f);
+
+            // The pitched slabs keep their colliders and lose their looks under a thatch fitted over
+            // the whole footprint. The thatch's own corner posts land just inside the wall corners.
+            Transform roof = t.Find("Roof");
+            if (roof != null && ArtDress.FitBox(t, new Bounds(new Vector3(0f, 2.7f, -1f), new Vector3(10f, 5.4f, 7.4f)),
+                                                "ThatchRoof", false, "Roof.Art"))
+                foreach (Transform slab in roof) ArtDress.Strip(slab.gameObject);
+
+            // The counter replaces the plank and its front as one run of three.
+            if (ArtDress.TileBox(t, new Bounds(new Vector3(-2.6f, 0.55f, -3.06f), new Vector3(3f, 1.1f, 0.78f)),
+                                 "BarCounter", 1f, "Counter.Art"))
+            {
+                ArtDress.Strip(Child(t, "Bar"));
+                ArtDress.Strip(Child(t, "Bar.Front"));
+            }
+
+            for (int i = 0; i < 6; i++) ArtDress.Fit(Child(t, $"Bar.Bottle{i}"), "Bottle", keepShape: true);
+
+            for (int i = 0; i < 4; i++)
+            {
+                if (ArtDress.Fit(Child(t, $"Stool{i}"), "BarStool", keepShape: true))
+                    ArtDress.Strip(Child(t, $"Stool{i}.Cushion"));
+            }
+
+            if (ArtDress.TileBox(t, new Bounds(new Vector3(0f, 3f, -1f), new Vector3(7f, 0.35f, 0.1f)),
+                                 "StringLights", 2.4f, "Lights.Art"))
+                ArtDress.Strip(Child(t, "Chandelier.Line"));
+
+            for (int i = 0; i < 7; i++) ArtDress.Fit(Child(t, $"Chandelier.Bottle{i}"), "Bottle", keepShape: true);
+
+            // The board over the door, still crooked: the angle is the piece's, the planks are new.
+            ArtDress.Tile(Child(t, "Sign"), "FloorOld", 10f);
+
+            // Clutter, with no collider and nothing a test counts: a crate of bottles past the end of
+            // the bar and a lamp either side of the door.
+            ArtDress.FitBox(t, new Bounds(new Vector3(-0.4f, 0.55f, -3.3f), new Vector3(1.1f, 1.1f, 1.3f)),
+                            "CrateBottles", true, "Decor.Crate");
+            ArtDress.FitBox(t, new Bounds(new Vector3(2.1f, 0.9f, 2.6f), new Vector3(0.6f, 1.8f, 0.6f)),
+                            "Lantern", true, "Decor.LanternR");
+            ArtDress.FitBox(t, new Bounds(new Vector3(-2.1f, 0.9f, 2.6f), new Vector3(0.6f, 1.8f, 0.6f)),
+                            "Lantern", true, "Decor.LanternL");
+        }
+
+        /// <summary>
+        /// Home: a canvas shelter on four posts, two bedrolls, a storage box, two workbenches and a
+        /// fire pit, each where its box was. Same rules as <see cref="DressCasino"/>.
+        /// </summary>
+        static void DressBaseCamp(GameObject root)
+        {
+            Transform t = root.transform;
+
+            if (ArtDress.FitBox(t, new Bounds(new Vector3(-4f, 1.35f, 0f), new Vector3(5f, 2.75f, 5f)),
+                                "Canvas", false, "Shelter.Art"))
+            {
+                ArtDress.Strip(Child(t, "Shelter.Roof"));
+                for (int i = 0; i < 4; i++) ArtDress.Strip(Child(t, $"Shelter.Post{i}"));
+            }
+
+            ArtDress.Fit(Child(t, "Shelter.Mat0"), "Bedroll");
+            ArtDress.Fit(Child(t, "Shelter.Mat1"), "Bedroll");
+
+            // The box is long across x and the kit's is long across z: a quarter turn, not a stretch.
+            if (ArtDress.Fit(Child(t, "Storage"), "BoxLarge", quarterTurns: 1))
+                ArtDress.Strip(Child(t, "Storage.Lid"));
+
+            if (ArtDress.TileBox(t, new Bounds(new Vector3(3.5f, 0.5f, 2.5f), new Vector3(2.6f, 1f, 1.1f)),
+                                 "Workbench", 1.3f, "Bench.Art"))
+            {
+                ArtDress.Strip(Child(t, "Bench"));
+                ArtDress.Strip(Child(t, "Bench.Vice"));
+                for (int i = 0; i < 4; i++) ArtDress.Strip(Child(t, $"Bench.Leg{i}"));
+            }
+
+            if (ArtDress.FitBox(t, new Bounds(new Vector3(0f, 0.2f, 0f), new Vector3(2f, 0.4f, 2f)),
+                                "CampfirePit", true, "Fire.Art"))
+            {
+                ArtDress.Strip(Child(t, "Fire.Ring"));
+                ArtDress.Strip(Child(t, "Fire.Logs"));
+            }
+        }
+
+        /// <summary>
+        /// The trader's stall: plank walls on three sides and open at the front, because the trader
+        /// stands inside the hut's box and a fourth wall would hide him. Thatch over it, a run of
+        /// counters in front, stock on the shelf.
+        /// </summary>
+        static void DressShop(GameObject root)
+        {
+            Transform t = root.transform;
+
+            bool walls = ArtDress.TileBox(t, new Bounds(new Vector3(0f, 1.4f, -3.1f), new Vector3(6f, 2.8f, 0.2f)),
+                                          "Floor", 1.6f, "Hut.Back");
+            walls &= ArtDress.TileBox(t, new Bounds(new Vector3(-2.9f, 1.4f, -1.6f), new Vector3(0.2f, 2.8f, 3.2f)),
+                                      "Floor", 1.6f, "Hut.Left");
+            walls &= ArtDress.TileBox(t, new Bounds(new Vector3(2.9f, 1.4f, -1.6f), new Vector3(0.2f, 2.8f, 3.2f)),
+                                      "Floor", 1.6f, "Hut.Right");
+            if (walls) ArtDress.Strip(Child(t, "Hut"));
+
+            Transform roof = t.Find("Roof");
+            if (roof != null && ArtDress.FitBox(t, new Bounds(new Vector3(0f, 2.15f, -1.4f), new Vector3(7.4f, 4.3f, 4.8f)),
+                                                "ThatchRoof", false, "Roof.Art"))
+                foreach (Transform slab in roof) ArtDress.Strip(slab.gameObject);
+
+            if (ArtDress.TileBox(t, new Bounds(new Vector3(0f, 0.55f, 0.64f), new Vector3(5f, 1.1f, 0.9f)),
+                                 "BarCounter", 1f, "Counter.Art"))
+            {
+                ArtDress.Strip(Child(t, "Counter"));
+                ArtDress.Strip(Child(t, "Counter.Front"));
+            }
+
+            ArtDress.Tile(Child(t, "Sign"), "FloorOld", 10f);
+
+            string[] stock = { "Barrel", "Box", "Bottle" };
+            for (int i = 0; i < 3; i++) ArtDress.Fit(Child(t, $"Stock{i}"), stock[i], keepShape: true);
+        }
+
+        /// <summary>
+        /// Log palisade huts under thatch, a totem of stacked trunks with a log for arms, and a fire
+        /// pit. The huts stay solid boxes to the physics: nobody goes inside a native hut.
+        /// </summary>
+        static void DressVillage(GameObject root)
+        {
+            Transform t = root.transform;
+
+            for (int i = 0; i < 5; i++)
+            {
+                GameObject hut = Child(t, $"Hut{i}");
+                if (hut == null) continue;
+
+                Vector3 c = hut.transform.localPosition;
+                bool walls = true;
+
+                // Four walls, each a thin box on one face of the hut, tiled with palisade logs.
+                walls &= ArtDress.TileBox(t, new Bounds(c + new Vector3(0f, 0f, 1.9f), new Vector3(4f, 2.6f, 0.2f)),
+                                          "Palisade", 2f, $"Hut{i}.WallN");
+                walls &= ArtDress.TileBox(t, new Bounds(c + new Vector3(0f, 0f, -1.9f), new Vector3(4f, 2.6f, 0.2f)),
+                                          "Palisade", 2f, $"Hut{i}.WallS");
+                walls &= ArtDress.TileBox(t, new Bounds(c + new Vector3(1.9f, 0f, 0f), new Vector3(0.2f, 2.6f, 4f)),
+                                          "Palisade", 2f, $"Hut{i}.WallE");
+                walls &= ArtDress.TileBox(t, new Bounds(c + new Vector3(-1.9f, 0f, 0f), new Vector3(0.2f, 2.6f, 4f)),
+                                          "Palisade", 2f, $"Hut{i}.WallW");
+                if (walls) ArtDress.Strip(hut);
+
+                // The box centre is 1.3m up; the thatch's box runs from the ground to 4.7m.
+                if (ArtDress.FitBox(t, new Bounds(c + new Vector3(0f, 1.05f, 0f), new Vector3(5f, 4.7f, 5f)),
+                                    "ThatchRoof", false, $"Hut{i}.Thatch"))
+                    ArtDress.Strip(Child(t, $"Hut{i}.Roof"));
+            }
+
+            ArtDress.Tile(Child(t, "Totem"), "Stump", 1.6f);
+            ArtDress.Fit(Child(t, "Totem.Arms"), "Log", quarterTurns: 1);
+
+            if (ArtDress.FitBox(t, new Bounds(new Vector3(0f, 0.2f, 3f), new Vector3(2.4f, 0.4f, 2.4f)),
+                                "CampfirePit", true, "Fire.Art"))
+                ArtDress.Strip(Child(t, "Fire"));
+        }
+
+        /// <summary>
+        /// Kenney's wreck, hung under the hull box so it keeps the hull's 28 degree list. It is taller
+        /// than the box - the box was a hull, the model has its masts - so it is fitted by footprint
+        /// and allowed to rise, standing on the hull's floor.
+        /// </summary>
+        static void DressWreck(GameObject root)
+        {
+            Transform t = root.transform;
+            GameObject hull = Child(t, "Hull");
+
+            // Hull-local units: the box is 4.5 x 3 x 14. 10.1m of wreck is 3.37 of the hull's units.
+            if (hull != null && ArtDress.FitBox(hull.transform, new Bounds(new Vector3(0f, 1.18f, 0f),
+                                                                           new Vector3(1f, 3.37f, 1f)),
+                                                "Wreck", true, "Art"))
+            {
+                ArtDress.Strip(hull);
+                ArtDress.Strip(Child(t, "Deck"));
+            }
+
+            ArtDress.Fit(Child(t, "Mast"), "Log");
+
+            string[] debris = { "Crate", "PirateBarrel", "RowBoat", "Crate" };
+            for (int i = 0; i < 4; i++) ArtDress.Fit(Child(t, $"Debris{i}"), debris[i], keepShape: true);
+        }
+
+        /// <summary>
+        /// Rock masses stretched over the stone boxes, which is what the boxes were standing in for.
+        /// The inside - floor, ceiling, the ore - stays greybox: it is dark in there.
+        /// </summary>
+        static void DressCave(GameObject root)
+        {
+            Transform t = root.transform;
+
+            foreach (string rock in new[] { "Rock.Left", "Rock.Right", "Rock.Lintel", "Rock.Back" })
+                ArtDress.Fit(Child(t, rock), "Rocks");
+        }
+
+        /// <summary>A direct child by name, or an error naming the landmark - a renamed box is a layout change.</summary>
+        static GameObject Child(Transform root, string name)
+        {
+            Transform child = root.Find(name);
+            if (child == null) Debug.LogError($"[GreyboxBuilder] {root.name} has no '{name}' to dress.");
+            return child != null ? child.gameObject : null;
         }
 
         /// <summary>
@@ -286,6 +513,7 @@ namespace EscapeWithYourFriends.EditorTools
 
             // Where the prison goes in #108. Marked now so the layout does not have to change later.
             Empty(root, "PrisonSite", new Vector3(0f, 0f, -6f));
+            DressVillage(root);
             return root;
         }
 
@@ -313,6 +541,7 @@ namespace EscapeWithYourFriends.EditorTools
                 Box(root, $"Debris{i}", "Metal", new Vector3(-5f + i * 2.4f, 0.3f, 6f + (i % 2) * 2f),
                     new Vector3(1.2f, 0.6f, 1.2f), solid: false);
 
+            DressWreck(root);
             return root;
         }
 
@@ -340,6 +569,7 @@ namespace EscapeWithYourFriends.EditorTools
             Box(root, "Ore", "Accent", new Vector3(1.6f, 0.6f, -4f), new Vector3(1.2f, 1.2f, 1.2f), solid: false);
 
             Empty(root, "Shelter", new Vector3(0f, 0f, -2f));
+            DressCave(root);
             return root;
         }
 

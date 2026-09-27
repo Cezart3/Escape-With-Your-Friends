@@ -148,7 +148,7 @@ provenance record.
 | K5 | Castle Kit (2.0) | Kenney | https://kenney.nl/assets/castle-kit | CC0 1.0 | VERIFIED: its `License.txt` is the one quoted in §1 | P1 |
 | K6 | Furniture Kit (140) | Kenney | https://kenney.nl/assets/furniture-kit | CC0 1.0 | VERIFIED via mirror | P1 |
 | K7 | Holiday Kit (99) | Kenney | https://kenney.nl/assets/holiday-kit | CC0 1.0 | VERIFIED via mirror | P1 |
-| K8 | Modular Cave Kit (40) | Kenney | https://kenney.nl/assets/modular-cave-kit | CC0 1.0 | VERIFIED via mirror; page slug LOCAL | P2 |
+| K8 | Modular Cave Kit (40) | Kenney | https://kenney.nl/assets/modular-cave-kit | CC0 1.0 | VERIFIED via mirror | **dropped**: see the cave row in §4 |
 | K9 | Watercraft Pack (46) | Kenney | https://kenney.nl/assets/watercraft-pack | CC0 1.0 | VERIFIED via mirror | P4 |
 | K10 | Car Kit (50) | Kenney | https://kenney.nl/assets/car-kit | CC0 1.0 | VERIFIED via mirror | P4 |
 | K11 | Weapon Pack | Kenney | https://kenney.nl/assets/weapon-pack | CC0 1.0 | VERIFIED via mirror; page slug LOCAL | P4 |
@@ -242,19 +242,21 @@ There are two helpers (`ArtDress`, §8 T5):
 | | Storage (+Lid) | survival/box-large | Fit |
 | | Bench (+legs, vice) | survival/workbench | Fit |
 | | Fire.Ring / Fire.Logs | survival/campfire-pit | Fit |
-| **Shop** | Hut + Roof | pirate/structure + pirate/structure-roof | Fit |
+| **Shop** | Hut | survival/floor planks on the back and sides, open at the front (the trader stands inside the hut's box) | Tile |
+| | Roof | pirate/structure-roof | Fit |
 | | Counter, Counter.Front | furniture/kitchenBar ×3 | Tile |
 | | Stock0..n | survival/barrel, box, bottle (cycled) | Fit |
 | | Sign | survival/signpost | Fit |
-| **NativeVillage** | Hut0..4 + roofs | pirate/structure + pirate/structure-roof (stilt hut with thatch) | Fit |
+| **NativeVillage** | Hut0..4 | survival/fence-fortified palisade on all four faces. Not the pirate stilt frame: it is see-through, and the hut is a solid box to the physics | Tile |
+| | Hut0..4.Roof | pirate/structure-roof | Fit |
 | | Totem (+arms) | survival/tree-trunk ×3, stacked | Tile, vertical |
 | | Fire | survival/campfire-stand | Fit |
 | | — (new) | survival/fence-fortified palisade on the village edge | Decor, P2 |
-| **Wreck** | Hull, Deck, Mast | pirate/ship-wreck (2 282 tris) | Fit the hull box; deck and mast hidden |
+| **Wreck** | Hull, Deck | pirate/ship-wreck (2 282 tris) | Fitted by footprint under the hull, keeping its 28° list; taller than the box because it has masts |
+| | Mast (fallen) | survival/tree-log | Fit |
 | | Debris0..3 | pirate/crate, barrel, boat-row-small | Fit |
-| **Cave** | Rock.Left/Right/Lintel | modular-cave/gate-rock (the mouth) | Fit over the three boxes |
-| | Rock.Back, Room.* | pirate/rocks-a | Fit |
-| | Ore | pirate/rocks-sand-b tinted `Accent` | Fit |
+| **Cave** | Rock.Left/Right/Lintel/Back | pirate/rocks-a | Fit, one each. Not modular-cave/gate-rock: its arch opening, stretched over the mouth, would be twice the 3 m gap the colliders leave |
+| | Room.*, Ore | unchanged | It is dark in there |
 
 ### Stations and props — P2
 
@@ -304,7 +306,7 @@ Remapping an artist's colours onto fifteen programmer colours is exactly how the
 
 | Source | Material | Count |
 |---|---|---|
-| Kenney kits with `colormap.png` (all P1–P2 kits except furniture) | One `Kenney_<Kit>.mat` per kit: URP/Lit, `_BaseMap` = the kit's colormap, smoothness 0.1, instancing on. Every slot named `colormap` in that kit's FBX is remapped to it. | 7 in P1–P2 (pirate, survival, platformer, coaster, castle, holiday, cave) |
+| Kenney kits with `colormap.png` (all P1–P2 kits except furniture) | One `Kenney_<Kit>.mat` per kit: URP/Lit, `_BaseMap` = the kit's colormap, smoothness 0.1, instancing on. Every slot named `colormap` in that kit's FBX is remapped to it. | 6 in P1–P2 (pirate, survival, platformer, coaster, castle, holiday) |
 | Kenney flat-colour kits (furniture, weapon) | One `Flat_<RRGGBB>.mat` per **distinct colour** across the whole ThirdParty folder, deduplicated. Same `AddRemap` mechanism `ModelLibrary` already uses. | ≈6–10 |
 | Quaternius characters | One per character texture, shared by all four variants where the texture is shared | ≤ 4 |
 | `Palette` (Greybox) | Stays, for what is still a primitive: bet spots, markers, the revive machine, the tracer, UI-facing pieces | ≤ 15 |
@@ -503,9 +505,14 @@ C#. **Sonnet** marks work concrete enough to delegate: Sonnet writes to the spec
 every Sonnet diff before it is committed. Nothing here edits a `.unity`, `.prefab` or `.asset` by
 hand.
 
+**Status after the first session:** T1–T6 written, plus T7 (all six landmarks). Nothing is
+compiled or run: the build machine has no Unity and could not download a kit. T8 onward is not
+started.
+
 ### P1 — the most visible: nature, lighting, casino
 
-**T0 · You, locally · download.** Browser, into `D:\Downloads\ewyf-art\`: K1–K7 (P1), K8 (P2).
+**T0 · You, locally · download.** Browser, into `D:\Downloads\ewyf-art\`: K1–K7. That is
+all of P1 and the landmarks of P2.
 Any zip name works; the extractor matches on the kit name. Open each `License.txt` and check it
 says CC0.
 

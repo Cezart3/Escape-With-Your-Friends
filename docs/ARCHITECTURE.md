@@ -6702,6 +6702,94 @@ This does not close #78. It closes the half of it that does not need a person to
 
 ---
 
+## Somebody else's models, and which way is up (#76, #78, #79)
+
+The playtest verdict on the first art pass was that carrying works and the look does not: trees
+"drawn in Paint", people "like Mario in 1990". Everything was procedural geometry or a Blender
+script's idea of a tree, painted from fifteen programmer colours. The acceptance is a human one -
+does it look made by artists, on a Radeon 760M at 60 fps - so this section records the machinery
+and the decisions, and `docs/ART-PLAN.md` holds the full argument, the licence table and the task
+list.
+
+**Kenney for everything static, Quaternius for people.** The build machine could not open any
+asset site, only GitHub. Kenney's whole library exists there as a CC0 mirror, so every model this
+pass uses was parsed for triangles, materials and size, and rendered and looked at, before it was
+chosen. No Quaternius file could be checked, and its people are the one thing Kenney cannot supply,
+so that is the only thing taken from it. The characters are designed in the plan (§6) and not built
+yet.
+
+**Four editor files, one direction.**
+
+| File | Job |
+|---|---|
+| `ArtCatalog` | Every model the game uses: id, kit, file, category, size in metres, whether it stands. |
+| `ArtExtract` | Copies exactly those files, plus each kit's colormap and **its own `License.txt`**, out of the zips you downloaded. Fails listing anything missing, with the nearest names in the zip. |
+| `ArtLibrary` | Imports them: one shared material per kit, scaled to the catalogue size, checked upright; builds the terrain tree prototypes. Replaces `ModelLibrary`. |
+| `ArtDress` | Hangs models on the greybox: `Fit` one model in a box, `Tile` a module across one. |
+
+The extractor exists because "somebody unzipped it into Assets" is a folder nobody can state the
+contents or the licence of. This one holds the catalogue and nothing else, and the licence file
+beside each kit is the one from the zip, not a claim about a web page.
+
+**The axis story, again.** The Blender pipeline shipped a forest lying on its back: its export was
+already Y-up, and "bake axis conversion" applied a second rotation. It was caught only because the
+importer logged bounds. Third-party kits are exported however their authors exported them, so this
+time nothing is assumed:
+
+- a model marked upright is measured after import, and if it lies down it is re-imported with
+  the other `bakeAxisConversion`; if it still lies down that is an error naming the file;
+- the setting a kit's trees prove is applied to the rest of that kit, because a bottle cannot
+  prove which way is up and was exported the same way as the palm;
+- `-lookTest` now checks it at run time too, on the terrain's tree prototypes, which it never
+  used to see at all.
+
+**Materials: the kit's atlas, not the palette.** Every current Kenney kit paints every model
+from one 512² `colormap.png`, so every slot in a kit is remapped to one `Kenney_<Kit>` material.
+Snapping the artist's colours onto `Palette` would have been the one-line change and the wrong
+one: fifteen programmer colours are how the island got its look. The one flat-coloured kit
+(furniture) gets a `Flat_<RRGGBB>` material per distinct colour, shared across kits. Colormaps
+import without mipmaps and uncompressed: a mip or a compression block of a swatch sheet averages
+neighbouring swatches, and a distant palm turns the colour of the rock beside it on the sheet.
+`Palette` stays, for what is still a primitive: bet spots, markers, the revive machine.
+
+**The greybox stays the layout.** `ArtDress` never moves a box. The box keeps its name, its
+collider and its transform; only its renderer goes, and the model hangs under it in an unscaled
+wrapper whose own scale does the fitting, so the model's root keeps the rotation and unit scale its
+importer gave it. That is why `-casinoTest` still measures the same doorway, the NavMesh (baked
+from colliders) is unchanged, and the POI validation sees the same footprints. Turns are quarter
+turns only: under a stretched parent, a quarter turn permutes the stretch and anything else
+shears. A box is stripped only after its model is in, so a machine without the kits builds the
+old greybox rather than an invisible building.
+
+A wall is a floor tile stood on its edge. `Tile` turns the module so its thinnest side faces the
+box's thinnest side, then grids it across the other two, which is how one Kenney plank tile is the
+casino's floor, its five walls and its sign.
+
+**Lighting.** SSAO is a renderer feature written by `RenderTuning` on Medium and High, never Low.
+On Medium it runs after opaque, from depth alone, at half resolution with four samples, because the
+before-opaque mode needs a depth prepass an iGPU cannot pay for. HDR is now on for Medium: URP 17
+renders it into 32-bit R11G11B10, the same bandwidth as LDR, and without it the ACES curve had
+nothing to roll off and the bloom threshold could never be crossed. And `PostProcess` now switches
+post-processing on for the camera. Until now only `DrunkVision` did, so the global grade appeared
+the moment somebody got drunk and not before.
+
+**Measured.** Nothing yet. The build machine has no Unity and could not download a kit. The
+first run on the real machine prints, and belongs here:
+
+```
+[ArtExtract]   Copied N model(s) into Assets/_Project/Art/ThirdParty, 0 missing.
+[ArtLibrary]   48 of 48 models ready, 0 failed.
+[RenderTuning] SSAO on URP_Medium_Renderer (after opaque, depth, half res, 4 samples, Kawase).
+[LookTest]     N passed, 0 failed.
+[CasinoTest]   N passed, 0 failed.
+```
+
+**Left out on purpose:** the people (ART-PLAN §6, the riskiest part, and built on files nobody
+could open from here); stations, animals, vehicles, weapons and the plane (P2 and P4 in the plan);
+grass, which stays a billboard; an HDRI, which a 20-minute day cycle cannot use (§7).
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**
