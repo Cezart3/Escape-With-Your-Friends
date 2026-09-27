@@ -7133,7 +7133,7 @@ without which a pine thins to bare branches at forty metres. Painted textures ge
 1024 cap; swatch atlases still get neither.
 
 **The "FBX (Unity)" folder.** Quaternius ships a second FBX export made for Unity. `ArtExtract.Pick`
-prefers a path that says "unity" over one that says "fbx". The up-axis check still runs on it.
+prefers a path under "FBX (Unity)" over one that says "fbx". The up-axis check still runs on it.
 
 **The licence the zip does not carry.** Quaternius's downloads are Google Drive folders, and Drive
 zips the pirate kit as `drive-download-<date>.zip` with no licence file. `Pack.LicenceNote` lets
