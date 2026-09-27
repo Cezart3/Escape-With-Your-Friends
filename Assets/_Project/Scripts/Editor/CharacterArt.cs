@@ -349,7 +349,7 @@ namespace EscapeWithYourFriends.EditorTools
                 }
             }
 
-            Material material = ArtLibrary.NewLit($"Quaternius_{slot}");
+            Material material = StyleLook.New($"Quaternius_{slot}");
             material.SetFloat("_Smoothness", 0.18f);
 
             if (texture != null)

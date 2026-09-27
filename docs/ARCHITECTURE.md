@@ -1904,7 +1904,6 @@ the island byte for byte.
 The splatmap hash did not move across that experiment, and that is right rather than suspicious — the
 wreck's pad was underwater, where the ground is seabed sand at any height and nothing grows.
 
-
 ### Six landmarks, as boxes
 
 #36 asks for blockouts of the six places that make the island a place rather than a heightmap, with
@@ -1988,7 +1987,6 @@ That the buildings look like buildings, and that a player can get *into* them ra
 to them. Both need a screen and a body, and the bodies do not walk on this island until #39 makes it
 the scene the game loads. What is verified is that the six exist, are registered as spawnable, carry
 their purpose as data, and stand on ground a person could walk between.
-
 
 ### Landing on the island
 
@@ -4976,7 +4974,6 @@ the first one on the object, whatever the client was actually aiming at. A vehic
 the server to disambiguate two interactables on one `NetworkObject`, which is an interactor change
 rather than an upgrade one, and it would have been the larger half of this issue.
 
-
 ### Chips, and the two doors (#63)
 
 **A chip is a number in the same wallet as the money.** `Wallet` grew a second `SyncVar<int>`
@@ -5287,7 +5284,6 @@ times the size of pitch and yaw, so the horizon tips rather than rattles. A drun
 tips; a rattle reads as an explosion. It is a pure static function so the harness can hold it to a
 number with no screen in the process.
 
-
 ### The sentence the store page has to be able to say (#67)
 
 Valve bans real-money gambling, and a store questionnaire answered wrongly about a casino is an app
@@ -5306,7 +5302,6 @@ compliance claim nobody can re-check is a promise rather than a fact. What would
 down too: a DLC that grants a starting purse, any way to move a wallet between accounts, or any
 randomised reward behind a paid door. Adding a second game to the casino is fine; adding a price tag
 to the door is not.
-
 
 ### CI is one build, and it sits out until it is paid for (#10)
 
@@ -5745,7 +5740,6 @@ both machines.
 client, with the plane standing 92m from the camp fire and the three parts 176m, 225m and 127m out.
 `-partTest` still 38/38.
 
-
 ### Flying it off the island (#72)
 
 The plane is whole, so now it has to fly. #72 is the arcade flight model, and the shortest statement
@@ -6081,7 +6075,6 @@ EscapeWithYourFriends.exe -batchmode -nographics -host -port 8108 -playerKey tes
 `run.json` is byte-identical after the read run, which is the check that matters most and is the
 easiest to forget: a resume that quietly overwrote what it resumed from would pass every assertion
 above and still lose the run on the second restart.
-
 
 ### The settings menu, and making it mean something (#84)
 
@@ -7473,6 +7466,55 @@ roulette spin, and the blackjack payout chime plays on every peer instead of onl
 the tier thresholds and that the count-up runs 0 to the win without going back. `-blackjackTest` reads
 the atlas back: every face inked, red suits red and black black, rank and suit inside the strip a fan
 leaves uncovered, 52 distinct faces. The banner, the coins and the sound are playtest questions.
+
+---
+
+## One shader for every kit (#79, ART-PLAN P6 V6)
+
+After P6 the island is Kenney swatch atlases, Quaternius painted textures, Kenney flat colours and
+the greybox palette. On URP/Lit those read as separate kits even where the colours agree: a smooth
+N.L gradient shows every baked brush stroke in a painted bark texture and nothing on a swatch, and
+the shade side goes grey on both. So everything now wears one hand-written shader,
+`Art/Stylized/Stylized.shader` (`EWYF/Stylized`):
+
+- **Two light bands.** The sun and every lamp go through one `smoothstep` around the terminator
+  (`_RampCentre` 0.05, `_RampSoftness` 0.08). Cast shadows are deliberately not banded: the
+  attenuation carries the light's shadow strength (the moon's is 0.35) and URP's fade at the shadow
+  distance, and a step erases the first and turns the second into a ring around the camera.
+- **The shade side is ambient, tinted cool** (`_ShadowTint`), not a darker grey. The trilight
+  ambient from `DayNightProfile` still drives it, so dawn and night behave as before.
+- **Painted detail per kit.** `_Detail` blends the texture toward its own read three mips up: the
+  broad colours without the brush strokes. The nature kit keeps 45%. The second fetch sits behind
+  `_DETAIL_SOFTEN`, which `StyleLook` turns on only where `_Detail` < 1, so nothing else pays for it. `_Saturation` and `_Brightness` nudge a kit toward the rest.
+- **Rim and one hard highlight.** A thin lit-side rim for silhouettes against the sea; a single
+  stepped specular spot only above smoothness 0.3, so metal and gold shine and nothing else does.
+- **Emission** behind `_EMISSION` (`_EmissionColor`), for the campfire flame `StationBuilder` lights.
+- **Passes**: forward (main-light cascades, per-pixel additional lights and their shadows, soft-shadow
+  levels, SSAO-in-lighting, fog, instancing), ShadowCaster, DepthOnly, and DepthNormals for the High
+  tier's SSAO. Forward renderer only, like every tier. One `UnityPerMaterial` buffer across all
+  passes, so the SRP Batcher still takes it. Falls back to URP/Lit.
+
+**Property names are URP/Lit's** (`_BaseMap`, `_BaseColor`, `_Cutoff`, `_AlphaClip`, `_Cull`,
+`_Smoothness`, `_EmissionColor`, with `[MainTexture]`/`[MainColor]`; the alpha-clip toggle drives
+`_ALPHATEST_ON` like Lit's). That is what makes the switch safe:
+`StyleLook.Wear` sets `material.shader` on the existing asset and every texture, colour, cutout and
+cull the generators wrote survives. Same asset, same GUID, no prefab touched.
+
+**`StyleLook`** (`Scripts/Editor/StyleLook.cs`) holds the whole look in one table: the four shared
+numbers and a per-kit row by material-name prefix. `StyleLook.Apply` (batchmode, or
+EWYF/Art/Apply stylized look) walks `ThirdParty/_Materials`, `Art/Greybox` and `Art/Casino`.
+It also runs at the end of `ArtLibrary.BuildAll`, and every generator that makes a material
+(`ArtLibrary`, `CharacterArt`, `Palette.Named`, the roulette wheel) creates it with `StyleLook.New`, so nothing new lands on URP/Lit. Tuning is editing the table and
+re-running Apply.
+
+**The grade stays the one volume `PostProcess` already builds** (ACES, small contrast and
+saturation, warm white balance, cool-shadow split). It is global, one profile for every scene, so it
+already unifies the kits at the output; nothing new was added there.
+
+**`-lookTest`** logs a shader histogram and gains a check: every `Kenney_*`, `Flat_*` and
+`Quaternius_*` material, every palette entry and the roulette wheel wear `EWYF/Stylized`. A generator that goes back to URP/Lit, or a shader
+that fails to compile and falls back, fails it. The material budget is unchanged: the switch
+re-shades materials, it adds none.
 
 ---
 
