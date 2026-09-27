@@ -7496,7 +7496,9 @@ from Quaternius's Pirate Kit, by the same hand as the nature kit V1 put on the i
   so `IslandFlora`'s weights stand); `Prop_Barrel`, `Prop_Bucket`, `Prop_Bottle_1`,
   `Prop_Chest_Closed`; the wreck `Ship_Large`, the debris boat `Ship_Small`, and a new `Cliff`
   (`Environment_Cliff1`) that `GreyboxBuilder.DressCave` fits on the cave's three standing walls.
-  The lintel stays a Kenney rock. Kenney's pirate kit keeps the rocks, the thatch and the crates, and
+  Each wall and the wreck are turned by `ArtDress.Along` so the model's long side lies along its
+  box, whichever axis the kit drew it along; the right wall takes a half turn more than the left, so
+  the mouth's two sides face each other. The lintel stays a Kenney rock. Kenney's pirate kit keeps the rocks, the thatch and the crates, and
   its palm stays in the catalogue as `KenneyPalm`, placed nowhere, so `PackAxis` still has an
   upright model to learn that kit's up-axis from.
 - **Caps** (`ArtVisual.Cap`), from the measured counts: small prop 600 (bucket 532), prop 2 000

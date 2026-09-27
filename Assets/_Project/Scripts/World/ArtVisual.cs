@@ -47,7 +47,7 @@ namespace EscapeWithYourFriends.World
             ArtCategory.Plant => 1000,
             ArtCategory.Rock => 600,
             ArtCategory.Log => 150,
-            // P6 V2, measured on Quaternius's pirate kit: bucket 532, chest 1 636, the large ship
+            // P6 V2, measured on Quaternius's pirate kit: bottle 204, bucket 532, barrel 640, chest 1 636, the large ship
             // 20 636, the cliff 8 596 (three at the cave), the small ship 5 578.
             ArtCategory.SmallProp => 600,
             ArtCategory.Prop => 2000,

@@ -428,9 +428,11 @@ namespace EscapeWithYourFriends.EditorTools
             GameObject hull = Child(t, "Hull");
 
             // Hull-local units: the box is 4.5 x 3 x 14. 10.1m of wreck is 3.37 of the hull's units.
+            // Turned so the ship's keel runs along the hull, whichever axis the kit drew it along.
             if (hull != null && ArtDress.FitBox(hull.transform, new Bounds(new Vector3(0f, 1.18f, 0f),
                                                                            new Vector3(1f, 3.37f, 1f)),
-                                                "Wreck", true, "Art"))
+                                                "Wreck", true, "Art",
+                                                ArtDress.Along("Wreck", new Vector3(4.5f, 10.1f, 14f))))
             {
                 ArtDress.Strip(hull);
                 ArtDress.Strip(Child(t, "Deck"));
@@ -450,9 +452,15 @@ namespace EscapeWithYourFriends.EditorTools
         {
             Transform t = root.transform;
 
-            // Cliff faces on the three standing walls; the lintel lies flat, so it stays a rock.
-            foreach (string wall in new[] { "Rock.Left", "Rock.Right", "Rock.Back" })
-                ArtDress.Fit(Child(t, wall), "Cliff");
+            // Cliff faces on the three standing walls; the lintel lies flat, so it stays a rock. Each is
+            // turned so the face runs along its wall, and the right wall a half turn more than the
+            // left, so the two sides of the mouth face each other rather than the same way.
+            foreach ((string wall, int extra) in new[] { ("Rock.Left", 0), ("Rock.Right", 2), ("Rock.Back", 0) })
+            {
+                GameObject piece = Child(t, wall);
+                if (piece == null) continue;
+                ArtDress.Fit(piece, "Cliff", quarterTurns: ArtDress.Along("Cliff", piece.transform.lossyScale) + extra);
+            }
 
             ArtDress.Fit(Child(t, "Rock.Lintel"), "Rocks");
         }

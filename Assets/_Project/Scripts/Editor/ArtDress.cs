@@ -131,6 +131,20 @@ namespace EscapeWithYourFriends.EditorTools
             return true;
         }
 
+        /// <summary>
+        /// The quarter turns, 0 or 1, that put the model's long side along the long side of a box
+        /// this many metres across, as <see cref="Replace"/> does. For a model that is not fitted by
+        /// Replace but whose kit may have drawn it along either axis.
+        /// </summary>
+        public static int Along(string id, Vector3 size)
+        {
+            GameObject source = ArtLibrary.Source(id);
+            if (source == null) return 0;
+
+            Vector3 native = ArtLibrary.NativeBounds(source).size;
+            return (native.x >= native.z) == (size.x >= size.z) ? 0 : 1;
+        }
+
         /// <summary><see cref="Replace"/>, with the module repeated across the blocks as <see cref="Tile"/> does.</summary>
         public static bool ReplaceTiled(Transform root, string id, string name, float cell, params string[] blocks)
         {
