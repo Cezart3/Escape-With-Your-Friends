@@ -192,7 +192,7 @@ or `island2`, `-quitAfter <seconds>`, `-noNatives`, `-noAnimals`, `-botMove`, `-
 -ghostTest    -gunTest     -hudTest      -impactTest    -invTest     -itemTest     -lookTest
 -lootTest     -machineTest -meleeTest    -menuTest      -moneyTest   -nativeTest   -partTest
 -planeTest    -prisonTest  -rescueTest   -reviveTest    -rouletteTest -saveTest
--settingsTest -shopTest    -statTest     -uiTest        -upgradeTest -vehicleTest
+-settingsTest -shopTest    -slotTest     -statTest      -uiTest      -upgradeTest  -vehicleTest
 -vehicleUpgradeTest        -voiceTest    -voyageTest    -weaponTest
 ```
 

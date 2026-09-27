@@ -7103,6 +7103,69 @@ times.
 
 ---
 
+## The slot cabinets (#159)
+
+Three cabinets along the casino's back wall, right of the bottles, each its own game. The names,
+symbols and numbers are ours; the mechanics are the genre's common stock.
+
+| Cabinet | Grid | How it pays | The extra |
+|---|---|---|---|
+| **Coconut Sevens** | 5x3 | 20 fixed lines, 3+ left to right; stars pay anywhere | Double-up card: red or black, up to 5 times |
+| **Wrath of the Volcano** | 6x5 | 8+ of a symbol anywhere; winners burst and the rest tumble | Lava orbs (x2-x100) multiply a paying sequence; 4 volcanoes give 15 free spins where the orbs add up |
+| **Reef Rush** | 7x7 | Clusters of 5+ touching; burst and tumble | A cell burst twice becomes a x2 spot, then x4 ... x128; 3+ chests give free spins where the spots never reset |
+
+**The game is arithmetic, and it lives in one file.** `SlotMath` takes a kind, a seed and a bet and
+returns every picture of the spin and the payout, with no Unity, no network and no clock in it. Two
+things follow. The harness can play 200 000 spins of each game in seconds. And a spin crosses the
+network as four bytes: the server rolls a seed, works the spin out, and sends the seed; every client
+replays all of it - a Volcano feature is a few hundred grids - and draws what the server already paid.
+That only works if the generator is ours, so `SlotRng` is SplitMix64 rather than `System.Random`, whose
+sequence belongs to whichever runtime is underneath.
+
+**Authority is the roulette wheel's.** The stake leaves the wallet on the press, `ServerSpin` decides
+everything before a reel moves, and the win is paid when the server's copy of the animation ends, so
+the chip counter never gives a spin away. Nothing a client sends can reach a seed. Chips only: the
+two doors between chips and money are still the cage's.
+
+**The numbers.** Every paytable is in hundredths of the bet; a spin sums in those and rounds down to
+chips once. Tuned by simulation under .NET 8 against the same file, several million spins each:
+
+| Cabinet | Return | Hits | Feature | Best seen |
+|---|---|---|---|---|
+| Coconut Sevens | 95.9% (the card is a fair 50/50 on top) | 34% | - | 300x |
+| Wrath of the Volcano | ~95.5% | 24% | 1 in ~440, ~31% of the return | ~2000x |
+| Reef Rush | ~95% | 34% | 1 in ~370, ~34% of the return | 5000x (the cap) |
+
+No spin pays past 5000x. The two feature games are volatile: a 200 000-spin sample lands anywhere
+from about 91% to 100%, which is why `-slotTest` checks a band and a golden number rather than 95.0.
+
+**One material.** Thirty-odd symbols in their own colours would be thirty materials against
+`LookTest`'s budget of 48. `SlotFactory` paints every colour into one 8x8 atlas and bakes each symbol
+as a copy of a primitive, or a few combined (the seven, the crown, the starfish), whose UVs all sit on
+its own texel. A symbol changing is a mesh swap. The cabinets themselves are palette boxes.
+
+**The screen is local.** Reels flicker and stop left to right, winners pulse and burst, tumbles fall
+into the gaps, Reef's spots grow with their multiplier. None of it is replicated and none of it
+decides anything; `-slotTest` reads the grid back off the cells to prove it stopped where the seed
+says. The board at the top of the screen (`SlotBoard`) takes over from the roulette board inside
+2.2 m of a cabinet and shows the running win, the free spins left and the multiplier.
+
+**Buttons** are nested `NetworkObject`s for `BetSpot`'s reason. Spin, Bet (10/20/50/100, cycling),
+and on Sevens Red and Black, which only the player who won may press, and only until they spin
+again.
+
+`-slotTest` (with `-scene island -noNatives -noAnimals`), host side: hand-built grids pay what the
+tables say; a seed plays the same spin twice; 20 000 fixed seeds win exactly what they won under
+.NET (the check that Mono and .NET agree, which is what a client's replay depends on); the three
+returns sit in their bands; three spins per cabinet pay what their seeds say and leave the screen on
+the last picture; the card doubles or takes the stake; the ledger balances; busy and broke are
+refused. A second process with `-slotTest -client` checks that it replays the host's spins to the
+host's wins and draws their last pictures.
+
+Run `SlotFactory.Build`, then the island bake with `-rebuildPois` so the three POIs place them.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**
