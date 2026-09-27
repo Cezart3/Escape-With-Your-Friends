@@ -267,9 +267,40 @@ namespace EscapeWithYourFriends.EditorTools
                     : null;
                 if (hole == null) continue;
 
+                // Under an unscaled holder: straight under the stretched box, a blade at 45 degrees
+                // would shear.
                 Transform target = root.Find(hole);
-                renderer.transform.SetParent(target, true);
+                Transform holder = target.Find("Art");
+                if (holder == null)
+                {
+                    holder = new GameObject("Art").transform;
+                    holder.SetParent(target, false);
+                    Vector3 s = target.localScale;
+                    holder.localScale = new Vector3(1f / s.x, 1f / s.y, 1f / s.z);
+                }
+
+                renderer.transform.SetParent(holder, true);
                 filled.Add(target);
+            }
+
+            // One mesh, or none of its pieces named: the model would draw the plane whole over its
+            // own holes. The greybox reads as unfinished; that plane would not.
+            if (filled.Count == 0)
+            {
+                Object.DestroyImmediate(art.gameObject);
+                Debug.LogWarning($"[PlaneBuilder] {ArtCatalog.Find("Plane").File} has no separate propeller, engine "
+                                 + "or starboard wing, so it cannot show the holes. Kept the greybox.");
+                return;
+            }
+
+            // The moved pieces leave the wrapper's LOD group; PlaneAssembly shows and hides them now.
+            var group = art.GetComponent<LODGroup>();
+            if (group != null)
+            {
+                LOD[] lods = group.GetLODs();
+                group.SetLODs(new[] { new LOD(lods[0].screenRelativeTransitionHeight,
+                                              art.GetComponentsInChildren<Renderer>(true)) });
+                group.RecalculateBounds();
             }
 
             foreach (GameObject piece in pieces)

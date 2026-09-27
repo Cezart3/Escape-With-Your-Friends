@@ -134,6 +134,10 @@ namespace EscapeWithYourFriends.AI
 
         internal int SkinCount => _skins.Length;
 
+        /// <summary>Wearing a model that has something to play.</summary>
+        internal bool Animated => _skin != null && _skin.Animator != null
+                                  && _skin.Animator.runtimeAnimatorController != null;
+
         /// <summary>Every animal alive on this peer. The spawner counts it; the harness reads it.</summary>
         static readonly List<Animal> _live = new();
 
@@ -260,6 +264,10 @@ namespace EscapeWithYourFriends.AI
 
             // The boxes stay in the prefab for a species without a model, and so the colour below
             // still has somewhere to go; they only stop drawing.
+            // Measured from here, or the first frame's speed is the distance from the origin.
+            _wasAt = transform.position;
+            _speed = 0f;
+
             SetDrawn(_body, _skin == null);
             SetDrawn(_head, _skin == null);
 

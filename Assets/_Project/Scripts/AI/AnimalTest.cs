@@ -175,19 +175,21 @@ namespace EscapeWithYourFriends.AI
             }
 
             // T13. Every live animal draws its species' model or its boxes, never both, never none.
-            int modelled = 0, skins = 0;
+            int modelled = 0, animated = 0, skins = 0;
             bool oneLook = true;
             foreach (Animal live in Animal.Live)
             {
                 skins = live.SkinCount;
                 if (live.SkinRoot != null) modelled++;
+                if (live.Animated) animated++;
                 if (!live.OneLook) oneLook = false;
             }
 
-            Debug.Log($"[AnimalTest] {modelled} of {Animal.Live.Count} live animals wear a model "
-                      + $"({skins} species modelled in the prefab).");
+            Debug.Log($"[AnimalTest] {modelled} of {Animal.Live.Count} live animals wear a model, {animated} "
+                      + $"animated ({skins} species modelled in the prefab).");
             Check("every animal draws one look: its model or its boxes", oneLook);
             if (skins > 0) Check("the modelled species wear their models", modelled > 0);
+            if (modelled > 0) Check($"every model has a controller ({animated}/{modelled})", animated == modelled);
 
             // ---------------------------------------------------------------- the behaviour
 

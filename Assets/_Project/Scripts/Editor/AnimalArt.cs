@@ -45,8 +45,15 @@ namespace EscapeWithYourFriends.EditorTools
                 Vector3 size = def.BodySize;
                 var box = new Bounds(new Vector3(0f, size.y * 0.5f, 0f), size);
 
+                // A quarter turn when the model's long side runs across rather than along +z. Which
+                // end is the nose is not knowable from bounds; the Quaternius animals face +z.
+                GameObject source = ArtLibrary.Source(model.Id);
+                if (source == null) continue;
+                Vector3 native = ArtLibrary.NativeBounds(source).size;
+                int turns = native.x > native.z ? 1 : 0;
+
                 string name = $"Skin.{def.Id}";
-                if (!ArtDress.FitBox(root.transform, box, model.Id, true, name)) continue;
+                if (!ArtDress.FitBox(root.transform, box, model.Id, true, name, turns)) continue;
 
                 GameObject wrapper = root.transform.Find(name).gameObject;
                 var skin = new Animal.Skin { Species = def.Id, Root = wrapper, Animator = Animate(wrapper, model) };
@@ -87,17 +94,28 @@ namespace EscapeWithYourFriends.EditorTools
             return animator;
         }
 
-        /// <summary>The first clip whose name holds the first word that any clip holds.</summary>
+        /// <summary>
+        /// A clip called exactly one of the words (past an "Armature|" prefix), else the shortest
+        /// whose name holds one: "Idle" before "Idle_HitReact", "Gallop" before "Gallop_Jump".
+        /// </summary>
         static AnimationClip Pick(AnimationClip[] clips, params string[] words)
         {
             foreach (string word in words)
             {
-                AnimationClip clip = clips.FirstOrDefault(c => c.name.ToLowerInvariant().Contains(word)
-                                                               && !ArtLibrary.IsDeath(c.name));
+                AnimationClip clip = clips.FirstOrDefault(c => Bare(c.name) == word)
+                                     ?? clips.Where(c => Bare(c.name).Contains(word) && !ArtLibrary.IsDeath(c.name))
+                                             .OrderBy(c => c.name.Length).FirstOrDefault();
                 if (clip != null) return clip;
             }
 
             return null;
+        }
+
+        static string Bare(string clip)
+        {
+            string name = clip.ToLowerInvariant();
+            int bar = name.LastIndexOf('|');
+            return bar >= 0 ? name.Substring(bar + 1) : name;
         }
 
         /// <summary>

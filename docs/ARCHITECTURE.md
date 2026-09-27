@@ -7164,14 +7164,15 @@ costs, and 60 fps on the 760M decides whether the heavy `CommonTree_1` and `_2` 
 one is wrong, and the fix is the `File` in that row.
 
 **Animals.** There is still one animal prefab. `AnimalArt.Dress` hangs every species' model in it,
-each fitted in shape into that species' body box (`AnimalDef.BodySize`, feet on the ground), and
+each fitted in shape into that species' body box (`AnimalDef.BodySize`, feet on the ground, turned
+a quarter if its long side runs across), and
 `Animal.ApplyShape` shows the one its species index names and turns the boxes' renderers off. A
 species with no catalogue row (the gull) keeps its boxes. The match is by id: the Animal row whose
 id is the species id with a capital.
 
 Each model gets its own controller in `Art/ThirdParty/_Animals/`, built from its own FBX's clips:
-a 1D blend on `Speed` (idle at 0, walk at 2, run at 7 m/s; clips found by the words idle, walk,
-gallop/run/fly) and a held `Dead`. `Animal.LateUpdate` measures the speed from the transform, as
+a 1D blend on `Speed` (idle at 0, walk at 2, run at 7 m/s; clips named exactly idle, walk,
+gallop/run/fly, else the shortest name holding the word) and a held `Dead`. `Animal.LateUpdate` measures the speed from the transform, as
 `NpcSkin` does, so clients animate without an agent. `ArtLibrary` imports Animal rows with a Generic
 rig and every clip looping except a death; everything else stays unrigged.
 
@@ -7181,8 +7182,9 @@ model when the prefab has any.
 **Plane.** `PlaneBuilder.Dress` fits the catalogue's plane, in shape, over the box around the whole
 airframe (fuselage, cockpit, wings, tail and the three holes). The holes must still read, so any
 mesh named like a part (prop, engine/motor, a wing right of centre) is moved under its `Fitted.*`
-box, and `PlaneAssembly` hides and shows it with the box. A hole nothing moved into keeps its grey
-box. The wheels and every collider are the greybox's. `PlaneTurns` turns the model if it is found
+box, under an unscaled holder so a tilted blade does not shear, and `PlaneAssembly` hides and shows
+it with the box. A hole nothing moved into keeps its grey box; a model with no such mesh at all is
+dropped and the greybox kept, because a whole plane drawn over its own holes reads as finished. The wheels and every collider are the greybox's. `PlaneTurns` turns the model if it is found
 facing backwards. The loose parts lying on the island (`PlanePartBuilder`) are still boxes.
 
 ---
