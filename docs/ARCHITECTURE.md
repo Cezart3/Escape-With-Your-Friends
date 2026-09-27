@@ -7148,6 +7148,111 @@ Left for the eye:
 
 ---
 
+## A long model on the ground gets a long box (#79)
+
+A pile on the ground is one networked `WorldItem`: a rigidbody, and a `BoxCollider` of 0.56 m made
+by `WorldItemBuilder`. The model the item wears (`ItemDef.WorldPrefab`) is drawn inside that box
+and has no collider of its own. Since the weapons were dressed (T12), a rifle, a shotgun and a
+shovel are longer than the box. They balanced inside a cube, and after the drop's random rotation
+they lay half in the sand.
+
+`WorldItem.Fit` runs whenever the visual is rebuilt:
+
+- If the model is **longer than the box** on any axis, the box becomes the model's own bounds.
+  The bounds are every renderer's local bounds, carried into the item's axes. The minimum is
+  0.06 m per axis, because a knife-thin box on a terrain collider jitters. The rifle lies as long
+  as it looks, on its flat side.
+- Anything **smaller** keeps the cube, on purpose: a berry is picked up by its box, not by its
+  pixels. The box goes back to the cube if a pile ever changes to a smaller kind.
+
+It runs on every peer, as the visual does, so a client's interaction ray hits the same box the
+server simulates.
+
+**Harness.** `-itemTest` drops the item whose world model is the longest in the catalog (a rifle,
+with the weapons dressed), tilted by 45°. It checks that the box holds the whole model. If no
+item wears a model, the check is skipped and the log says so.
+
+**Not verified.** Type-checked with Roslyn only. `Renderer.localBounds` is missing from the old
+reference assemblies, but is in Unity 6000.3's own source, so it was checked by name there.
+
+Left for the eye: whether a rifle now rests flat, and how a pistol looks in the 0.56 m cube. A
+pistol is shorter than the cube, so it floats as before.
+
+---
+
+## The weapon in the hand (#79)
+
+Until now nothing drew a held weapon. `WeaponDef.ViewPrefab` had no reader, so a player with a
+rifle selected looked empty-handed to everybody.
+
+`CharacterSkin.Hold` now draws the selected slot's weapon in the right hand of the body the
+player wears:
+
+- **Which weapon.** It is read off `Inventory`, whose slots and selected index already replicate
+  to every peer. The selected index was replicated for exactly this, as the comment on
+  `_selected` says. The item goes through `WeaponCatalog.ForItem`, and the model is the weapon's
+  `ViewPrefab`: the same dressed prefab it wears on the ground (T12). An item that is not a
+  weapon stays in the bag. Nothing new is networked.
+- **Where.** On the humanoid avatar's `RightHand` bone. `Inventory.Changed` rebuilds it, as does
+  switching bodies.
+- **Which way.** Read off the hand's own bones, so it is right in whatever pose the clip puts
+  the hand in. The first version recorded the hand at bind pose and kept the weapon pointing the
+  player's forward from there. That held for arms down, but an aim pose would have held a gun
+  sideways.
+  - A gun points from the wrist (`RightHand`) through the knuckles (`RightMiddleProximal`), with
+    its top toward the thumb (`RightThumbProximal`).
+  - A blade stands out of the fist on the thumb side, with its edge the way the knuckles face.
+  - The hand closes on the palm, halfway from wrist to knuckles. It grips the back of a gun's
+    body, a third of the way up, or the last tenth of a blade, where WeaponFactory put its
+    handle (`GripPoint`).
+  - A rig without finger bones falls back to the forearm for "along" and the player's up for
+    "top".
+- **The arms.** A third controller layer, `Armed`, sits over the arms through the same
+  upper-body mask as `Carry`. Its states:
+  - `Pistol_Idle_Loop` for a gun and `Sword_Idle` for a blade, chosen by the int `Armed`
+    (1 is a gun, 2 is a blade).
+  - `Pistol_Shoot` and `Sword_Attack` on the trigger `Fire`.
+  - `CharacterSkin` fades the layer in while something is drawn in the hand, and out while
+    carrying or seated, where both hands are busy. The model is hidden for as long. `Weapon.Attacked` fires `Fire` when
+    something is in the hand. Bare fists keep the whole-body `Punch`.
+  - `Armed` is only ever set to 1 or 2, and each `Fire` transition wants one of them. So every
+    `Fire` is taken, and none waits in the trigger for the next weapon.
+  - `CharacterArt.Build` builds the layer only if all four clips are in the library, and warns
+    otherwise.
+- **Colliders.** Any collider or rigidbody in the prefab is switched off and destroyed. Under the
+  hand, it would join the player's own collider and catch rays aimed past it.
+- **Visibility.** It follows the body's rule: shadow-only for the owner while alive, drawn for
+  everybody else.
+
+**Not done: a first-person view model.** The owner sees their weapon only as a shadow, like
+their own body, because the camera is inside the head. A camera-held model needs its own near
+plane, position and field of view. Those are feel decisions, left for a session that can see
+the screen.
+
+**Harness.** `-skinTest` gives the host the first weapon in the catalog that has a model, and
+selects it. It then checks five things:
+
+- the weapon is drawn under the right hand bone;
+- it is shadow-only, since the host owns it;
+- it has no live collider;
+- the model's box is within 10 cm of the wrist;
+- a second later, the `Armed` layer is fully in. This fails until `CharacterArt.Build` has
+  re-run, since the controller is content.
+
+**Not verified.** Type-checked with Roslyn only.
+
+Left for the eye:
+
+- The grip fractions in `GripPoint`.
+- Whether the Quaternius thumb bone gives "up" for a gun, or a quarter turn off.
+- Whether a blade's edge faces the right way. That depends on which way the kit drew it.
+- Whether `Pistol_Idle_Loop` reads as holding a gun with the legs running underneath.
+
+Each of these is one number or one sign in `Hold` or `GripPoint`, once somebody has looked at
+it.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**
