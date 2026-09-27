@@ -29,10 +29,11 @@ Shader "EWYF/Stylized"
         _ShadowTint ("Shade side tint", Color) = (0.86, 0.9, 1.05, 1)
         _RimStrength ("Rim light", Range(0, 1)) = 0.2
         _Smoothness ("Smoothness (hard highlight above 0.3)", Range(0, 1)) = 0.1
+        [HDR] _EmissionColor ("Emission (with _EMISSION)", Color) = (0, 0, 0, 1)
 
         [Header(Surface)]
         _Cutoff ("Alpha cutoff", Range(0, 1)) = 0.5
-        [Toggle] _AlphaClip ("Alpha clip", Float) = 0
+        [Toggle(_ALPHATEST_ON)] _AlphaClip ("Alpha clip", Float) = 0
         [Enum(UnityEngine.Rendering.CullMode)] _Cull ("Cull", Float) = 2
     }
 
@@ -56,6 +57,7 @@ Shader "EWYF/Stylized"
             float4 _BaseMap_ST;
             half4 _BaseColor;
             half4 _ShadowTint;
+            half4 _EmissionColor;
             half _Detail;
             half _Saturation;
             half _Brightness;
@@ -94,9 +96,13 @@ Shader "EWYF/Stylized"
             #pragma target 3.0
 
             #pragma shader_feature_local _ALPHATEST_ON
+            #pragma shader_feature_local_fragment _DETAIL_SOFTEN
+            #pragma shader_feature_local_fragment _EMISSION
 
+            // Per-pixel lamps only: every tier renders them per pixel, and a per-vertex lamp would be
+            // the smooth gradient this shader exists to remove.
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
-            #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
+            #pragma multi_compile _ _ADDITIONAL_LIGHTS
             #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
             #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
             #pragma multi_compile_fragment _ _SCREEN_SPACE_OCCLUSION
@@ -153,10 +159,14 @@ Shader "EWYF/Stylized"
                 alpha = fine.a;
 
                 // Painted detail turned down by blending toward a blurred read of the same texture:
-                // three mips up is the texture's broad colours without its brush strokes. A swatch
-                // atlas has no mips, so on a Kenney kit both reads are the same and this is a no-op.
-                half3 broad = SAMPLE_TEXTURE2D_BIAS(_BaseMap, sampler_BaseMap, uv, 3).rgb * _BaseColor.rgb;
-                half3 colour = lerp(broad, fine.rgb, _Detail);
+                // three mips up is the texture's broad colours without its brush strokes. Compiled in
+                // only where StyleLook set _Detail below one (the nature kit), so nothing else pays
+                // for the second fetch.
+                half3 colour = fine.rgb;
+                #if defined(_DETAIL_SOFTEN)
+                    half3 broad = SAMPLE_TEXTURE2D_BIAS(_BaseMap, sampler_BaseMap, uv, 3).rgb * _BaseColor.rgb;
+                    colour = lerp(broad, colour, _Detail);
+                #endif
 
                 half luma = dot(colour, half3(0.2126, 0.7152, 0.0722));
                 return max(0, lerp(luma.xxx, colour, _Saturation)) * _Brightness;
@@ -178,9 +188,10 @@ Shader "EWYF/Stylized"
                 float4 shadowCoord = TransformWorldToShadowCoord(input.positionWS);
                 Light sun = GetMainLight(shadowCoord);
 
-                // Soft-shadow filtering leaves a grey ramp at every shadow's edge; banded it becomes
-                // the same kind of edge the terminator has.
-                half shadow = smoothstep(0.35, 0.65, sun.shadowAttenuation) * sun.distanceAttenuation;
+                // Not banded: the attenuation already carries the light's shadow strength (the moon's
+                // is 0.35) and URP's fade at the shadow distance, and a step would erase the first and
+                // turn the second into a ring that follows the camera.
+                half shadow = sun.shadowAttenuation * sun.distanceAttenuation;
                 half lit = Band(dot(normal, sun.direction)) * shadow;
 
                 half3 ambient = SampleSH(normal);
@@ -215,16 +226,14 @@ Shader "EWYF/Stylized"
                                        * lamp.distanceAttenuation * lamp.shadowAttenuation;
                         light += lamp.color * lampLit;
                     }
-                #elif defined(_ADDITIONAL_LIGHTS_VERTEX)
-                    uint count = GetAdditionalLightsCount();
-                    for (uint i = 0u; i < count; ++i)
-                    {
-                        Light lamp = GetAdditionalLight(i, input.positionWS);
-                        light += lamp.color * lamp.distanceAttenuation * saturate(dot(normal, lamp.direction));
-                    }
                 #endif
 
                 half3 colour = albedo * light + specular;
+
+                // The campfire's flame (StationBuilder): it has to read at night.
+                #if defined(_EMISSION)
+                    colour += _EmissionColor.rgb;
+                #endif
                 colour = MixFog(colour, input.fogFactor);
                 return half4(colour, 1);
             }
