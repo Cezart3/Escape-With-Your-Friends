@@ -398,7 +398,8 @@ namespace EscapeWithYourFriends.Player
         void Visibility(Body body)
         {
             bool hide = _network != null && _network.IsOwner
-                        && (_health == null || _health.State != LifeState.Dead);
+                        && (_health == null || _health.State != LifeState.Dead)
+                        && (_rider == null || !_rider.IsSeated); // Seated, the camera is a chase camera.
             if (_hidden == hide) return;
 
             _hidden = hide;

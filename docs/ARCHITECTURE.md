@@ -7661,6 +7661,33 @@ lookTest 12/0 on both islands, nativeTest 162/0, animalTest 94/0.
 
 ---
 
+## The second playtest: the car camera, puddles, the pig's sphere, the boar
+
+**Chase camera while seated.** `PlayerCameraRig` used the walking eye (body + 1.55 m) in every
+vehicle, which from a kart seat is a view of the bonnet or the sky. Seated, the eye is now behind
+the vehicle along the mouse look: pivot at `1 + 0.35 r` above the vehicle, `2.5 + 1.6 r` back,
+where `r` is the vehicle's renderer bounds radius (clamped 1.5..12, measured once per vehicle, the
+riders excluded), so the kart, the boat and the plane each get a distance to their size. A sphere
+cast pulls the camera in front of terrain and walls. No follow lag and no head bob: the vehicle
+is already smooth. `CharacterSkin` draws your own body while seated, since it is now in view.
+
+**Puddles.** The sea is one plane at 0 under the whole island, so every inland dip below 0 showed
+it. `TerrainGenerator.FillPuddles` flood-fills the sub-sea samples from the map edge and raises
+every one the fill never reached to +0.3 m. Heightmap only; `IslandShape` still calls those spots
+water, so nothing is planted in them. Island 1: 556 samples raised. Island 2: 0.
+
+**The white blob under the animals.** The poly.pizza glTFs of the Pig and the Deer carry a hidden
+2 m `Icosphere`, which the FBX conversion exported as a visible, untextured mesh (the stray
+`NoName` material). Both were re-converted with every mesh that has no armature modifier dropped,
+and the zips in the art folder rebuilt. It also inflated the pig's bounds: native 1.90x2.61x2.07
+before, 0.84x1.60x2.03 now, so the pig fills its body box instead of being shrunk to fit a sphere.
+
+**The boar.** Every stun ragdolls the victim, so a boar with 0.9 s of stun and 950 of knockback
+floored you and threw you on every tackle. Now 10 damage, no stun, no knockback: a bite that hurts
+without knocking you over, ten of them to go down.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**

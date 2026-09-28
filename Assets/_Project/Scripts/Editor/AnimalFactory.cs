@@ -115,7 +115,7 @@ namespace EscapeWithYourFriends.EditorTools
             new("boar", "Boar", "Bad eyesight, bad temper, worse manners. Will absolutely start it.",
                 Temperament.Aggressive, health: 55f, walk: 2f, run: 7.2f, wander: 25f, idle: new Vector2(2f, 5f),
                 sense: 30f, react: 16f, calm: 8f,
-                damage: 18f, reach: 2f, interval: 1.6f, stun: 0.9f, knockback: 950f,
+                damage: 10f, reach: 2f, interval: 1.6f, stun: 0f, knockback: 0f,
                 body: new Vector3(0.85f, 0.85f, 1.7f), colour: new Color(0.30f, 0.23f, 0.18f),
                 agentRadius: 0.55f),
 
