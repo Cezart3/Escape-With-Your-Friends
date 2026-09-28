@@ -7728,7 +7728,9 @@ level ground's assumption. On the regenerated island 1 the lane runs downhill an
 ray passes over the victim's head: the pistols still scattered into it sometimes, and the rifle's
 0.2 degrees never did (0 of 25, "a ray from the eye sees Island at 57 m"). The test was wrong,
 not the gun. Run as a pair at 100 ms, 113/0. When a gun lands nothing, the log now names
-what the ray actually met.
+what the ray actually met. `-weaponTest` had the same flat `Toward` and the same 30 m miss
+("line hits nothing at all"); it aims eye to chest too now, 28/0 as a pair. The pair battery after
+this section's changes: demoTest 7/0, achievementTest 20/0, partTest 38/0, voyageTest 29/0.
 
 **`-shotsAt a,b`** extends `-shots`: each name is a landmark id or an object name, shot from 10 m.
 It is how the castaway was found to be standing on the beach all along.
