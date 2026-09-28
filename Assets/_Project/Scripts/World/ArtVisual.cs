@@ -54,7 +54,8 @@ namespace EscapeWithYourFriends.World
             ArtCategory.Vehicle => 4000,
             // 16000, not the plan's 15000: Quaternius's female base body measures 15060 (ART-PLAN §1).
             ArtCategory.Character => 16000,
-            ArtCategory.Animal => 1500,
+            // Measured on Quaternius's Deer (2 176) and Pig (2 821), both skinned and animated.
+            ArtCategory.Animal => 3000,
             ArtCategory.Weapon => 2000,
             _ => 800,
         };

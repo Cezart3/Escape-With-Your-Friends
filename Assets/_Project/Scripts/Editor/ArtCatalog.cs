@@ -121,6 +121,13 @@ namespace EscapeWithYourFriends.EditorTools
             new("Quaternius", "Nature", "Nature MegaKit",
                 "https://quaternius.com/packs/stylizednaturemegakit.html", false, textured: true),
 
+            // P4, the animals (T13). Quaternius's CC0 Deer and Pig from poly.pizza, converted from
+            // glTF to FBX with Blender; each zip carries the CC0 text as License.txt. The deer is flat
+            // colours, the pig one atlas. No CC0 propeller plane was found, so T14 keeps the greybox.
+            new("Quaternius", "Animals", "quaternius-animals", "https://poly.pizza/m/T6Cs7tmMHJ", false),
+            new("Quaternius", "FarmAnimals", "quaternius-farm", "https://poly.pizza/m/u35l6uP5vj", false,
+                textured: true),
+
             // The people (T9). No entries in Models, so ArtExtract passes over them: their file names
             // were never seen, and CharacterArt extracts them by kind instead.
             new("Quaternius", "UniversalBaseCharacters", "basecharacter",
@@ -215,6 +222,12 @@ namespace EscapeWithYourFriends.EditorTools
             // An open race car, not the plan's SUV: see VehicleBuilder.Dress.
             new("Buggy", "Car", "race", ArtCategory.Vehicle),
             new("Boat", "Watercraft", "boat-speed-j", ArtCategory.Vehicle),
+
+            // --- the animals (AnimalArt) and the plane (PlaneBuilder.Dress) ------------------------
+            // An animal's id is its species id with a capital; a species with no row keeps its boxes.
+            // The gull has none: no Quaternius bird was found to name.
+            new("Deer", "Animals", "Deer", ArtCategory.Animal),
+            new("Boar", "FarmAnimals", "Pig", ArtCategory.Animal),
 
             // --- the weapons (WeaponFactory.Art) -------------------------------------------------
             // Fitted to the weapon's old box. The knife stands on its handle in the kit, and says so
