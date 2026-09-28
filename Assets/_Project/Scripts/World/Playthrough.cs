@@ -138,7 +138,13 @@ namespace EscapeWithYourFriends.World
                 {
                     Debug.Log($"[Playthrough] STUCK walking to {where} at {here}, {left:0}m short. Teleporting.");
                     yield return Shot("stuck_" + where);
-                    _motor.ServerTeleport(to + Vector3.up, _input.Yaw);
+                    // Beside it on our side, not on top: landing inside a part or a hull shoves the
+                    // capsule out wherever physics likes.
+                    Vector3 back = here - to; back.y = 0f;
+                    Vector3 spot = to + back.normalized * Mathf.Max(1f, within * 0.7f);
+                    Terrain land = Terrain.activeTerrain;
+                    if (land != null) spot.y = land.SampleHeight(spot) + land.transform.position.y;
+                    _motor.ServerTeleport(spot + Vector3.up * 0.2f, _input.Yaw);
                     yield return new WaitForSeconds(1f);
                     break;
                 }
@@ -239,6 +245,15 @@ namespace EscapeWithYourFriends.World
             _bag = _motor.GetComponent<Inventory>();
             _input.BotDriven = true;
 
+            // -scene island2 starts at the second half; a finished plane on Island starts at the rescue.
+            if (GameSceneLoader.Current == "Island" && !PlaneAssembly.Owned) yield return FirstIsland();
+            if (GameSceneLoader.Current == "Island2") yield return SecondIsland();
+            if (GameSceneLoader.Current == "Island" && PlaneAssembly.Owned) yield return Rescue();
+            Finish();
+        }
+
+        IEnumerator FirstIsland()
+        {
             yield return Shot("spawn");
             Check($"the first objective says something (\"{Objective.Text}\")", !string.IsNullOrEmpty(Objective.Text));
 
@@ -381,12 +396,178 @@ namespace EscapeWithYourFriends.World
                 float wait = Time.time;
                 while (GameSceneLoader.Current == from && Time.time - wait < 30f) yield return null;
                 Check($"the voyage reaches the other island ({from} to {GameSceneLoader.Current})", GameSceneLoader.Current != from);
-                yield return new WaitForSeconds(8f);
-                _motor = FindObjectsByType<PlayerMotor>(FindObjectsSortMode.None).FirstOrDefault(m => m.IsOwner);
-                yield return Shot("island2");
+                yield return Arrive("island2");
             }
+        }
 
-            Finish();
+        /// <summary>After a scene swap: find the (possibly new) body and take its controls again.</summary>
+        IEnumerator Arrive(string name)
+        {
+            yield return new WaitForSeconds(8f);
+            _motor = FindObjectsByType<PlayerMotor>(FindObjectsSortMode.None).FirstOrDefault(m => m.IsOwner);
+            _input = _motor.GetComponent<PlayerInputReader>();
+            _bag = _motor.GetComponent<Inventory>();
+            _input.BotDriven = true;
+            _input.BotMove = Vector2.zero;
+            _input.BotSprint = false;
+            yield return Shot(name);
+        }
+
+        // ------------------------------------------------ Island2: three parts on a shoulder
+        IEnumerator SecondIsland()
+        {
+            yield return new WaitForSeconds(2f);
+            PlaneAssembly plane = PlaneAssembly.Instance;
+            Check($"there is a plane on {GameSceneLoader.Current}", plane != null);
+            Check($"and {PlanePart.All.Count} parts lying about for it", PlanePart.All.Count > 0 || (plane != null && plane.Complete));
+            if (plane == null) yield break;
+
+            for (int n = 0; n < 6 && !plane.Complete; n++)
+            {
+                PlanePart part = PlanePart.All.Where(p => !p.IsCarried)
+                    .OrderBy(p => Flat(p.transform.position, _motor.transform.position)).FirstOrDefault();
+                if (part == null) break;
+                string label = part.Label;
+                Debug.Log($"[Playthrough] objective \"{Objective.Text}\"; going for the {label}, "
+                          + $"{Flat(part.transform.position, _motor.transform.position):0}m off.");
+
+                yield return Walk(label, part.transform.position, 1.8f, 180f);
+                for (int i = 0; i < 5 && part != null && part.Carrier != _motor.NetworkObject; i++)
+                {
+                    if (Vector3.Distance(part.transform.position, Eye) > 3f)
+                        yield return Walk(label, part.transform.position, 1.5f, 30f);
+                    Look(part.transform.position);
+                    yield return new WaitForSeconds(0.2f);
+                    if (i == 0) yield return Shot("lift_" + label);
+                    _input.BotPress("interact");
+                    yield return new WaitForSeconds(0.6f);
+                }
+                if (part != null && part.Carrier != _motor.NetworkObject)
+                    Debug.Log($"[Playthrough] the {label} is at {part.transform.position}, the eye at {Eye} "
+                              + $"({Vector3.Distance(part.transform.position, Eye):0.0}m); crosshair "
+                              + $"\"{_motor.GetComponent<PlayerInteractor>().Aimed?.Prompt}\", "
+                              + $"colliders {string.Join(",", part.GetComponentsInChildren<Collider>().Select(c => c.GetType().Name + (c.isTrigger ? "(trigger)" : "") + (c.enabled ? "" : "(off)")))}.");
+                Check($"E lifts the {label}", part != null && part.Carrier == _motor.NetworkObject);
+
+                int before = plane.Fitted;
+                yield return Walk("plane with the " + label, plane.transform.position, 4f, 400f);
+                for (int i = 0; i < 6 && plane.Fitted == before; i++)
+                {
+                    // Dropped on the way (a stun puts it down): E here would only board the plane.
+                    if (PlanePart.HeldBy(_motor.NetworkObject) == null)
+                    {
+                        Debug.Log($"[Playthrough] lost the {label} on the way; going back for it.");
+                        break;
+                    }
+                    Look(plane.transform.position + Vector3.up);
+                    yield return new WaitForSeconds(0.2f);
+                    if (i == 0) yield return Shot("fit_" + label);
+                    _input.BotPress("interact");
+                    yield return new WaitForSeconds(0.6f);
+                }
+                if (PlanePart.HeldBy(_motor.NetworkObject) == null && plane.Fitted == before) continue;
+                Check($"E fits the {label} ({plane.Fitted}/{plane.Needed})", plane.Fitted > before);
+            }
+            Check("the plane is whole", plane.Complete);
+            if (!plane.Complete) yield break;
+
+            yield return Board(plane.GetComponent<Vehicle>(), "plane");
+            yield return Fly();
+            if (GameSceneLoader.Current == "Island") yield return Arrive("island1_again");
+        }
+
+        IEnumerator Board(Vehicle vehicle, string what)
+        {
+            VehicleRider rider = _motor.GetComponent<VehicleRider>();
+            yield return Walk(what, vehicle.transform.position, 4f, 120f);
+            for (int i = 0; i < 6 && !rider.IsSeated; i++)
+            {
+                Look(vehicle.transform.position + Vector3.up);
+                yield return new WaitForSeconds(0.2f);
+                _input.BotPress("interact");
+                yield return new WaitForSeconds(0.8f);
+            }
+            Check($"E boards the {what}", rider.IsSeated);
+            yield return Shot("aboard_" + what);
+        }
+
+        /// <summary>
+        /// FlightTest's two rules - hold the throttle, pull back once it is fast - then hold sixty
+        /// metres and bank away from the island's centre until the game moves us on or the run ends.
+        /// </summary>
+        IEnumerator Fly()
+        {
+            VehicleRider rider = _motor.GetComponent<VehicleRider>();
+            if (!rider.IsSeated) yield break;
+            PlaneController plane = rider.Vehicle.GetComponent<PlaneController>();
+            string from = GameSceneLoader.Current;
+            Debug.Log($"[Playthrough] flying from {from}: driving {rider.IsDriving}, owner {plane.IsOwner}, {plane.FlightReport()}");
+            float began = Time.time, nextShot = Time.time + 10f, top = 0f, strip = plane.transform.position.y;
+            _input.BotSprint = true;
+
+            while (plane != null && GameSceneLoader.Current == from && !RunSummary.Over && Time.time - began < 240f)
+            {
+                float alt = plane.transform.position.y;
+                top = Mathf.Max(top, alt);
+                // FlightTest's rules and nothing cleverer: throttle held, back pressure once it is
+                // fast, a gentle climb to fifty metres over the strip, then hands off - the plane
+                // levels its own wings, and every heading off a strip reaches the edge.
+                float pitch = !plane.IsAirborne ? (plane.Airspeed >= 20f ? 0.5f : 0f)
+                            : alt < strip + 50f ? 0.3f : 0f;
+                float roll = 0f;
+                _input.BotMove = new Vector2(roll, pitch);
+                if (Time.time > nextShot) { nextShot = Time.time + 15f; yield return Shot("flying"); }
+                yield return null;
+            }
+            _input.BotMove = Vector2.zero;
+            _input.BotSprint = false;
+            // The voyage despawns the plane a beat before the scene load lands.
+            for (float t = Time.time; GameSceneLoader.Current == from && !RunSummary.Over && Time.time - t < 20f;) yield return null;
+            Debug.Log($"[Playthrough] flew {Time.time - began:0}s, {top:0}m at the highest"
+                      + (plane != null ? $": {plane.FlightReport()}" : "."));
+            Check($"the flight leaves {from} ({(RunSummary.Over ? "the run is over" : "now " + GameSceneLoader.Current)})",
+                  GameSceneLoader.Current != from || RunSummary.Over);
+        }
+
+        // ------------------------------------------------ back on Island: the one left behind
+        IEnumerator Rescue()
+        {
+            yield return new WaitForSeconds(2f);
+            Castaway who = Castaway.Instance;
+            PlaneController flier = FindObjectsByType<PlaneController>(FindObjectsSortMode.None).FirstOrDefault();
+            Vehicle plane = flier != null ? flier.GetComponent<Vehicle>() : null;
+            Check("there is somebody to go back for", who != null);
+            Check("and a plane to take them in", plane != null);
+            if (who == null || plane == null) yield break;
+            Debug.Log($"[Playthrough] objective \"{Objective.Text}\"; they are {Flat(who.transform.position, _motor.transform.position):0}m off.");
+
+            VehicleRider rider = _motor.GetComponent<VehicleRider>();
+            if (rider.IsSeated) { _input.BotPress("interact"); yield return new WaitForSeconds(1.5f); }
+            Check("E gets out of the plane", !rider.IsSeated);
+
+            yield return Walk("castaway", who.transform.position, 2.5f, 240f);
+            for (int i = 0; i < 5 && who.Where == Castaway.Stage.Waiting; i++)
+            {
+                Look(who.transform.position + Vector3.up);
+                yield return new WaitForSeconds(0.2f);
+                if (i == 0) yield return Shot("castaway");
+                _input.BotPress("interact");
+                yield return new WaitForSeconds(0.8f);
+            }
+            Check($"E gets them on their feet ({who.Where})", who.Where == Castaway.Stage.Following);
+
+            yield return Walk("plane, with company", plane.transform.position, 5f, 240f);
+            // They get in once they are beside the plane, which is usually a step after the pilot.
+            yield return Board(plane, "plane");
+            float t = Time.time;
+            while (who.Where == Castaway.Stage.Following && Time.time - t < 30f) yield return null;
+            Check($"they climb in on their own ({who.Where})", who.Where == Castaway.Stage.Aboard);
+            yield return Shot("castaway_aboard");
+
+            yield return Fly();
+            Check("that is the run", RunSummary.Over);
+            yield return new WaitForSeconds(3f);
+            yield return Shot("the_end");
         }
 
         void Finish()

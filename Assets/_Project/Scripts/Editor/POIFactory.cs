@@ -453,7 +453,9 @@ namespace EscapeWithYourFriends.EditorTools
 
                 // #73. The group's other aeroplane. It stands here whole, because PlaneAssembly
                 // remembers that this group has already built one - see the note on its Owned flag.
-                Entry("plane", PlaneBuilder.PlanePath, strip, Facing(strip, camp),
+                // Tail to the camp: the take-off roll heads for the coast, down IslandShape's
+                // cleared runway, and not across the camp.
+                Entry("plane", PlaneBuilder.PlanePath, strip, Facing(strip, camp) + 180f,
                       pad: 30f, falloff: 20f, raise: 0.2f, maxSlope: 0.25f),
 
                 // And the person. At the wreck, on the camp side: somebody stranded at a shipwreck

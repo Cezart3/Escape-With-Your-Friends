@@ -211,6 +211,7 @@ namespace EscapeWithYourFriends.Net
 
             _travelling = true;
             _from = Current;
+            _to = scene;
             _manager.SceneManager.OnLoadEnd += OnTravelled;
             _manager.SceneManager.LoadGlobalScenes(data);
 
@@ -218,18 +219,22 @@ namespace EscapeWithYourFriends.Net
             return true;
         }
 
-        string _from = "";
+        string _from = "", _to = "";
 
         void OnTravelled(SceneLoadEndEventArgs args)
         {
             if (!_travelling || !args.QueueData.AsServer) return;
 
-            _manager.SceneManager.OnLoadEnd -= OnTravelled;
-            _travelling = false;
-
+            // Only the load this trip asked for. A save that sails on at start-up leaves while the
+            // first island is still loading, and that load's end took this handler: Current said
+            // Island2 with Island on screen, and nobody was put ashore (playthrough bot).
             Scene arrived = default;
             foreach (Scene loaded in args.LoadedScenes)
-                if (loaded.IsValid()) { arrived = loaded; break; }
+                if (loaded.IsValid() && loaded.name == _to) { arrived = loaded; break; }
+            if (!arrived.IsValid() && args.LoadedScenes.Length > 0) return;
+
+            _manager.SceneManager.OnLoadEnd -= OnTravelled;
+            _travelling = false;
 
             if (!arrived.IsValid())
             {

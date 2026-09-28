@@ -238,6 +238,10 @@ namespace EscapeWithYourFriends.AI
 
             if (!_agent.enabled || !_agent.isOnNavMesh) return;
 
+            // They run when you run. At a walk they fell 60m behind anybody who sprinted to the
+            // plane and sat back down on the way (playthrough bot) - and everybody sprints.
+            var motor = _leader.GetComponent<Player.PlayerMotor>();
+            _agent.speed = apart > _followDistance * 3f && motor != null ? motor.SprintSpeed : _walkSpeed;
             _agent.isStopped = apart <= _followDistance;
             if (!_agent.isStopped) _agent.SetDestination(there);
         }

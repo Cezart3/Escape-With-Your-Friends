@@ -161,6 +161,7 @@ namespace EscapeWithYourFriends.Player
                 return;
             }
 
+            enabled = true;
             _logCamera = CommandLine.HasFlag("-cameraLog");
             TryGetComponent(out _rider);
 
@@ -200,6 +201,7 @@ namespace EscapeWithYourFriends.Player
 
             _camera = null;
             _target = null;
+            enabled = false;
         }
 
         /// <summary>
@@ -257,6 +259,17 @@ namespace EscapeWithYourFriends.Player
 
         void LateUpdate()
         {
+            // A plane or boat trip unloads the scene the target and camera were made in and brings
+            // a new scene camera with no brain: the view froze over the old island while the body
+            // walked on (playthrough bot, Island2 -> Island). Rebuild what the swap took.
+            if (IsOwner && (_target == null || _camera == null))
+            {
+                if (_camera != null) Destroy(_camera.gameObject);
+                if (_target != null) Destroy(_target.gameObject);
+                BuildCamera();
+                _followValid = false;
+            }
+            if (IsOwner) EnsureBrain();
             if (_target == null) return;
 
             float dt = Time.deltaTime;
