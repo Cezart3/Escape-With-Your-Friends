@@ -27,6 +27,9 @@ namespace EscapeWithYourFriends.World
 
         public static void Set(string text, Transform target = null)
         {
+            // Callers re-assert their line at 2 Hz (PlanePart); only a change is news.
+            if (text == Text && target == Target) return;
+
             Text = text;
             Target = target;
             Debug.Log($"[Objective] {text}" + (target != null ? $" -> {target.name}" : "") + ".");
