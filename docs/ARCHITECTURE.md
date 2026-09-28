@@ -1904,7 +1904,6 @@ the island byte for byte.
 The splatmap hash did not move across that experiment, and that is right rather than suspicious — the
 wreck's pad was underwater, where the ground is seabed sand at any height and nothing grows.
 
-
 ### Six landmarks, as boxes
 
 #36 asks for blockouts of the six places that make the island a place rather than a heightmap, with
@@ -1988,7 +1987,6 @@ That the buildings look like buildings, and that a player can get *into* them ra
 to them. Both need a screen and a body, and the bodies do not walk on this island until #39 makes it
 the scene the game loads. What is verified is that the six exist, are registered as spawnable, carry
 their purpose as data, and stand on ground a person could walk between.
-
 
 ### Landing on the island
 
@@ -4976,7 +4974,6 @@ the first one on the object, whatever the client was actually aiming at. A vehic
 the server to disambiguate two interactables on one `NetworkObject`, which is an interactor change
 rather than an upgrade one, and it would have been the larger half of this issue.
 
-
 ### Chips, and the two doors (#63)
 
 **A chip is a number in the same wallet as the money.** `Wallet` grew a second `SyncVar<int>`
@@ -5287,7 +5284,6 @@ times the size of pitch and yaw, so the horizon tips rather than rattles. A drun
 tips; a rattle reads as an explosion. It is a pure static function so the harness can hold it to a
 number with no screen in the process.
 
-
 ### The sentence the store page has to be able to say (#67)
 
 Valve bans real-money gambling, and a store questionnaire answered wrongly about a casino is an app
@@ -5306,7 +5302,6 @@ compliance claim nobody can re-check is a promise rather than a fact. What would
 down too: a DLC that grants a starting purse, any way to move a wallet between accounts, or any
 randomised reward behind a paid door. Adding a second game to the casino is fine; adding a price tag
 to the door is not.
-
 
 ### CI is one build, and it sits out until it is paid for (#10)
 
@@ -5745,7 +5740,6 @@ both machines.
 client, with the plane standing 92m from the camp fire and the three parts 176m, 225m and 127m out.
 `-partTest` still 38/38.
 
-
 ### Flying it off the island (#72)
 
 The plane is whole, so now it has to fly. #72 is the arcade flight model, and the shortest statement
@@ -6081,7 +6075,6 @@ EscapeWithYourFriends.exe -batchmode -nographics -host -port 8108 -playerKey tes
 `run.json` is byte-identical after the read run, which is the check that matters most and is the
 easiest to forget: a resume that quietly overwrote what it resumed from would pass every assertion
 above and still lose the run on the second restart.
-
 
 ### The settings menu, and making it mean something (#84)
 
@@ -7507,6 +7500,138 @@ from Quaternius's Pirate Kit, by the same hand as the nature kit V1 put on the i
 
 Tested by the existing harnesses: `ArtLibrary.BuildAll` ("N of N models ready", caps checked),
 `-lookTest` on both islands, and each builder's "Dressed … guid … kept" line.
+
+---
+
+## One shader for every kit (#79, ART-PLAN P6 V6)
+
+After P6 the island is Kenney swatch atlases, Quaternius painted textures, Kenney flat colours and
+the greybox palette. On URP/Lit those read as separate kits even where the colours agree: a smooth
+N.L gradient shows every baked brush stroke in a painted bark texture and nothing on a swatch, and
+the shade side goes grey on both. So everything now wears one hand-written shader,
+`Art/Stylized/Stylized.shader` (`EWYF/Stylized`):
+
+- **Two light bands.** The sun and every lamp go through one `smoothstep` around the terminator
+  (`_RampCentre` 0.05, `_RampSoftness` 0.08). Cast shadows are deliberately not banded: the
+  attenuation carries the light's shadow strength (the moon's is 0.35) and URP's fade at the shadow
+  distance, and a step erases the first and turns the second into a ring around the camera.
+- **The shade side is ambient, tinted cool** (`_ShadowTint`), not a darker grey. The trilight
+  ambient from `DayNightProfile` still drives it, so dawn and night behave as before.
+- **Painted detail per kit.** `_Detail` blends the texture toward its own read three mips up: the
+  broad colours without the brush strokes. The nature kit keeps 45%. The second fetch sits behind
+  `_DETAIL_SOFTEN`, which `StyleLook` turns on only where `_Detail` < 1, so nothing else pays for it. `_Saturation` and `_Brightness` nudge a kit toward the rest.
+- **Rim and one hard highlight.** A thin lit-side rim for silhouettes against the sea; a single
+  stepped specular spot only above smoothness 0.3, so metal and gold shine and nothing else does.
+- **Emission** behind `_EMISSION` (`_EmissionColor`), for the campfire flame. The flame has its own
+  `Greybox/Flame.mat` (`StyleLook.Glowing`); it used to switch emission on for the palette entry it
+  snapped to, Gold, which lit every gold object. `Wear` now strips `_EMISSION` from palette entries.
+- **Passes**: forward (main-light cascades with URP's shadow-distance fade, per-pixel additional lights and their
+  shadows, light cookies, soft-shadow
+  levels, SSAO-in-lighting, fog, instancing), ShadowCaster, DepthOnly, and DepthNormals for the High
+  tier's SSAO. Forward renderer only, like every tier. One `UnityPerMaterial` buffer across all
+  passes, so the SRP Batcher still takes it. Falls back to URP/Lit.
+
+**Property names are URP/Lit's** (`_BaseMap`, `_BaseColor`, `_Cutoff`, `_AlphaClip`, `_Cull`,
+`_Smoothness`, `_EmissionColor`, with `[MainTexture]`/`[MainColor]`; the alpha-clip toggle drives
+`_ALPHATEST_ON` like Lit's). That is what makes the switch safe:
+`StyleLook.Wear` sets `material.shader` on the existing asset and every texture, colour, cutout and
+cull the generators wrote survives. Same asset, same GUID, no prefab touched.
+
+**`StyleLook`** (`Scripts/Editor/StyleLook.cs`) holds the whole look in one table: the four shared
+numbers and a per-kit row by material-name prefix. `StyleLook.Apply` (batchmode, or
+EWYF/Art/Apply stylized look) walks `ThirdParty/_Materials`, `Art/Greybox` and `Art/Casino`.
+It also runs at the end of `ArtLibrary.BuildAll`, and every generator that makes a material
+(`ArtLibrary`, `CharacterArt`, `Palette.Named`, the roulette wheel) creates it with `StyleLook.New`, so nothing new lands on URP/Lit. Tuning is editing the table and
+re-running Apply.
+
+**The grade stays the one volume `PostProcess` already builds** (ACES, small contrast and
+saturation, warm white balance, cool-shadow split). It is global, one profile for every scene, so it
+already unifies the kits at the output; nothing new was added there.
+
+**`-lookTest`** logs a shader histogram and gains a check: every `Kenney_*`, `Flat_*` and
+`Quaternius_*` material, every palette entry and the roulette wheel wear `EWYF/Stylized`. A generator that goes back to URP/Lit, or a shader
+that fails to compile and falls back, fails it. The material budget is unchanged: the switch
+re-shades materials, it adds none.
+
+**The committed `.mat` files still say URP/Lit until somebody runs `StyleLook.Apply` and commits
+the result**; they are generated, never hand-edited, and a cloud session has no Unity. Until then
+the new check fails, which is the point: it is the reminder. The name check cannot see a shader
+that imports but fails to compile for the player (the material keeps the name); that is the build
+log's `Shader error in 'EWYF/Stylized'`.
+
+**The terrain** has its own shader on the same lighting; see "The ground, lit like the models".
+
+---
+
+## The ground, lit like the models (#79, ART-PLAN P6 V6)
+
+After V6 every model was banded and the terrain still wore URP Terrain/Lit, so the seam moved to
+where each rock meets the sand. `Art/Stylized/StylizedTerrain.shader` (`EWYF/StylizedTerrain`)
+draws the ground through the same `StylizedLighting.hlsl` that `EWYF/Stylized` now includes: one
+function, one band curve, one cool shade tint, so the two cannot drift apart. The ground takes no
+rim and no highlight.
+
+**Kept small for the 760M.** Four layers in one pass (`IslandSplat.LayerCount`), one control fetch
+and four albedo fetches, no normal maps, no height blend, no holes. There is no
+add pass, so a fifth layer would not draw.
+
+**No basemap, no instancing, on purpose.** URP's terrain swaps to a baked basemap shader past
+`basemapDistance`, found through a `BaseMapShader` dependency. A custom shader without one would
+fall to a shader URP does not have. So `TerrainGenerator` sets `basemapDistance` to 20000 (never)
+and `drawInstanced` off (the instanced path samples the heightmap in the vertex shader, which this
+one does not). Full-shader terrain to the horizon costs five fetches a pixel, less than Terrain/Lit.
+
+**Wiring.** `TerrainGenerator.EnsureTerrainMaterial` switches the material to the shader and calls
+`StyleLook.WearTerrain` for the shared ramp, softness and tint. If the shader did not import, it
+falls back to URP Terrain/Lit with the old 400 m basemap and instancing on. The switch only happens
+on a regeneration, because the shader needs the terrain settings the generator writes beside it.
+`StyleLook.Restyle` refreshes the numbers on terrain materials already switched, so tuning the look
+table reaches the ground too. `-lookTest` checks every active terrain for the
+shader, instancing off and basemap distance past 10 km.
+
+---
+
+## Animals and the plane in Quaternius's clothes (#79, ART-PLAN T13, T14)
+
+**Sources.** Deer from Quaternius's Animals (poly.pizza `T6Cs7tmMHJ`, flat colours, 2 176
+triangles, 26 clips). The boar is Quaternius's Pig from the farm animals (poly.pizza `u35l6uP5vj`,
+one `Atlas.png`, 2 808 triangles, 8 clips). Both CC0. The Animal cap went to 3 000. No CC0
+propeller plane was found, so the plane row is out: `PlaneBuilder.Dress` returns early without
+it, and the plane stays the greybox.
+
+**Run.** ArtExtract 63 models, 0 missing. ArtLibrary 64 of 64. The pig's slot is
+`AtlasMaterial` and its file `Atlas.png`, so `CharacterArt.BaseColour` now also matches a file
+whose name sits inside the slot's, but only when nothing matches the usual way round. Build clean.
+`-animalTest` 93/0 (solo, animals on). `-planeTest` 33/0 and `-flightTest` 29/0 on `island2`.
+`-lookTest` 11/0 on both islands.
+
+`-animalTest`'s hunt used to swing where it asked the boar to spawn. `ServerSpawn` snaps to the
+navmesh up to 25 m away, and since the players wake in the camp (#168) that point can land out of a
+hatchet's reach. The player now stands 1.6 m from wherever the boar actually landed.
+
+**Animals.** There is still one animal prefab. `AnimalArt.Dress` hangs every species' model in it,
+each fitted in shape into that species' body box (`AnimalDef.BodySize`, feet on the ground, turned
+a quarter if its long side runs across), and
+`Animal.ApplyShape` shows the one its species index names and turns the boxes' renderers off. A
+species with no catalogue row (the gull) keeps its boxes. The match is by id: the Animal row whose
+id is the species id with a capital.
+
+Each model gets its own controller in `Art/ThirdParty/_Animals/`, built from its own FBX's clips:
+a 1D blend on `Speed` (idle at 0, walk at 2, run at 7 m/s; clips named exactly idle, walk,
+gallop/run/fly, else the shortest name holding the word) and a held `Dead`. `Animal.LateUpdate` measures the speed from the transform, as
+`NpcSkin` does, so clients animate without an agent. `ArtLibrary` imports Animal rows with a Generic
+rig and every clip looping except a death; everything else stays unrigged.
+
+`-animalTest` checks that every live animal draws exactly one look, and that some animal wears a
+model when the prefab has any.
+
+**Plane.** `PlaneBuilder.Dress` fits the catalogue's plane, in shape, over the box around the whole
+airframe (fuselage, cockpit, wings, tail and the three holes). The holes must still read, so any
+mesh named like a part (prop, engine/motor, a wing right of centre) is moved under its `Fitted.*`
+box, under an unscaled holder so a tilted blade does not shear, and `PlaneAssembly` hides and shows
+it with the box. A hole nothing moved into keeps its grey box; a model with no such mesh at all is
+dropped and the greybox kept, because a whole plane drawn over its own holes reads as finished. The wheels and every collider are the greybox's. `PlaneTurns` turns the model if it is found
+facing backwards. The loose parts lying on the island (`PlanePartBuilder`) are still boxes.
 
 ---
 

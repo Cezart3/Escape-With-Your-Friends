@@ -71,11 +71,15 @@ namespace EscapeWithYourFriends.EditorTools
                 else Debug.Log(line);
             }
 
+            // Materials made before the shared shader existed are re-shaded in place. Its own failure,
+            // not a model's: StyleLook logs why.
+            bool styled = StyleLook.Restyle() >= 0;
+
             AssetDatabase.SaveAssets();
             Debug.Log($"[ArtLibrary] {ArtCatalog.Models.Length - failed} of {ArtCatalog.Models.Length} models ready, "
                       + $"{failed} failed.");
 
-            if (Application.isBatchMode) EditorApplication.Exit(failed == 0 ? 0 : 1);
+            if (Application.isBatchMode) EditorApplication.Exit(failed == 0 && styled ? 0 : 1);
         }
 
         /// <summary>
@@ -262,8 +266,12 @@ namespace EscapeWithYourFriends.EditorTools
             }
 
             Set(importer.globalScale, 1f, v => importer.globalScale = v);
-            Set(importer.importAnimation, false, v => importer.importAnimation = v);
-            Set(importer.animationType, ModelImporterAnimationType.None, v => importer.animationType = v);
+            // Animals are the one category that moves (T13): a Generic rig and the kit's own clips.
+            // Everything else is a still life, and a rig on a barrel is bones nobody drives.
+            bool animated = model.Category == ArtCategory.Animal;
+            Set(importer.importAnimation, animated, v => importer.importAnimation = v);
+            Set(importer.animationType, animated ? ModelImporterAnimationType.Generic : ModelImporterAnimationType.None,
+                v => importer.animationType = v);
             Set(importer.importCameras, false, v => importer.importCameras = v);
             Set(importer.importLights, false, v => importer.importLights = v);
             Set(importer.importBlendShapes, false, v => importer.importBlendShapes = v);
@@ -284,6 +292,9 @@ namespace EscapeWithYourFriends.EditorTools
                 v => importer.materialLocation = v);
 
             if (dirty) importer.SaveAndReimport();
+
+            // After the rig is on, or the default clips are the ones of a model with no animation.
+            if (animated && LoopClips(importer)) importer.SaveAndReimport();
 
             var asset = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             if (asset == null)
@@ -323,6 +334,35 @@ namespace EscapeWithYourFriends.EditorTools
                 PackAxis[pack.Name] = importer.bakeAxisConversion;
 
             return asset;
+        }
+
+        /// <summary>
+        /// Every clip loops except a death, which holds its last frame. The FBX says nothing about
+        /// looping, so without this a walk plays once and the animal glides the rest of the way.
+        /// </summary>
+        static bool LoopClips(ModelImporter importer)
+        {
+            ModelImporterClipAnimation[] clips = importer.clipAnimations;
+            bool changed = clips == null || clips.Length == 0;
+            if (changed) clips = importer.defaultClipAnimations;
+            if (clips.Length == 0) return false;
+
+            foreach (ModelImporterClipAnimation clip in clips)
+            {
+                bool loop = !IsDeath(clip.name);
+                if (clip.loopTime == loop) continue;
+                clip.loopTime = loop;
+                changed = true;
+            }
+
+            if (changed) importer.clipAnimations = clips;
+            return changed;
+        }
+
+        internal static bool IsDeath(string clip)
+        {
+            string name = clip.ToLowerInvariant();
+            return name.Contains("death") || name.Contains("die");
         }
 
         /// <summary>
@@ -389,7 +429,7 @@ namespace EscapeWithYourFriends.EditorTools
                 return null;
             }
 
-            Material material = NewLit($"{pack.Author}_{pack.Name}");
+            Material material = StyleLook.New($"{pack.Author}_{pack.Name}");
             material.SetTexture("_BaseMap", colormap);
             material.mainTexture = colormap;
             material.SetColor("_BaseColor", Color.white);
@@ -411,7 +451,7 @@ namespace EscapeWithYourFriends.EditorTools
             var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (existing != null) return existing;
 
-            Material material = NewLit($"Flat_{hex}");
+            Material material = StyleLook.New($"Flat_{hex}");
             material.SetColor("_BaseColor", colour);
             material.color = colour;
 
@@ -456,7 +496,7 @@ namespace EscapeWithYourFriends.EditorTools
                 texture = AssetDatabase.LoadAssetAtPath<Texture2D>(file);
             }
 
-            Material material = NewLit(name);
+            Material material = StyleLook.New(name);
             if (texture == null)
             {
                 // A slot can be a plain colour even in a textured kit. Kept, and said.
@@ -484,17 +524,6 @@ namespace EscapeWithYourFriends.EditorTools
             Debug.Log($"[ArtLibrary] {worn.name} ({pack.Name}) is painted from {file}"
                       + (clip ? ", alpha-clipped, both sides." : "."));
             return Save(material, path);
-        }
-
-        internal static Material NewLit(string name)
-        {
-            Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            var material = new Material(shader) { name = name };
-
-            // Flat-shaded low poly under a hard sun: a specular sheen on every leaf reads as plastic.
-            material.SetFloat("_Smoothness", 0.1f);
-            material.enableInstancing = true;
-            return material;
         }
 
         internal static Material Save(Material material, string path)

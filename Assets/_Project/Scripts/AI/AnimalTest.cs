@@ -174,6 +174,23 @@ namespace EscapeWithYourFriends.AI
                 yield break;
             }
 
+            // T13. Every live animal draws its species' model or its boxes, never both, never none.
+            int modelled = 0, animated = 0, skins = 0;
+            bool oneLook = true;
+            foreach (Animal live in Animal.Live)
+            {
+                skins = live.SkinCount;
+                if (live.SkinRoot != null) modelled++;
+                if (live.Animated) animated++;
+                if (!live.OneLook) oneLook = false;
+            }
+
+            Debug.Log($"[AnimalTest] {modelled} of {Animal.Live.Count} live animals wear a model, {animated} "
+                      + $"animated ({skins} species modelled in the prefab).");
+            Check("every animal draws one look: its model or its boxes", oneLook);
+            if (skins > 0) Check("the modelled species wear their models", modelled > 0);
+            if (modelled > 0) Check($"every model has a controller ({animated}/{modelled})", animated == modelled);
+
             // ---------------------------------------------------------------- the behaviour
 
             yield return Flees(spawner, animals.Find("deer"), motor, health, stun);
@@ -542,6 +559,14 @@ namespace EscapeWithYourFriends.AI
                 yield break;
             }
 
+            // ServerSpawn snaps to the navmesh up to 25m away, and the camp's props can push the point
+            // out of a hatchet's reach. Stand where it actually landed.
+            Vector3 back = motor.transform.position - animal.transform.position;
+            back.y = 0f;
+            if (back.sqrMagnitude < 0.001f) back = Vector3.back;
+            motor.ServerTeleport(animal.transform.position + back.normalized * MeleeAhead + Vector3.up * 0.5f, 0f);
+            yield return Settled();
+
             var prey = animal.GetComponent<Health>();
             Check($"a {def.Id} has {prey.Max:0} health, so a hatchet needs "
                   + $"{Mathf.CeilToInt(prey.Max / hatchet.Hit.Damage)} swings",
@@ -556,7 +581,7 @@ namespace EscapeWithYourFriends.AI
 
             float dealt = before - prey.Current;
 
-            Debug.Log($"[AnimalTest] one hatchet swing at a {def.Id}: {hits} hit(s), {dealt:0} damage.");
+            Debug.Log($"[AnimalTest] one hatchet swing at a {def.Id} {Distance(animal, motor):0.0}m away: {hits} hit(s), {dealt:0} damage.");
 
             Check($"a weapon hits an animal at all ({hits} hit)", hits > 0);
             Check($"a hatchet does its own {hatchet.Hit.Damage:0} to a {def.Id} ({dealt:0})",

@@ -169,8 +169,7 @@ namespace EscapeWithYourFriends.EditorTools
             var material = AssetDatabase.LoadAssetAtPath<Material>(MaterialPath);
             if (material == null)
             {
-                Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-                material = new Material(shader) { name = "SlotAtlas", enableInstancing = true };
+                material = StyleLook.New("SlotAtlas");
                 AssetDatabase.CreateAsset(material, MaterialPath);
             }
 
@@ -178,7 +177,10 @@ namespace EscapeWithYourFriends.EditorTools
             material.mainTexture = atlas;
             material.SetColor("_BaseColor", Color.white);
             material.SetFloat("_Smoothness", 0.35f);
-            EditorUtility.SetDirty(material);
+
+            // The island's one shader and its numbers, even for an atlas made before it existed:
+            // StyleLook.Apply runs before this factory in the bake.
+            StyleLook.Wear(material);
 
             return material;
         }
