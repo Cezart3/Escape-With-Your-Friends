@@ -393,7 +393,7 @@ namespace EscapeWithYourFriends.EditorTools
                 return null;
             }
 
-            Material material = NewLit($"{pack.Author}_{pack.Name}");
+            Material material = StyleLook.New($"{pack.Author}_{pack.Name}");
             material.SetTexture("_BaseMap", colormap);
             material.mainTexture = colormap;
             material.SetColor("_BaseColor", Color.white);
@@ -415,7 +415,7 @@ namespace EscapeWithYourFriends.EditorTools
             var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (existing != null) return existing;
 
-            Material material = NewLit($"Flat_{hex}");
+            Material material = StyleLook.New($"Flat_{hex}");
             material.SetColor("_BaseColor", colour);
             material.color = colour;
 
@@ -460,7 +460,7 @@ namespace EscapeWithYourFriends.EditorTools
                 texture = AssetDatabase.LoadAssetAtPath<Texture2D>(file);
             }
 
-            Material material = NewLit(name);
+            Material material = StyleLook.New(name);
             if (texture == null)
             {
                 // A slot can be a plain colour even in a textured kit. Kept, and said.
@@ -489,12 +489,6 @@ namespace EscapeWithYourFriends.EditorTools
                       + (clip ? ", alpha-clipped, both sides." : "."));
             return Save(material, path);
         }
-
-        /// <summary>
-        /// A new kit material, on the island's one shader (<see cref="StyleLook"/>). Matte: flat-shaded
-        /// low poly under a hard sun with a sheen on every leaf reads as plastic.
-        /// </summary>
-        internal static Material NewLit(string name) => StyleLook.New(name);
 
         internal static Material Save(Material material, string path)
         {

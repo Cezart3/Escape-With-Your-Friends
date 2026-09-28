@@ -7525,8 +7525,35 @@ the new check fails, which is the point: it is the reminder. The name check cann
 that imports but fails to compile for the player (the material keeps the name); that is the build
 log's `Shader error in 'EWYF/Stylized'`.
 
-**Not covered: the terrain.** It stays on URP Terrain/Lit, so the ground under a banded rock is
-still smoothly shaded. A banded terrain shader is the next step if the seam shows.
+**The terrain** has its own shader on the same lighting; see "The ground, lit like the models".
+
+---
+
+## The ground, lit like the models (#79, ART-PLAN P6 V6)
+
+After V6 every model was banded and the terrain still wore URP Terrain/Lit, so the seam moved to
+where each rock meets the sand. `Art/Stylized/StylizedTerrain.shader` (`EWYF/StylizedTerrain`)
+draws the ground through the same `StylizedLighting.hlsl` that `EWYF/Stylized` now includes: one
+function, one band curve, one cool shade tint, so the two cannot drift apart. The ground takes no
+rim and no highlight.
+
+**Kept small for the 760M.** Four layers in one pass (`IslandSplat.LayerCount`), one control fetch
+and four albedo fetches, no normal maps, no height blend, no holes. There is no
+add pass, so a fifth layer would not draw.
+
+**No basemap, no instancing, on purpose.** URP's terrain swaps to a baked basemap shader past
+`basemapDistance`, found through a `BaseMapShader` dependency. A custom shader without one would
+fall to a shader URP does not have. So `TerrainGenerator` sets `basemapDistance` to 20000 (never)
+and `drawInstanced` off (the instanced path samples the heightmap in the vertex shader, which this
+one does not). Full-shader terrain to the horizon costs five fetches a pixel, less than Terrain/Lit.
+
+**Wiring.** `TerrainGenerator.EnsureTerrainMaterial` switches the material to the shader and calls
+`StyleLook.WearTerrain` for the shared ramp, softness and tint. If the shader did not import, it
+falls back to URP Terrain/Lit with the old 400 m basemap and instancing on. The switch only happens
+on a regeneration, because the shader needs the terrain settings the generator writes beside it.
+`StyleLook.Restyle` refreshes the numbers on terrain materials already switched, so tuning the look
+table reaches the ground too. `-lookTest` checks every active terrain for the
+shader, instancing off and basemap distance past 10 km.
 
 ---
 

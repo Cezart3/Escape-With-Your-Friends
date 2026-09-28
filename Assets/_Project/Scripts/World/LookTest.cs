@@ -31,15 +31,17 @@ namespace EscapeWithYourFriends.World
 
         /// <summary>The island's one surface shader. See StyleLook in the editor scripts.</summary>
         const string Stylized = "EWYF/Stylized";
+        const string StylizedTerrain = "EWYF/StylizedTerrain";
 
         /// <summary>
-        /// Palette.Entries' names plus the roulette wheel: the rest of what StyleLook re-shades. A copy,
-        /// because Palette is an editor script; a palette entry missing here only goes unchecked.
+        /// Palette.Entries' names plus the flame, the roulette wheel and the slot atlas: the rest of
+        /// what StyleLook re-shades. A copy, because Palette is an editor script; a palette entry
+        /// missing here only goes unchecked.
         /// </summary>
         static readonly HashSet<string> Painted = new()
         {
             "Wood", "Stone", "Canvas", "Metal", "Accent", "Sand", "Leaf", "WoodDark", "LeafDark",
-            "Felt", "Skin", "Cloth", "Plastic", "Gold", "Dark", "RouletteWheel", "Flame",
+            "Felt", "Skin", "Cloth", "Plastic", "Gold", "Dark", "RouletteWheel", "Flame", "SlotAtlas",
         };
 
         /// <summary>Renderers wearing one material before the draw calls are worth instancing away.</summary>
@@ -214,6 +216,20 @@ namespace EscapeWithYourFriends.World
             }
 
             Debug.Log($"[LookTest] {prototypes} tree prototypes on {terrains.Length} terrain(s).");
+
+            // The ground is lit like the models on it, and set up for a shader with no basemap or
+            // instanced path (TerrainGenerator): past the basemap distance it would otherwise fall
+            // to a shader URP does not have.
+            string[] offGround = terrains
+                .Where(t => t.materialTemplate == null || t.materialTemplate.shader == null
+                            || t.materialTemplate.shader.name != StylizedTerrain || t.drawInstanced
+                            || t.basemapDistance < 10000f)
+                .Select(t => $"{t.name} on {(t.materialTemplate != null && t.materialTemplate.shader != null ? t.materialTemplate.shader.name : "nothing")}"
+                             + $"{(t.drawInstanced ? ", instanced" : "")}, basemap {t.basemapDistance:F0}m")
+                .ToArray();
+
+            Check($"the ground wears {StylizedTerrain} with no basemap ({string.Join(", ", offGround.Take(5))})",
+                  offGround.Length == 0);
 
             Check($"every tree came through the art pass ({string.Join(", ", unmarked.Take(5))})",
                   unmarked.Count == 0);
