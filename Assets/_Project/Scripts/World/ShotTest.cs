@@ -59,6 +59,24 @@ namespace EscapeWithYourFriends.World
             camera.transform.LookAt(eye);
             yield return Shoot(folder, "above");
 
+            // -shotsAt a,b: each name a landmark id or any object's name, shot from 10m off and 4m up.
+            foreach (string at in CommandLine.GetString("-shotsAt", "").Split(',', System.StringSplitOptions.RemoveEmptyEntries))
+            {
+                Landmark mark = Landmark.All.Find(l => l.Id == at);
+                GameObject thing = mark != null ? mark.gameObject : GameObject.Find(at);
+                if (thing == null)
+                    foreach (Transform t in FindObjectsByType<Transform>(FindObjectsSortMode.None))
+                        if (t.name.Contains(at)) { thing = t.gameObject; break; }
+                if (thing == null) { Debug.Log($"[ShotTest] nothing called {at}."); continue; }
+
+                Vector3 p = thing.transform.position;
+                Debug.Log($"[ShotTest] {at} is {thing.name} at {p}, active {thing.activeInHierarchy}, "
+                          + $"{thing.GetComponentsInChildren<Renderer>().Length} renderers.");
+                camera.transform.position = p + thing.transform.forward * 10f + Vector3.up * 4f;
+                camera.transform.LookAt(p + Vector3.up);
+                yield return Shoot(folder, "at_" + at);
+            }
+
             Debug.Log($"[ShotTest] 5 shots in {folder}.");
             Application.Quit();
         }

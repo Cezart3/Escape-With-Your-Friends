@@ -102,6 +102,20 @@ namespace EscapeWithYourFriends.AI
             Debug.Log($"[RescueTest] their legs: agent enabled {legs.enabled}, on the mesh "
                       + $"{legs.isOnNavMesh}, {legs.speed:0.0} m/s.");
 
+            // Before the plane: the chain is about the boat, and they will not be led anywhere.
+            yield return new WaitForSeconds(1.5f);
+            if (!PlaneAssembly.Owned)
+            {
+                Check("with no plane, the chain says to fix the boat",
+                      Objective.Text.Contains("boat", System.StringComparison.OrdinalIgnoreCase));
+                Check("and they cannot be led off yet",
+                      !who.ServerCanInteract(players[0].GetComponent<NetworkObject>()));
+            }
+
+            // The group built the plane on the other island; this harness starts after that.
+            plane.GetComponent<PlaneAssembly>()?.ServerFitAll();
+            yield return new WaitForSeconds(1.5f);
+
             yield return Finding(who, players[0]);
             yield return Walking(who, players[0], plane);
             yield return Flying(who, plane);

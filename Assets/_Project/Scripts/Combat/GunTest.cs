@@ -295,7 +295,10 @@ namespace EscapeWithYourFriends.Combat
                     yield return new WaitForSeconds(0.15f);
 
                     before = health.Current;
-                    hits = attacker.ServerAttackNow(Toward(attacker, victim));
+                    // At the chest from the eye, not flat: on a slope a flat ray passes over a body
+                    // twenty metres downhill, and the rifle's 0.2 degrees never scatters it back down.
+                    hits = attacker.ServerAttackNow(victim.transform.position + Vector3.up * 1.2f
+                                                    - attacker.AimOrigin.position);
                     dealt = before - health.Current;
                 }
 
@@ -310,6 +313,15 @@ namespace EscapeWithYourFriends.Combat
                 else
                 {
                     Debug.LogError($"[GunTest] {gun.Id} landed nothing in 25 shots at {reach:F1}m.");
+
+                    Transform eye = attacker.AimOrigin;
+                    string seen = Physics.Raycast(eye.position, victim.transform.position + Vector3.up * 1.2f - eye.position, out RaycastHit probe, gun.Range, ~0,
+                                                  QueryTriggerInteraction.Ignore)
+                        ? $"{probe.collider.name} (under {probe.collider.transform.root.name}) at {probe.distance:F1}m"
+                        : "nothing";
+                    Debug.Log($"[GunTest] a ray from the eye to their chest sees {seen}; victim {health.State} "
+                              + $"{health.Current:F0}/{health.Max:F0}, {hits} ray hit(s) on the last shot, "
+                              + $"{attacker.Loaded} loaded.");
                 }
 
                 // ------------------------------------------------ emptying it
