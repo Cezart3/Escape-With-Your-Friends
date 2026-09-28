@@ -7520,9 +7520,21 @@ re-shades materials, it adds none.
 
 ## Animals and the plane in Quaternius's clothes (#79, ART-PLAN T13, T14)
 
-**Not run yet.** Written in the cloud with no compiler and no packs; the file names in
-`ArtCatalog` are the packs' usual ones, not read from a zip. ArtExtract names the nearest file when
-one is wrong, and the fix is the `File` in that row.
+**Sources.** Deer from Quaternius's Animals (poly.pizza `T6Cs7tmMHJ`, flat colours, 2 176
+triangles, 26 clips). The boar is Quaternius's Pig from the farm animals (poly.pizza `u35l6uP5vj`,
+one `Atlas.png`, 2 808 triangles, 8 clips). Both CC0. The Animal cap went to 3 000. No CC0
+propeller plane was found, so the plane row is out: `PlaneBuilder.Dress` returns early without
+it, and the plane stays the greybox.
+
+**Run.** ArtExtract 63 models, 0 missing. ArtLibrary 64 of 64. The pig's slot is
+`AtlasMaterial` and its file `Atlas.png`, so `CharacterArt.BaseColour` now also matches a file
+whose name sits inside the slot's, but only when nothing matches the usual way round. Build clean.
+`-animalTest` 93/0 (solo, animals on). `-planeTest` 33/0 and `-flightTest` 29/0 on `island2`.
+`-lookTest` 11/0 on both islands.
+
+`-animalTest`'s hunt used to swing where it asked the boar to spawn. `ServerSpawn` snaps to the
+navmesh up to 25 m away, and since the players wake in the camp (#168) that point can land out of a
+hatchet's reach. The player now stands 1.6 m from wherever the boar actually landed.
 
 **Animals.** There is still one animal prefab. `AnimalArt.Dress` hangs every species' model in it,
 each fitted in shape into that species' body box (`AnimalDef.BodySize`, feet on the ground, turned

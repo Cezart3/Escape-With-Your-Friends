@@ -559,6 +559,14 @@ namespace EscapeWithYourFriends.AI
                 yield break;
             }
 
+            // ServerSpawn snaps to the navmesh up to 25m away, and the camp's props can push the point
+            // out of a hatchet's reach. Stand where it actually landed.
+            Vector3 back = motor.transform.position - animal.transform.position;
+            back.y = 0f;
+            if (back.sqrMagnitude < 0.001f) back = Vector3.back;
+            motor.ServerTeleport(animal.transform.position + back.normalized * MeleeAhead + Vector3.up * 0.5f, 0f);
+            yield return Settled();
+
             var prey = animal.GetComponent<Health>();
             Check($"a {def.Id} has {prey.Max:0} health, so a hatchet needs "
                   + $"{Mathf.CeilToInt(prey.Max / hatchet.Hit.Damage)} swings",
@@ -573,7 +581,7 @@ namespace EscapeWithYourFriends.AI
 
             float dealt = before - prey.Current;
 
-            Debug.Log($"[AnimalTest] one hatchet swing at a {def.Id}: {hits} hit(s), {dealt:0} damage.");
+            Debug.Log($"[AnimalTest] one hatchet swing at a {def.Id} {Distance(animal, motor):0.0}m away: {hits} hit(s), {dealt:0} damage.");
 
             Check($"a weapon hits an animal at all ({hits} hit)", hits > 0);
             Check($"a hatchet does its own {hatchet.Hit.Damage:0} to a {def.Id} ({dealt:0})",
