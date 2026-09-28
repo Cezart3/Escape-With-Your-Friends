@@ -36,6 +36,8 @@ namespace EscapeWithYourFriends.EditorTools
         static readonly (string Prefix, float Detail, float Saturation, float Brightness)[] Kits =
         {
             ("Quaternius_Nature_", 0.45f, 0.92f, 1.0f),
+            // The pirate atlas's palm leaves are a lime that shouts over the nature kit's greens.
+            ("Quaternius_PirateKit", 1f, 0.8f, 0.9f),
             ("Quaternius_", 1f, 0.95f, 1.0f),
         };
 
@@ -122,6 +124,20 @@ namespace EscapeWithYourFriends.EditorTools
             }
 
             material.SetFloat("_Detail", detail);
+
+            // The kit's Bush_Common wears the twisted tree's autumn leaves, bright red. This is a
+            // tropical island: the same cards, from the kit's white leaf mask, painted green.
+            if (material.name == "Quaternius_Nature_Leaves_TwistedTree")
+            {
+                var mask = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                    "Assets/_Project/Art/ThirdParty/Quaternius/Nature/Textures/Leaves_TwistedTree.png");
+                if (mask != null)
+                {
+                    material.SetTexture("_BaseMap", mask);
+                    material.mainTexture = mask;
+                    material.SetColor("_BaseColor", new Color(0.32f, 0.47f, 0.1f));
+                }
+            }
 
             // The second texture fetch is compiled in only where it changes something.
             if (detail < 1f) material.EnableKeyword("_DETAIL_SOFTEN");

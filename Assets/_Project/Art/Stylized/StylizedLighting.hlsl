@@ -39,8 +39,11 @@ half3 StylizedLighting(half3 albedo, float3 positionWS, half3 normal, float4 pos
         directOcclusion = occlusion.directAmbientOcclusion;
     #endif
 
-    // The shade side is ambient only, tinted cool; the lit side adds the sun in full.
-    half3 light = ambient * lerp(_ShadowTint.rgb, half3(1, 1, 1), lit) + sun.color * lit * directOcclusion;
+    // The shade side is the ambient, but never less than a share of the sun: a trilight ambient
+    // under a jungle canopy is near black, and a toon look reads its shade as a colour, not a hole.
+    // Scaled by the sun, so the night stays night. Tinted cool against the warm key.
+    half3 shade = max(ambient, sun.color * 0.42) * _ShadowTint.rgb;
+    half3 light = lerp(shade, ambient + sun.color * directOcclusion, lit);
 
     // Rim: a thin bright edge on the lit side, what makes a silhouette pop against the sea.
     half rim = pow(1 - saturate(dot(normal, view)), 4) * _RimStrength * lit;
