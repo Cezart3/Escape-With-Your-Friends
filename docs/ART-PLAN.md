@@ -676,8 +676,12 @@ collider, wheel, seat or float moved. `CarController`'s wheel visuals roll and s
 §4. The view prefab has no reader, so the same prefab becomes the item's `WorldPrefab`: the weapon
 is seen lying on the ground. The chainsaw stays a box. *Done:* `-weaponTest`, `-gunTest`,
 `-meleeTest` `0 failed`.
-**T13 · Sonnet · animals**, after you pick the pack. *Done:* `-animalTest` `0 failed`.
-**T14 · Opus · plane**, after you pick the model.
+**T13 · animals.** Written, not run (PR 157). Deer from Quaternius's Ultimate Animated Animal Pack,
+the boar as its farm pig, animated from their own clips; the gull keeps its boxes. *Done:*
+`-animalTest` `0 failed`.
+**T14 · plane.** Written, not run (PR 157). One CC0 Quaternius propeller plane over the airframe;
+its propeller, engine and starboard wing move into the holes when the model has them as separate
+meshes. *Done:* `-planeTest`, `-flightTest` `0 failed`.
 
 ### P5 — optional
 
@@ -710,9 +714,8 @@ Order by screen time: V1, V3, V2, V4, V6, V5.
 MegaKit is textured, with separate leaf cards, so it needed a third mode, which is now written:
 `textured: true` on the pack (ARCHITECTURE.md, "Textured kits"). It has not run yet.
 
-**Before it starts:** the zips. The cloud sessions cannot reach any asset site, so P6 runs in a
-local session, which can (the Quaternius zips for T9 came from itch). PR 153 has run, so the
-lighting P6 starts from is the real one.
+**V6's shading half is written:** every kit on one banded shader, `EWYF/Stylized`, tuned from one
+table in `StyleLook`. See ARCHITECTURE.md, "One shader for every kit". It needs the user's eye.
 
 ---
 

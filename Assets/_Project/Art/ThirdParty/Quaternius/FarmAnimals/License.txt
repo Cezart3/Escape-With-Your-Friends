@@ -1,0 +1,4 @@
+Deer and Pig by Quaternius (https://quaternius.com), from poly.pizza (https://poly.pizza/m/T6Cs7tmMHJ, https://poly.pizza/m/u35l6uP5vj).
+License: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication
+https://creativecommons.org/publicdomain/zero/1.0/
+Converted from glTF to FBX with Blender 5.2; the models are unchanged.

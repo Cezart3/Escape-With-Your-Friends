@@ -333,8 +333,7 @@ namespace EscapeWithYourFriends.EditorTools
                 return null;
             }
 
-            Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            var material = new Material(shader) { name = "RouletteWheel", enableInstancing = true };
+            Material material = StyleLook.New("RouletteWheel");
             material.SetTexture("_BaseMap", face);
             material.mainTexture = face;
             material.SetColor("_BaseColor", Color.white);

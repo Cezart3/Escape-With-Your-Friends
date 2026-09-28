@@ -71,8 +71,7 @@ namespace EscapeWithYourFriends.EditorTools
 
             if (material == null)
             {
-                Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-                material = new Material(shader) { name = name };
+                material = new Material(StyleLook.Stylized) { name = name };
 
                 AssetDatabase.CreateAsset(material, path);
                 Debug.Log($"[Palette] Generated {path}.");
@@ -120,9 +119,9 @@ namespace EscapeWithYourFriends.EditorTools
                 if (material.HasProperty("_Glossiness")) material.SetFloat("_Glossiness", smoothness);
             }
 
-            // The difference between four thousand draw calls and forty.
-            material.enableInstancing = true;
-            EditorUtility.SetDirty(material);
+            // The island's one shader, and instancing: the difference between four thousand draw
+            // calls and forty.
+            StyleLook.Wear(material);
         }
 
         /// <summary>
