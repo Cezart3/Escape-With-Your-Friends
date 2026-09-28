@@ -243,6 +243,14 @@ namespace EscapeWithYourFriends.World
 
             Ignore(_carrier.Value);
             Ignore(_helper.Value);
+
+            // The socket is at the carrier's face, and five metres of wing there was all the carrier
+            // could see (second playtest, fullscreen). Their own camera gets the shadow only; everybody
+            // else sees it on the shoulder.
+            bool mine = _carrier.Value != null && _carrier.Value.IsOwner;
+            foreach (Renderer r in GetComponentsInChildren<Renderer>())
+                r.shadowCastingMode = mine ? UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly
+                                           : UnityEngine.Rendering.ShadowCastingMode.On;
         }
 
         void Ignore(NetworkObject holder)

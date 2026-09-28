@@ -81,34 +81,55 @@ namespace EscapeWithYourFriends.Player
 
             Transform origin = _aimOrigin != null ? _aimOrigin : transform;
 
-            if (!Physics.SphereCast(origin.position, _castRadius, origin.forward,
-                                    out RaycastHit hit, _range, _mask,
-                                    QueryTriggerInteraction.Ignore))
-                return null;
+            // Every hit, nearest first, and never the plane part in your own arms unless nothing
+            // else is there: it rides at your face, so the nearest hit was always the part itself,
+            // and E at the plane put the propeller down instead of fitting it (playthrough bot).
+            // With nothing else in front of you, E on it is still how you put it down.
+            RaycastHit[] hits = Physics.SphereCastAll(origin.position, _castRadius, origin.forward,
+                                                      _range, _mask, QueryTriggerInteraction.Ignore);
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            World.PlanePart held = World.PlanePart.HeldBy(NetworkObject);
+            IInteractable fallback = null;
+            NetworkObject fallbackObject = null;
 
-            // In parents, not on the collider: a machine's hit box is a child mesh, and the component
-            // that knows what the machine does sits on the networked root.
-            //
-            // All of them, not the first: #72's aeroplane is one object that is both a thing you fit
-            // parts to and a thing you get into, and which of those it is depends on what is on your
-            // shoulder. An empty prompt means the component is present but has nothing to offer — a
-            // Rescuable on somebody who is upright, a PlaneAssembly with no holes left — so the first
-            // one with something to say is the answer, and if none of them has anything the key falls
-            // through to carrying, which is what lets a corpse be picked up at all.
-            IInteractable interactable = null;
-
-            foreach (IInteractable candidate in hit.collider.GetComponentsInParent<IInteractable>())
+            foreach (RaycastHit hit in hits)
             {
-                if (candidate == null || string.IsNullOrEmpty(candidate.Prompt)) continue;
+                // Overlapping at the start - your own capsule, mostly. SphereCast never reported these.
+                if (hit.distance <= 0f && hit.point == Vector3.zero) continue;
 
-                interactable = candidate;
-                break;
+                // In parents, not on the collider: a machine's hit box is a child mesh, and the
+                // component that knows what the machine does sits on the networked root.
+                //
+                // All of them, not the first: #72's aeroplane is one object that is both a thing
+                // you fit parts to and a thing you get into, and which of those it is depends on
+                // what is on your shoulder. An empty prompt means the component is present but has
+                // nothing to offer, so the first one with something to say is the answer, and if
+                // none has anything the key falls through to carrying, which is what lets a corpse
+                // be picked up at all.
+                IInteractable interactable = null;
+                foreach (IInteractable candidate in hit.collider.GetComponentsInParent<IInteractable>())
+                {
+                    if (candidate == null || string.IsNullOrEmpty(candidate.Prompt)) continue;
+                    interactable = candidate;
+                    break;
+                }
+
+                NetworkObject owner = hit.collider.GetComponentInParent<NetworkObject>();
+                if (held != null && owner == held.NetworkObject)
+                {
+                    if (interactable != null) { fallback = interactable; fallbackObject = owner; }
+                    continue;
+                }
+
+                // Anything else stops the look, as the single cast did: no reaching through a wall.
+                if (interactable == null || owner == null) break;
+
+                networkObject = owner;
+                return interactable;
             }
 
-            if (interactable == null) return null;
-
-            networkObject = hit.collider.GetComponentInParent<NetworkObject>();
-            return networkObject != null ? interactable : null;
+            networkObject = fallbackObject;
+            return fallback;
         }
 
         /// <summary>

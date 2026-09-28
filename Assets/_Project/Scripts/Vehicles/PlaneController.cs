@@ -165,7 +165,7 @@ namespace EscapeWithYourFriends.Vehicles
 
         /// <summary>What the aeroplane is doing, for the harness and for a bug report.</summary>
         public string FlightReport()
-            => $"throttle {Throttle:0.00}, airspeed {Airspeed:0.0} m/s, alt {transform.position.y:0.0}m, "
+            => $"throttle {Throttle:0.00} (power {_power}, brake {_brake}, pitch {_pitch:0.0}), airspeed {Airspeed:0.0} m/s, alt {transform.position.y:0.0}m, "
                + $"bank {Bank:0.0}deg, slip {Slip:0.0}deg, {(_grounded ? "on the ground" : "airborne")}, "
                + $"{(Flyable ? "complete" : "missing pieces")}, vel {_body.linearVelocity}, "
                + $"{(_body.isKinematic ? "kinematic" : "dynamic")}, "

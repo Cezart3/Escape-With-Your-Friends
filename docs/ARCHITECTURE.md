@@ -7786,6 +7786,59 @@ About six minutes; 16 passed, 0 failed. What the first runs found, each fixed he
 
 ---
 
+## The playthrough bot's second half: Island2, the flight back, the ending
+
+`-playthrough` now plays the whole run. `Run()` picks up wherever the world is: the first island
+with no aeroplane yet, Island2, or the first island with the aeroplane already built (the rescue).
+On Island2 it lifts each loose plane part, carries it to the airframe and fits it with E, boards,
+flies (throttle held, pitch 0.5 on the ground once at 20 m/s, a gentle climb to fifty metres over
+the strip, then hands off - the plane levels its own wings), and on the first island walks to the
+Castaway, presses E, leads them to the plane, flies them out and checks `RunSummary.Over`.
+
+```
+EWYF.exe -screen-fullscreen 0 -screen-width 1280 -screen-height 720 -logFile q.log -host -port 8547
+  -playerKey bot:qN -scene island2 -noNatives -noAnimals -timeOfDay 0.45 -playthrough D:\Builds\shots\qN
+```
+
+A windowed run saves (`-noSave` for a fresh world), so a second run starts where the first ended.
+Last runs: 14 passed, 0 failed from Island2 to the ending; 9 passed, 0 failed starting on Island2
+with a save on Island (the save sails there, then the rescue). What it found, each fixed here:
+
+- **The carried wing covered the whole screen** (a playtest, fullscreen). The carry socket is at the
+  face; the carrier's own renderers go `ShadowsOnly` (`PlanePart.OnHandsChanged`), everybody else
+  still sees it on the shoulder.
+- **E at the plane sat you in the pilot's seat instead of fitting the part in your arms.**
+  `Vehicle.ServerCanInteract` refuses anybody holding a plane part.
+- **E put the carried part down instead of reaching what was in front of it.** `PlayerInteractor`
+  now sphere-casts all hits nearest-first, skips your own held part (keeping it as the fallback, so
+  E with nothing else in view still puts it down) and your own capsule, and stops at the first solid
+  thing so it never reaches through walls.
+- **A loaded save showed spare parts.** The save restored what was fitted, but the scene still
+  spawned all three; hauling a second engine did nothing. `PlaneAssembly` despawns a loose part
+  with no hole left for it.
+- **A plane that went into the sea sank for ever.** `PlaneVoyage.Ditch()`: four metres under sea
+  level, everybody is put out and the plane goes back where it was parked.
+- **After a flight the view froze over the old island** while the body walked on. The camera and
+  its target were made in the scene that unloaded, and the new scene's camera has no Cinemachine
+  brain. `PlayerCameraRig.LateUpdate` rebuilds both and ensures the brain every frame.
+- **The first island's aeroplane faced a treeline 45 m away** and could not get off the ground.
+  `IslandShape.InsidePad` now also clears trees from a 120 m by 24 m runway ahead of any `plane`
+  entry (the ground is untouched), and on the first island the plane faces away from camp, toward
+  the coast. Regenerated with `TerrainGenerator.GenerateIsland -rebuildPois` (the only catalog change
+  is the plane's yaw, 90 to 270). Island2 is not regenerated; its runway already worked.
+- **The Castaway sat back down on the way to the plane.** They walked at 3.4 m/s with a 60 m leash,
+  and anybody sprinting (7.5 m/s) lost them in fifteen seconds. They now run at the leader's sprint
+  speed when more than three follow-distances behind.
+- **A save that sails on at start-up arrived nowhere.** Starting on Island2 with a save on Island,
+  the first island's own load finished after the trip began and `GameSceneLoader.OnTravelled` took
+  it: `Current` said Island2 with Island on screen, and nobody was put ashore. It now waits for the
+  load of the scene it asked for, and `RunSave` does not sail until the first island has finished
+  loading (leaving mid-load kept both islands loaded and spawned nobody).
+- `PlaneController.FlightReport()` includes power, brake and pitch, so a plane that will not go says
+  why.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**

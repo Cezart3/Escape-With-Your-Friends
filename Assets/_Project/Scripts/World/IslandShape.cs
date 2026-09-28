@@ -123,6 +123,8 @@ namespace EscapeWithYourFriends.World
         /// colliders belong to the TerrainCollider, so the contact came back named after the island
         /// and looked for all the world like the ground holding it.
         /// </summary>
+        const float RunwayLength = 120f, RunwayHalfWidth = 12f;
+
         public bool InsidePad(float x, float z)
         {
             for (int i = 0; i < _pads.Length; i++)
@@ -132,6 +134,18 @@ namespace EscapeWithYourFriends.World
                 float dz = z - pad.Position.y;
 
                 if (dx * dx + dz * dz <= pad.PadRadius * pad.PadRadius) return true;
+
+                // The strip's pad is round and thirty metres; the plane needs twice that in a line
+                // to get off it, and the rescue flight on the first island went nose-first into the
+                // treeline (playthrough bot). A runway ahead of it is cleared of trees as well -
+                // the ground is left alone, the take-off roll only needs no trunks in it.
+                if (pad.Id == "plane")
+                {
+                    float yaw = pad.Yaw * Mathf.Deg2Rad;
+                    float along = dx * Mathf.Sin(yaw) + dz * Mathf.Cos(yaw);
+                    float across = dx * Mathf.Cos(yaw) - dz * Mathf.Sin(yaw);
+                    if (along >= 0f && along <= RunwayLength && Mathf.Abs(across) <= RunwayHalfWidth) return true;
+                }
             }
 
             return false;

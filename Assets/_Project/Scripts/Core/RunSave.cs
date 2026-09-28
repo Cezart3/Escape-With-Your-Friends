@@ -173,6 +173,14 @@ namespace EscapeWithYourFriends.Core
 
             // The island first, and before anything else asks what map this is. Travelling is a scene
             // load, so everything below waits for it to land.
+            // But not before the first island has landed: leaving mid-load left both islands loaded
+            // and nobody spawned on either (playthrough bot).
+            for (float since = Time.realtimeSinceStartup; Time.realtimeSinceStartup - since < 30f
+                 && (string.IsNullOrEmpty(GameSceneLoader.Current)
+                     || !UnityEngine.SceneManagement.SceneManager.GetSceneByName(GameSceneLoader.Current).isLoaded);)
+                yield return null;
+            yield return new WaitForSeconds(1f);
+
             if (!string.IsNullOrEmpty(_run.island) && _run.island != GameSceneLoader.Current
                 && GameSceneLoader.Instance != null)
             {

@@ -195,6 +195,12 @@ namespace EscapeWithYourFriends.Vehicles
             // fine, it just will not go - and somebody holding a can wants the can used.
             if (ServiceLabel(actor.GetComponent<Items.Inventory>()) != null) return true;
 
+            // Arms full of aeroplane. Without this the plane - which is both a Vehicle and the
+            // PlaneAssembly the part goes into - seated whoever walked up with its engine, and E
+            // could never fit a part. The playthrough bot found it; -partTest calls the assembly
+            // directly and never saw it.
+            if (World.PlanePart.HeldBy(actor) != null) return false;
+
             return ServerCanBoard(actor, out _);
         }
 
