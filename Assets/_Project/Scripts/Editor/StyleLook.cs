@@ -39,6 +39,10 @@ namespace EscapeWithYourFriends.EditorTools
             // The pirate atlas's palm leaves are a lime that shouts over the nature kit's greens.
             ("Quaternius_PirateKit", 1f, 0.8f, 0.9f),
             ("Quaternius_", 1f, 0.95f, 1.0f),
+            // Kenney's colour maps are toy swatches - the orange logs and crates are most of what read
+            // as "Roblox" in the second playtest. Pulled down to sit with the Quaternius nature.
+            ("Kenney_", 1f, 0.62f, 0.85f),
+            ("Flat_", 1f, 0.75f, 0.9f),
         };
 
         static Shader _stylized;

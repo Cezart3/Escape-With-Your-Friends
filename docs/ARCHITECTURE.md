@@ -7686,6 +7686,11 @@ before, 0.84x1.60x2.03 now, so the pig fills its body box instead of being shrun
 floored you and threw you on every tackle. Now 10 damage, no stun, no knockback: a bite that hurts
 without knocking you over, ten of them to go down.
 
+**The toy palette.** Kenney's colour maps are saturated swatches, and its orange logs, stumps and
+crates were most of what read as "Roblox" next to the Quaternius nature. `StyleLook.Kits` now
+pulls `Kenney_*` to 0.62 saturation and 0.85 brightness, and the `Flat_*` swatches to 0.75 and 0.9.
+The logs and crates come out wood-brown. `-lookTest` 12/0.
+
 ---
 
 ## Data-driven content
