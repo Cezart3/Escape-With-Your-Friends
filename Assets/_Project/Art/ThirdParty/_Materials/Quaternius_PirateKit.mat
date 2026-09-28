@@ -30,14 +30,14 @@ Material:
     m_Ints: []
     m_Floats:
     - _AlphaClip: 0
-    - _Brightness: 1
+    - _Brightness: 0.9
     - _Cull: 2
     - _Cutoff: 0.5
     - _Detail: 1
     - _RampCentre: 0.05
     - _RampSoftness: 0.08
     - _RimStrength: 0.2
-    - _Saturation: 0.95
+    - _Saturation: 0.8
     - _Smoothness: 0.1
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}

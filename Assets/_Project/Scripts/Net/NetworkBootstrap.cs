@@ -296,6 +296,7 @@ namespace EscapeWithYourFriends.Net
             AchievementTest.Begin();
             World.DemoTest.Begin();
             World.LookTest.Begin();
+            World.ShotTest.Begin();
             Player.AnimTest.Begin();
             Player.SkinTest.Begin();
 

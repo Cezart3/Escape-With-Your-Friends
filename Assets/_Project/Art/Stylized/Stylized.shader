@@ -179,6 +179,12 @@ Shader "EWYF/Stylized"
                 half3 normal = normalize(input.normalWS);
                 normal = IS_FRONT_VFACE(face, normal, -normal);
 
+                // A canopy is lit as one mass from above, not card by card: a leaf card's own normal
+                // points anywhere, and half of them banding into shade reads as black speckle.
+                #if defined(_ALPHATEST_ON)
+                    normal = normalize(lerp(normal, half3(0, 1, 0), 0.6));
+                #endif
+
                 half3 colour = StylizedLighting(albedo, input.positionWS, normal, input.positionCS);
 
                 // The campfire's flame (StationBuilder): it has to read at night.

@@ -7635,6 +7635,32 @@ facing backwards. The loose parts lying on the island (`PlanePartBuilder`) are s
 
 ---
 
+## The look, from a screenshot: shade, canopies, the red bush, the lost sky
+
+The first playtest on the stylized look found four things. `-shots <folder>` (`ShotTest`) is how they
+were judged from a terminal. It runs in a real window (no `-nographics`) and takes four eye-level
+views round the spawn and one from above, on a camera copied from the main one. Then it quits.
+
+- **Shade was a hole.** The shade side was the trilight ambient alone, near black under a canopy. It
+  is now never less than 42% of the sun's colour (`StylizedLighting.hlsl`). That is scaled by the
+  sun, so the night stays dark.
+- **Canopies were black speckle.** Every leaf card banded on its own normal, and half of them fell
+  into shade. Alpha-clipped materials now bend the normal 60% toward up, so a crown is lit as one
+  mass.
+- **The bushes were red.** The kit's `Bush_Common` wears the twisted tree's autumn leaves
+  (`Leaves_TwistedTree_C.png`). `StyleLook` puts the white leaf mask of the same cards on that one
+  material and tints it green. The pirate atlas's lime palms lost some saturation (0.8) and
+  brightness (0.9).
+- **The camera walked into trees.** The broadleaf trunks flare to 0.9-1.0 m at the root, measured
+  in Blender at their placed height. The capsules were 0.36-0.45 m; they are now 0.75-0.85 m.
+- **The sky was lost** whenever the clock was frozen. `RenderSettings` belong to the active scene, and
+  the network scene loads switch it after `DayNightCycle` has written the sky. A moving clock
+  rewrites it within a second, but a frozen one never did. A lost sky now forces a re-apply.
+
+lookTest 12/0 on both islands, nativeTest 162/0, animalTest 94/0.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**
