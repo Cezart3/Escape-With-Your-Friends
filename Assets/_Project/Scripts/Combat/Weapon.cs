@@ -464,6 +464,8 @@ namespace EscapeWithYourFriends.Combat
             ObserversFired(originPosition, ends);
         }
 
+        internal Transform AimOrigin => _aimOrigin != null ? _aimOrigin : transform;
+
         /// <summary>
         /// Degrees of scatter this shooter is adding on their own, from #66's drink. Added to the
         /// weapon's own cone rather than multiplying it, because a pistol's spread is zero and

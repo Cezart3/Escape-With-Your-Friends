@@ -136,10 +136,56 @@ namespace EscapeWithYourFriends.World
                 _manager.ServerManager.Spawn(instance);
                 _live.Add(instance);
                 placed++;
+
+                if (Loot.ContainsKey(placement.Id)) StartCoroutine(Scatter(placement.Id, placement.Position));
             }
 
             Debug.Log($"[POISpawner] Placed {placed} points of interest"
                       + (skipped > 0 ? $", skipped {skipped} with no prefab" : "") + ".");
+        }
+
+        /// <summary>
+        /// What lies on the ground at a place when the island starts. The second playtest walked to
+        /// the wreck the first objective names and found a hull and nothing else; a wreck is where the
+        /// crate of whatever the ship carried washed up, and it is the one place the run's first gun
+        /// can be picked up rather than bought.
+        /// </summary>
+        static readonly Dictionary<string, (string Item, int Count)[]> Loot = new()
+        {
+            ["wreck"] = new[] { ("pistol", 1), ("pistol_ammo", 36), ("rope", 3), ("cloth", 4),
+                                ("plank", 4), ("bandage", 2), ("empty_bottle", 2) },
+            ["cave"] = new[] { ("shotgun_shell", 12), ("torch", 1), ("flint", 3) },
+        };
+
+        static System.Collections.IEnumerator Scatter(string id, Vector3 centre)
+        {
+            // The catalog is published by the first inventory to wake, which is the host's body, and
+            // that arrives after the island's POIs do.
+            float until = Time.time + 60f;
+            while (Data.ItemCatalog.Active == null && Time.time < until) yield return null;
+            if (Data.ItemCatalog.Active == null) yield break;
+
+            var lines = Loot[id];
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                Data.ItemDef def = Data.ItemCatalog.Active.Find(lines[i].Item);
+                ushort index = def != null ? Data.ItemCatalog.Active.IndexOf(def) : (ushort)0;
+                if (index == 0) continue;
+
+                // A ring 9 to 12m out, clear of the hull, each dropped from above onto whatever is there.
+                float angle = i * Mathf.PI * 2f / lines.Length;
+                float radius = 9f + (i % 3);
+                Vector3 at = centre + new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * radius;
+                if (Physics.Raycast(at + Vector3.up * 40f, Vector3.down, out RaycastHit hit, 80f, ~0,
+                                    QueryTriggerInteraction.Ignore))
+                    at = hit.point;
+
+                Items.WorldItemSpawner.Drop(new Items.ItemStack(index, lines[i].Count),
+                                            at + Vector3.up * 0.5f, Quaternion.identity);
+            }
+
+            Debug.Log($"[POISpawner] {lines.Length} stacks of loot on the ground at {id}.");
         }
 
         /// <summary>Where a named POI stands, for spawn points and objectives. Zero if it is not in the list.</summary>

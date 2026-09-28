@@ -7693,6 +7693,48 @@ The logs and crates come out wood-brown. `-lookTest` 12/0.
 
 ---
 
+## Guns you can have, a wreck with something at it, a first objective that is true
+
+The third playtest: "implement the guns so we can shoot", and "I go to the shipwreck and there is
+nothing". Both were true, and neither was a missing system.
+
+**The guns existed and could not be had.** #51 built the whole arsenal - hitscan, pellets, recoil,
+magazines, R to reload, server-owned damage, `-gunTest` - and then nothing sold it and nothing
+dropped it. The trader (`ShopFactory.Stock`) now sells the pistol (180, two on the shelf), shotgun
+(300), SMG (390), rifle (480) and all three kinds of rounds, unlimited. The pistol fits in the $500
+a run starts with. The shelf is written once, so the change needs `ShopFactory.Build -rebuildShop`.
+
+**The wreck had a hull and nothing else.** `POISpawner.Loot` is a table of what lies on the ground
+at a POI when the island starts: at the wreck a pistol, 36 rounds, rope, cloth, planks, bandages
+and bottles; at the cave shells, a torch and flint. Each stack is dropped on a ring 9-12 m out, raycast onto the
+ground. The scatter waits for `ItemCatalog.Active`, which the first inventory to wake publishes and
+which arrives after the POIs do.
+
+**The first objective sent you to somebody you had never left.** A run starts on the first island,
+and the `Castaway` there wrote *Find the one you left behind* from the first frame. So you walked to
+the wreck, found a stranger in their underwear, and pressed E to be told to take them to a plane
+you did not have. Until `PlaneAssembly.Owned`, a waiting castaway now writes the boat instead:
+*Fix the boat: 1/4 parts (the Trader sells them)*, then *Sail the boat to the other island*, and
+they cannot be led anywhere; their prompt says so. It re-reads every second while waiting, so the
+part count and the plane being finished both show up without a hook in either. `RescueTest` checks
+the boat line first, then fits the plane as the earlier harnesses already did.
+
+**`-armsTest`** (`World.ArmsTest`, solo, island): the pistol and its rounds lie within 20 m of the
+wreck and near its height, and the island's trader - not the casino bar, which is a `ShopCounter`
+too - sells every gun and every round.
+
+**`-gunTest` aims at the chest now.** It fired flat from the eye at the victim's feet, which is
+level ground's assumption. On the regenerated island 1 the lane runs downhill and at 20 m a flat
+ray passes over the victim's head: the pistols still scattered into it sometimes, and the rifle's
+0.2 degrees never did (0 of 25, "a ray from the eye sees Island at 57 m"). The test was wrong,
+not the gun. Run as a pair at 100 ms, 113/0. When a gun lands nothing, the log now names
+what the ray actually met.
+
+**`-shotsAt a,b`** extends `-shots`: each name is a landmark id or an object name, shot from 10 m.
+It is how the castaway was found to be standing on the beach all along.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**

@@ -80,6 +80,7 @@ namespace EscapeWithYourFriends.AI
         PlaneController _flight;
 
         float _nextRemark;
+        float _nextSay;
         float _worstBank;
         string _lastRemark;
 
@@ -90,6 +91,8 @@ namespace EscapeWithYourFriends.AI
 
         public string Prompt => Where switch
         {
+            // No plane yet: nothing to tell them. The line is the hint, and the key does nothing.
+            Stage.Waiting when !PlaneAssembly.Owned => "They need a way off - fix the boat first",
             Stage.Waiting => "Tell them you have a plane",
             Stage.Aboard => "Help them down",
 
@@ -154,6 +157,14 @@ namespace EscapeWithYourFriends.AI
 
         void Update()
         {
+            // Waiting, the line follows the boat's part count and the plane being finished, and both
+            // change under it. Objective.Set ignores a line it already shows.
+            if (Where == Stage.Waiting && Time.time >= _nextSay)
+            {
+                _nextSay = Time.time + 1f;
+                Say();
+            }
+
             if (!IsServerStarted) return;
 
             switch (Where)
@@ -174,7 +185,7 @@ namespace EscapeWithYourFriends.AI
             if ((health != null && health.IsIncapacitated) || (stun != null && stun.IsStunned))
                 return false;
 
-            return Where == Stage.Waiting || Where == Stage.Aboard;
+            return (Where == Stage.Waiting && PlaneAssembly.Owned) || Where == Stage.Aboard;
         }
 
         public void ServerInteract(NetworkObject actor)
@@ -347,6 +358,18 @@ namespace EscapeWithYourFriends.AI
         {
             switch (Where)
             {
+                case Stage.Waiting when !PlaneAssembly.Owned:
+                    // The second playtest started here, was told to find somebody it had never
+                    // left, and found them with nothing to say. The run's first job is the boat:
+                    // four parts from the trader, then the other island and its plane parts.
+                    BoatVoyage boat = FindAnyObjectByType<BoatVoyage>();
+                    if (boat == null) Objective.Set("Find a way off this island", null);
+                    else if (!boat.Seaworthy)
+                        Objective.Set($"Fix the boat: {boat.Fitted}/{boat.Needed} parts (the Trader sells them)",
+                                      boat.transform);
+                    else Objective.Set("Sail the boat to the other island", boat.transform);
+                    break;
+
                 case Stage.Waiting:
                     Objective.Set("Find the one you left behind", transform);
                     break;
