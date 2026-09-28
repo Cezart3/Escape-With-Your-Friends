@@ -24,11 +24,11 @@ MonoBehaviour:
   _senseRadius: 30
   _reactRadius: 16
   _calmSeconds: 8
-  _attackDamage: 18
+  _attackDamage: 10
   _attackRange: 2
   _attackInterval: 1.6
-  _attackStun: 0.9
-  _attackKnockback: 950
+  _attackStun: 0
+  _attackKnockback: 0
   _bodySize: {x: 0.85, y: 0.85, z: 1.7}
   _colour: {r: 0.3, g: 0.23, b: 0.18, a: 1}
   _agentRadius: 0.55

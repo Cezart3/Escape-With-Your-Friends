@@ -60,6 +60,9 @@ namespace EscapeWithYourFriends.World
                 .FirstOrDefault(c => c.Shop != null && c.Shop.Offers.Any(o => o.IsValid && o.Item.Id == "rope"));
             Check("there is a trader", counter != null);
             if (counter != null)
+                Check($"the shop screen draws every offer ({counter.OfferCount} of {UI.InventoryScreen.ShopRows} rows)",
+                      counter.OfferCount <= UI.InventoryScreen.ShopRows);
+            if (counter != null)
                 foreach (string gun in new[] { "pistol", "shotgun", "smg", "rifle", "pistol_ammo", "shotgun_shell", "rifle_ammo" })
                     Check($"the trader sells {gun}", counter.Shop.Offers.Any(o => o.IsValid && o.Item.Id == gun));
 
