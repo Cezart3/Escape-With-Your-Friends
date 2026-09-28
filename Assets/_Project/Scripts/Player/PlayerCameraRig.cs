@@ -1,6 +1,7 @@
 using EscapeWithYourFriends.Combat;
 using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.Data;
+using EscapeWithYourFriends.Vehicles;
 using FishNet.Object;
 using Unity.Cinemachine;
 using UnityEngine;
@@ -40,6 +41,8 @@ namespace EscapeWithYourFriends.Player
 
         [Tooltip("Read for the haze that leans this camera while drunk (#66). Assigned at bake time.")]
         [SerializeField] BuffState _buffs;
+
+        VehicleRider _rider;
 
         [Tooltip("Followed while limp, because the body root stops moving when the ragdoll takes over.")]
         [SerializeField] Transform _headBone;
@@ -159,6 +162,7 @@ namespace EscapeWithYourFriends.Player
             }
 
             _logCamera = CommandLine.HasFlag("-cameraLog");
+            TryGetComponent(out _rider);
 
             EnsureBrain();
             BuildCamera();
@@ -261,12 +265,22 @@ namespace EscapeWithYourFriends.Player
             UpdatePitch();
             UpdateTrauma(dt);
 
-            Vector3 eye = Follow(EyePosition(), limp ? _ragdollFollowResponse : _followResponse, dt);
             Quaternion look = LookRotation();
+            Vehicle vehicle = !limp && _rider != null ? _rider.Vehicle : null;
+            Vector3 eye;
+            if (vehicle != null)
+            {
+                // Seated, a chase camera: first person from a kart seat is a view of the bonnet or the
+                // sky. Orbits the vehicle with the same mouse look, pulled back by the vehicle's size.
+                eye = ChaseEye(vehicle, look);
+                _followed = eye;
+                _followValid = true;
+            }
+            else eye = Follow(EyePosition(), limp ? _ragdollFollowResponse : _followResponse, dt);
 
             // Bob and shake are added after the follow filter, not before it: they are supposed to be
             // sharp. Smoothing a footstep is the same as deleting it.
-            if (!limp)
+            if (!limp && vehicle == null)
             {
                 eye += look * Bob(dt);
                 look *= Quaternion.Euler(0f, 0f, _bobRollAngle);
@@ -307,6 +321,30 @@ namespace EscapeWithYourFriends.Player
         {
             float yaw = _input != null && _input.IsBound ? _input.Yaw : transform.eulerAngles.y;
             return Quaternion.Euler(_pitch, yaw, 0f);
+        }
+
+        Vehicle _chased;
+        float _chaseRadius;
+
+        /// <summary>Behind and above the vehicle along the look, pulled in where terrain or a wall is closer.</summary>
+        Vector3 ChaseEye(Vehicle vehicle, Quaternion look)
+        {
+            if (_chased != vehicle)
+            {
+                _chased = vehicle;
+                Bounds bounds = new Bounds(vehicle.transform.position, Vector3.one);
+                foreach (Renderer r in vehicle.GetComponentsInChildren<Renderer>())
+                    if (r.GetComponentInParent<VehicleRider>() == null) bounds.Encapsulate(r.bounds);
+                _chaseRadius = Mathf.Clamp(bounds.extents.magnitude, 1.5f, 12f);
+            }
+
+            Vector3 pivot = vehicle.transform.position + Vector3.up * (1f + _chaseRadius * 0.35f);
+            Vector3 back = look * Vector3.back;
+            float distance = 2.5f + _chaseRadius * 1.6f;
+            if (Physics.SphereCast(pivot, 0.3f, back, out RaycastHit hit, distance, ~0, QueryTriggerInteraction.Ignore)
+                && hit.transform.root != vehicle.transform.root && hit.transform.root != transform.root)
+                distance = Mathf.Max(0.5f, hit.distance);
+            return pivot + back * distance;
         }
 
         /// <summary>
