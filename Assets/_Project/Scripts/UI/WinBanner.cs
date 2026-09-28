@@ -5,7 +5,7 @@ using UnityEngine.UI;
 namespace EscapeWithYourFriends.UI
 {
     /// <summary>
-    /// BIG WIN / MEGA WIN / EPIC WIN across the middle of the screen, the number counting up under
+    /// BIG WIN / MEGA WIN / EPIC WIN / JACKPOT across the middle of the screen, the number counting up under
     /// it, for anybody standing near a hit. It reads <see cref="BigWin.Latest"/> every frame, like
     /// the slot board reads a cabinet, so nothing has to tell it anything.
     /// </summary>
@@ -20,6 +20,7 @@ namespace EscapeWithYourFriends.UI
             new(1f, 0.85f, 0.3f),
             new(1f, 0.55f, 0.2f),
             new(1f, 0.35f, 0.75f),
+            new(0.35f, 1f, 0.85f),
         };
 
         Text _title;

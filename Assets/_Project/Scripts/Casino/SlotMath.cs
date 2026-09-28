@@ -101,6 +101,9 @@ namespace EscapeWithYourFriends.Casino
 
         public int FreeSpins;
         public bool Capped;
+
+        /// <summary>The feature was bought: the first drop was forced to trigger it.</summary>
+        public bool Bought;
         public readonly List<SlotFrame> Frames = new();
 
         public float Seconds
@@ -146,16 +149,16 @@ namespace EscapeWithYourFriends.Casino
             _ => "Reef Rush",
         };
 
-        public static SlotResult Spin(SlotKind kind, int seed, int bet)
+        public static SlotResult Spin(SlotKind kind, int seed, int bet, bool buy = false)
         {
-            var result = new SlotResult { Kind = kind, Seed = seed, Bet = bet };
+            var result = new SlotResult { Kind = kind, Seed = seed, Bet = bet, Bought = buy };
             var rng = new SlotRng(seed);
 
             switch (kind)
             {
                 case SlotKind.Sevens: Sevens.Play(ref rng, result); break;
-                case SlotKind.Volcano: Volcano.Play(ref rng, result); break;
-                default: Reef.Play(ref rng, result); break;
+                case SlotKind.Volcano: Volcano.Play(ref rng, result, buy); break;
+                default: Reef.Play(ref rng, result, buy); break;
             }
 
             long cap = MaxWinX * 100L;
@@ -171,6 +174,49 @@ namespace EscapeWithYourFriends.Casino
 
         /// <summary>What a frame's running total reads as, in chips.</summary>
         public static int Chips(int bet, long pct) => (int)(bet * Math.Min(pct, MaxWinX * 100L) / 100);
+
+        /// <summary>
+        /// What buying the feature costs, in bets. Zero where there is nothing to buy. Simulated so a
+        /// bought feature returns about the same as the base game (see the harness's Rtp band).
+        /// </summary>
+        public static int BuyPrice(SlotKind kind) => kind switch
+        {
+            SlotKind.Volcano => Volcano.BuyPrice,
+            SlotKind.Reef => Reef.BuyPrice,
+            _ => 0,
+        };
+
+        /// <summary>Every stake puts this many hundredths of itself into the shared jackpot.</summary>
+        public const int JackpotPct = 1;
+
+        /// <summary>What the jackpot restarts at after it drops, in chips.</summary>
+        public const int JackpotSeed = 500;
+
+        /// <summary>A stake of s drops the jackpot s times in this many - a 100-chip spin one in 1,500.</summary>
+        public const int JackpotOdds = 150000;
+
+        /// <summary>
+        /// Whether this spin drops the jackpot. Its own salted generator, so the reels of every seed
+        /// stay exactly what they were before the jackpot existed. A bigger stake hits more often, in
+        /// proportion, so it is worth the same fraction of every stake, a bonus buy's included.
+        /// </summary>
+        public static bool JackpotHit(int seed, int stake)
+        {
+            var rng = new SlotRng(seed ^ 0x5EED1ACC);
+            return rng.Range(JackpotOdds) < stake;
+        }
+
+        /// <summary>Turns random cells into <paramref name="symbol"/> until there are <paramref name="want"/>. Clears an orb it lands on.</summary>
+        static void Force(ref SlotRng rng, int[] grid, int[] extras, int symbol, int want)
+        {
+            while (Count(grid, symbol) < want)
+            {
+                int cell = rng.Range(grid.Length);
+                if (grid[cell] == symbol) continue;
+                grid[cell] = symbol;
+                if (extras != null) extras[cell] = 0;
+            }
+        }
 
         static int Count(int[] grid, int symbol)
         {
@@ -335,11 +381,15 @@ namespace EscapeWithYourFriends.Casino
             public static readonly int[] OrbWeights = { 300, 200, 150, 110, 80, 60, 40, 25, 15, 10, 6, 3, 1 };
             static readonly int OrbTotal = Sum(OrbWeights);
 
-            public static void Play(ref SlotRng rng, SlotResult result)
+            /// <summary>The bonus buy, in bets.</summary>
+            public const int BuyPrice = 137;
+
+            public static void Play(ref SlotRng rng, SlotResult result, bool buy)
             {
                 var orbs = new int[Cells];
                 var grid = new int[Cells];
                 for (int i = 0; i < Cells; i++) grid[i] = Roll(ref rng, orbs, i, false);
+                if (buy) Force(ref rng, grid, orbs, Peak, 4);
 
                 int peaks = Count(grid, Peak);
                 long total = Sequence(ref rng, result, grid, orbs, 0, -1, 0, out _);
@@ -516,11 +566,15 @@ namespace EscapeWithYourFriends.Casino
             static readonly int[] FreeWeights = { 370, 315, 240, 172, 122, 92, 72, 5 };
             static readonly int FreeTotal = Sum(FreeWeights);
 
-            public static void Play(ref SlotRng rng, SlotResult result)
+            /// <summary>The bonus buy, in bets.</summary>
+            public const int BuyPrice = 119;
+
+            public static void Play(ref SlotRng rng, SlotResult result, bool buy)
             {
                 var spots = new int[Cells];
                 var grid = new int[Cells];
                 for (int i = 0; i < Cells; i++) grid[i] = rng.Pick(Weights, WeightTotal);
+                if (buy) Force(ref rng, grid, null, Chest, 3);
 
                 int chests = Count(grid, Chest);
                 long total = Sequence(ref rng, result, grid, spots, Weights, WeightTotal, 0, -1);

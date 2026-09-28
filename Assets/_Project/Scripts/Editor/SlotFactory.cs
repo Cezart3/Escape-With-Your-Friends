@@ -413,7 +413,7 @@ namespace EscapeWithYourFriends.EditorTools
                 card, Meshes[CardBack.Name], Meshes[CardRed.Name], Meshes[CardBlack.Name], Palette.Named("Gold"));
 
             // The buttons, along the ledge: spin on the right where a hand falls, the stake on the
-            // left, and on Sevens the two card colours between them.
+            // left, and between them the two card colours on Sevens or the bonus buy on the others.
             Button(root.transform, SlotAction.Spin, new Vector3(0.28f, 0.97f, 0.2f), new Color(0.25f, 0.70f, 0.30f), 1.3f);
             Button(root.transform, SlotAction.Bet, new Vector3(-0.3f, 0.97f, 0.2f), new Color(0.83f, 0.68f, 0.24f), 1f);
 
@@ -421,6 +421,11 @@ namespace EscapeWithYourFriends.EditorTools
             {
                 Button(root.transform, SlotAction.Red, new Vector3(-0.08f, 0.97f, 0.2f), new Color(0.72f, 0.28f, 0.22f), 0.8f);
                 Button(root.transform, SlotAction.Black, new Vector3(0.08f, 0.97f, 0.2f), new Color(0.13f, 0.14f, 0.17f), 0.8f);
+            }
+            else
+            {
+                // The bonus buy, in the card's red so it costs the scene no new material.
+                Button(root.transform, SlotAction.Buy, new Vector3(0f, 0.97f, 0.2f), new Color(0.72f, 0.28f, 0.22f), 0.9f);
             }
 
             GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, path, out bool success);

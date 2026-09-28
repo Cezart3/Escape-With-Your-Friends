@@ -14,6 +14,9 @@ namespace EscapeWithYourFriends.UI
     ///
     /// Everything it reads is replicated or replayed locally from the seed, so a player watching a
     /// friend's feature sees the same numbers climb.
+    ///
+    /// Under both lines, the shared jackpot. The number rolls up to the replicated pot rather than
+    /// jumping, so a friend's stakes at the next cabinet read as the ticker ticking.
     /// </summary>
     public class SlotBoard
     {
@@ -25,8 +28,12 @@ namespace EscapeWithYourFriends.UI
         static readonly Color Quiet = new(0.92f, 0.86f, 0.55f);
         static readonly Color Hot = new(1f, 0.55f, 0.2f);
 
+        static readonly Color Gold = new(0.35f, 1f, 0.85f);
+
         Text _title;
         Text _line;
+        Text _jackpot;
+        float _shownJackpot;
 
         public void Build(RectTransform parent)
         {
@@ -38,6 +45,11 @@ namespace EscapeWithYourFriends.UI
             _line.color = Quiet;
             HudFactory.Anchor((RectTransform)_line.transform, new Vector2(0.5f, 1f),
                               new Vector2(0.5f, 1f), new Vector2(0f, -Margin - 42f), new Vector2(720f, 28f));
+
+            _jackpot = HudFactory.Label(parent, "SlotJackpot", 26, TextAnchor.UpperCenter);
+            _jackpot.color = Gold;
+            HudFactory.Anchor((RectTransform)_jackpot.transform, new Vector2(0.5f, 1f),
+                              new Vector2(0.5f, 1f), new Vector2(0f, -Margin - 74f), new Vector2(620f, 32f));
         }
 
         public void Refresh(SlotMachine machine, Wallet wallet)
@@ -49,9 +61,17 @@ namespace EscapeWithYourFriends.UI
             {
                 _title.gameObject.SetActive(showing);
                 _line.gameObject.SetActive(showing);
+                _jackpot.gameObject.SetActive(showing);
             }
 
             if (!showing) return;
+
+            // Rolls up over about a second; a pot that dropped snaps straight back down.
+            float pot = machine.Jackpot;
+            _shownJackpot = pot < _shownJackpot
+                ? pot
+                : Mathf.MoveTowards(_shownJackpot, pot, Mathf.Max(1f, pot - _shownJackpot) * 3f * Time.deltaTime);
+            _jackpot.text = JackpotLine(Mathf.RoundToInt(_shownJackpot));
 
             int localId = LocalId();
 
@@ -99,6 +119,9 @@ namespace EscapeWithYourFriends.UI
             string multiplier = frame.Multiplier > 0 ? $"  ·  x{frame.Multiplier}" : "";
             return $"FREE SPINS  ·  {frame.FreeSpinsLeft} left{multiplier}";
         }
+
+        /// <summary>The ticker.</summary>
+        public static string JackpotLine(int chips) => $"JACKPOT  {chips:N0}";
 
         /// <summary>What is going on underneath: the running win mid-spin, the card after one, the stake before.</summary>
         public static string Line(SlotMachine machine, int chips, int localId)
