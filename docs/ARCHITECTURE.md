@@ -7557,6 +7557,50 @@ shader, instancing off and basemap distance past 10 km.
 
 ---
 
+## Animals and the plane in Quaternius's clothes (#79, ART-PLAN T13, T14)
+
+**Sources.** Deer from Quaternius's Animals (poly.pizza `T6Cs7tmMHJ`, flat colours, 2 176
+triangles, 26 clips). The boar is Quaternius's Pig from the farm animals (poly.pizza `u35l6uP5vj`,
+one `Atlas.png`, 2 808 triangles, 8 clips). Both CC0. The Animal cap went to 3 000. No CC0
+propeller plane was found, so the plane row is out: `PlaneBuilder.Dress` returns early without
+it, and the plane stays the greybox.
+
+**Run.** ArtExtract 63 models, 0 missing. ArtLibrary 64 of 64. The pig's slot is
+`AtlasMaterial` and its file `Atlas.png`, so `CharacterArt.BaseColour` now also matches a file
+whose name sits inside the slot's, but only when nothing matches the usual way round. Build clean.
+`-animalTest` 93/0 (solo, animals on). `-planeTest` 33/0 and `-flightTest` 29/0 on `island2`.
+`-lookTest` 11/0 on both islands.
+
+`-animalTest`'s hunt used to swing where it asked the boar to spawn. `ServerSpawn` snaps to the
+navmesh up to 25 m away, and since the players wake in the camp (#168) that point can land out of a
+hatchet's reach. The player now stands 1.6 m from wherever the boar actually landed.
+
+**Animals.** There is still one animal prefab. `AnimalArt.Dress` hangs every species' model in it,
+each fitted in shape into that species' body box (`AnimalDef.BodySize`, feet on the ground, turned
+a quarter if its long side runs across), and
+`Animal.ApplyShape` shows the one its species index names and turns the boxes' renderers off. A
+species with no catalogue row (the gull) keeps its boxes. The match is by id: the Animal row whose
+id is the species id with a capital.
+
+Each model gets its own controller in `Art/ThirdParty/_Animals/`, built from its own FBX's clips:
+a 1D blend on `Speed` (idle at 0, walk at 2, run at 7 m/s; clips named exactly idle, walk,
+gallop/run/fly, else the shortest name holding the word) and a held `Dead`. `Animal.LateUpdate` measures the speed from the transform, as
+`NpcSkin` does, so clients animate without an agent. `ArtLibrary` imports Animal rows with a Generic
+rig and every clip looping except a death; everything else stays unrigged.
+
+`-animalTest` checks that every live animal draws exactly one look, and that some animal wears a
+model when the prefab has any.
+
+**Plane.** `PlaneBuilder.Dress` fits the catalogue's plane, in shape, over the box around the whole
+airframe (fuselage, cockpit, wings, tail and the three holes). The holes must still read, so any
+mesh named like a part (prop, engine/motor, a wing right of centre) is moved under its `Fitted.*`
+box, under an unscaled holder so a tilted blade does not shear, and `PlaneAssembly` hides and shows
+it with the box. A hole nothing moved into keeps its grey box; a model with no such mesh at all is
+dropped and the greybox kept, because a whole plane drawn over its own holes reads as finished. The wheels and every collider are the greybox's. `PlaneTurns` turns the model if it is found
+facing backwards. The loose parts lying on the island (`PlanePartBuilder`) are still boxes.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**

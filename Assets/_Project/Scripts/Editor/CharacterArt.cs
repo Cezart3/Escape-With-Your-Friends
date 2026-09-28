@@ -384,15 +384,19 @@ namespace EscapeWithYourFriends.EditorTools
             string stem = Plain(slot.StartsWith("MI_") || slot.StartsWith("M_") ? slot.Substring(slot.IndexOf('_') + 1) : slot);
             string[] maps = { "normal", "rough", "metal", "occlusion", "_ao", "orm", "emiss", "height", "mask" };
 
-            return Directory.GetFiles(folder)
-                            .Where(f => !f.EndsWith(".meta"))
-                            .Select(f => f.Replace('\\', '/'))
-                            .Where(f => Plain(Path.GetFileNameWithoutExtension(f)).Contains(stem))
-                            .Where(f => !maps.Any(m => Path.GetFileName(f).ToLowerInvariant().Contains(m)))
-                            .OrderByDescending(f => new[] { "basecolor", "albedo", "diffuse", "color" }
-                                                        .Any(Plain(Path.GetFileName(f)).Contains))
-                            .ThenBy(f => f)
-                            .FirstOrDefault();
+            string[] colours = Directory.GetFiles(folder)
+                                        .Where(f => !f.EndsWith(".meta"))
+                                        .Select(f => f.Replace('\\', '/'))
+                                        .Where(f => !maps.Any(m => Path.GetFileName(f).ToLowerInvariant().Contains(m)))
+                                        .OrderByDescending(f => new[] { "basecolor", "albedo", "diffuse", "color" }
+                                                                    .Any(Plain(Path.GetFileName(f)).Contains))
+                                        .ThenBy(f => f)
+                                        .ToArray();
+
+            // Then the other way round, for a slot named longer than its file ("AtlasMaterial" wearing
+            // Atlas.png) - only as a fallback, or "Leaves_Pine" would find Leaves.png first.
+            return colours.FirstOrDefault(f => Plain(Path.GetFileNameWithoutExtension(f)).Contains(stem))
+                   ?? colours.FirstOrDefault(f => stem.Contains(Plain(Path.GetFileNameWithoutExtension(f))));
         }
 
         /// <summary>

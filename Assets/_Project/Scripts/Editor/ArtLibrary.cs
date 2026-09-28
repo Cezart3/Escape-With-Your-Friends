@@ -266,8 +266,12 @@ namespace EscapeWithYourFriends.EditorTools
             }
 
             Set(importer.globalScale, 1f, v => importer.globalScale = v);
-            Set(importer.importAnimation, false, v => importer.importAnimation = v);
-            Set(importer.animationType, ModelImporterAnimationType.None, v => importer.animationType = v);
+            // Animals are the one category that moves (T13): a Generic rig and the kit's own clips.
+            // Everything else is a still life, and a rig on a barrel is bones nobody drives.
+            bool animated = model.Category == ArtCategory.Animal;
+            Set(importer.importAnimation, animated, v => importer.importAnimation = v);
+            Set(importer.animationType, animated ? ModelImporterAnimationType.Generic : ModelImporterAnimationType.None,
+                v => importer.animationType = v);
             Set(importer.importCameras, false, v => importer.importCameras = v);
             Set(importer.importLights, false, v => importer.importLights = v);
             Set(importer.importBlendShapes, false, v => importer.importBlendShapes = v);
@@ -288,6 +292,9 @@ namespace EscapeWithYourFriends.EditorTools
                 v => importer.materialLocation = v);
 
             if (dirty) importer.SaveAndReimport();
+
+            // After the rig is on, or the default clips are the ones of a model with no animation.
+            if (animated && LoopClips(importer)) importer.SaveAndReimport();
 
             var asset = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             if (asset == null)
@@ -327,6 +334,35 @@ namespace EscapeWithYourFriends.EditorTools
                 PackAxis[pack.Name] = importer.bakeAxisConversion;
 
             return asset;
+        }
+
+        /// <summary>
+        /// Every clip loops except a death, which holds its last frame. The FBX says nothing about
+        /// looping, so without this a walk plays once and the animal glides the rest of the way.
+        /// </summary>
+        static bool LoopClips(ModelImporter importer)
+        {
+            ModelImporterClipAnimation[] clips = importer.clipAnimations;
+            bool changed = clips == null || clips.Length == 0;
+            if (changed) clips = importer.defaultClipAnimations;
+            if (clips.Length == 0) return false;
+
+            foreach (ModelImporterClipAnimation clip in clips)
+            {
+                bool loop = !IsDeath(clip.name);
+                if (clip.loopTime == loop) continue;
+                clip.loopTime = loop;
+                changed = true;
+            }
+
+            if (changed) importer.clipAnimations = clips;
+            return changed;
+        }
+
+        internal static bool IsDeath(string clip)
+        {
+            string name = clip.ToLowerInvariant();
+            return name.Contains("death") || name.Contains("die");
         }
 
         /// <summary>
