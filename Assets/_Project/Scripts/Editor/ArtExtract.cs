@@ -54,7 +54,8 @@ namespace EscapeWithYourFriends.EditorTools
                 string zipPath = BestZip(zips, pack, wanted);
                 if (zipPath == null)
                 {
-                    missing.Add($"{pack.Author} {pack.Name}: no zip with '{pack.ZipHint}' in its name in {folder} "
+                    string named = pack.ZipHint.Length > 0 ? $"with '{pack.ZipHint}' in its name " : "";
+                    missing.Add($"{pack.Author} {pack.Name}: no zip {named}holding its files in {folder} "
                                 + $"({pack.Page})");
                     continue;
                 }
@@ -82,9 +83,9 @@ namespace EscapeWithYourFriends.EditorTools
 
                 if (pack.Atlas)
                 {
-                    ZipArchiveEntry colormap = Pick(byName, "colormap.png");
-                    if (colormap == null) missing.Add($"{pack.Name}: no colormap.png in {Path.GetFileName(zipPath)}");
-                    else Copy(colormap, $"{pack.Folder}/colormap.png");
+                    ZipArchiveEntry atlas = Pick(byName, pack.AtlasFile.ToLowerInvariant());
+                    if (atlas == null) missing.Add($"{pack.Name}: no {pack.AtlasFile} in {Path.GetFileName(zipPath)}");
+                    else Copy(atlas, $"{pack.Folder}/{pack.AtlasFile}");
                 }
 
                 if (pack.Textured)
@@ -100,8 +101,11 @@ namespace EscapeWithYourFriends.EditorTools
                 ZipArchiveEntry licence = Pick(byName, "license.txt")
                     ?? zip.Entries.FirstOrDefault(e => e.Name.ToLowerInvariant() is var n && n.StartsWith("licen")
                                                        && (n.EndsWith(".txt") || n.EndsWith(".md")));
-                if (licence == null) missing.Add($"{pack.Name}: no License.txt in {Path.GetFileName(zipPath)}");
-                else Copy(licence, $"{pack.Folder}/License.txt");
+                string beside = LicenceFor(zipPath);
+                if (licence != null) Copy(licence, $"{pack.Folder}/License.txt");
+                else if (File.Exists(beside)) File.Copy(beside, $"{pack.Folder}/License.txt", true);
+                else missing.Add($"{pack.Name}: no licence in {Path.GetFileName(zipPath)}. Read it on {pack.Page} "
+                                 + $"and, if it is CC0, save that text as {beside}");
 
                 Debug.Log($"[ArtExtract] {pack.Author} {pack.Name} <- {Path.GetFileName(zipPath)}");
             }
@@ -113,6 +117,14 @@ namespace EscapeWithYourFriends.EditorTools
 
             Finish(missing.Count == 0);
         }
+
+        /// <summary>
+        /// Where a licence goes for a zip that carries none, such as a Google Drive download: a text
+        /// file beside the zip, named after it, that somebody saved from the pack's own page. Never
+        /// written here - the claim has to come from a person who read the page.
+        /// </summary>
+        static string LicenceFor(string zipPath)
+            => Path.Combine(Path.GetDirectoryName(zipPath), Path.GetFileNameWithoutExtension(zipPath) + ".License.txt");
 
         /// <summary>
         /// The zip for this pack: of the ones whose name mentions it, the one holding most of the

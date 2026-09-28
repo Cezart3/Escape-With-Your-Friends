@@ -47,10 +47,12 @@ namespace EscapeWithYourFriends.World
             ArtCategory.Plant => 1000,
             ArtCategory.Rock => 600,
             ArtCategory.Log => 150,
-            ArtCategory.SmallProp => 400,
-            ArtCategory.Prop => 800,
+            // P6 V2, measured on Quaternius's pirate kit: bottle 204, bucket 532, barrel 640, chest 1 636, the large ship
+            // 20 636, the cliff 8 596 (three at the cave), the small ship 5 578.
+            ArtCategory.SmallProp => 600,
+            ArtCategory.Prop => 2000,
             ArtCategory.Structure => 1500,
-            ArtCategory.Wreck => 2500,
+            ArtCategory.Wreck => 30000,
             ArtCategory.Vehicle => 4000,
             // 16000, not the plan's 15000: Quaternius's female base body measures 15060 (ART-PLAN §1).
             ArtCategory.Character => 16000,

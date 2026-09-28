@@ -13,7 +13,8 @@ never straight into the game.
 
 | Asset | Author | Source | Licence | Used for |
 |---|---|---|---|---|
-| Pirate Kit | Kenney | https://kenney.nl/assets/pirate-kit | CC0 1.0 | Palms, rocks, the shipwreck, thatched huts, bottles, crates |
+| Pirate Kit | Kenney | https://kenney.nl/assets/pirate-kit | CC0 1.0 | Rocks, thatched huts, crates |
+| Pirate Kit | Quaternius | https://quaternius.com/packs/piratekit.html | CC0 1.0 (check: the zip has no licence file) | Palms, the shipwreck and its boat, the cave cliffs, barrels, bottles, the chest |
 | Survival Kit | Kenney | https://kenney.nl/assets/survival-kit | CC0 1.0 | Pines, logs, stumps, grass, floors and walls, the camp, chests, tools |
 | Platformer Kit | Kenney | https://kenney.nl/assets/platformer-kit | CC0 1.0 | Jungle trees, plants, flowers |
 | Coaster Kit | Kenney | https://kenney.nl/assets/coaster-kit | CC0 1.0 | Jungle trees |

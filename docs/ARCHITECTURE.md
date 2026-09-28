@@ -7469,6 +7469,40 @@ leaves uncovered, 52 distinct faces. The banner, the coins and the sound are pla
 
 ---
 
+## The island's pirate pieces from Quaternius (P6 V2)
+
+The palms, the barrels, bucket, bottles and chest, the wreck, its boat and the cave's walls now come
+from Quaternius's Pirate Kit, by the same hand as the nature kit V1 put on the islands. Only
+`ArtCatalog` rows change; the greybox layout, the dressing code and the prefab GUIDs stay.
+
+- **The pack.** `new("Quaternius", "PirateKit", "", …, atlas: true, atlasFile: "Atlas_Pirate.png")`.
+  The kit is painted like Kenney's, from a swatch sheet, so it rides the atlas path; `Pack.AtlasFile`
+  (default `colormap.png`) names the sheet, and `ArtExtract` and `ArtLibrary.AtlasMaterial` read it.
+  The FBX's one material is called "Atlas" and links no texture, which the atlas path never needed.
+- **The zip.** Quaternius hands the kit out as a Google Drive folder, so the zip is named
+  `drive-download-<date>.zip`. The hint is empty: every zip is a candidate and `BestZip` keeps the
+  one holding the most of the pack's files.
+- **The licence.** That zip carries no licence file. Rather than write one, `ArtExtract` takes a
+  text file a person saved beside the zip, named after it (`<zip>.License.txt`), and until it exists
+  the run fails with one missing line naming the page to read and the path to save to.
+- **Rows.** Palms `Environment_PalmTree_1..3` (four slots, two sharing a model at different sizes,
+  so `IslandFlora`'s weights stand); `Prop_Barrel`, `Prop_Bucket`, `Prop_Bottle_1`,
+  `Prop_Chest_Closed`; the wreck `Ship_Large`, the debris boat `Ship_Small`, and a new `Cliff`
+  (`Environment_Cliff1`) that `GreyboxBuilder.DressCave` fits on the cave's three standing walls.
+  Each wall and the wreck are turned by `ArtDress.Along` so the model's long side lies along its
+  box, whichever axis the kit drew it along; the right wall takes a half turn more than the left, so
+  the mouth's two sides face each other. The lintel stays a Kenney rock. Kenney's pirate kit keeps the rocks, the thatch and the crates, and
+  its palm stays in the catalogue as `KenneyPalm`, placed nowhere, so `PackAxis` still has an
+  upright model to learn that kit's up-axis from.
+- **Caps** (`ArtVisual.Cap`), from the measured counts: small prop 600 (bucket 532), prop 2 000
+  (chest 1 636), wreck 30 000 (the ship 20 636). The boat (5 578) and the cliff (8 596) are filed as
+  wrecks: landmark pieces placed a handful of times, not scatter.
+
+Tested by the existing harnesses: `ArtLibrary.BuildAll` ("N of N models ready", caps checked),
+`-lookTest` on both islands, and each builder's "Dressed … guid … kept" line.
+
+---
+
 ## One shader for every kit (#79, ART-PLAN P6 V6)
 
 After P6 the island is Kenney swatch atlases, Quaternius painted textures, Kenney flat colours and
