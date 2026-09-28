@@ -1,0 +1,4 @@
+Pirate Kit by Quaternius
+License: CC0 1.0 Universal (public domain dedication)
+Source: https://quaternius.com/packs/piratekit.html (pack page lists "License: CC0", checked 2026-09-28)
+https://creativecommons.org/publicdomain/zero/1.0/
