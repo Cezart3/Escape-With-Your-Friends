@@ -7735,6 +7735,17 @@ It is how the castaway was found to be standing on the beach all along.
 
 ---
 
+## Playtest cheats: F5 money, F7 the plane
+
+The economy puts the boat two to three evenings away for four players (`EconomyTest` holds it
+there: 4 parts at 1400, a boar worth 37), which is the game and is not a playtest of the ending.
+`World.DevCheats`, host only, in development builds or with `-cheats`: **F5** adds $1000 to every
+wallet, **F7** fits every part of the aeroplane on this island (`PlaneAssembly.ServerFitAll`, so
+`Owned` follows). A release build is not a development build and has neither. `-cheatTest` runs
+both once: 4/0.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**
