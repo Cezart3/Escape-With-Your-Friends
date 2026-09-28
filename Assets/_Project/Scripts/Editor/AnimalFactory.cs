@@ -154,6 +154,16 @@ namespace EscapeWithYourFriends.EditorTools
             ("gull", "feather", 2, 4, 1f),
         };
 
+        static string[] Reseed
+        {
+            get
+            {
+                string[] args = Environment.GetCommandLineArgs();
+                int i = Array.IndexOf(args, "-reseed");
+                return i >= 0 && i + 1 < args.Length ? args[i + 1].Split(',') : Array.Empty<string>();
+            }
+        }
+
         public static void Build()
         {
             Directory.CreateDirectory(Folder);
@@ -166,16 +176,19 @@ namespace EscapeWithYourFriends.EditorTools
                 string path = $"{Folder}/{seed.Id}.asset";
                 var def = AssetDatabase.LoadAssetAtPath<AnimalDef>(path);
 
-                if (def == null)
+                // -reseed boar,deer: those rows overwrite their assets. For a seed change that is a
+                // deliberate rebalance (the boar's in #178 never reached its asset without it).
+                bool reseed = def != null && Reseed.Contains(seed.Id);
+                if (def == null || reseed)
                 {
-                    def = ScriptableObject.CreateInstance<AnimalDef>();
+                    if (def == null) def = ScriptableObject.CreateInstance<AnimalDef>();
                     def.Configure(seed.Id, seed.Name, seed.Description, seed.Temperament, seed.Health,
                                   seed.Walk, seed.Run, seed.Wander, seed.Idle, seed.Sense, seed.React,
                                   seed.Calm, seed.Damage, seed.Reach, seed.Interval, seed.Stun,
                                   seed.Knockback, seed.Body, seed.Colour, seed.AgentRadius);
 
-                    AssetDatabase.CreateAsset(def, path);
-                    created++;
+                    if (reseed) EditorUtility.SetDirty(def);
+                    else { AssetDatabase.CreateAsset(def, path); created++; }
                 }
 
                 defs.Add(def);

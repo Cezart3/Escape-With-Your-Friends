@@ -7748,6 +7748,44 @@ both once: 4/0.
 
 ---
 
+## The playthrough bot, and what it found on its first walk
+
+`-playthrough <folder>` (`World/Playthrough.cs`) plays the first island the way a person does, in a
+real window, and screenshots every step with the HUD on. It drives the player through
+`PlayerInputReader.BotDriven` - `BotMove`, `BotLook`, `BotPress("interact"|"attack"|"reload"|"jump"|"inventory")`,
+`BotHotbar` - so every action goes through the same motor, interactor, hotbar, weapon and vehicle
+code a keyboard does. The only shortcuts are F5's money and a logged teleport after sixteen
+seconds without progress. Route: spawn, the wreck, pick up the pistol and rounds with E, load,
+hunt a boar, the trader, buy boat parts in trips (four do not fit one back), fit them, board,
+sail straight away from the island's centre, arrive on Island2. Every step is a PASS/FAIL line;
+a FAIL never ends the run. It shoots back at any non-skittish animal that targets it on the way,
+and waits out being down. Use a fresh `-playerKey` per run, or the save hands the bot last run's bag.
+
+```
+EWYF.exe -screen-fullscreen 0 -screen-width 1280 -screen-height 720 -logFile pt.log -host -port 8516
+  -playerKey bot:ptN -scene island -noNatives -timeOfDay 0.45 -playthrough D:\Builds\shots\ptN
+```
+
+About six minutes; 16 passed, 0 failed. What the first runs found, each fixed here:
+
+- **The shop drew sixteen rows and the trader has twenty-four.** Every gun and the boat part - the
+  thing the whole island is saving for - were drawn below the panel. The shelf is now two columns
+  of twelve and the panel grows rightwards (`InventoryScreen.ShopRows`); `-armsTest` checks the
+  trader's offer count against it.
+- **Nobody gets up when everybody is dead.** Death is meant to be fixed by friends hauling you to
+  the Revive Machine; alone, or in a full wipe, the run stopped for ever. `World/WipeGuard.cs`:
+  eight seconds after every player is dead, everybody stands up at their spawn on half health with
+  their bag. `-wipeTest` (solo) kills the host and checks it: 5/0.
+- **#178's boar never reached its asset.** `AnimalFactory` never overwrites a tuned asset, so the
+  seed change (damage 10, no stun, no knockback) sat in C# while the boar still hit for 18 and
+  threw you 950 N. `AnimalFactory.Build -reseed boar` overwrites the named rows; rerun that way.
+- **Greybox drops were magenta.** A primitive's built-in material has no shader in a URP player;
+  they now wear `EWYF/Stylized`, which every art material uses and so always ships.
+- `[Health] X downed by <type> <amount> from <attacker>` - one line per knockdown, so a playtest
+  log says what put somebody on the ground.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**
