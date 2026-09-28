@@ -96,13 +96,12 @@ namespace EscapeWithYourFriends.EditorTools
 
             // Emissive so it reads at night, which is the only time anybody will look at it. A real
             // light comes with the art pass; a point light per fire is a shadow-caster budget question
-            // and this is a greybox.
+            // and this is a greybox. Its own material: the emission used to be switched on for the
+            // palette entry the flame snapped to, which made everything else on Gold glow too.
             var renderer = flame.GetComponent<Renderer>();
             if (renderer != null)
-            {
-                renderer.sharedMaterial.EnableKeyword("_EMISSION");
-                renderer.sharedMaterial.SetColor("_EmissionColor", new Color(1.6f, 0.7f, 0.2f));
-            }
+                renderer.sharedMaterial = StyleLook.Glowing("Flame", new Color(1.0f, 0.55f, 0.15f),
+                                                            new Color(1.6f, 0.7f, 0.2f));
 
             Networked(root, CraftStation.Fire, radius: 4f);
 

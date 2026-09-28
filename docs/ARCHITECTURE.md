@@ -7488,8 +7488,11 @@ the shade side goes grey on both. So everything now wears one hand-written shade
   `_DETAIL_SOFTEN`, which `StyleLook` turns on only where `_Detail` < 1, so nothing else pays for it. `_Saturation` and `_Brightness` nudge a kit toward the rest.
 - **Rim and one hard highlight.** A thin lit-side rim for silhouettes against the sea; a single
   stepped specular spot only above smoothness 0.3, so metal and gold shine and nothing else does.
-- **Emission** behind `_EMISSION` (`_EmissionColor`), for the campfire flame `StationBuilder` lights.
-- **Passes**: forward (main-light cascades, per-pixel additional lights and their shadows, soft-shadow
+- **Emission** behind `_EMISSION` (`_EmissionColor`), for the campfire flame. The flame has its own
+  `Greybox/Flame.mat` (`StyleLook.Glowing`); it used to switch emission on for the palette entry it
+  snapped to, Gold, which lit every gold object. `Wear` now strips `_EMISSION` from palette entries.
+- **Passes**: forward (main-light cascades with URP's shadow-distance fade, per-pixel additional lights and their
+  shadows, light cookies, soft-shadow
   levels, SSAO-in-lighting, fog, instancing), ShadowCaster, DepthOnly, and DepthNormals for the High
   tier's SSAO. Forward renderer only, like every tier. One `UnityPerMaterial` buffer across all
   passes, so the SRP Batcher still takes it. Falls back to URP/Lit.
@@ -7515,6 +7518,42 @@ already unifies the kits at the output; nothing new was added there.
 `Quaternius_*` material, every palette entry and the roulette wheel wear `EWYF/Stylized`. A generator that goes back to URP/Lit, or a shader
 that fails to compile and falls back, fails it. The material budget is unchanged: the switch
 re-shades materials, it adds none.
+
+**The committed `.mat` files still say URP/Lit until somebody runs `StyleLook.Apply` and commits
+the result**; they are generated, never hand-edited, and a cloud session has no Unity. Until then
+the new check fails, which is the point: it is the reminder. The name check cannot see a shader
+that imports but fails to compile for the player (the material keeps the name); that is the build
+log's `Shader error in 'EWYF/Stylized'`.
+
+**The terrain** has its own shader on the same lighting; see "The ground, lit like the models".
+
+---
+
+## The ground, lit like the models (#79, ART-PLAN P6 V6)
+
+After V6 every model was banded and the terrain still wore URP Terrain/Lit, so the seam moved to
+where each rock meets the sand. `Art/Stylized/StylizedTerrain.shader` (`EWYF/StylizedTerrain`)
+draws the ground through the same `StylizedLighting.hlsl` that `EWYF/Stylized` now includes: one
+function, one band curve, one cool shade tint, so the two cannot drift apart. The ground takes no
+rim and no highlight.
+
+**Kept small for the 760M.** Four layers in one pass (`IslandSplat.LayerCount`), one control fetch
+and four albedo fetches, no normal maps, no height blend, no holes. There is no
+add pass, so a fifth layer would not draw.
+
+**No basemap, no instancing, on purpose.** URP's terrain swaps to a baked basemap shader past
+`basemapDistance`, found through a `BaseMapShader` dependency. A custom shader without one would
+fall to a shader URP does not have. So `TerrainGenerator` sets `basemapDistance` to 20000 (never)
+and `drawInstanced` off (the instanced path samples the heightmap in the vertex shader, which this
+one does not). Full-shader terrain to the horizon costs five fetches a pixel, less than Terrain/Lit.
+
+**Wiring.** `TerrainGenerator.EnsureTerrainMaterial` switches the material to the shader and calls
+`StyleLook.WearTerrain` for the shared ramp, softness and tint. If the shader did not import, it
+falls back to URP Terrain/Lit with the old 400 m basemap and instancing on. The switch only happens
+on a regeneration, because the shader needs the terrain settings the generator writes beside it.
+`StyleLook.Restyle` refreshes the numbers on terrain materials already switched, so tuning the look
+table reaches the ground too. `-lookTest` checks every active terrain for the
+shader, instancing off and basemap distance past 10 km.
 
 ---
 

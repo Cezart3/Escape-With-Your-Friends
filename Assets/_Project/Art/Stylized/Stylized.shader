@@ -106,10 +106,12 @@ Shader "EWYF/Stylized"
             #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
             #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
             #pragma multi_compile_fragment _ _SCREEN_SPACE_OCCLUSION
+            #pragma multi_compile_fragment _ _LIGHT_COOKIES
             #pragma multi_compile_fog
             #pragma multi_compile_instancing
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "StylizedLighting.hlsl"
 
             struct Attributes
             {
@@ -146,13 +148,6 @@ Shader "EWYF/Stylized"
                 return output;
             }
 
-            // Two bands with a soft edge. The same curve for the sun and every lamp, so a torch-lit
-            // crate and a sunlit one are drawn by the same hand.
-            half Band(half ndl)
-            {
-                return smoothstep(_RampCentre - _RampSoftness, _RampCentre + _RampSoftness, ndl);
-            }
-
             half3 Albedo(float2 uv, out half alpha)
             {
                 half4 fine = BaseSample(uv);
@@ -183,52 +178,8 @@ Shader "EWYF/Stylized"
                 // Leaf cards and grass are drawn from both sides; the back face lights as its own front.
                 half3 normal = normalize(input.normalWS);
                 normal = IS_FRONT_VFACE(face, normal, -normal);
-                half3 view = SafeNormalize(GetWorldSpaceViewDir(input.positionWS));
 
-                float4 shadowCoord = TransformWorldToShadowCoord(input.positionWS);
-                Light sun = GetMainLight(shadowCoord);
-
-                // Not banded: the attenuation already carries the light's shadow strength (the moon's
-                // is 0.35) and URP's fade at the shadow distance, and a step would erase the first and
-                // turn the second into a ring that follows the camera.
-                half shadow = sun.shadowAttenuation * sun.distanceAttenuation;
-                half lit = Band(dot(normal, sun.direction)) * shadow;
-
-                half3 ambient = SampleSH(normal);
-                half directOcclusion = 1;
-
-                #if defined(_SCREEN_SPACE_OCCLUSION)
-                    AmbientOcclusionFactor occlusion =
-                        GetScreenSpaceAmbientOcclusion(GetNormalizedScreenSpaceUV(input.positionCS));
-                    ambient *= occlusion.indirectAmbientOcclusion;
-                    directOcclusion = occlusion.directAmbientOcclusion;
-                #endif
-
-                // The shade side is ambient only, tinted cool; the lit side adds the sun in full.
-                half3 light = ambient * lerp(_ShadowTint.rgb, half3(1, 1, 1), lit) + sun.color * lit * directOcclusion;
-
-                // Rim: a thin bright edge on the lit side, what makes a silhouette pop against the sea.
-                half rim = pow(1 - saturate(dot(normal, view)), 4) * _RimStrength * lit;
-                light += sun.color * rim;
-
-                // Only metal and gold shine, and when they do it is one hard spot, not a gradient.
-                half3 halfway = SafeNormalize(sun.direction + view);
-                half glossy = saturate((_Smoothness - 0.3) * 4);
-                half spot = smoothstep(0.5, 0.55, pow(saturate(dot(normal, halfway)), exp2(_Smoothness * 10 + 1)));
-                half3 specular = sun.color * spot * glossy * lit;
-
-                #if defined(_ADDITIONAL_LIGHTS)
-                    uint count = GetAdditionalLightsCount();
-                    for (uint i = 0u; i < count; ++i)
-                    {
-                        Light lamp = GetAdditionalLight(i, input.positionWS, half4(1, 1, 1, 1));
-                        half lampLit = Band(dot(normal, lamp.direction))
-                                       * lamp.distanceAttenuation * lamp.shadowAttenuation;
-                        light += lamp.color * lampLit;
-                    }
-                #endif
-
-                half3 colour = albedo * light + specular;
+                half3 colour = StylizedLighting(albedo, input.positionWS, normal, input.positionCS);
 
                 // The campfire's flame (StationBuilder): it has to read at night.
                 #if defined(_EMISSION)

@@ -20,6 +20,7 @@ namespace EscapeWithYourFriends.EditorTools
     public static class StyleLook
     {
         public const string ShaderName = "EWYF/Stylized";
+        public const string TerrainShaderName = "EWYF/StylizedTerrain";
 
         // The look, shared by everything. Tuning it is editing these four lines and running Apply.
         const float RampCentre = 0.05f;
@@ -34,10 +35,8 @@ namespace EscapeWithYourFriends.EditorTools
         /// </summary>
         static readonly (string Prefix, float Detail, float Saturation, float Brightness)[] Kits =
         {
-            ("Quaternius_NatureMegaKit_", 0.45f, 0.92f, 1.0f),
+            ("Quaternius_Nature_", 0.45f, 0.92f, 1.0f),
             ("Quaternius_", 1f, 0.95f, 1.0f),
-            ("Kenney_", 1f, 1f, 1f),
-            ("Flat_", 1f, 1f, 1f),
         };
 
         static Shader _stylized;
@@ -48,7 +47,8 @@ namespace EscapeWithYourFriends.EditorTools
             get
             {
                 if (_stylized == null) _stylized = Shader.Find(ShaderName);
-                return _stylized != null ? _stylized : Shader.Find("Universal Render Pipeline/Lit");
+                return _stylized != null ? _stylized
+                       : Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Hidden/InternalErrorShader");
             }
         }
 
@@ -61,6 +61,41 @@ namespace EscapeWithYourFriends.EditorTools
             return material;
         }
 
+        /// <summary>
+        /// A material of its own that glows, in the palette folder beside the entries but not one of
+        /// them, so nothing snaps onto it. The campfire flame's.
+        /// </summary>
+        internal static Material Glowing(string name, Color colour, Color emission)
+        {
+            string path = $"{Palette.Folder}/{name}.mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = New(name);
+                AssetDatabase.CreateAsset(material, path);
+            }
+
+            material.SetColor("_BaseColor", colour);
+            material.SetColor("_EmissionColor", emission);
+            material.EnableKeyword("_EMISSION");
+            Wear(material);
+            return material;
+        }
+
+        /// <summary>
+        /// Writes the shared light bands into a ground material already on <c>EWYF/StylizedTerrain</c>.
+        /// TerrainGenerator makes the switch, because the shader needs the terrain settings it writes
+        /// beside it; Restyle only refreshes the numbers on materials already switched, so tuning the
+        /// table above reaches the ground as well.
+        /// </summary>
+        internal static void WearTerrain(Material material)
+        {
+            material.SetFloat("_RampCentre", RampCentre);
+            material.SetFloat("_RampSoftness", RampSoftness);
+            material.SetColor("_ShadowTint", ShadowTint);
+            EditorUtility.SetDirty(material);
+        }
+
         /// <summary>Switches one material to the shared shader and writes the look into it.</summary>
         internal static void Wear(Material material)
         {
@@ -71,6 +106,11 @@ namespace EscapeWithYourFriends.EditorTools
             // needs both, and it has no other place that does them.
             material.enableInstancing = true;
             EditorUtility.SetDirty(material);
+
+            // Palette entries are shared by everything of that colour, so none of them may glow, on
+            // either shader. Gold carried the campfire's emission for a year; see Glowing.
+            if (Palette.Has(material.name)) material.DisableKeyword("_EMISSION");
+
             if (shader.name != ShaderName) return;
 
             float detail = 1f, saturation = 1f, brightness = 1f;
@@ -86,6 +126,7 @@ namespace EscapeWithYourFriends.EditorTools
             // The second texture fetch is compiled in only where it changes something.
             if (detail < 1f) material.EnableKeyword("_DETAIL_SOFTEN");
             else material.DisableKeyword("_DETAIL_SOFTEN");
+
             material.SetFloat("_Saturation", saturation);
             material.SetFloat("_Brightness", brightness);
             material.SetFloat("_RampCentre", RampCentre);
@@ -133,6 +174,14 @@ namespace EscapeWithYourFriends.EditorTools
                     Wear(material);
                     count++;
                 }
+            }
+
+            // The ground: numbers only, and only where TerrainGenerator already switched it.
+            foreach (string guid in AssetDatabase.FindAssets("t:Material", new[] { "Assets/_Project/Data" }))
+            {
+                var material = AssetDatabase.LoadAssetAtPath<Material>(AssetDatabase.GUIDToAssetPath(guid));
+                if (material != null && material.shader != null && material.shader.name == TerrainShaderName)
+                    WearTerrain(material);
             }
 
             Debug.Log($"[StyleLook] {count} materials on {ShaderName} "
