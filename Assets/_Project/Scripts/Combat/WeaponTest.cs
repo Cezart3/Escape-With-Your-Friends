@@ -477,15 +477,13 @@ namespace EscapeWithYourFriends.Combat
         }
 
         /// <summary>
-        /// A flat aim from one body to the other. Flat on purpose: the aim origin is at eye height and
-        /// a transform position is at the feet, so aiming straight at somebody's origin points the ray
-        /// into the ground. That is invisible at a metre and fatal at thirty.
+        /// From the shooter's eye to the other's chest. Not at their origin, which is at the feet and
+        /// points the ray into the ground; and not flat either, which the regenerated island 1 broke:
+        /// its lane runs downhill and a flat ray passes over a head thirty metres away.
         /// </summary>
         static Vector3 Toward(Weapon from, Weapon to)
         {
-            Vector3 d = to.transform.position - from.transform.position;
-            d.y = 0f;
-
+            Vector3 d = to.transform.position + Vector3.up * 1.2f - from.AimOrigin.position;
             return d.sqrMagnitude > 0.001f ? d.normalized : Flat(from.transform.forward);
         }
 
