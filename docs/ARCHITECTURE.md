@@ -8137,6 +8137,12 @@ while every tier is at 1.0.
 render scale is at least 1, or that it upscales with FSR when it is below 1. It cannot judge how the
 image looks; that is a playtest question.
 
+## island2 objective: the plane's objective
+
+While any plane part lay loose, `PlanePart.PointAtOne` wrote a fixed "Find the X and haul it to the plane", naming whichever loose part came first in `PlanePart.All`. The line never mentioned the plane, so fitting the engine and the wing left it reading "propeller" until the last part was in hand.
+
+The sentence now comes from `PlaneAssembly.Status` ("Fix the plane: 1/3 parts (engine and wing still to find)"), the same shape as the boat's "Fix the boat: 3/4 parts". It is derived from the replicated `_fitted` mask, so every peer reads the same line, and the target still points at a loose part. Harness: `-partTest` (pair, `-scene island2`) checks the count is in the line and that it changes after a part is fitted.
+
 ---
 
 ## Data-driven content
