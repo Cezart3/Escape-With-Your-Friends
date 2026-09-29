@@ -39,12 +39,16 @@ namespace EscapeWithYourFriends.Data
 
     public static class SkinCatalog
     {
+        /// <summary>
+        /// Priced as money sinks, not purchases: thousands to tens of thousands, so a skin is hours
+        /// of grinding or a good night at the casino.
+        /// </summary>
         public static readonly WeaponSkin[] All =
         {
-            new("gold", "Gold", "pistol", new Color(1.00f, 0.79f, 0.20f), 250),
-            new("jungle", "Jungle camo", "pistol", new Color(0.28f, 0.42f, 0.20f), 150),
-            new("bone", "Bone", "rifle", new Color(0.92f, 0.89f, 0.80f), 200),
-            new("obsidian", "Obsidian", "machete", new Color(0.07f, 0.06f, 0.09f), 180),
+            new("gold", "Gold", "pistol", new Color(1.00f, 0.79f, 0.20f), 50000),
+            new("jungle", "Jungle camo", "pistol", new Color(0.28f, 0.42f, 0.20f), 5000),
+            new("bone", "Bone", "rifle", new Color(0.92f, 0.89f, 0.80f), 30000),
+            new("obsidian", "Obsidian", "machete", new Color(0.07f, 0.06f, 0.09f), 20000),
         };
 
         public static bool Find(string id, out WeaponSkin skin)

@@ -152,7 +152,7 @@ namespace EscapeWithYourFriends.EditorTools
         static IEnumerable<Seed> AllSeeds()
             => Seeds.Concat(SkinCatalog.All.Select(skin => new Seed(
                 skin.ItemId, $"{skin.Label} skin", ItemCategory.Misc, 1, 0f, 0,
-                $"A {skin.Label.ToLower()} finish for the {skin.WeaponId}. Worn as soon as it is bought.")));
+                $"{skin.Label} finish for the {skin.WeaponId}. Worn as soon as it is bought.")));
 
         public static void Build()
         {

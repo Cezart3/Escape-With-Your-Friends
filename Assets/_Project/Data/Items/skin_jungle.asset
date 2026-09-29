@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.ItemDef
   _id: skin_jungle
   _displayName: Jungle camo skin
-  _description: A jungle camo finish for the pistol. Worn as soon as it is bought.
+  _description: Jungle camo finish for the pistol. Worn as soon as it is bought.
   _category: 7
   _maxStack: 1
   _weight: 0

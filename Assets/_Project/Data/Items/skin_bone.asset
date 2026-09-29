@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.ItemDef
   _id: skin_bone
   _displayName: Bone skin
-  _description: A bone finish for the rifle. Worn as soon as it is bought.
+  _description: Bone finish for the rifle. Worn as soon as it is bought.
   _category: 7
   _maxStack: 1
   _weight: 0

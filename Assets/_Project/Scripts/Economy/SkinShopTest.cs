@@ -80,6 +80,10 @@ namespace EscapeWithYourFriends.Economy
                 Check($"'{skin.Id}' dresses a weapon that exists ({skin.WeaponId})", weapons.Find(skin.WeaponId) != null);
                 Check($"'{skin.Id}' is on the shelf (run ItemFactory.Build, ShopFactory.Build -rebuildShop)",
                       OfferOf(counter, items.Find(skin.ItemId)) >= 0);
+                int shelf = OfferOf(counter, items.Find(skin.ItemId));
+                Check($"'{skin.Id}' is a money sink, thousands not hundreds (shelf says {(shelf >= 0 ? counter.OfferAt(shelf).Price : 0)})",
+                      shelf >= 0 && counter.OfferAt(shelf).Price >= 5000);
+                Check($"'{skin.Id}' reads without a broken article", items.Find(skin.ItemId) is { } item && !item.Description.StartsWith("A O"));
             }
 
             SkinCatalog.Find("gold", out WeaponSkin gold);
@@ -100,11 +104,11 @@ namespace EscapeWithYourFriends.Economy
             bag.GetComponent<PlayerMotor>()?.ServerTeleport(counter.transform.position + counter.transform.forward * 2f + Vector3.up * 0.5f, 0f);
             yield return new WaitForSeconds(0.3f);
 
-            wallet.ServerSetBalance(1000);
+            wallet.ServerSetBalance(100000);
             int bought = counter.ServerBuy(bag, wallet, goldOffer, 1, out string why);
 
             Check("the skin is sold", bought == 1 && why == null);
-            Check("the money drops by the price", wallet.Balance == 1000 - gold.Price);
+            Check("the money drops by the price", wallet.Balance == 100000 - gold.Price);
             Check("the skin is owned", locker.Owns("gold"));
             Check("and worn on the pistol", locker.WornOn("pistol") == "gold");
             Check("it never came in the bag", bag.CountOf(items.Find(gold.ItemId)) == 0);
@@ -122,7 +126,7 @@ namespace EscapeWithYourFriends.Economy
 
             // ---------------------------------------------------------------- a second one switches
 
-            wallet.ServerSetBalance(1000);
+            wallet.ServerSetBalance(100000);
             counter.ServerBuy(bag, wallet, jungleOffer, 1, out why);
             Check("the second skin is owned and worn instead", locker.Owns("jungle") && locker.WornOn("pistol") == "jungle");
             Check("the first is still owned", locker.Owns("gold"));

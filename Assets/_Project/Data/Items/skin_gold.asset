@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.ItemDef
   _id: skin_gold
   _displayName: Gold skin
-  _description: A gold finish for the pistol. Worn as soon as it is bought.
+  _description: Gold finish for the pistol. Worn as soon as it is bought.
   _category: 7
   _maxStack: 1
   _weight: 0

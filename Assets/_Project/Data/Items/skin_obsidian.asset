@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.ItemDef
   _id: skin_obsidian
   _displayName: Obsidian skin
-  _description: A obsidian finish for the machete. Worn as soon as it is bought.
+  _description: Obsidian finish for the machete. Worn as soon as it is bought.
   _category: 7
   _maxStack: 1
   _weight: 0
