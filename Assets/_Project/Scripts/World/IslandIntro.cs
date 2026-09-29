@@ -27,6 +27,8 @@ namespace EscapeWithYourFriends.World
         float _giveUpAt;
         bool _done;
         Landmark _target;
+        bool _beat;
+        float _foundAt;
 
         /// <summary>
         /// This peer's player has stood at the wreck. Until then the Castaway's chain leaves the wreck
@@ -45,6 +47,20 @@ namespace EscapeWithYourFriends.World
         {
             if (_done)
             {
+                // #197. The arrival shot, once the local body exists so the camera is where the
+                // player is. Retried every quarter second until it plays: a peer that spawns out of
+                // Reach gets it on the walk over instead, which is a reveal rather than a miss.
+                if (!_beat && !Visited && _target != null && Time.frameCount % 15 == 0)
+                    foreach (Player.PlayerMotor motor in FindObjectsByType<Player.PlayerMotor>(FindObjectsSortMode.None))
+                        if (motor != null && motor.IsOwner && Time.time - _foundAt > 1.5f)
+                        {
+                            bool second = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name.Contains("2");
+                            _beat = StoryBeat.Play("arrive:" + (second ? "island2" : "island"),
+                                second ? "The far island" : "Day one",
+                                second ? "Somewhere on here is a way home." : "Whatever brought you here is on the tideline.",
+                                _target.transform);
+                        }
+
                 if (!Visited && _target != null && Time.frameCount % 15 == 0)
                     foreach (Player.PlayerMotor motor in FindObjectsByType<Player.PlayerMotor>(FindObjectsSortMode.None))
                         if (motor != null && motor.IsOwner
@@ -61,6 +77,7 @@ namespace EscapeWithYourFriends.World
             {
                 Objective.Set(_firstObjective, target.transform);
                 _target = target;
+                _foundAt = Time.time;
                 _done = true;
                 return;
             }
