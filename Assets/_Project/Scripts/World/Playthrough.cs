@@ -532,7 +532,10 @@ namespace EscapeWithYourFriends.World
                     Debug.Log($"[Playthrough] the {label} is at {part.transform.position}, the eye at {Eye} "
                               + $"({Vector3.Distance(part.transform.position, Eye):0.0}m), spawned {part.IsSpawned}, "
                               + $"server {part.IsServerStarted}, scene {part.gameObject.scene.name}, "
-                              + $"kinematic {part.GetComponent<Rigidbody>()?.isKinematic}, {PlanePart.All.Count} parts; crosshair "
+                              + $"kinematic {part.GetComponent<Rigidbody>()?.isKinematic}, {PlanePart.All.Count} parts; cast "
+                              + string.Join(", ", Physics.SphereCastAll(Camera.main.transform.position, 0.5f, Camera.main.transform.forward, 3.5f, ~0, QueryTriggerInteraction.Ignore)
+                                  .OrderBy(h => h.distance).Take(4).Select(h => $"{h.collider.name}/{h.collider.transform.root.name} {h.distance:0.00}"))
+                              + "; crosshair "
                               + $"\"{_motor.GetComponent<PlayerInteractor>().Aimed?.Prompt}\", "
                               + $"colliders {string.Join(",", part.GetComponentsInChildren<Collider>().Select(c => c.GetType().Name + (c.isTrigger ? "(trigger)" : "") + (c.enabled ? "" : "(off)")))}.");
                 Check($"E lifts the {label}", part != null && part.Carrier == _motor.NetworkObject);

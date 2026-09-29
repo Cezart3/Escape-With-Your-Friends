@@ -103,7 +103,7 @@ MonoBehaviour:
     AllowUnderwater: 0
   - Id: part.engine
     PrefabPath: Assets/_Project/Prefabs/PlanePart.Engine.prefab
-    Position: {x: -80, y: 10}
+    Position: {x: -88, y: 18}
     Yaw: 47
     YOffset: 0
     SnapToGround: 1

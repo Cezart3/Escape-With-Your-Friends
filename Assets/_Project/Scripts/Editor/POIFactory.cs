@@ -589,9 +589,11 @@ namespace EscapeWithYourFriends.EditorTools
 
                 // Beside the wreck, not along it: the hull is fourteen metres long down the wreck's
                 // own facing, and six metres that way put the engine inside it. Arriving by boat,
-                // physics pushed it out downwards, through the island (playthrough bot).
+                // physics pushed it out downwards, through the island (playthrough bot). And on the
+                // side away from the fallen mast, which lay between the engine and anybody standing
+                // at it and took the crosshair first.
                 Entry("part.engine", PlanePartBuilder.EnginePath,
-                      wreck + Offset(Facing(wreck, camp) + 90f, 6f), Facing(wreck, camp),
+                      wreck + Offset(Facing(wreck, camp) - 90f, 6f), Facing(wreck, camp),
                       pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.6f),
 
                 // #71. This one does get a pad, and the biggest on the island: a plane standing on a
