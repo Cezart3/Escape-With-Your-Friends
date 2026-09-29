@@ -8020,6 +8020,16 @@ generous): a steak in the 56 cm cube hovered 20 cm over the sand.
 Harness: `-itemTest`, `-lootTest`, `-weaponTest` (unchanged; they cover the prefabs spawning and
 the boxes); the look was checked on the icon sheet and the bot's screenshots.
 
+## Water: no foam polygons on flat sand at sea level
+
+The playtest showed pale-white polygons on the beach and under the wreck. The wreck's pad and the
+flattest tideline sit within centimetres of the sea plane, so the plane cut through the terrain's
+triangles there. The baked depth mask reads ~0 at those spots, which the shader drew as full
+shallow-alpha foam. `Water.shader` now multiplies alpha by `smoothstep(0, _EdgeFade / _ShoreDepth,
+mask)` (`_EdgeFade` = 0.35 m). The last few centimetres are a transparent film, and the surf line
+sits just offshore. No terrain regeneration was needed. Checked on the bot's wreck and sailing
+screenshots.
+
 ---
 
 ## Data-driven content

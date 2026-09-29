@@ -1,0 +1,45 @@
+Escape With Your Friends
+Copyright (c) 2026 Cezar Tocaciu. All rights reserved.
+
+This repository and everything in it (source code, scenes, prefabs, data, generated
+content, shaders, documentation, and any art, audio or text made for the game) is the
+proprietary work of the copyright holder, except for the third-party components listed
+below, which keep their own licences.
+
+The source is visible for convenience only. Being able to see it does not give you
+any licence to it. Without prior written permission from the copyright holder you may
+NOT:
+
+  - copy, reproduce, or redistribute any part of it, in source or compiled form;
+  - modify it, or make derivative works based on it;
+  - sell, sublicense, rent, publish, or otherwise make it available to anyone else;
+  - use it, or any part of it, in another product, game, or service;
+  - use it to train, fine-tune, or evaluate machine-learning models.
+
+Forking the repository through the hosting platform's user interface, to the extent that
+platform's terms of service require it, grants no rights beyond those terms.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. IN NO
+EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY
+ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
+
+For licensing enquiries, contact the copyright holder through the repository owner's
+GitHub profile.
+
+--------------------------------------------------------------------------------
+Third-party components
+--------------------------------------------------------------------------------
+
+The following are not owned by the copyright holder. They are included under their own
+licences, which are kept next to them. Nothing above restricts or replaces those terms.
+
+  - FishNet (com.firstgeargames.fishnet): networking library, under its own licence
+    (fetched as a Unity package, not stored in this repository).
+  - FishyFacepunch (Assets/Plugins/FishyFacepunch): MIT licence, see LICENSE.txt there.
+  - Facepunch.Steamworks (Assets/Plugins/Steamworks): MIT licence.
+  - steam_api64.dll (Assets/Plugins/Steamworks): Valve's Steamworks SDK redistributable,
+    under the Steamworks SDK Access Agreement.
+  - Unity packages (Packages/): under the Unity Companion License or the terms of each
+    package.
+  - Art in Assets/_Project/Art/ThirdParty: by Kenney and Quaternius, CC0 1.0. Each kit's
+    licence file sits next to it, and docs/CREDITS.md records the source of every model.

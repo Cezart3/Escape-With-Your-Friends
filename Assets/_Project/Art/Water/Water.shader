@@ -25,6 +25,7 @@ Shader "EWYF/Water"
         _ShoreDepth ("Metres mapped to full deep", Float) = 14
         _FoamWidth ("Foam band (m)", Float) = 1.6
         _ShallowAlpha ("Alpha at the shore", Range(0,1)) = 0.45
+        _EdgeFade ("Water thins to nothing over (m)", Float) = 0.35
         _DeepAlpha ("Alpha out deep", Range(0,1)) = 0.96
 
         [Header(Waves)]
@@ -102,6 +103,7 @@ Shader "EWYF/Water"
                 float _ShoreDepth;
                 float _FoamWidth;
                 float _ShallowAlpha;
+                float _EdgeFade;
                 float _DeepAlpha;
                 float _NormalTiling;
                 float _NormalStrength;
@@ -225,6 +227,12 @@ Shader "EWYF/Water"
 
                 float alpha = lerp(_ShallowAlpha, _DeepAlpha, saturate(mask * 1.35));
                 alpha = saturate(alpha + foam * 0.7);
+
+                // The last few centimetres are a film, not a surface. Opaque to the very edge, every
+                // flat stretch of beach sitting at sea level (the wreck's pad, the tideline) showed the
+                // plane cutting through the terrain's triangles as white polygons of foam. Thinned
+                // out, the surf line sits a little offshore and the sand under it shows through.
+                alpha *= smoothstep(0.0, saturate(_EdgeFade / max(0.01, _ShoreDepth)), mask);
 
                 colour = MixFog(colour, IN.fogFactor);
                 return half4(colour, alpha);
