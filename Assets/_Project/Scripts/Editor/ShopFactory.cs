@@ -68,14 +68,17 @@ namespace EscapeWithYourFriends.EditorTools
             ("fishing_rod", 80, 1),
             ("hatchet", 90, 1),
 
-            // #51's guns, which until the second playtest nothing on the island sold or dropped: the
-            // whole arsenal existed and nobody could hold it. The pistol is within the $500 you land
-            // with; the rest are what the run's money is for. Rounds are unlimited, and priced so a
-            // magazine costs about what a bandage does.
+            // #51's guns, and the late-game ladder above them. The pistol is within the $500 you land
+            // with; every rung after it is roughly three to four times the last, up to the 250,000
+            // sniper that is the run's real ceiling. One of each: a gun that costs this much is a
+            // decision four players make together. Rounds are unlimited and cheap; the guns are
+            // where the money goes.
             ("pistol", 180, 2),
-            ("shotgun", 300, 1),
-            ("smg", 390, 1),
-            ("rifle", 480, 1),
+            ("shotgun", 2500, 1),
+            ("smg", 8000, 1),
+            ("rifle", 25000, 1),
+            ("machinegun", 90000, 1),
+            ("sniper", 250000, 1),
             ("pistol_ammo", 3, -1),
             ("shotgun_shell", 8, -1),
             ("rifle_ammo", 14, -1),

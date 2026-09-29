@@ -22,6 +22,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 4c3d9debfc335ba4480a90e8f00d4180, type: 2}
   - {fileID: 11400000, guid: 852984e1da6a38e4d9dc0754738be976, type: 2}
   - {fileID: 11400000, guid: ae964519933c88b4594874a27e870f0b, type: 2}
+  - {fileID: 11400000, guid: 73f1e7ccfa117454dadaac7326c9814c, type: 2}
   - {fileID: 11400000, guid: 286b3a76005d457409c852194e37b19c, type: 2}
   - {fileID: 11400000, guid: 1343442111d05a547911a7687b7a922b, type: 2}
   - {fileID: 11400000, guid: 7a3d137b30916a7418e69c19bd7a75e4, type: 2}
@@ -29,4 +30,5 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 80b0a5d25dde484419e42573af0ba02e, type: 2}
   - {fileID: 11400000, guid: 6c64b08533731514388bd735b11d306d, type: 2}
   - {fileID: 11400000, guid: d47059f2b7056504db73f8dfc76e9dbe, type: 2}
+  - {fileID: 11400000, guid: 973b7387dc5d3b74986a3899a4d0922f, type: 2}
   _fists: {fileID: 11400000, guid: 4142f3d48b3d1074ea5a1962ed098886, type: 2}

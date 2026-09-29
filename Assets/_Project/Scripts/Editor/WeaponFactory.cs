@@ -169,6 +169,25 @@ namespace EscapeWithYourFriends.EditorTools
                 size: new Vector3(0.06f, 0.14f, 0.48f), colour: new Color(0.22f, 0.23f, 0.25f),
                 description: "Thirty rounds in two seconds, most of them somewhere near the target."),
 
+            // The late-game ladder (economy overhaul): the two guns the 250,000-coin ceiling is for.
+            // Both eat rifle rounds. The LMG trades the rifle's punch for volume; the sniper is the
+            // rifle taken to its end - triple damage, same pace, longer reach.
+            new("machinegun", "Machine Gun", "machinegun", WeaponKind.Hitscan, 3,
+                damage: 50f, knockback: 60f, upwardBias: 0.08f, stun: 0.5f,
+                cooldown: 0f, windup: 0f, range: 140f, radius: 0f, cone: 0f, maxTargets: 1,
+                pellets: 1, spread: 2.5f, recoil: 1.3f, rpm: 620f, magazine: 60, ammo: "rifle_ammo",
+                reload: 3.5f,
+                size: new Vector3(0.08f, 0.16f, 0.95f), colour: new Color(0.20f, 0.22f, 0.20f),
+                description: "Sixty rounds, ten a second. Nothing about it is subtle."),
+
+            new("sniper", "Sniper Rifle", "sniper", WeaponKind.Hitscan, 4,
+                damage: 195f, knockback: 140f, upwardBias: 0.10f, stun: 1.0f,
+                cooldown: 0f, windup: 0f, range: 200f, radius: 0f, cone: 0f, maxTargets: 1,
+                pellets: 1, spread: 0.2f, recoil: 6.0f, rpm: 40f, magazine: 5, ammo: "rifle_ammo",
+                reload: 3.0f,
+                size: new Vector3(0.07f, 0.11f, 1.55f), colour: new Color(0.30f, 0.34f, 0.28f),
+                description: "Five rounds and a very long reach. The last gun anybody buys."),
+
             // The proof that the other branch is real. Balance is #51's problem, not this issue's.
             new("pistol", "Pistol", "pistol", WeaponKind.Hitscan, 1,
                 damage: 26f, knockback: 100f, upwardBias: 0.10f, stun: 0.6f,
@@ -417,6 +436,10 @@ namespace EscapeWithYourFriends.EditorTools
             ["smg"] = ("Smg", false),
             ["shotgun"] = ("Shotgun", false),
             ["rifle"] = ("Rifle", false),
+            // No LMG in the Kenney weapon pack: the SMG model drawn larger stands in for it, and the
+            // sniper wears the same long rifle as the hunting rifle, just longer.
+            ["machinegun"] = ("Smg", false),
+            ["sniper"] = ("Rifle", false),
             ["knife"] = ("Knife", false),
             ["machete"] = ("Knife", true),
             ["hatchet"] = ("Axe", false),

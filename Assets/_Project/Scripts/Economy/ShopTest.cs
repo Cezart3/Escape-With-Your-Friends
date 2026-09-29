@@ -382,6 +382,42 @@ namespace EscapeWithYourFriends.Economy
             Check("and does not overfill it",
                   counter.Remaining(knifeOffer) <= counter.OfferAt(knifeOffer).Stock);
 
+            // ---------------------------------------------------------------- the late-game gun ladder
+
+            string[] ladder = { "pistol", "shotgun", "smg", "rifle", "machinegun", "sniper" };
+            int previous = 0;
+            bool ascending = true;
+
+            foreach (string id in ladder)
+            {
+                int offer = OfferOf(counter, items.Find(id));
+                int price = offer >= 0 ? counter.OfferAt(offer).Price : 0;
+                if (price <= previous) ascending = false;
+                previous = price;
+            }
+
+            Check("every gun on the ladder costs more than the one before it", ascending);
+
+            ItemDef mgItem = items.Find("machinegun");
+            ItemDef sniperItem = items.Find("sniper");
+            int mgOffer = mgItem != null ? OfferOf(counter, mgItem) : -1;
+            int sniperOffer = sniperItem != null ? OfferOf(counter, sniperItem) : -1;
+
+            Check("the trader sells the machine gun for 90000",
+                  mgOffer >= 0 && counter.OfferAt(mgOffer).Price == 90000);
+            Check("and the sniper for 250000",
+                  sniperOffer >= 0 && counter.OfferAt(sniperOffer).Price == 250000);
+
+            foreach ((string id, ItemDef item, int offer) in new[] { ("machinegun", mgItem, mgOffer), ("sniper", sniperItem, sniperOffer) })
+            {
+                WeaponDef def = WeaponCatalog.Active != null ? WeaponCatalog.Active.Find(id) : null;
+
+                Check($"the {id} is in the weapon catalog and is a hitscan gun",
+                      def != null && def.Kind == WeaponKind.Hitscan && item != null && def.Item == item);
+                Check($"selling a {id} back pays under a tenth of its price",
+                      item != null && offer >= 0 && shop.PriceFor(item) * 10 < counter.OfferAt(offer).Price);
+            }
+
             string line = $"[ShopTest] {_passed} passed, {_failed} failed. "
                           + $"end: alice {Purse.Text(aliceWallet.Balance)}, "
                           + $"bob {Purse.Text(bobWallet.Balance)}, "
