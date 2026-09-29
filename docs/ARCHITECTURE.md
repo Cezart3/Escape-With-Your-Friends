@@ -8119,6 +8119,24 @@ The check is `no stall with nothing to stop it`. The tour's distance check only 
 got somewhere (over 50 m, one stop reached): the bot is a poor driver in woods, and a check that
 measured the bot would say nothing about the car.
 
+## #201: a sharp image
+
+The Low quality tier rendered at 0.8 scale and stretched the result back up bilinearly, so on the
+machines that pick Low the whole image was soft. The bot windows made it look worse still: they are
+1280x720 and Windows scales them again, which is not what a player sees, so blur in a bot screenshot
+is not evidence about the shipped game.
+
+Every tier now renders at scale 1.0. Low pays for it in shadows instead: the map drops from 1024 to
+512 and the distance from 45 m to 35 m, still one cascade. `RenderTuning.Apply` is where the numbers
+live and `ProjectSetup` seeds the same scale for a fresh checkout. Re-run `RenderTuning.Apply` in
+batchmode to rewrite the URP assets; nothing is edited by hand. There is no render-scale slider: the
+Settings screen only offers the quality tier, and a second knob for the same lever was not worth it
+while every tier is at 1.0.
+
+`-qualityTest` (any scene, host) walks every quality level, reads its URP asset and checks that its
+render scale is at least 1, or that it upscales with FSR when it is below 1. It cannot judge how the
+image looks; that is a playtest question.
+
 ---
 
 ## Data-driven content

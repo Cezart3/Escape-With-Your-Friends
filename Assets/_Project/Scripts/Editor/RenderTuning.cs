@@ -50,13 +50,13 @@ namespace EscapeWithYourFriends.EditorTools
 
         static readonly Tier[] Tiers =
         {
-            // Integrated graphics. Render scale is the single biggest lever on an iGPU - 0.8 is 64%
-            // of the pixels for a softness nobody notices at 1080p - and one cascade over 45 metres
-            // is enough shadow for a game played on foot.
+            // Integrated graphics. Render scale stays at 1: 0.8 upscaled bilinearly and the whole
+            // image came out soft (#201). The saving is taken from the shadows instead - a 512 map,
+            // one cascade, 35 metres - which is enough shadow for a game played on foot.
             new()
             {
-                Path = LowPath, Hdr = false, Msaa = 1, RenderScale = 0.8f,
-                ShadowResolution = 1024, ShadowDistance = 45f, Cascades = 1,
+                Path = LowPath, Hdr = false, Msaa = 1, RenderScale = 1f,
+                ShadowResolution = 512, ShadowDistance = 35f, Cascades = 1,
                 SoftShadows = false, ExtraLightShadows = false, LightsPerObject = 2,
             },
 
