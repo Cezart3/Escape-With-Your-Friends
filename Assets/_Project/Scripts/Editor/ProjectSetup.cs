@@ -38,7 +38,7 @@ namespace EscapeWithYourFriends.EditorTools
         /// <summary>Shadow distance in metres per tier. Low targets a Radeon 760M iGPU.</summary>
         static readonly (string name, float shadowDistance, int cascades, float renderScale)[] Tiers =
         {
-            ("Low",    60f,  1, 0.8f),
+            ("Low",    60f,  1, 1.0f),
             ("Medium", 80f,  2, 1.0f),
             ("High",   150f, 4, 1.0f),
         };
