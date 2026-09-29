@@ -70,7 +70,11 @@ namespace EscapeWithYourFriends.World
         void LateUpdate()
         {
             PushProfile();
-            Apply(WorldClock.Normalized, false);
+
+            // RenderSettings belong to the active scene, and the network scene loads make another one
+            // active after this has written the sky. A moving clock rewrites it within a second; a
+            // frozen one (-timeOfDay) never would, so a lost sky forces it.
+            Apply(WorldClock.Normalized, Sky != null && RenderSettings.skybox != _skyInstance);
         }
 
         void PushProfile()

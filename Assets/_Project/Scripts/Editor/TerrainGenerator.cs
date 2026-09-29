@@ -89,6 +89,7 @@ namespace EscapeWithYourFriends.EditorTools
 
             var stopwatch = Stopwatch.StartNew();
             float[,] heights = Sample(profile, resolution);
+            FillPuddles(profile, heights, resolution);
             stopwatch.Stop();
 
             uint heightmapHash = HashHeights(heights);
@@ -291,6 +292,53 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
+        /// Ground below sea level that the sea cannot reach. The sea is one flat plane under the whole
+        /// island, so every inland dip below zero showed it as a puddle of ocean in a field. A flood
+        /// fill from the map's edge finds the real sea; everything below it that the fill never
+        /// reached is raised to just above the water. Heightmap only: <c>IslandShape</c> still calls
+        /// those spots water, so nothing gets planted in them, which is the right bare patch anyway.
+        /// </summary>
+        static void FillPuddles(IslandProfile profile, float[,] heights, int resolution)
+        {
+            float total = profile.TotalHeight;
+            float sea = (IslandShape.SeaLevel + profile.SeabedDepth) / total;
+            float dry = (IslandShape.SeaLevel + 0.3f + profile.SeabedDepth) / total;
+
+            var reached = new bool[resolution, resolution];
+            var open = new System.Collections.Generic.Stack<(int z, int x)>();
+            for (int i = 0; i < resolution; i++)
+            {
+                open.Push((0, i));
+                open.Push((resolution - 1, i));
+                open.Push((i, 0));
+                open.Push((i, resolution - 1));
+            }
+
+            while (open.Count > 0)
+            {
+                var (z, x) = open.Pop();
+                if (z < 0 || x < 0 || z >= resolution || x >= resolution) continue;
+                if (reached[z, x] || heights[z, x] > sea) continue;
+                reached[z, x] = true;
+                open.Push((z + 1, x));
+                open.Push((z - 1, x));
+                open.Push((z, x + 1));
+                open.Push((z, x - 1));
+            }
+
+            int filled = 0;
+            for (int z = 0; z < resolution; z++)
+            for (int x = 0; x < resolution; x++)
+            {
+                if (reached[z, x] || heights[z, x] > sea) continue;
+                heights[z, x] = dry;
+                filled++;
+            }
+
+            Debug.Log($"[TerrainGenerator] {filled} inland samples below the sea raised out of it.");
+        }
+
+        /// <summary>
         /// Creates or updates the terrain asset. The existing asset is reused when there is one, so
         /// its GUID survives and every scene reference to it keeps working across a regeneration.
         /// </summary>
@@ -339,10 +387,14 @@ namespace EscapeWithYourFriends.EditorTools
             // The terrain gets its material spelled out rather than left null. A null template falls
             // back to the built-in Nature/Terrain/Standard shader, which does not exist under URP -
             // and a terrain with no shader is a kilometre of magenta.
-            terrain.materialTemplate = EnsureTerrainMaterial();
+            terrain.materialTemplate = EnsureTerrainMaterial(out bool stylized);
 
+            // EWYF/StylizedTerrain has no basemap and no instanced path (see the shader), so the
+            // terrain is told to need neither: drawn with the full shader to the horizon, which is
+            // five texture fetches, cheaper than URP's own terrain shader up close.
+            terrain.drawInstanced = !stylized;
             terrain.heightmapPixelError = 5f;
-            terrain.basemapDistance = 400f;
+            terrain.basemapDistance = stylized ? 20000f : 400f;
 
             // The vegetation budget, all of it in one place. Trees are meshes out to
             // TreeBillboardDistance and cheap impostors from there to TreeDistance; grass stops
@@ -629,17 +681,22 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
-        /// The four terrain layers, with textures generated the first time. Existing assets are reused
-        /// so the terrain keeps pointing at the same GUIDs across a regeneration, and so an art pass
-        /// that replaces a texture is not undone the next time somebody rerolls the seed.
+        /// The terrain material, created once and reused so its GUID survives a regeneration. On the
+        /// island's own terrain shader when it imported (<see cref="StyleLook.WearTerrain"/>), on URP's
+        /// otherwise; <paramref name="stylized"/> says which.
         /// </summary>
-        /// <summary>
-        /// The URP terrain material, created once and reused so its GUID survives a regeneration.
-        /// </summary>
-        static Material EnsureTerrainMaterial()
+        static Material EnsureTerrainMaterial(out bool stylized)
         {
             var material = AssetDatabase.LoadAssetAtPath<Material>(TerrainMaterialPath);
-            Shader shader = Shader.Find("Universal Render Pipeline/Terrain/Lit");
+            Shader shader = Shader.Find(StyleLook.TerrainShaderName);
+            stylized = shader != null;
+
+            if (!stylized)
+            {
+                Debug.LogError($"[TerrainGenerator] {StyleLook.TerrainShaderName} not found; the ground falls "
+                               + "back to URP Terrain/Lit and does not match the models on it.");
+                shader = Shader.Find("Universal Render Pipeline/Terrain/Lit");
+            }
 
             if (shader == null)
             {
@@ -653,15 +710,21 @@ namespace EscapeWithYourFriends.EditorTools
                 Directory.CreateDirectory(Path.GetDirectoryName(TerrainMaterialPath));
                 AssetDatabase.CreateAsset(material, TerrainMaterialPath);
             }
-            else
+            else if (material.shader != shader)
             {
                 material.shader = shader;
                 EditorUtility.SetDirty(material);
             }
 
+            if (stylized) StyleLook.WearTerrain(material);
             return material;
         }
 
+        /// <summary>
+        /// The four terrain layers, with textures generated the first time. Existing assets are reused
+        /// so the terrain keeps pointing at the same GUIDs across a regeneration, and so an art pass
+        /// that replaces a texture is not undone the next time somebody rerolls the seed.
+        /// </summary>
         static TerrainLayer[] EnsureLayers(IslandProfile profile)
         {
             Directory.CreateDirectory(TerrainArtFolder);

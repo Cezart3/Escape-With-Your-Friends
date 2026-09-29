@@ -7469,6 +7469,40 @@ leaves uncovered, 52 distinct faces. The banner, the coins and the sound are pla
 
 ---
 
+## The island's pirate pieces from Quaternius (P6 V2)
+
+The palms, the barrels, bucket, bottles and chest, the wreck, its boat and the cave's walls now come
+from Quaternius's Pirate Kit, by the same hand as the nature kit V1 put on the islands. Only
+`ArtCatalog` rows change; the greybox layout, the dressing code and the prefab GUIDs stay.
+
+- **The pack.** `new("Quaternius", "PirateKit", "", …, atlas: true, atlasFile: "Atlas_Pirate.png")`.
+  The kit is painted like Kenney's, from a swatch sheet, so it rides the atlas path; `Pack.AtlasFile`
+  (default `colormap.png`) names the sheet, and `ArtExtract` and `ArtLibrary.AtlasMaterial` read it.
+  The FBX's one material is called "Atlas" and links no texture, which the atlas path never needed.
+- **The zip.** Quaternius hands the kit out as a Google Drive folder, so the zip is named
+  `drive-download-<date>.zip`. The hint is empty: every zip is a candidate and `BestZip` keeps the
+  one holding the most of the pack's files.
+- **The licence.** That zip carries no licence file. Rather than write one, `ArtExtract` takes a
+  text file a person saved beside the zip, named after it (`<zip>.License.txt`), and until it exists
+  the run fails with one missing line naming the page to read and the path to save to.
+- **Rows.** Palms `Environment_PalmTree_1..3` (four slots, two sharing a model at different sizes,
+  so `IslandFlora`'s weights stand); `Prop_Barrel`, `Prop_Bucket`, `Prop_Bottle_1`,
+  `Prop_Chest_Closed`; the wreck `Ship_Large`, the debris boat `Ship_Small`, and a new `Cliff`
+  (`Environment_Cliff1`) that `GreyboxBuilder.DressCave` fits on the cave's three standing walls.
+  Each wall and the wreck are turned by `ArtDress.Along` so the model's long side lies along its
+  box, whichever axis the kit drew it along; the right wall takes a half turn more than the left, so
+  the mouth's two sides face each other. The lintel stays a Kenney rock. Kenney's pirate kit keeps the rocks, the thatch and the crates, and
+  its palm stays in the catalogue as `KenneyPalm`, placed nowhere, so `PackAxis` still has an
+  upright model to learn that kit's up-axis from.
+- **Caps** (`ArtVisual.Cap`), from the measured counts: small prop 600 (bucket 532), prop 2 000
+  (chest 1 636), wreck 30 000 (the ship 20 636). The boat (5 578) and the cliff (8 596) are filed as
+  wrecks: landmark pieces placed a handful of times, not scatter.
+
+Tested by the existing harnesses: `ArtLibrary.BuildAll` ("N of N models ready", caps checked),
+`-lookTest` on both islands, and each builder's "Dressed … guid … kept" line.
+
+---
+
 ## One shader for every kit (#79, ART-PLAN P6 V6)
 
 After P6 the island is Kenney swatch atlases, Quaternius painted textures, Kenney flat colours and
@@ -7488,8 +7522,11 @@ the shade side goes grey on both. So everything now wears one hand-written shade
   `_DETAIL_SOFTEN`, which `StyleLook` turns on only where `_Detail` < 1, so nothing else pays for it. `_Saturation` and `_Brightness` nudge a kit toward the rest.
 - **Rim and one hard highlight.** A thin lit-side rim for silhouettes against the sea; a single
   stepped specular spot only above smoothness 0.3, so metal and gold shine and nothing else does.
-- **Emission** behind `_EMISSION` (`_EmissionColor`), for the campfire flame `StationBuilder` lights.
-- **Passes**: forward (main-light cascades, per-pixel additional lights and their shadows, soft-shadow
+- **Emission** behind `_EMISSION` (`_EmissionColor`), for the campfire flame. The flame has its own
+  `Greybox/Flame.mat` (`StyleLook.Glowing`); it used to switch emission on for the palette entry it
+  snapped to, Gold, which lit every gold object. `Wear` now strips `_EMISSION` from palette entries.
+- **Passes**: forward (main-light cascades with URP's shadow-distance fade, per-pixel additional lights and their
+  shadows, light cookies, soft-shadow
   levels, SSAO-in-lighting, fog, instancing), ShadowCaster, DepthOnly, and DepthNormals for the High
   tier's SSAO. Forward renderer only, like every tier. One `UnityPerMaterial` buffer across all
   passes, so the SRP Batcher still takes it. Falls back to URP/Lit.
@@ -7515,6 +7552,42 @@ already unifies the kits at the output; nothing new was added there.
 `Quaternius_*` material, every palette entry and the roulette wheel wear `EWYF/Stylized`. A generator that goes back to URP/Lit, or a shader
 that fails to compile and falls back, fails it. The material budget is unchanged: the switch
 re-shades materials, it adds none.
+
+**The committed `.mat` files still say URP/Lit until somebody runs `StyleLook.Apply` and commits
+the result**; they are generated, never hand-edited, and a cloud session has no Unity. Until then
+the new check fails, which is the point: it is the reminder. The name check cannot see a shader
+that imports but fails to compile for the player (the material keeps the name); that is the build
+log's `Shader error in 'EWYF/Stylized'`.
+
+**The terrain** has its own shader on the same lighting; see "The ground, lit like the models".
+
+---
+
+## The ground, lit like the models (#79, ART-PLAN P6 V6)
+
+After V6 every model was banded and the terrain still wore URP Terrain/Lit, so the seam moved to
+where each rock meets the sand. `Art/Stylized/StylizedTerrain.shader` (`EWYF/StylizedTerrain`)
+draws the ground through the same `StylizedLighting.hlsl` that `EWYF/Stylized` now includes: one
+function, one band curve, one cool shade tint, so the two cannot drift apart. The ground takes no
+rim and no highlight.
+
+**Kept small for the 760M.** Four layers in one pass (`IslandSplat.LayerCount`), one control fetch
+and four albedo fetches, no normal maps, no height blend, no holes. There is no
+add pass, so a fifth layer would not draw.
+
+**No basemap, no instancing, on purpose.** URP's terrain swaps to a baked basemap shader past
+`basemapDistance`, found through a `BaseMapShader` dependency. A custom shader without one would
+fall to a shader URP does not have. So `TerrainGenerator` sets `basemapDistance` to 20000 (never)
+and `drawInstanced` off (the instanced path samples the heightmap in the vertex shader, which this
+one does not). Full-shader terrain to the horizon costs five fetches a pixel, less than Terrain/Lit.
+
+**Wiring.** `TerrainGenerator.EnsureTerrainMaterial` switches the material to the shader and calls
+`StyleLook.WearTerrain` for the shared ramp, softness and tint. If the shader did not import, it
+falls back to URP Terrain/Lit with the old 400 m basemap and instancing on. The switch only happens
+on a regeneration, because the shader needs the terrain settings the generator writes beside it.
+`StyleLook.Restyle` refreshes the numbers on terrain materials already switched, so tuning the look
+table reaches the ground too. `-lookTest` checks every active terrain for the
+shader, instancing off and basemap distance past 10 km.
 
 ---
 
@@ -7598,6 +7671,328 @@ the scene.
 the stake share; a forced drop (`SlotMachine.ForceJackpot`) that pays the pot, resets it, holds
 the ticker until settle and throws a tier-4 banner; every cabinet showing the same pot; and the
 client seeing it. Volcano and Reef now have three buttons.
+
+---
+
+## The look, from a screenshot: shade, canopies, the red bush, the lost sky
+
+The first playtest on the stylized look found four things. `-shots <folder>` (`ShotTest`) is how they
+were judged from a terminal. It runs in a real window (no `-nographics`) and takes four eye-level
+views round the spawn and one from above, on a camera copied from the main one. Then it quits.
+
+- **Shade was a hole.** The shade side was the trilight ambient alone, near black under a canopy. It
+  is now never less than 42% of the sun's colour (`StylizedLighting.hlsl`). That is scaled by the
+  sun, so the night stays dark.
+- **Canopies were black speckle.** Every leaf card banded on its own normal, and half of them fell
+  into shade. Alpha-clipped materials now bend the normal 60% toward up, so a crown is lit as one
+  mass.
+- **The bushes were red.** The kit's `Bush_Common` wears the twisted tree's autumn leaves
+  (`Leaves_TwistedTree_C.png`). `StyleLook` puts the white leaf mask of the same cards on that one
+  material and tints it green. The pirate atlas's lime palms lost some saturation (0.8) and
+  brightness (0.9).
+- **The camera walked into trees.** The broadleaf trunks flare to 0.9-1.0 m at the root, measured
+  in Blender at their placed height. The capsules were 0.36-0.45 m; they are now 0.75-0.85 m.
+- **The sky was lost** whenever the clock was frozen. `RenderSettings` belong to the active scene, and
+  the network scene loads switch it after `DayNightCycle` has written the sky. A moving clock
+  rewrites it within a second, but a frozen one never did. A lost sky now forces a re-apply.
+
+lookTest 12/0 on both islands, nativeTest 162/0, animalTest 94/0.
+
+---
+
+## The second playtest: the car camera, puddles, the pig's sphere, the boar
+
+**Chase camera while seated.** `PlayerCameraRig` used the walking eye (body + 1.55 m) in every
+vehicle, which from a kart seat is a view of the bonnet or the sky. Seated, the eye is now behind
+the vehicle along the mouse look: pivot at `1 + 0.35 r` above the vehicle, `2.5 + 1.6 r` back,
+where `r` is the vehicle's renderer bounds radius (clamped 1.5..12, measured once per vehicle, the
+riders excluded), so the kart, the boat and the plane each get a distance to their size. A sphere
+cast pulls the camera in front of terrain and walls. No follow lag and no head bob: the vehicle
+is already smooth. `CharacterSkin` draws your own body while seated, since it is now in view.
+
+**Puddles.** The sea is one plane at 0 under the whole island, so every inland dip below 0 showed
+it. `TerrainGenerator.FillPuddles` flood-fills the sub-sea samples from the map edge and raises
+every one the fill never reached to +0.3 m. Heightmap only; `IslandShape` still calls those spots
+water, so nothing is planted in them. Island 1: 556 samples raised. Island 2: 0.
+
+**The white blob under the animals.** The poly.pizza glTFs of the Pig and the Deer carry a hidden
+2 m `Icosphere`, which the FBX conversion exported as a visible, untextured mesh (the stray
+`NoName` material). Both were re-converted with every mesh that has no armature modifier dropped,
+and the zips in the art folder rebuilt. It also inflated the pig's bounds: native 1.90x2.61x2.07
+before, 0.84x1.60x2.03 now, so the pig fills its body box instead of being shrunk to fit a sphere.
+
+**The boar.** Every stun ragdolls the victim, so a boar with 0.9 s of stun and 950 of knockback
+floored you and threw you on every tackle. Now 10 damage, no stun, no knockback: a bite that hurts
+without knocking you over, ten of them to go down.
+
+**The toy palette.** Kenney's colour maps are saturated swatches, and its orange logs, stumps and
+crates were most of what read as "Roblox" next to the Quaternius nature. `StyleLook.Kits` now
+pulls `Kenney_*` to 0.62 saturation and 0.85 brightness, and the `Flat_*` swatches to 0.75 and 0.9.
+The logs and crates come out wood-brown. `-lookTest` 12/0.
+
+---
+
+## Guns you can have, a wreck with something at it, a first objective that is true
+
+The third playtest: "implement the guns so we can shoot", and "I go to the shipwreck and there is
+nothing". Both were true, and neither was a missing system.
+
+**The guns existed and could not be had.** #51 built the whole arsenal - hitscan, pellets, recoil,
+magazines, R to reload, server-owned damage, `-gunTest` - and then nothing sold it and nothing
+dropped it. The trader (`ShopFactory.Stock`) now sells the pistol (180, two on the shelf), shotgun
+(300), SMG (390), rifle (480) and all three kinds of rounds, unlimited. The pistol fits in the $500
+a run starts with. The shelf is written once, so the change needs `ShopFactory.Build -rebuildShop`.
+
+**The wreck had a hull and nothing else.** `POISpawner.Loot` is a table of what lies on the ground
+at a POI when the island starts: at the wreck a pistol, 36 rounds, rope, cloth, planks, bandages
+and bottles; at the cave shells, a torch and flint. Each stack is dropped on a ring 9-12 m out, raycast onto the
+ground. The scatter waits for `ItemCatalog.Active`, which the first inventory to wake publishes and
+which arrives after the POIs do.
+
+**The first objective sent you to somebody you had never left.** A run starts on the first island,
+and the `Castaway` there wrote *Find the one you left behind* from the first frame. So you walked to
+the wreck, found a stranger in their underwear, and pressed E to be told to take them to a plane
+you did not have. Until `PlaneAssembly.Owned`, a waiting castaway now writes the boat instead:
+*Fix the boat: 1/4 parts (the Trader sells them)*, then *Sail the boat to the other island*, and
+they cannot be led anywhere; their prompt says so. It re-reads every second while waiting, so the
+part count and the plane being finished both show up without a hook in either. `RescueTest` checks
+the boat line first, then fits the plane as the earlier harnesses already did.
+
+**`-armsTest`** (`World.ArmsTest`, solo, island): the pistol and its rounds lie within 20 m of the
+wreck and near its height, and the island's trader - not the casino bar, which is a `ShopCounter`
+too - sells every gun and every round.
+
+**`-gunTest` aims at the chest now.** It fired flat from the eye at the victim's feet, which is
+level ground's assumption. On the regenerated island 1 the lane runs downhill and at 20 m a flat
+ray passes over the victim's head: the pistols still scattered into it sometimes, and the rifle's
+0.2 degrees never did (0 of 25, "a ray from the eye sees Island at 57 m"). The test was wrong,
+not the gun. Run as a pair at 100 ms, 113/0. When a gun lands nothing, the log now names
+what the ray actually met. `-weaponTest` had the same flat `Toward` and the same 30 m miss
+("line hits nothing at all"); it aims eye to chest too now, 28/0 as a pair. The pair battery after
+this section's changes: demoTest 7/0, achievementTest 20/0, partTest 38/0, voyageTest 29/0.
+
+**`-shotsAt a,b`** extends `-shots`: each name is a landmark id or an object name, shot from 10 m.
+It is how the castaway was found to be standing on the beach all along.
+
+---
+
+## Playtest cheats: F5 money, F7 the plane
+
+The economy puts the boat two to three evenings away for four players (`EconomyTest` holds it
+there: 4 parts at 1400, a boar worth 37), which is the game and is not a playtest of the ending.
+`World.DevCheats`, host only, in development builds or with `-cheats`: **F5** adds $1000 to every
+wallet, **F7** fits every part of the aeroplane on this island (`PlaneAssembly.ServerFitAll`, so
+`Owned` follows). A release build is not a development build and has neither. `-cheatTest` runs
+both once: 4/0.
+
+---
+
+## The playthrough bot, and what it found on its first walk
+
+`-playthrough <folder>` (`World/Playthrough.cs`) plays the first island the way a person does, in a
+real window, and screenshots every step with the HUD on. It drives the player through
+`PlayerInputReader.BotDriven` - `BotMove`, `BotLook`, `BotPress("interact"|"attack"|"reload"|"jump"|"inventory")`,
+`BotHotbar` - so every action goes through the same motor, interactor, hotbar, weapon and vehicle
+code a keyboard does. The only shortcuts are F5's money and a logged teleport after sixteen
+seconds without progress. Route: spawn, the wreck, pick up the pistol and rounds with E, load,
+hunt a boar, the trader, buy boat parts in trips (four do not fit one back), fit them, board,
+sail straight away from the island's centre, arrive on Island2. Every step is a PASS/FAIL line;
+a FAIL never ends the run. It shoots back at any non-skittish animal that targets it on the way,
+and waits out being down. Use a fresh `-playerKey` per run, or the save hands the bot last run's bag.
+
+```
+EWYF.exe -screen-fullscreen 0 -screen-width 1280 -screen-height 720 -logFile pt.log -host -port 8516
+  -playerKey bot:ptN -scene island -noNatives -timeOfDay 0.45 -playthrough D:\Builds\shots\ptN
+```
+
+About six minutes; 16 passed, 0 failed. What the first runs found, each fixed here:
+
+- **The shop drew sixteen rows and the trader has twenty-four.** Every gun and the boat part - the
+  thing the whole island is saving for - were drawn below the panel. The shelf is now two columns
+  of twelve and the panel grows rightwards (`InventoryScreen.ShopRows`); `-armsTest` checks the
+  trader's offer count against it.
+- **Nobody gets up when everybody is dead.** Death is meant to be fixed by friends hauling you to
+  the Revive Machine; alone, or in a full wipe, the run stopped for ever. `World/WipeGuard.cs`:
+  eight seconds after every player is dead, everybody stands up at their spawn on half health with
+  their bag. `-wipeTest` (solo) kills the host and checks it: 5/0.
+- **#178's boar never reached its asset.** `AnimalFactory` never overwrites a tuned asset, so the
+  seed change (damage 10, no stun, no knockback) sat in C# while the boar still hit for 18 and
+  threw you 950 N. `AnimalFactory.Build -reseed boar` overwrites the named rows; rerun that way.
+- **Greybox drops were magenta.** A primitive's built-in material has no shader in a URP player;
+  they now wear `EWYF/Stylized`, which every art material uses and so always ships.
+- `[Health] X downed by <type> <amount> from <attacker>` - one line per knockdown, so a playtest
+  log says what put somebody on the ground.
+
+---
+
+## The playthrough bot's second half: Island2, the flight back, the ending
+
+`-playthrough` now plays the whole run. `Run()` picks up wherever the world is: the first island
+with no aeroplane yet, Island2, or the first island with the aeroplane already built (the rescue).
+On Island2 it lifts each loose plane part, carries it to the airframe and fits it with E, boards,
+flies (throttle held, pitch 0.5 on the ground once at 20 m/s, a gentle climb to fifty metres over
+the strip, then hands off - the plane levels its own wings), and on the first island walks to the
+Castaway, presses E, leads them to the plane, flies them out and checks `RunSummary.Over`.
+
+```
+EWYF.exe -screen-fullscreen 0 -screen-width 1280 -screen-height 720 -logFile q.log -host -port 8547
+  -playerKey bot:qN -scene island2 -noNatives -noAnimals -timeOfDay 0.45 -playthrough D:\Builds\shots\qN
+```
+
+A windowed run saves (`-noSave` for a fresh world), so a second run starts where the first ended.
+Last runs: 14 passed, 0 failed from Island2 to the ending; 9 passed, 0 failed starting on Island2
+with a save on Island (the save sails there, then the rescue). What it found, each fixed here:
+
+- **The carried wing covered the whole screen** (a playtest, fullscreen). The carry socket is at the
+  face; the carrier's own renderers go `ShadowsOnly` (`PlanePart.OnHandsChanged`), everybody else
+  still sees it on the shoulder.
+- **E at the plane sat you in the pilot's seat instead of fitting the part in your arms.**
+  `Vehicle.ServerCanInteract` refuses anybody holding a plane part.
+- **E put the carried part down instead of reaching what was in front of it.** `PlayerInteractor`
+  now sphere-casts all hits nearest-first, skips your own held part (keeping it as the fallback, so
+  E with nothing else in view still puts it down) and your own capsule, and stops at the first solid
+  thing so it never reaches through walls.
+- **A loaded save showed spare parts.** The save restored what was fitted, but the scene still
+  spawned all three; hauling a second engine did nothing. `PlaneAssembly` despawns a loose part
+  with no hole left for it.
+- **A plane that went into the sea sank for ever.** `PlaneVoyage.Ditch()`: four metres under sea
+  level, everybody is put out and the plane goes back where it was parked.
+- **After a flight the view froze over the old island** while the body walked on. The camera and
+  its target were made in the scene that unloaded, and the new scene's camera has no Cinemachine
+  brain. `PlayerCameraRig.LateUpdate` rebuilds both and ensures the brain every frame.
+- **The first island's aeroplane faced a treeline 45 m away** and could not get off the ground.
+  `IslandShape.InsidePad` now also clears trees from a 120 m by 24 m runway ahead of any `plane`
+  entry (the ground is untouched), and on the first island the plane faces away from camp, toward
+  the coast. Regenerated with `TerrainGenerator.GenerateIsland -rebuildPois` (the only catalog change
+  is the plane's yaw, 90 to 270). Island2 is not regenerated; its runway already worked.
+- **The Castaway sat back down on the way to the plane.** They walked at 3.4 m/s with a 60 m leash,
+  and anybody sprinting (7.5 m/s) lost them in fifteen seconds. They now run at the leader's sprint
+  speed when more than three follow-distances behind.
+- **A save that sails on at start-up arrived nowhere.** Starting on Island2 with a save on Island,
+  the first island's own load finished after the trip began and `GameSceneLoader.OnTravelled` took
+  it: `Current` said Island2 with Island on screen, and nobody was put ashore. It now waits for the
+  load of the scene it asked for, and `RunSave` does not sail until the first island has finished
+  loading (leaving mid-load kept both islands loaded and spawned nobody).
+- `PlaneController.FlightReport()` includes power, brake and pitch, so a plane that will not go says
+  why.
+
+---
+
+## The boar, retuned after a fresh-world bot run
+
+A fresh-world run of the playthrough bot (`-scene island -noSave`, natives and animals on) went down
+five times on the first walk from spawn to the wreck, unarmed: `boar.camp` puts five boars within
+130 m of the camp, and each one sensed you at 30 m and charged at 7.2 m/s against a 7.5 m/s sprint.
+The boar is described as having bad eyesight; now it has. `AnimalFactory` seed: sense 30 -> 18 m,
+react 16 -> 14 m (`-animalTest` spawns one 12 m ahead and needs the charge), run 7.2 -> 6.2 m/s.
+Reseeded with `AnimalFactory.Build -reseed boar`. The next fresh run reached the wreck, the pistol,
+the trader and the boat at full health; `-animalTest` 93/0.
+
+The bot also learned two things a player does: it shoots natives that target it (not only animals),
+only when it has rounds and is not carrying a plane part, and it buys a box of 36 pistol rounds at
+the trader on the first trip.
+
+Open, for a playtest to judge: on Island2 the bot still goes down near the plane. It runs out of
+rounds against charging boars (three kills in a magazine-and-a-half), and headhunters hit for 34.
+The bot aims badly at a charging animal, so this may be the bot and not the island.
+
+A follow-up run on a fresh Island2, the bot armed with a pistol and 72 rounds, logged every fight
+(`[Playthrough] fight with X: n shot(s) from d m, hp before -> after, loaded, spare`). The guns
+are fine: a boar takes four pistol rounds, a headhunter (140 hp) about six at ~26 each. What downs
+the bot is that headhunters hit for 34 and come in pairs, and that a part on your shoulder means no
+gun. That is balance for a playtest to judge (four players, the trader's shotgun and rifle), not a bug.
+
+**Shift-click in the shop buys a stack** (up to 36) instead of five. Rounds are sold one at a time
+at $3, and a box of pistol rounds was eight shift-clicks. `-shopTest` (pair) 65/0.
+
+---
+
+## The wreck comes first
+
+A fresh spawn read "Fix the boat: 0/4 parts" instead of "Search the wreck on the beach". Both lines
+are written every frame by somebody - `IslandIntro` for the wreck, `Castaway.Say` for the chain
+from the boat onward - and the castaway, standing next to the player, won.
+
+`IslandIntro.Visited` is a static that goes true the first time any player body comes within 14 m
+of the wreck landmark. `Castaway.Say` leaves the objective alone while nobody has been there and
+the boat has nothing fitted. A static, like `PlaneAssembly.Owned`, because the wreck lives on the
+first island only and the flag only ever has to answer "has this run started yet".
+
+`RescueTest` starts past the wreck, so it sets `Visited` itself. The playthrough bot now checks the
+line names the wreck at spawn and the boat after the wreck.
+
+Three more from the same fresh-world runs:
+
+- **The engine fell through Island2.** `POIFactory` put it six metres from the wreck along the
+  wreck's own facing, which is the long axis of a fourteen-metre hull: the engine spawned inside it
+  and physics pushed it out downwards. The bot followed it five million metres down. It now sits six
+  metres to the side (`-island 2 -rebuildPois`; only `part.engine` moved in `POIs2.asset`). It still
+  fell after the moved spawn, but only after a boat crossing and never on a direct load, so a part
+  now stays kinematic where the island put it until somebody first lifts it (`ServerPutDown` already
+  makes a dropped one dynamic), and a part below -30 m goes back to where it started.
+- **E did nothing at the plane.** The interactor's cast stops at the first thing with nothing to
+  offer, and with a pistol out that was the player's own arm, 0.3 m in front of the camera at the
+  wrong pitch. Hits on your own NetworkObject are skipped.
+- **ShopTest took the first counter it found**, and on some runs that was the casino's barman, who
+  sells grog. It now takes one that stocks rope.
+
+---
+
+## Island2 with natives on: the headhunter, softened
+
+The first bot run from a fresh Island with natives on reached Island2 and died at the cave and the
+village on a loop. Numbers from the log: a headhunter was 140 hp (six pistol rounds at ~26), hit
+for 34 (three hits to down a 100 hp player), came in pairs, and ran at 7.4 m/s against a 7.5 m/s
+sprint. Island2 has no shop, and headhunters dropped no pistol rounds.
+
+- `NativeFactory` headhunter: 130 hp (five rounds), 31 damage (four hits), 7.0 m/s, so running is
+  an answer again. Still over the spearman by `Island2Test`'s 1.5x health and 1.4x damage.
+  `NativeFactory.Build -reseed headhunter` overwrites an existing asset, AnimalFactory's rule;
+  without it a seed change never reaches the asset.
+- Headhunters drop 6-10 pistol rounds (90%), on both tables.
+- Native loot lands 1.4 m out instead of 0.55 m, clear of the body.
+- `Island2Test` asked for exactly five POIs; the plane, its parts and the mooring since made it ten.
+
+The bot now reloads after every fight rather than at the start of the next, and picks up pistol
+rounds after killing a native and at Island2's wreck. With natives on it still does not clear the
+village solo: it cannot sneak, hits about half its shots, and never eats, so an hour of deaths ends
+in starvation ("downed by Environment"). That is the bot, not the island; four players who bought
+a shotgun on the first island are who the village is for. Runs with `-noNatives` go end to end.
+
+Three more, from the same runs:
+
+- **Guns missed at close range.** `Weapon.ResolveHitscan` took the first `Raycast` hit and threw the
+  round away if it was the shooter's own body, which is what it was when aiming down at something
+  close: the bot put twenty rounds into a boar at its feet for no damage. It now walks
+  `RaycastAll` nearest first and skips the shooter.
+- **E did nothing pressed against the plane.** `PlayerInteractor` dropped every hit that overlapped
+  the cast's start, meant for your own capsule, which also dropped a fuselage 0.4 m away. Your own
+  body is now skipped by owner instead, so the overlap rule is gone.
+- **The Island2 take-off ran into the base camp.** The plane faced the camp and rolled into the
+  shelter posts sixty metres on. Tail to the camp now, as on the first island (`-island 2
+  -rebuildPois`; only the plane's yaw moved, -39 to 141).
+- **The engine took two tries to lift.** The wreck's mast stood between the bot's eye and the
+  engine on the camp side. It sits on the far side of the hull now (`Facing(wreck, camp) - 90`),
+  and the first E lifts it in both bot runs.
+
+---
+
+## Playtest fixes: the chequered sea, late abductions, friendly fire
+
+- **The sea was a checkerboard with a see-through horizon.** `WaterDepth*.png` imported as a
+  single-channel texture with the default *Alpha* component, so it became Alpha8 and sampled as
+  `(0,0,0,a)`. The shader reads `.r`, so every pixel of ocean was zero-depth shallows: the surf band
+  covered the whole sea, its two crossing sines drew the checkerboard, and the shallow alpha let the
+  dark lower skybox through the horizon ring. `WaterFactory` now asks for the *Red* component (R8).
+  Regenerated with `GenerateIsland -island 1` and `-island 2`.
+- **Nobody got dragged.** A downed body was offered to the natives once, at the instant it fell.
+  Downed by a dart from range, a fall or hunger, with no hauler inside its radius, it was never
+  offered again. `Native.ClaimLate` runs on the sense tick: a hauler that comes within
+  `AbductRadius` of a downed, unheld body takes it. Bodies within 10 m of that native's own camp are
+  skipped so a delivery is not re-claimed, and a native that just let go waits 30 s.
+  `-abductTest` checks a spearman placed after the fall.
+- **Friendly fire already works.** Neither `Weapon` nor `Health` checks which side the victim is on.
+  `-gunTest` shoots the other process's player body, so there is nothing to add.
 
 ---
 

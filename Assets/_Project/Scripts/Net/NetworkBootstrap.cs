@@ -296,6 +296,11 @@ namespace EscapeWithYourFriends.Net
             AchievementTest.Begin();
             World.DemoTest.Begin();
             World.LookTest.Begin();
+            World.ShotTest.Begin();
+            World.DevCheats.Begin();
+            World.Playthrough.Begin();
+            World.WipeGuard.Begin();
+            World.ArmsTest.Begin();
             Player.AnimTest.Begin();
             Player.SkinTest.Begin();
 

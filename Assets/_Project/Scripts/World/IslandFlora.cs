@@ -86,8 +86,10 @@ namespace EscapeWithYourFriends.World
                     new FloraModel("PalmTall", 0.30f), new FloraModel("PalmLean", 0.30f) },
 
             // Quaternius's Nature MegaKit (P6 V1), one Kenney palm kept so the jungle stays tropical.
-            new[] { new FloraModel("Broadleaf", 0.45f), new FloraModel("BroadleafTall", 0.40f),
-                    new FloraModel("BroadleafSmall", 0.36f), new FloraModel("JunglePalm", 0.30f) },
+            // Radii measured on the kit at its placed height: the broadleaf trunks flare to 0.9-1.0m at
+            // the root, and a thinner capsule lets the camera walk into the bark.
+            new[] { new FloraModel("Broadleaf", 0.85f), new FloraModel("BroadleafTall", 0.8f),
+                    new FloraModel("BroadleafSmall", 0.75f), new FloraModel("JunglePalm", 0.30f) },
 
             new[] { new FloraModel("Pine", 0.36f), new FloraModel("PineWide", 0.36f),
                     new FloraModel("PineTall", 0.36f), new FloraModel("PineSparse", 0.34f) },

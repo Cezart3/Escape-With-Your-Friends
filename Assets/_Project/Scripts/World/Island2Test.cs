@@ -317,8 +317,9 @@ namespace EscapeWithYourFriends.World
             POISpawner pois = POISpawner.Instance;
             Vector3 landing = pois.PositionOf("camp.base");
 
-            Check($"there are five points of interest on it ({pois.Placements.Count})",
-                  pois.Placements.Count == 5);
+            // Five when #68 wrote this; the plane, its parts and the mooring came after.
+            Check($"there are at least five points of interest on it ({pois.Placements.Count})",
+                  pois.Placements.Count >= 5);
 
             Check("there is a revive machine ashore",
                   pois.Placements.Any(p => p != null && p.Id == "camp.revive"));

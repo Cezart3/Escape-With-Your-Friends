@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using EscapeWithYourFriends.Core;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
@@ -202,6 +203,17 @@ namespace EscapeWithYourFriends.World
             // lying out in the world; once they are all on a shoulder or in a hole, it is this one's.
             if (Time.time < _objectiveAt) return;
             _objectiveAt = Time.time + 0.5f;
+
+            // A save restores what is fitted, but the scene still spawns all three parts: a loaded run
+            // had an engine in the plane and another on the beach, and hauling that one home did
+            // nothing. A part lying about with no hole left for it goes.
+            if (IsServerStarted && _wanted.Count > 0)
+                foreach (PlanePart part in PlanePart.All.ToArray())
+                    if (!part.IsCarried && Hole(part.Label) < 0)
+                    {
+                        Debug.Log($"[PlaneAssembly] the {part.Label} is already fitted; removing the spare one.");
+                        ServerManager.Despawn(part.NetworkObject);
+                    }
 
             foreach (PlanePart part in PlanePart.All)
                 if (!part.IsCarried) return;

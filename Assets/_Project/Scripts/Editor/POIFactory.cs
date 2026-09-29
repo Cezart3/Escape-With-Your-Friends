@@ -453,7 +453,9 @@ namespace EscapeWithYourFriends.EditorTools
 
                 // #73. The group's other aeroplane. It stands here whole, because PlaneAssembly
                 // remembers that this group has already built one - see the note on its Owned flag.
-                Entry("plane", PlaneBuilder.PlanePath, strip, Facing(strip, camp),
+                // Tail to the camp: the take-off roll heads for the coast, down IslandShape's
+                // cleared runway, and not across the camp.
+                Entry("plane", PlaneBuilder.PlanePath, strip, Facing(strip, camp) + 180f,
                       pad: 30f, falloff: 20f, raise: 0.2f, maxSlope: 0.25f),
 
                 // And the person. At the wreck, on the camp side: somebody stranded at a shipwreck
@@ -585,8 +587,13 @@ namespace EscapeWithYourFriends.EditorTools
                       cave + Offset(Facing(cave, camp), 5f), Facing(cave, camp) + 90f,
                       pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.6f),
 
+                // Beside the wreck, not along it: the hull is fourteen metres long down the wreck's
+                // own facing, and six metres that way put the engine inside it. Arriving by boat,
+                // physics pushed it out downwards, through the island (playthrough bot). And on the
+                // side away from the fallen mast, which lay between the engine and anybody standing
+                // at it and took the crosshair first.
                 Entry("part.engine", PlanePartBuilder.EnginePath,
-                      wreck + Offset(Facing(wreck, camp), 6f), Facing(wreck, camp),
+                      wreck + Offset(Facing(wreck, camp) - 90f, 6f), Facing(wreck, camp),
                       pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.6f),
 
                 // #71. This one does get a pad, and the biggest on the island: a plane standing on a
@@ -595,7 +602,10 @@ namespace EscapeWithYourFriends.EditorTools
                 // #72 widened it. Full throttle is 9000N on 1100kg, so the take-off roll is about
                 // twenty-five metres and a 22m pad ran out from under it half way. A strip is the one
                 // pad on the island that has a length requirement rather than a footprint.
-                Entry("plane", PlaneBuilder.PlanePath, strip, Facing(strip, camp),
+                //
+                // Tail to the camp, as on the first island: nose-first it rolled sixty metres into
+                // the base camp's shelter posts and stopped there (playthrough bot).
+                Entry("plane", PlaneBuilder.PlanePath, strip, Facing(strip, camp) + 180f,
                       pad: 30f, falloff: 20f, raise: 0.2f, maxSlope: 0.25f)
             };
         }

@@ -240,6 +240,8 @@ namespace EscapeWithYourFriends.Combat
                 ? TimeManager.Tick + TimeManager.TimeToTicks(_bleedOutSeconds)
                 : 0u;
 
+            // One line per knockdown, so a playtest log says what put somebody on the ground.
+            Debug.Log($"[Health] {name} downed by {info.Type} {info.Amount:0} from {info.AttackerId}.");
             SetState(LifeState.Downed, info);
         }
 

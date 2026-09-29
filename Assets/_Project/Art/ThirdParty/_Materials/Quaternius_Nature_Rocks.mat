@@ -11,7 +11,8 @@ Material:
   m_Shader: {fileID: 4800000, guid: 3db5e2fffe5e40aaa46813983d6249cb, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
+  m_ValidKeywords:
+  - _DETAIL_SOFTEN
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 1
@@ -93,7 +94,7 @@ Material:
     - _ClearCoatSmoothness: 0
     - _Cull: 2
     - _Cutoff: 0.5
-    - _Detail: 1
+    - _Detail: 0.45
     - _DetailAlbedoMapScale: 1
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
@@ -110,7 +111,7 @@ Material:
     - _RampSoftness: 0.08
     - _ReceiveShadows: 1
     - _RimStrength: 0.2
-    - _Saturation: 0.95
+    - _Saturation: 0.92
     - _Smoothness: 0.1
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1

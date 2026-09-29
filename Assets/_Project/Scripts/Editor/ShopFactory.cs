@@ -67,6 +67,18 @@ namespace EscapeWithYourFriends.EditorTools
             ("fishing_rod", 80, 1),
             ("hatchet", 90, 1),
 
+            // #51's guns, which until the second playtest nothing on the island sold or dropped: the
+            // whole arsenal existed and nobody could hold it. The pistol is within the $500 you land
+            // with; the rest are what the run's money is for. Rounds are unlimited, and priced so a
+            // magazine costs about what a bandage does.
+            ("pistol", 180, 2),
+            ("shotgun", 300, 1),
+            ("smg", 390, 1),
+            ("rifle", 480, 1),
+            ("pistol_ammo", 3, -1),
+            ("shotgun_shell", 8, -1),
+            ("rifle_ammo", 14, -1),
+
             // The reason anybody is saving. Worth nothing to the trader, so it cannot be flipped back.
             ("boat_part", 1400, 4),
         };

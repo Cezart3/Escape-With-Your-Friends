@@ -113,9 +113,12 @@ namespace EscapeWithYourFriends.EditorTools
         static readonly Seed[] Seeds =
         {
             new("boar", "Boar", "Bad eyesight, bad temper, worse manners. Will absolutely start it.",
-                Temperament.Aggressive, health: 55f, walk: 2f, run: 7.2f, wander: 25f, idle: new Vector2(2f, 5f),
-                sense: 30f, react: 16f, calm: 8f,
-                damage: 18f, reach: 2f, interval: 1.6f, stun: 0.9f, knockback: 950f,
+                // Five of these live round the camp, and at 30m of sense and nearly sprint speed an
+                // unarmed player on the walk to the wreck went down five times (playthrough bot). Bad
+                // eyesight now means it, and a sprint gets you away.
+                Temperament.Aggressive, health: 55f, walk: 2f, run: 6.2f, wander: 25f, idle: new Vector2(2f, 5f),
+                sense: 18f, react: 14f, calm: 8f,
+                damage: 10f, reach: 2f, interval: 1.6f, stun: 0f, knockback: 0f,
                 body: new Vector3(0.85f, 0.85f, 1.7f), colour: new Color(0.30f, 0.23f, 0.18f),
                 agentRadius: 0.55f),
 
@@ -154,6 +157,16 @@ namespace EscapeWithYourFriends.EditorTools
             ("gull", "feather", 2, 4, 1f),
         };
 
+        static string[] Reseed
+        {
+            get
+            {
+                string[] args = Environment.GetCommandLineArgs();
+                int i = Array.IndexOf(args, "-reseed");
+                return i >= 0 && i + 1 < args.Length ? args[i + 1].Split(',') : Array.Empty<string>();
+            }
+        }
+
         public static void Build()
         {
             Directory.CreateDirectory(Folder);
@@ -166,16 +179,19 @@ namespace EscapeWithYourFriends.EditorTools
                 string path = $"{Folder}/{seed.Id}.asset";
                 var def = AssetDatabase.LoadAssetAtPath<AnimalDef>(path);
 
-                if (def == null)
+                // -reseed boar,deer: those rows overwrite their assets. For a seed change that is a
+                // deliberate rebalance (the boar's in #178 never reached its asset without it).
+                bool reseed = def != null && Reseed.Contains(seed.Id);
+                if (def == null || reseed)
                 {
-                    def = ScriptableObject.CreateInstance<AnimalDef>();
+                    if (def == null) def = ScriptableObject.CreateInstance<AnimalDef>();
                     def.Configure(seed.Id, seed.Name, seed.Description, seed.Temperament, seed.Health,
                                   seed.Walk, seed.Run, seed.Wander, seed.Idle, seed.Sense, seed.React,
                                   seed.Calm, seed.Damage, seed.Reach, seed.Interval, seed.Stun,
                                   seed.Knockback, seed.Body, seed.Colour, seed.AgentRadius);
 
-                    AssetDatabase.CreateAsset(def, path);
-                    created++;
+                    if (reseed) EditorUtility.SetDirty(def);
+                    else { AssetDatabase.CreateAsset(def, path); created++; }
                 }
 
                 defs.Add(def);

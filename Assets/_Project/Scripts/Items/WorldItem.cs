@@ -369,6 +369,8 @@ namespace EscapeWithYourFriends.Items
         /// tells you food from scrap without fifteen materials existing; the exact shades will be
         /// thrown away with the greybox.
         /// </summary>
+        static Material _greyboxMaterial;
+
         GameObject Greybox(ItemDef def)
         {
             var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -381,7 +383,15 @@ namespace EscapeWithYourFriends.Items
             Destroy(cube.GetComponent<Collider>());
 
             var renderer = cube.GetComponent<Renderer>();
-            if (renderer != null) renderer.material.color = Tint(def);
+            // A primitive comes with the built-in Default-Material, whose shader a URP player does
+            // not ship: every greybox drop was magenta until the playthrough bot photographed one.
+            // The island's own shader ships because every art material wears it.
+            if (renderer != null)
+            {
+                if (_greyboxMaterial == null) _greyboxMaterial = new Material(Shader.Find("EWYF/Stylized"));
+                renderer.sharedMaterial = _greyboxMaterial;
+                renderer.material.color = Tint(def);
+            }
 
             return cube;
         }

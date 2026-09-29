@@ -302,9 +302,50 @@ namespace EscapeWithYourFriends.Player
 
         void OnDisable() => Release();
 
+        // ---------------------------------------------------------------- the playthrough bot
+
+        /// <summary>
+        /// Set by <see cref="World.Playthrough"/>: the bot holds the controls. Everything downstream -
+        /// motor, interactor, weapons, hotbar, driving - reads the same properties and buffers it
+        /// would read for a person, so the bot plays the game rather than calling around it.
+        /// </summary>
+        internal bool BotDriven;
+        internal Vector2 BotMove;
+        internal bool BotSprint;
+
+        internal void BotLook(float yaw, float pitch)
+        {
+            Yaw = Mathf.Repeat(yaw, 360f);
+            Pitch = Mathf.Clamp(pitch, _minPitch, _maxPitch);
+        }
+
+        internal void BotPress(string what)
+        {
+            switch (what)
+            {
+                case "jump": _jumpQueued = true; break;
+                case "interact": _interactQueued = true; break;
+                case "attack": _attackQueued = true; break;
+                case "drop": _dropQueued = true; break;
+                case "use": _useQueued = true; break;
+                case "reload": _reloadQueued = true; break;
+                case "inventory": _toggleInventoryQueued = true; break;
+            }
+        }
+
+        internal void BotHotbar(int slot) => _hotbarQueued = slot;
+
         void Update()
         {
             if (!_bound) return;
+
+            if (BotDriven)
+            {
+                Move = Vector2.ClampMagnitude(BotMove, 1f);
+                Sprint = BotSprint;
+                Crouch = false;
+                return;
+            }
 
             if (_scripted)
             {

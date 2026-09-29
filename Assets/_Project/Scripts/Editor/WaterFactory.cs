@@ -190,6 +190,13 @@ namespace EscapeWithYourFriends.EditorTools
             if (importer != null)
             {
                 importer.textureType = TextureImporterType.SingleChannel;
+                // Red, not the default Alpha: an Alpha8 texture samples as (0,0,0,a), the shader
+                // reads .r, and the whole sea came out as zero-depth shallows - surf churned into a
+                // checkerboard everywhere and a see-through horizon.
+                var channel = new TextureImporterSettings();
+                importer.ReadTextureSettings(channel);
+                channel.singleChannelComponent = TextureImporterSingleChannelComponent.Red;
+                importer.SetTextureSettings(channel);
                 importer.sRGBTexture = false;
                 importer.wrapMode = TextureWrapMode.Clamp;
                 importer.filterMode = FilterMode.Bilinear;

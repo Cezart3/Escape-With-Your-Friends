@@ -65,6 +65,8 @@ namespace EscapeWithYourFriends.World
         readonly List<Collider> _ignored = new();
 
         float _objectiveAt;
+        Vector3 _home;
+        Quaternion _homeTurn;
 
         public string Label => _label;
         public NetworkObject Carrier => _carrier.Value;
@@ -91,6 +93,18 @@ namespace EscapeWithYourFriends.World
 
         void OnEnable() => All.Add(this);
         void OnDisable() => All.Remove(this);
+
+        public override void OnStartServer()
+        {
+            base.OnStartServer();
+            _home = transform.position;
+            _homeTurn = transform.rotation;
+
+            // Where the island put it until somebody lifts it; ServerPutDown makes it dynamic. After
+            // the boat crossing the engine on Island2's beach fell through the ground over and over,
+            // never on a direct load, and a crate nobody has touched has no reason to simulate.
+            if (_body != null) _body.isKinematic = true;
+        }
 
         public override void OnStartClient()
         {
@@ -208,7 +222,21 @@ namespace EscapeWithYourFriends.World
             // line out of state it already has. Everything below this is the server's.
             PointAtOne();
 
-            if (!IsServerStarted || _carrier.Value == null) return;
+            if (!IsServerStarted) return;
+
+            // FallGuard's net, for the one thing the run cannot end without. The engine on Island2
+            // once spawned inside the wreck's hull and was pushed out through the island; the bot
+            // chased it five million metres down. POIFactory moved it; this catches the next one.
+            if (_carrier.Value == null && transform.position.y < -30f)
+            {
+                Debug.Log($"[PlanePart] the {_label} fell out of the world; back to {_home}.");
+                transform.SetPositionAndRotation(_home, _homeTurn);
+                _body.linearVelocity = Vector3.zero;
+                _body.angularVelocity = Vector3.zero;
+                Physics.SyncTransforms();
+            }
+
+            if (_carrier.Value == null) return;
 
             // Everything that can take a part off your shoulder is one of these: a dart, a punch, a
             // fall, or a disconnection. Polled in one place rather than subscribed to in three.
@@ -243,6 +271,14 @@ namespace EscapeWithYourFriends.World
 
             Ignore(_carrier.Value);
             Ignore(_helper.Value);
+
+            // The socket is at the carrier's face, and five metres of wing there was all the carrier
+            // could see (second playtest, fullscreen). Their own camera gets the shadow only; everybody
+            // else sees it on the shoulder.
+            bool mine = _carrier.Value != null && _carrier.Value.IsOwner;
+            foreach (Renderer r in GetComponentsInChildren<Renderer>())
+                r.shadowCastingMode = mine ? UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly
+                                           : UnityEngine.Rendering.ShadowCastingMode.On;
         }
 
         void Ignore(NetworkObject holder)

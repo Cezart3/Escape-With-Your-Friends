@@ -280,7 +280,7 @@ MonoBehaviour:
   - Id: plane
     PrefabPath: Assets/_Project/Prefabs/Plane.prefab
     Position: {x: -214, y: -47}
-    Yaw: 90
+    Yaw: 270
     YOffset: 0
     SnapToGround: 1
     PadRadius: 30

@@ -75,11 +75,14 @@ namespace EscapeWithYourFriends.UI
 
         public const int BagSlots = 20;
 
-        /// <summary>How many shelf lines the screen can draw. The trader has twelve.</summary>
-        public const int ShopRows = 16;
-
-        const float RowHeight = 34f;
-        const float RowGap = 4f;
+        /// <summary>
+        /// How many shelf lines the screen can draw, in two columns. The trader has 24; at 16 in one
+        /// column the last eight - every gun and the boat part the whole run is saving for - were
+        /// drawn off the bottom of the panel, found by the playthrough bot's screenshot.
+        /// </summary>
+        public const int ShopRows = 24;
+        const int ShopColumns = 2;
+        const float RowGap = 3f;
 
         // ---------------------------------------------------------------- building
 
@@ -146,8 +149,10 @@ namespace EscapeWithYourFriends.UI
                                 panelWidth, chestHeight + PanelPad * 2f + HeaderHeight,
                                 out _chestHeader, out RectTransform chestGrid);
 
-            _shopPanel = Panel("Shop", new Vector2((panelWidth + PanelGap) * 0.5f, 0f),
-                               panelWidth, chestHeight + PanelPad * 2f + HeaderHeight,
+            // Twice the chest's width, growing rightwards so the bag still does not move.
+            float shopWidth = ShopColumns * gridWidth + PanelGap + PanelPad * 2f;
+            _shopPanel = Panel("Shop", new Vector2((panelWidth + PanelGap) * 0.5f + (shopWidth - panelWidth) * 0.5f, 0f),
+                               shopWidth, chestHeight + PanelPad * 2f + HeaderHeight,
                                out _shopHeader, out RectTransform shopGrid);
 
             _bagSlots = Grid(bagGrid, SlotKind.Bag, BagSlots);
@@ -155,11 +160,13 @@ namespace EscapeWithYourFriends.UI
 
             // The shelf shares the chest's rectangle, because only one of them is ever open: you are
             // either at a chest or at a counter, never both.
+            int perColumn = ShopRows / ShopColumns;
+            float pitch = (chestHeight + RowGap) / perColumn;
             _shopRows = new SlotView[ShopRows];
             for (int i = 0; i < ShopRows; i++)
                 _shopRows[i] = SlotView.Create(shopGrid, this, SlotKind.Shop, i,
-                                               new Vector2(0f, -i * (RowHeight + RowGap)),
-                                               new Vector2(gridWidth, RowHeight));
+                                               new Vector2(i / perColumn * (gridWidth + PanelGap), -(i % perColumn) * pitch),
+                                               new Vector2(gridWidth, pitch - RowGap));
 
             _hint = HudFactory.Label(_root, "Hint", 14, TextAnchor.UpperCenter);
             _hint.color = new Color(0.72f, 0.72f, 0.78f);
@@ -508,7 +515,13 @@ namespace EscapeWithYourFriends.UI
 
                 case SlotKind.Shop:
                     if (_counter != null && _trading != null)
-                        _trading.RequestBuy(_counter, slot.Index, IsShiftHeld() ? 5 : 1);
+                    {
+                        // Shift buys a stack, up to 36: rounds are sold one at a time, and a box took
+                        // eight shift-clicks at five (playthrough bot).
+                        Data.ItemDef item = _counter.OfferAt(slot.Index).Item;
+                        int many = item != null ? Mathf.Min(item.MaxStack, 36) : 5;
+                        _trading.RequestBuy(_counter, slot.Index, IsShiftHeld() ? many : 1);
+                    }
 
                     return;
             }

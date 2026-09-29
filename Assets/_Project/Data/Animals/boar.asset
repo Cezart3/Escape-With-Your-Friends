@@ -18,17 +18,17 @@ MonoBehaviour:
   _temperament: 1
   _maxHealth: 55
   _walkSpeed: 2
-  _runSpeed: 7.2
+  _runSpeed: 6.2
   _wanderRadius: 25
   _idleSeconds: {x: 2, y: 5}
-  _senseRadius: 30
-  _reactRadius: 16
+  _senseRadius: 18
+  _reactRadius: 14
   _calmSeconds: 8
-  _attackDamage: 18
+  _attackDamage: 10
   _attackRange: 2
   _attackInterval: 1.6
-  _attackStun: 0.9
-  _attackKnockback: 950
+  _attackStun: 0
+  _attackKnockback: 0
   _bodySize: {x: 0.85, y: 0.85, z: 1.7}
   _colour: {r: 0.3, g: 0.23, b: 0.18, a: 1}
   _agentRadius: 0.55

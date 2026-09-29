@@ -518,9 +518,9 @@ namespace EscapeWithYourFriends.AI
 
         /// <summary>
         /// One hit. Deliberately the same shape as <c>Weapon.ApplyHit</c>: damage, then the stun
-        /// component if the blow did not already put them down. A boar that hits you and does not
-        /// knock you over is a boar that is not worth being afraid of, which is why the impulse and
-        /// the stun are on the species rather than hard-coded to zero.
+        /// component if the blow did not already put them down. Any stun ragdolls the victim, so a
+        /// species with a stun floors you on every hit; the boar has none since the first playtest,
+        /// where two tackles and a ten-metre throw from a pig read as absurd.
         /// </summary>
         void Strike(Health victim, Vector3 toTarget)
         {

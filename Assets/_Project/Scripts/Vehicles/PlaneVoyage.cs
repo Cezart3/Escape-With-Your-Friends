@@ -48,15 +48,25 @@ namespace EscapeWithYourFriends.Vehicles
         /// <summary>Seconds held past the edge so far. For the harness and, later, for a HUD cue.</summary>
         public float Committing => _outThere;
 
+        Vector3 _home;
+        Quaternion _homeRotation;
+
         void Awake()
         {
             _vehicle = GetComponent<Vehicle>();
             _plane = GetComponent<PlaneController>();
+            _home = transform.position;
+            _homeRotation = transform.rotation;
         }
 
         void Update()
         {
             if (!IsServerStarted || _left) return;
+
+            // Into the sea. The water has no collider, so a ditched plane fell for ever with its
+            // pilot being rescued by FallGuard every frame (the playthrough bot, 584 times). It goes
+            // back to where it was built, and whoever was in it climbs out beside it.
+            if (transform.position.y < World.WaterSurface.SeaLevel - 4f) Ditch();
 
             if (!Leaving())
             {
@@ -104,6 +114,27 @@ namespace EscapeWithYourFriends.Vehicles
         }
 
         /// <summary>Somebody is flying it, it is whole, it is high, and it is past the line.</summary>
+        void Ditch()
+        {
+            Debug.Log($"[PlaneVoyage] ditched at {transform.position}; back on its strip at {_home}.");
+
+            var body = GetComponent<Rigidbody>();
+            if (body != null)
+            {
+                body.linearVelocity = Vector3.zero;
+                body.angularVelocity = Vector3.zero;
+                body.position = _home;
+                body.rotation = _homeRotation;
+            }
+            transform.SetPositionAndRotation(_home, _homeRotation);
+
+            for (int seat = 0; seat < _vehicle.SeatCount; seat++)
+            {
+                VehicleRider rider = _vehicle.Occupant(seat);
+                if (rider != null) _vehicle.ServerExit(rider.NetworkObject);
+            }
+        }
+
         bool Leaving()
             => _vehicle.Driver != null
                && _plane.Flyable
