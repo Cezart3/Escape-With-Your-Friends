@@ -78,9 +78,10 @@ namespace EscapeWithYourFriends.UI
         /// <summary>
         /// How many shelf lines the screen can draw, in two columns. The trader has 24; at 16 in one
         /// column the last eight - every gun and the boat part the whole run is saving for - were
-        /// drawn off the bottom of the panel, found by the playthrough bot's screenshot.
+        /// drawn off the bottom of the panel, found by the playthrough bot's screenshot. 28 since the
+        /// four weapon skins (#209): fourteen a column, rows a little shorter.
         /// </summary>
-        public const int ShopRows = 24;
+        public const int ShopRows = 28;
         const int ShopColumns = 2;
         const float RowGap = 3f;
 
