@@ -97,6 +97,7 @@ MonoBehaviour:
   Id: Stump
   Category: 3
   Upright: 0
+  Trunk: {x: 0, y: 0}
 --- !u!1001 &279395101782473551
 PrefabInstance:
   m_ObjectHideFlags: 0

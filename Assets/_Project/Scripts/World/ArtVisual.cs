@@ -38,6 +38,13 @@ namespace EscapeWithYourFriends.World
         /// <summary>Taller than it is wide when it is the right way up: a tree, a palm, a person.</summary>
         public bool Upright;
 
+        /// <summary>
+        /// Terrain flora: the middle of the trunk where a body meets it, measured off the mesh after
+        /// the model was centred on it (#199). Zero when trunk and collider agree; NaN when never
+        /// measured. TreeTest reads it.
+        /// </summary>
+        public Vector2 Trunk = new(float.NaN, float.NaN);
+
         /// <summary>LOD0 triangles, per model, at the size the art pass sold it at.</summary>
         public static int Cap(ArtCategory category) => category switch
         {

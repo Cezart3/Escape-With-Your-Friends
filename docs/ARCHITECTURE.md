@@ -8066,6 +8066,31 @@ the sand below, it hung in the sky. Spawn candidates more than a metre above
 `Terrain.SampleHeight` are now rejected (`OnTheGround`), so animals start on the island itself.
 `-animalTest` checks every spawned animal against the terrain.
 
+## #199: walking into trees
+
+Terrain trees collide through the capsule on their prototype prefab, and the terrain puts that
+capsule on the tree's spot. `ArtLibrary.AddCollider` centred it on the kit's pivot, not on the
+trunk. The Quaternius palms are modelled leaning, so their bark stood 0.3 to 0.45 m off the pivot.
+The big boulder was 0.8 m off. A body stopped by the capsule could stand inside the bark on one
+side, and on the other side it hit nothing it could see.
+
+`EnsureFloraPrefab` now measures the trunk: the xz box of the model's vertices in 25 cm slices from
+the ground up to 1.75 m. It stops at the first slice more than twice as wide as the lowest (and over
+1.2 m), because that is a pine's branches, which you walk under. It then moves the model so the
+trunk is on the spot. It moves the model rather than the capsule, so the two stay together however
+the terrain turns the tree. A tree's capsule radius is now the measured trunk (0.85 of the half
+width) instead of the catalogue's guess, so a palm is 0.41 to 0.62 m and a pine 0.24 m. Rocks keep
+their old radius and are only centred. The measured centre, after the move, is stored on
+`ArtVisual.Trunk`, which is NaN on a prefab that was never measured.
+
+`FloraFactory.Bake` rebuilds the prototypes in place. The prefab GUIDs do not change, so the islands
+pick them up without a regeneration.
+
+`-treeTest` (`-scene island` or `island2`) checks that every prototype's trunk is within 5 cm of its
+collider. It then walks the player into one isolated tree of each kind, from 2.6 m out on gentle
+ground, and checks three things for each tree: the player never reaches the tree's spot, stops
+within a hand of contact, and can back out a metre. Results: 56/0 on island, 47/0 on island2.
+
 ---
 
 ## Data-driven content

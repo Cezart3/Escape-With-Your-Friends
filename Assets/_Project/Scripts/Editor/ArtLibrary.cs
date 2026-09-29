@@ -158,6 +158,24 @@ namespace EscapeWithYourFriends.EditorTools
                 lods[detail] = new LOD(detail == 0 ? 0.22f : 0.02f, renderers);
             }
 
+            // The trunk goes on the tree's spot, not the kit's pivot (#199). The terrain puts the
+            // capsule on the spot, and a palm's trunk stood a third of a metre off it, a leaning one
+            // more, so a body stopped by the capsule stood inside the bark. Moving the model rather
+            // than the capsule also keeps them together however the terrain turns the tree.
+            if (colliderRadius != 0f)
+            {
+                Rect trunk = Trunk(root.transform, lods[0].renderers);
+                var shift = new Vector3(-trunk.center.x, 0f, -trunk.center.y);
+                foreach (Transform level in root.transform) level.localPosition += shift;
+
+                // A tree's catalogue radius was a guess; the bark is measured.
+                if (colliderRadius > 0f && model.Category == ArtCategory.Tree)
+                    colliderRadius = Mathf.Max(0.2f, Mathf.Max(trunk.width, trunk.height) * 0.425f);
+
+                Debug.Log($"[ArtLibrary] {id}: trunk moved {shift.magnitude:F2} m onto the spot, "
+                          + $"{trunk.width:F2}x{trunk.height:F2} m across.");
+            }
+
             var group = root.AddComponent<LODGroup>();
             group.SetLODs(lods);
             group.RecalculateBounds();
@@ -169,6 +187,7 @@ namespace EscapeWithYourFriends.EditorTools
             visual.Id = id;
             visual.Category = model.Category;
             visual.Upright = model.Upright;
+            if (colliderRadius != 0f) visual.Trunk = Trunk(root.transform, lods[0].renderers).center;
 
             System.IO.Directory.CreateDirectory(PrefabFolder);
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, $"{PrefabFolder}/{id}.prefab");
@@ -193,6 +212,53 @@ namespace EscapeWithYourFriends.EditorTools
             ArtCategory.Plant => 0.03f,
             _ => 0f,
         };
+
+        /// <summary>
+        /// Where a body meets the model, as an xz box in <paramref name="root"/>'s space: its vertices
+        /// in 25 cm slices from the ground to head height, stopping at the first slice more than
+        /// twice as wide as the lowest (and over 1.2 m), because that is branches, which a body walks
+        /// under or through. A palm's trunk is only rings, so some slices are empty.
+        /// </summary>
+        static Rect Trunk(Transform root, Renderer[] renderers)
+        {
+            const float Slice = 0.25f, Head = 1.75f;
+            var slices = new Rect?[Mathf.CeilToInt(Head / Slice)];
+
+            foreach (Renderer renderer in renderers)
+            {
+                if (!renderer.TryGetComponent(out MeshFilter filter) || filter.sharedMesh == null) continue;
+
+                foreach (Vector3 vertex in filter.sharedMesh.vertices)
+                {
+                    Vector3 p = root.InverseTransformPoint(renderer.transform.TransformPoint(vertex));
+                    int i = Mathf.FloorToInt(p.y / Slice);
+                    if (i < 0 || i >= slices.Length) continue;
+
+                    slices[i] = slices[i] is Rect box
+                        ? Rect.MinMaxRect(Mathf.Min(box.xMin, p.x), Mathf.Min(box.yMin, p.z),
+                                          Mathf.Max(box.xMax, p.x), Mathf.Max(box.yMax, p.z))
+                        : new Rect(p.x, p.z, 0f, 0f);
+                }
+            }
+
+            Rect? trunk = null;
+            float lowest = 0f;
+            foreach (Rect? slice in slices)
+            {
+                if (slice is not Rect box) continue;
+
+                float wide = Mathf.Max(box.width, box.height);
+                if (trunk == null) lowest = wide;
+                else if (wide > Mathf.Max(lowest * 2f, 1.2f)) break;
+
+                trunk = trunk is Rect t
+                    ? Rect.MinMaxRect(Mathf.Min(t.xMin, box.xMin), Mathf.Min(t.yMin, box.yMin),
+                                      Mathf.Max(t.xMax, box.xMax), Mathf.Max(t.yMax, box.yMax))
+                    : box;
+            }
+
+            return trunk ?? new Rect();
+        }
 
         /// <summary>
         /// A capsule around the trunk. Negative radius means "from the mesh", right for a rock whose
