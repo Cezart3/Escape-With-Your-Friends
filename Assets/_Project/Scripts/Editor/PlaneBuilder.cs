@@ -137,6 +137,9 @@ namespace EscapeWithYourFriends.EditorTools
             // T14. After the holes exist, so the model's loose pieces have somewhere to go.
             Dress(root.transform);
 
+            // #203. After the holes exist, so the parts can be reshaped in place.
+            Dress(root.transform);
+
             // ---- #72. Four of you get off this island, so four seats.
 
             var seats = new List<Vehicle.Seat>
@@ -312,6 +315,116 @@ namespace EscapeWithYourFriends.EditorTools
 
             Debug.Log($"[PlaneBuilder] Dressed as {ArtCatalog.Find("Plane").File}; "
                       + $"{filled.Count} of 3 holes hold a piece of it.");
+        }
+
+        /// <summary>
+        /// #203: the boxes become an aeroplane. No plane model is in the project (the closed PR's
+        /// Quaternius one was never downloaded), so this is a composite of primitives in the
+        /// <see cref="Palette"/>: a capsule fuselage, a canopy, a wing, a fin and a tail plane under
+        /// an <c>Art</c> child that carries the <see cref="ArtVisual"/> marker the look harness reads.
+        ///
+        /// Only the looks change. The fuselage and port wing keep their colliders, the wheels stay,
+        /// and the three <c>Fitted.*</c> holes keep their names and their place - <see cref="PlaneAssembly"/>
+        /// hides and shows the whole child - but each wears a part-shaped mesh instead of a plain
+        /// box: a cowling for the engine, a hub and two crossed blades for the propeller, a red panel
+        /// for the wing that matches the one already on.
+        /// </summary>
+        static void Dress(Transform root)
+        {
+            var art = new GameObject("Art");
+            art.transform.SetParent(root, false);
+
+            var visual = art.AddComponent<ArtVisual>();
+            visual.Id = "Plane";
+            visual.Category = ArtCategory.Vehicle;
+
+            Mesh sphere = PrimitiveMesh(PrimitiveType.Sphere);
+            Mesh capsule = PrimitiveMesh(PrimitiveType.Capsule);
+            Mesh cube = PrimitiveMesh(PrimitiveType.Cube);
+
+            // A capsule stands along its own Y and is 2 tall; laid along z and stretched to the
+            // fuselage's length it is a rounded tube whose ends are ellipsoids.
+            Part(art.transform, "Fuselage", capsule, "Plastic", new Vector3(0f, 1.6f, 0f),
+                 Quaternion.Euler(90f, 0f, 0f), new Vector3(1.3f, HalfLength, 1.3f));
+
+            Part(art.transform, "Canopy", sphere, "Dark", new Vector3(0f, 2.3f, 0.9f),
+                 Quaternion.identity, new Vector3(1.0f, 0.75f, 1.8f));
+
+            Part(art.transform, "Wing.Port", cube, "Accent", new Vector3(-(WingSpan * 0.5f + 0.6f), 1.6f, 0.4f),
+                 Quaternion.identity, new Vector3(WingSpan, 0.22f, 1.5f));
+
+            // Swept back a little: a vertical fin reads as a fence.
+            Part(art.transform, "Tail.Fin", cube, "Accent", new Vector3(0f, 2.8f, -HalfLength + 0.4f),
+                 Quaternion.Euler(-15f, 0f, 0f), new Vector3(0.18f, 1.7f, 1.2f));
+
+            Part(art.transform, "Tail.Stabiliser", cube, "Accent", new Vector3(0f, 2.1f, -HalfLength + 0.5f),
+                 Quaternion.identity, new Vector3(3f, 0.18f, 0.9f));
+
+            // The greybox pieces the composite replaces. Fuselage and Wing.Port keep their colliders.
+            foreach (string name in new[] { "Fuselage", "Cockpit", "Wing.Port", "Tail.Fin", "Tail.Stabiliser" })
+            {
+                Transform piece = root.Find(name);
+                if (piece != null) ArtDress.Strip(piece.gameObject);
+            }
+
+            foreach (string name in new[] { "Gear.Port", "Gear.Starboard", "Gear.Tail" })
+                Skin(root.Find(name), "Dark");
+
+            // The holes. Still one child each, so PlaneAssembly needs no change.
+            Transform engine = root.Find("Fitted.engine");
+            engine.GetComponent<MeshFilter>().sharedMesh = sphere;
+            Skin(engine, "Metal");
+
+            Transform propeller = root.Find("Fitted.propeller");
+            Skin(propeller, "Dark");
+            Transform blades = Holder(propeller);
+            Part(blades, "Blade.Vertical", cube, "Dark", Vector3.zero, Quaternion.identity, new Vector3(0.22f, 2.4f, 0.12f));
+            Part(blades, "Hub", sphere, "Metal", Vector3.zero, Quaternion.identity, new Vector3(0.35f, 0.35f, 0.5f));
+
+            Skin(root.Find("Fitted.wing"), "Accent");
+
+            Debug.Log("[PlaneBuilder] Dressed as a primitive composite (no plane model in the project).");
+        }
+
+        /// <summary>The mesh of a built-in primitive, borrowed and the object thrown away.</summary>
+        static Mesh PrimitiveMesh(PrimitiveType shape)
+        {
+            GameObject go = GameObject.CreatePrimitive(shape);
+            Mesh mesh = go.GetComponent<MeshFilter>().sharedMesh;
+            Object.DestroyImmediate(go);
+            return mesh;
+        }
+
+        /// <summary>One visual-only piece: a mesh, a palette material, no collider.</summary>
+        static void Part(Transform parent, string name, Mesh mesh, string material, Vector3 position,
+                         Quaternion rotation, Vector3 scale)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.SetLocalPositionAndRotation(position, rotation);
+            go.transform.localScale = scale;
+
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            go.AddComponent<MeshRenderer>().sharedMaterial = Palette.Named(material);
+        }
+
+        static void Skin(Transform piece, string material)
+        {
+            if (piece != null && piece.TryGetComponent(out MeshRenderer renderer))
+                renderer.sharedMaterial = Palette.Named(material);
+        }
+
+        /// <summary>
+        /// An unscaled child of a stretched box, so a piece hung under it keeps its own size: a blade
+        /// parented straight to a 2.4 x 0.22 x 0.12 box would inherit the squash.
+        /// </summary>
+        static Transform Holder(Transform box)
+        {
+            var holder = new GameObject("Art").transform;
+            holder.SetParent(box, false);
+            Vector3 s = box.localScale;
+            holder.localScale = new Vector3(1f / s.x, 1f / s.y, 1f / s.z);
+            return holder;
         }
 
         static GameObject Box(GameObject root, string name, Vector3 position, Vector3 scale, bool solid)

@@ -8091,6 +8091,34 @@ collider. It then walks the player into one isolated tree of each kind, from 2.6
 ground, and checks three things for each tree: the player never reaches the tree's spot, stops
 within a hand of contact, and can back out a metre. Results: 56/0 on island, 47/0 on island2.
 
+## #203: a plane and a boat that look like them
+
+**The boat** was already dressed on main: `BoatBuilder` fits Kenney's Watercraft speedboat
+(`Art/ThirdParty/Kenney/Watercraft/boat-speed-j.fbx`, CC0, catalogue id `Boat`) into the hull's
+footprint with `ArtDress.FitBox`, strips the hull, bow and console boxes and keeps the hull collider.
+Nothing changed there except a harness check that the prefab really came out dressed.
+
+**The plane** has no model in the project. The closed PR #157 (`claude/project-thread-7e12e5`) dressed
+it with a Quaternius plane that was never downloaded, and that dressing only worked when the model
+had separate propeller, engine and wing meshes. Revived here instead: `PlaneBuilder.Dress` builds a
+composite of built-in primitives in the `Palette` (capsule fuselage, canopy, port wing, swept fin,
+tail plane) under an `Art` child carrying an `ArtVisual` (`Plane`, `Vehicle`, cap 4000 triangles, roughly
+1 900 used). The fuselage and port-wing boxes lose their renderers and keep their colliders; the
+wheels stay and go `Dark`.
+
+**Parts.** `PlaneAssembly` hides and shows the whole `Fitted.*` child, so those stay the part visuals
+rather than moving into the composite: `Fitted.engine` swaps its cube mesh for a sphere (metal cowling),
+`Fitted.propeller` gets an unscaled `Art` holder with a second blade and a hub (crossed blades), and
+`Fitted.wing` wears the same red as the wing that is already on. Seats, exits, cargo socket and every
+collider are untouched.
+
+`-flightTest` (`-scene island2`) and `-boatTest` (`-scene island`) each check: a model is drawn under
+`Art` (over 100 triangles), it is under `ArtVisual.Cap(Vehicle)`, no greybox box is still drawn, and the
+fuselage / hull collider is still there.
+
+Regenerate with `PlaneBuilder.Build`; the prefab keeps its GUID. `BoatBuilder.Build` is only needed if
+the boat prefab predates the Watercraft dressing.
+
 ---
 
 ## Data-driven content
