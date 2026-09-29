@@ -324,6 +324,10 @@ namespace EscapeWithYourFriends.EditorTools
             var upgrading = root.AddComponent<Upgrading>();
             upgrading.Configure(UpgradeFactory.Catalog(), inventory, wallet, weapon);
 
+            // Scopes, firepower and the rest, bought per weapon at the trader. Reads the weapon in
+            // hand and spends the wallet, both already on this root.
+            root.AddComponent<WeaponMods>();
+
             // The rod. Added after the bag it fills and after the aim origin it casts from, and kept
             // separate from Weapon on purpose: a rod is not a weapon with a strange swing, it is a
             // whole state machine that owns the Attack button for as long as a line is in the water.

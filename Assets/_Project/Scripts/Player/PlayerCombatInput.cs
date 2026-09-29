@@ -99,7 +99,11 @@ namespace EscapeWithYourFriends.Player
             if (_rider != null && _rider.IsDriving)
                 _rider.Drive(_input.Move, _input.Crouch, _input.Sprint);
 
-            if (altAttack && _taser != null) _taser.RequestFire();
+            // With a gun in hand the second button raises it to the eye (WeaponMods' sights); with
+            // anything else it is still the taser.
+            bool gun = _weapon != null && _weapon.Equipped != null && _weapon.Equipped.Kind == Data.WeaponKind.Hitscan;
+            if (_weapon != null) _weapon.Aiming = gun && _input.AltAttackHeld;
+            if (altAttack && !gun && _taser != null) _taser.RequestFire();
 
             // The priority list this file always said it would need. Machines win over bodies: the
             // gesture the Revive Machine wants is walking up to it holding a corpse and pressing

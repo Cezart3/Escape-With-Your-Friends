@@ -164,6 +164,7 @@ namespace EscapeWithYourFriends.Player
             enabled = true;
             _logCamera = CommandLine.HasFlag("-cameraLog");
             TryGetComponent(out _rider);
+            TryGetComponent(out _mods);
 
             EnsureBrain();
             BuildCamera();
@@ -326,6 +327,7 @@ namespace EscapeWithYourFriends.Player
 
             _target.SetPositionAndRotation(eye, look);
 
+            UpdateMods();
             UpdateFov(dt);
             AimAlongView();
 
@@ -522,9 +524,10 @@ namespace EscapeWithYourFriends.Player
             WeaponDef weapon = _weapon != null ? _weapon.Equipped : null;
             if (weapon == null || weapon.Recoil <= 0f) return;
 
-            if (_input != null) _input.AddRecoil(weapon.Recoil);
+            float kick = weapon.Recoil * (_mods != null ? _mods.RecoilScale(weapon) : 1f);
+            if (_input != null) _input.AddRecoil(kick);
 
-            AddShake(Mathf.Min(_maxFiredShake, weapon.Recoil * _firedShakePerRecoilDegree));
+            AddShake(Mathf.Min(_maxFiredShake, kick * _firedShakePerRecoilDegree));
         }
 
         /// <summary>
@@ -561,6 +564,58 @@ namespace EscapeWithYourFriends.Player
 
         static float Noise(float row, float t) => Mathf.PerlinNoise(row, t) * 2f - 1f;
 
+        // ---------------------------------------------------------------- weapon mods
+
+        Economy.WeaponMods _mods;
+        Light _flashlight;
+        bool _lightOn;
+        float _zoom = 1f;
+
+        /// <summary>
+        /// The owner's half of the bought mods: how far the sight zooms while aiming, the look speed
+        /// that goes with it, and the barrel light. Damage, scatter and the price live on the server.
+        /// ponytail: the light is local, a squadmate does not see your beam. Sync the toggle if it matters.
+        /// </summary>
+        void UpdateMods()
+        {
+            WeaponDef weapon = _weapon != null ? _weapon.Equipped : null;
+            bool aiming = _weapon != null && _weapon.Aiming && weapon != null;
+            _zoom = aiming ? Economy.WeaponMods.Zoom(_mods != null ? _mods.Level(weapon, Economy.ModTrack.Sight) : 0) : 1f;
+            if (_input != null)
+            {
+                _input.LookScale = 1f / _zoom;
+                if (_input.ConsumeFlashlight()) _lightOn = !_lightOn;
+            }
+
+            bool lit = _lightOn && _mods != null && _mods.Has(weapon, Economy.ModTrack.Flashlight);
+            if (lit && _flashlight == null && _target != null)
+            {
+                _flashlight = new GameObject("WeaponLight").AddComponent<Light>();
+                _flashlight.transform.SetParent(_target, false);
+                _flashlight.transform.localPosition = new Vector3(0.15f, -0.1f, 0.3f);
+                _flashlight.type = LightType.Spot;
+                _flashlight.spotAngle = 45f;
+                _flashlight.range = 35f;
+                _flashlight.intensity = 6f;
+                _flashlight.color = new Color(1f, 0.96f, 0.85f);
+                _flashlight.shadows = LightShadows.None;
+            }
+
+            if (_flashlight != null) _flashlight.enabled = lit;
+        }
+
+        /// <summary>The red dot, while aiming a gun that has one. A dot is all it is.</summary>
+        void OnGUI()
+        {
+            WeaponDef weapon = _weapon != null ? _weapon.Equipped : null;
+            if (_zoom <= 1f || _mods == null || !_mods.Has(weapon, Economy.ModTrack.RedDot)) return;
+
+            Color was = GUI.color;
+            GUI.color = new Color(1f, 0.1f, 0.1f);
+            GUI.DrawTexture(new Rect(Screen.width * 0.5f - 3f, Screen.height * 0.5f - 3f, 6f, 6f), Texture2D.whiteTexture);
+            GUI.color = was;
+        }
+
         void UpdateFov(float dt)
         {
             if (_camera == null) return;
@@ -568,7 +623,7 @@ namespace EscapeWithYourFriends.Player
             bool sprinting = _motor != null && _motor.IsGrounded
                              && _input != null && _input.Sprint && _input.Move.sqrMagnitude > 0.01f;
 
-            float goal = sprinting ? Resting + (_sprintFov - _baseFov) : Resting;
+            float goal = _zoom > 1f ? Resting / _zoom : sprinting ? Resting + (_sprintFov - _baseFov) : Resting;
             float t = _fovResponse <= 0f ? 1f : 1f - Mathf.Exp(-dt / _fovResponse);
 
             _fov = Mathf.Lerp(_fov, goal, t);
