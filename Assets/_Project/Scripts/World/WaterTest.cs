@@ -70,7 +70,10 @@ namespace EscapeWithYourFriends.World
 
             Material material = pieces.Length > 0 ? pieces[0].sharedMaterial : null;
             Check("the water has a material", material != null);
-            if (material != null)
+            // -nographics swaps every shader for the error one, whose properties read as zero.
+            if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null)
+                Debug.Log("[WaterTest] no graphics device: fades unchecked; run without -nographics to check them.");
+            else if (material != null)
             {
                 Vector4 waves = material.GetVector("_PatchFade");
                 Vector4 ripples = material.GetVector("_RippleFade");
