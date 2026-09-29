@@ -4,6 +4,7 @@ using System.Linq;
 using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.Net;
 using EscapeWithYourFriends.Player;
+using EscapeWithYourFriends.World;
 using FishNet;
 using FishNet.Object;
 using UnityEngine;
@@ -141,6 +142,7 @@ namespace EscapeWithYourFriends.Vehicles
             yield return Driverless(car, buggy, motor);
 
             Cleanup(buggy, car);
+            yield return Touring(car, body);
 
             Report();
         }
@@ -493,6 +495,158 @@ namespace EscapeWithYourFriends.Vehicles
                   Mathf.Abs(car.ForwardSpeed) <= 0.5f);
 
             Debug.Log($"[CarTest] driver ejected at {entry:0.0} m/s; the buggy braked itself to a stop.");
+        }
+
+        // ---------------------------------------------------------------- across the island (#200)
+
+        /// <summary>
+        /// Drives the real island from base camp through every point of interest on land, nearest
+        /// next, and logs every place the car stops dead with the throttle open: where, what it was
+        /// touching, and the wheel report. A stall backs off and tries again, twice, before the leg is
+        /// given up. The check is on the stalls nobody can see a reason for (the belly or a seam):
+        /// running into a palm in a jungle is driving, not a bug.
+        /// </summary>
+        IEnumerator Touring(CarController car, Rigidbody body)
+        {
+            POICatalog catalog = World.POISpawner.Instance != null ? World.POISpawner.Instance.Catalog : null;
+            Terrain terrain = Terrain.activeTerrain;
+            if (catalog == null || terrain == null)
+            {
+                Check("there is an island to drive across", false);
+                yield break;
+            }
+
+            yield return new WaitForSeconds(1f);
+
+            var legs = new List<Vector3>();
+            foreach (POIEntry entry in catalog.Entries)
+            {
+                if (entry == null) continue;
+                var at = new Vector3(entry.Position.x, 0f, entry.Position.y);
+                at.y = terrain.SampleHeight(at) + terrain.GetPosition().y;
+                if (at.y > 1.5f) legs.Add(at);
+            }
+
+            // Nearest next, from where the car is parked.
+            var route = new List<Vector3>();
+            Vector3 from = body.position;
+            while (legs.Count > 0)
+            {
+                Vector3 next = legs.OrderBy(l => Flat(l - from).sqrMagnitude).First();
+                legs.Remove(next);
+                route.Add(next);
+                from = next;
+            }
+
+            // Every tree that has a trunk to hit, and how thick it is.
+            TerrainData data = terrain.terrainData;
+            var trunks = new List<(Vector3 at, float radius, string name)>();
+            for (int n = 0; n < data.treeInstanceCount; n++)
+            {
+                TreeInstance tree = data.GetTreeInstance(n);
+                GameObject prefab = data.treePrototypes[tree.prototypeIndex].prefab;
+                if (prefab == null || !prefab.TryGetComponent(out CapsuleCollider capsule)) continue;
+                trunks.Add((terrain.GetPosition() + Vector3.Scale(tree.position, data.size),
+                            capsule.radius * tree.widthScale, prefab.name));
+            }
+
+            // The pad runs left a hard contact on record; reading the report clears it.
+            car.WheelReport();
+            int reached = 0, stalls = 0, unexplained = 0;
+            float distance = 0f;
+            foreach (Vector3 goal in route)
+            {
+                int tries = 0;
+                float legStart = Time.time, stillFor = 0f;
+                Vector3 last = body.position;
+
+                while (Flat(goal - body.position).magnitude > 12f && Time.time - legStart < 45f && tries <= 2)
+                {
+                    Vector3 to = Flat(goal - body.position);
+                    float bearing = Vector3.SignedAngle(Flat(car.transform.forward), to, Vector3.up);
+                    float steer = Mathf.Clamp(bearing / 30f, -1f, 1f), throttle = Mathf.Abs(bearing) > 60f ? 0.5f : 1f;
+
+                    // A driver looks where they are going: something in the way, turn to the freer side.
+                    if (Blocked(body, car.transform.forward, 7f))
+                    {
+                        Vector3 left = Quaternion.Euler(0f, -35f, 0f) * car.transform.forward;
+                        Vector3 right = Quaternion.Euler(0f, 35f, 0f) * car.transform.forward;
+                        steer = Blocked(body, left, 7f) && !Blocked(body, right, 7f) ? 1f
+                              : !Blocked(body, left, 7f) ? -1f
+                              : Mathf.Sign(bearing);
+                        throttle = 0.6f;
+                    }
+                    car.ServerDrive(throttle, steer, false);
+
+                    distance += Flat(body.position - last).magnitude;
+                    last = body.position;
+                    stillFor = Mathf.Abs(car.ForwardSpeed) < 0.5f ? stillFor + Time.deltaTime : 0f;
+
+                    if (stillFor > 2f)
+                    {
+                        stalls++;
+                        tries++;
+                        Vector3 hit = car.LastHitPoint;
+                        Collider against = car.LastHitCollider;
+                        string report = car.WheelReport();
+                        float above = hit.y - (terrain.SampleHeight(hit) + terrain.GetPosition().y);
+
+                        // What stopped it. A prop or a trunk is something a player can see and steer
+                        // round; the ground itself stopping a car on its wheels is the bug (#200).
+                        string cause;
+                        if (car.IsUpsideDown) cause = "on its roof";
+                        else if (against != null && against is not TerrainCollider) cause = $"prop {against.name}";
+                        else
+                        {
+                            var trunk = trunks.OrderBy(t => Flat(t.at - hit).sqrMagnitude).FirstOrDefault();
+                            float gap = trunk.name != null ? Flat(trunk.at - hit).magnitude - trunk.radius : float.PositiveInfinity;
+                            cause = gap < 0.4f ? $"trunk of a {trunk.name}" : $"the ground, {above:0.00}m above the terrain height";
+                        }
+
+                        bool seen = !cause.StartsWith("the ground");
+                        if (!seen) unexplained++;
+                        Vector3 p = body.position;
+                        Debug.Log($"[CarTest] STALL at ({p.x:0.0}, {p.y:0.0}, {p.z:0.0}) against {cause}, "
+                                  + $"heading for ({goal.x:0}, {goal.z:0}): {report}");
+
+                        // Back off at the opposite lock, then go again.
+                        for (float t = 0f; t < 1.5f; t += Time.deltaTime)
+                        {
+                            car.ServerDrive(-1f, -Mathf.Sign(bearing), false);
+                            yield return null;
+                        }
+                        stillFor = 0f;
+                    }
+
+                    yield return null;
+                }
+
+                if (Flat(goal - body.position).magnitude <= 12f) reached++;
+            }
+
+            car.ServerDrive(0f, 0f, true);
+            Debug.Log($"[CarTest] tour: {reached}/{route.Count} stops reached, {distance:0} m driven, "
+                      + $"{stalls} stall(s), {unexplained} with nothing touching.");
+            Check($"the buggy drives the island ({distance:0} m, {reached}/{route.Count} stops)",
+                  distance > 50f && reached > 0);
+            Check($"no stall with nothing to stop it ({unexplained} of {stalls})", unexplained == 0);
+        }
+
+        static Vector3 Flat(Vector3 v) => new(v.x, 0f, v.z);
+
+        /// <summary>Anything but the car itself within <paramref name="range"/> along <paramref name="way"/>, at bumper height.</summary>
+        static bool Blocked(Rigidbody car, Vector3 way, float range)
+        {
+            foreach (RaycastHit hit in Physics.SphereCastAll(car.position + Vector3.up * 0.9f, 0.9f, Flat(way).normalized, range,
+                                                             ~0, QueryTriggerInteraction.Ignore))
+            {
+                if (hit.rigidbody == car || hit.collider.transform.IsChildOf(car.transform)) continue;
+                if (hit.distance <= 0f) continue; // Overlapping at the start: the ground under the wheels.
+                if (hit.collider is TerrainCollider && Vector3.Angle(hit.normal, Vector3.up) < 40f) continue; // A slope to drive up.
+                return true;
+            }
+
+            return false;
         }
 
         // ---------------------------------------------------------------- scaffolding
