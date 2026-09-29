@@ -49,6 +49,7 @@ MonoBehaviour:
   Id: BarCounter
   Category: 5
   Upright: 0
+  Trunk: {x: NaN, y: NaN}
 --- !u!205 &1883420348195041072
 LODGroup:
   m_ObjectHideFlags: 0
@@ -322,6 +323,7 @@ MonoBehaviour:
   Id: BarCounter
   Category: 5
   Upright: 0
+  Trunk: {x: NaN, y: NaN}
 --- !u!205 &5769454587499342018
 LODGroup:
   m_ObjectHideFlags: 0
@@ -744,6 +746,7 @@ MonoBehaviour:
   Id: BarCounter
   Category: 5
   Upright: 0
+  Trunk: {x: NaN, y: NaN}
 --- !u!205 &759693242503606149
 LODGroup:
   m_ObjectHideFlags: 0

@@ -8301,6 +8301,32 @@ leaves are not culled; the camp just stops topping up.
 
 `-nativeTest` checks `ForParty(6, 4) == 6`, `ForParty(6, 1) < 6` and `ForParty(1, 1) == 1`.
 
+## #209: weapon skins
+
+A skin is a colour tint for one weapon: id, label, weapon id, `Color`, price. They are rows in
+`SkinCatalog.All` (`Data/SkinCatalog.cs`), not assets - four values that nothing references by object.
+Shipped: pistol Gold and Jungle camo, rifle Bone, machete Obsidian.
+
+- **Bought at the trader, as a stand-in item.** `ItemFactory` seeds one `skin_<id>` `ItemDef` per skin and
+  `ShopFactory` lists each as an unlimited offer at the skin's price. `ShopCounter.ServerBuy` recognises
+  the item (`SkinCatalog.ForItem`) and calls `ServerBuySkin` instead of filling a bag: it spends the
+  price, unlocks the skin and wears it at once. Owning it already re-wears it for free, so switching
+  back is never a second charge. Smaller than teaching the shop a second kind of row: the shelf, the
+  screen, the buy RPC and the reach check are all reused unchanged.
+- **`SkinLocker`** sits on the player. What each weapon wears is a `SyncDictionary<weaponId, skinId>`,
+  so friends see it; what you own is a server-side set. Server-authoritative, like the wallet.
+- **Saved** in `SavedPlayer.skins` / `wornSkins` (owned and worn skin ids), keyed by `PlayerKey` like the
+  rest, restored in `RunSave.ServerApply`. Additive, so the save version does not change.
+- **Drawn** by `CharacterSkin.Tint`, whenever the held item or the worn skin changes: a
+  `MaterialPropertyBlock` (`_BaseColor` and `_Color`) on every renderer of the hand copy and the
+  first-person copy. No material is made. It replaces the colour outright, so a skin flattens a
+  multi-material model to one colour.
+- Skins are ignored by selling (value 0) and never enter a bag.
+
+Regenerate: `ItemFactory.Build`, `PlayerPrefabBuilder.BuildPlayerPrefab`, then `ShopFactory.Build` with
+`-rebuildShop` (the shelf is only rewritten on request; this resets prices). Harness: `-skinShopTest`,
+solo host, `-scene island`.
+
 ## Tracers across the voyage
 
 `TracerEffect` parents its pooled tracers and impact bits to a root of their own, not to the
@@ -8319,6 +8345,35 @@ The gun ladder now runs to the run's real ceiling. Trader prices (`ShopFactory.S
 Two new hitscan weapons are rows in `WeaponFactory.Seeds`, both on `rifle_ammo`: `machinegun` (tier 3, 620 rpm, 60 rounds, 3.5s reload, 50 damage, spread 2.5) and `sniper` (tier 4, 40 rpm, 5 rounds, 3s reload, 195 damage, range 200). Their ItemDefs live in `ItemFactory` with a `Value` of at most a tenth of the shop price, so the trader's half-of-value buyback can never turn buy-then-sell into a profit. The Kenney pack has no LMG, so the machine gun wears the SMG model scaled up and the sniper the rifle model, via `WeaponFactory.Art`.
 
 `Shop.asset` is only written once, so an existing checkout needs `-rebuildShop` (which resets every price) to pick the new prices up. `-shopTest` checks the ladder is strictly ascending, the two new prices, catalog membership, hitscan kind and the buyback bound.
+
+## Weapon mods (economy overhaul)
+
+Per-weapon upgrades bought at the trader with the weapon in your hand. `Economy/WeaponMods.cs` on the
+player, harness `-gunsmithTest` (solo, `-scene island`).
+
+| Track | Levels | First level | Top level | Effect |
+|---|---|---|---|---|
+| Firepower | 5 | 25% of the weapon | 5x the weapon | +12% damage per level |
+| Scope | 4 | 50% | 5x | ADS zoom 1.25x (iron) -> 2x, 3x, 4.5x, 6x |
+| Red dot | 1 | 75% | - | aimed scatter halved again, dot drawn while aiming |
+| Flashlight | 1 | 30% | - | spot light on the camera, toggled with **T** |
+| Recoil grip | 1 | 3x | - | kick x0.35 |
+
+- **Prices are multipliers of the weapon's shop price**, read off the counter you stand at. Levels
+  climb geometrically between the first and last multiplier and round to three significant figures.
+  A counter that does not sell the gun (the barman) cannot mod it; a pistol's full kit is under 4k,
+  a 250k gun's firepower 5 alone is 1.25M. Grind or gamble, by design.
+- **Mods belong to the player, per weapon id**, in a `SyncDictionary<string, byte>` ("rifle/Sight"
+  -> level). Dropping a gun and picking up another of the same kind keeps them. Saved in
+  `SavedPlayer.mods` as "rifle/Sight=2" lines.
+- Melee weapons take firepower only; guns take all five.
+- **Aiming**: right mouse with a gun in hand raises it (the taser keeps right mouse otherwise).
+  `Weapon.Aiming` is set by `PlayerCombatInput` and sent with the shot; the server halves the cone
+  (a quarter with the red dot). The camera zooms by the sight level and scales look speed by 1/zoom.
+- The server reads damage, scatter and the price; the owner's camera reads zoom, the red dot, the
+  grip's kick and the light. The light is local only: squadmates do not see your beam.
+- The shop panel grew to 31 shelf rows plus 5 gunsmith rows (two columns, 40 px pitch, taller than
+  the chest panel). The gunsmith rows show the held weapon's icon and "Scope 1/4  $194".
 
 ---
 

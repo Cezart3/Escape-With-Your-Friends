@@ -298,6 +298,10 @@ namespace EscapeWithYourFriends.EditorTools
             var trading = root.AddComponent<Trading>();
             trading.Configure(inventory, wallet);
 
+            // Weapon skins bought at the trader (#209). Nothing to wire: it is only a server-side
+            // set and a replicated map.
+            root.AddComponent<SkinLocker>();
+
             // One component for every weapon in the game. It reads the selected hotbar slot and
             // asks the catalog what that item is, so there is nothing here to change when a weapon is
             // added - which is the whole of #49's acceptance.
@@ -319,6 +323,10 @@ namespace EscapeWithYourFriends.EditorTools
             // the bag because the swap spends both in one server call.
             var upgrading = root.AddComponent<Upgrading>();
             upgrading.Configure(UpgradeFactory.Catalog(), inventory, wallet, weapon);
+
+            // Scopes, firepower and the rest, bought per weapon at the trader. Reads the weapon in
+            // hand and spends the wallet, both already on this root.
+            root.AddComponent<WeaponMods>();
 
             // The rod. Added after the bag it fills and after the aim origin it casts from, and kept
             // separate from Weapon on purpose: a rod is not a weapon with a strange swing, it is a

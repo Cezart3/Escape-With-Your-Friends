@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using EscapeWithYourFriends.Data;
 using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.Economy;
@@ -86,6 +87,10 @@ namespace EscapeWithYourFriends.EditorTools
             ("boat_part", 1400, 4),
         };
 
+        /// <summary>The shelf: <see cref="Stock"/>, then a line per weapon skin (#209), unlimited.</summary>
+        static (string Item, int Price, int Stock)[] Shelf()
+            => Stock.Concat(SkinCatalog.All.Select(skin => (skin.ItemId, skin.Price, -1))).ToArray();
+
         public static void Build()
         {
             ShopDef shop = EnsureShop();
@@ -135,11 +140,12 @@ namespace EscapeWithYourFriends.EditorTools
             so.FindProperty("_restockSeconds").floatValue = 90f;
 
             SerializedProperty offers = so.FindProperty("_offers");
-            offers.arraySize = Stock.Length;
+            var shelf = Shelf();
+            offers.arraySize = shelf.Length;
 
-            for (int i = 0; i < Stock.Length; i++)
+            for (int i = 0; i < shelf.Length; i++)
             {
-                (string id, int price, int stock) = Stock[i];
+                (string id, int price, int stock) = shelf[i];
 
                 var item = AssetDatabase.LoadAssetAtPath<ItemDef>($"{ItemFolder}/{id}.asset");
                 if (item == null)

@@ -459,6 +459,15 @@ namespace EscapeWithYourFriends.World
                     yield return new WaitForSeconds(0.8f);
                     if (trip == 1) yield return Shot("shop_open");
 
+                    // The gunsmith rows for the gun in hand: buy one of each, for the screenshot.
+                    if (trip == 1 && _motor.TryGetComponent(out WeaponMods mods))
+                    {
+                        DevCheats.GiveMoney();
+                        foreach (ModTrack track in System.Enum.GetValues(typeof(ModTrack))) mods.RequestBuy(track);
+                        yield return new WaitForSeconds(0.8f);
+                        yield return Shot("gunsmith");
+                    }
+
                     int want = boat.Missing - Count(BoatVoyage.PartItem);
                     for (int i = 0; i < want; i++)
                     {
