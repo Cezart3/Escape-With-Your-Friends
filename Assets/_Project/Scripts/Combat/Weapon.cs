@@ -133,6 +133,7 @@ namespace EscapeWithYourFriends.Combat
             _health = GetComponent<Health>();
             _stun = GetComponent<StunState>();
             _buffs = GetComponent<BuffState>();
+            _mods = GetComponent<Economy.WeaponMods>();
             if (_inventory == null) _inventory = GetComponent<Inventory>();
 
             WeaponCatalog.Use(_catalog);
@@ -302,6 +303,12 @@ namespace EscapeWithYourFriends.Combat
             return moved;
         }
 
+        Economy.WeaponMods _mods;
+        bool _aimedThisAttack;
+
+        /// <summary>Owner side: holding a gun up to the eye. Set by the combat input, read by the camera.</summary>
+        public bool Aiming { get; set; }
+
         /// <summary>Owner-side entry point. Call from input.</summary>
         public void RequestAttack()
         {
@@ -314,7 +321,7 @@ namespace EscapeWithYourFriends.Combat
             _localNextAttackAt = Time.time + weapon.Cooldown;
             Attacked?.Invoke(weapon);
 
-            ServerAttack(AimDirection());
+            ServerAttack(AimDirection(), Aiming);
         }
 
         bool CanAct()
@@ -331,7 +338,7 @@ namespace EscapeWithYourFriends.Combat
         }
 
         [ServerRpc]
-        void ServerAttack(Vector3 aimDirection)
+        void ServerAttack(Vector3 aimDirection, bool aiming)
         {
             WeaponDef weapon = Equipped;
             if (weapon == null || !CanAct()) return;
@@ -350,6 +357,7 @@ namespace EscapeWithYourFriends.Combat
 
             ObserversAttack();
 
+            _aimedThisAttack = aiming;
             if (weapon.Windup > 0f) StartCoroutine(ResolveAfterWindup(weapon, direction));
             else ServerResolve(weapon, direction);
         }
@@ -441,7 +449,8 @@ namespace EscapeWithYourFriends.Combat
 
             for (int i = 0; i < pellets; i++)
             {
-                Vector3 shot = Scatter(direction, weapon.Spread + Wobble());
+                float cone = weapon.Spread * (_mods != null ? _mods.SpreadScale(weapon, _aimedThisAttack) : 1f);
+                Vector3 shot = Scatter(direction, cone + Wobble());
                 ends[i] = originPosition + shot * weapon.Range;
 
                 // Every hit, nearest first, past your own body: a single Raycast stopped at the
@@ -504,6 +513,9 @@ namespace EscapeWithYourFriends.Combat
         void ApplyHit(WeaponDef weapon, Health victim, Vector3 direction, Vector3 contact)
         {
             DamageInfo info = weapon.Hit.Build(direction, contact, ObjectId);
+            float scale = _mods != null ? _mods.DamageScale(weapon) : 1f;
+            if (scale != 1f)
+                info = new DamageInfo(info.Amount * scale, info.Type, info.Impulse, info.HitPoint, info.StunDuration, info.AttackerId);
 
             bool wasStanding = victim.IsAlive;
             victim.TakeDamage(info);

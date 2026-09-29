@@ -97,6 +97,11 @@ namespace EscapeWithYourFriends.EditorTools
             reload.AddBinding("<Keyboard>/r");
             reload.AddBinding("<Gamepad>/buttonWest");
 
+            // The weapon light, once bought (WeaponMods). T for torch: F is already Use.
+            InputAction flashlight = map.AddAction("Flashlight", InputActionType.Button);
+            flashlight.AddBinding("<Keyboard>/t");
+            flashlight.AddBinding("<Gamepad>/dpad/up");
+
             // Hotbar selection. Five slots is what fits across a screen without a second row, and it
             // is what the drop key acts on until the real hotbar UI lands in #46.
             for (int slot = 1; slot <= HotbarSlots; slot++)
