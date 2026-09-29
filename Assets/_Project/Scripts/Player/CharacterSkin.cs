@@ -4,6 +4,7 @@ using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.Data;
 using EscapeWithYourFriends.Items;
 using EscapeWithYourFriends.Vehicles;
+using EscapeWithYourFriends.World;
 using FishNet.Object;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -75,6 +76,14 @@ namespace EscapeWithYourFriends.Player
         static readonly int PunchId = Animator.StringToHash("Punch");
         static readonly int ArmedId = Animator.StringToHash("Armed");
         static readonly int FireId = Animator.StringToHash("Fire");
+        static readonly int SwimmingId = Animator.StringToHash("Swimming");
+        static readonly int ReloadId = Animator.StringToHash("Reload");
+
+        /// <summary>
+        /// Metres above the feet at which the water counts as having taken the body off the ground.
+        /// The same probe as SurvivalStats' warmth, so the body swims exactly when it is cold.
+        /// </summary>
+        const float SwimProbe = 0.9f;
 
         /// <summary>The controller's layers over the arms (CharacterArt.BuildController).</summary>
         const int CarryLayer = 1, ArmedLayer = 2;
@@ -132,6 +141,7 @@ namespace EscapeWithYourFriends.Player
         /// <summary>Harness overrides: what the body would do while walking, or carrying.</summary>
         internal float? ForceSpeed { get; set; }
         internal bool ForceCarry { get; set; }
+        internal bool ForceSwim { get; set; }
 
         public void Configure(Body[] bodies) => _bodies = bodies;
 
@@ -177,7 +187,7 @@ namespace EscapeWithYourFriends.Player
             TryGetComponent(out _health);
             TryGetComponent(out _inventory);
 
-            if (_weapon != null) _weapon.Attacked += OnAttacked;
+            if (_weapon != null) { _weapon.Attacked += OnAttacked; _weapon.Reloading += OnReloading; }
             if (_identity != null) _identity.IdentityChanged += OnIdentity;
             if (_inventory != null) _inventory.Changed += Hold;
 
@@ -187,7 +197,7 @@ namespace EscapeWithYourFriends.Player
 
         void OnDestroy()
         {
-            if (_weapon != null) _weapon.Attacked -= OnAttacked;
+            if (_weapon != null) { _weapon.Attacked -= OnAttacked; _weapon.Reloading -= OnReloading; }
             if (_identity != null) _identity.IdentityChanged -= OnIdentity;
             if (_inventory != null) _inventory.Changed -= Hold;
         }
@@ -208,6 +218,19 @@ namespace EscapeWithYourFriends.Player
             Animator animator = Active.Animator;
             if (_armed > 0 && animator.layerCount > ArmedLayer) animator.SetTrigger(FireId);
             else if (weapon != null && weapon.Kind == WeaponKind.Melee) animator.SetTrigger(PunchId);
+        }
+
+        /// <summary>
+        /// The reload starts on every peer, off the weapon's existing observers call, so nothing new is
+        /// networked. Only a gun in the hand takes it (Armed 1): a trigger nobody takes stays set and
+        /// would play the reload the next time a gun is drawn.
+        /// </summary>
+        internal void OnReloading(WeaponDef weapon, bool started)
+        {
+            if (!started || Active == null || _armed != 1 || (_rider != null && _rider.IsSeated)) return;
+
+            Animator animator = Active.Animator;
+            if (animator.layerCount > ArmedLayer) animator.SetTrigger(ReloadId);
         }
 
         void Show(int index)
@@ -360,6 +383,10 @@ namespace EscapeWithYourFriends.Player
             animator.SetFloat(SpeedId, seated ? 0f : _speed);
             animator.SetBool(AirborneId, !seated && Mathf.Abs(moved.y / dt) > AirborneSpeed);
             animator.SetBool(SeatedId, seated);
+
+            // Waist-deep is swimming, wherever the player is; a seat is dry and a car floats on its own.
+            bool swimming = !seated && (ForceSwim || WaterSurface.IsSubmerged(transform.position + Vector3.up * SwimProbe));
+            animator.SetBool(SwimmingId, swimming);
 
             bool carrying = ForceCarry || (_carry != null && _carry.IsCarrying);
             if (animator.layerCount > CarryLayer)
