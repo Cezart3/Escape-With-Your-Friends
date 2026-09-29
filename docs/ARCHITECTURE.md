@@ -8057,6 +8057,15 @@ mask)` (`_EdgeFade` = 0.35 m). The last few centimetres are a transparent film, 
 sits just offshore. No terrain regeneration was needed. Checked on the bot's wreck and sailing
 screenshots.
 
+## #214: the "flying" boar
+
+The bot photographed a boar several metres up in the air after a hit. It was not knockback:
+animals have no rigidbody. The boar camp sits six metres from the wreck, the NavMesh is baked over
+the wreck's deck, and `AnimalSpawner.Ground` had put the boar on that deck at y 2.77. Seen from
+the sand below, it hung in the sky. Spawn candidates more than a metre above
+`Terrain.SampleHeight` are now rejected (`OnTheGround`), so animals start on the island itself.
+`-animalTest` checks every spawned animal against the terrain.
+
 ---
 
 ## Data-driven content

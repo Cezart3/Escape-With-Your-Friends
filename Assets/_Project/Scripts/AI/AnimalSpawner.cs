@@ -243,7 +243,7 @@ namespace EscapeWithYourFriends.AI
                 Vector3 candidate = zone.Centre + new Vector3(offset.x, 0f, offset.y);
 
                 if (!NavMesh.SamplePosition(candidate, out NavMeshHit hit, 25f, NavMesh.AllAreas)) continue;
-                if (!Clear(hit.position)) continue;
+                if (!OnTheGround(hit.position) || !Clear(hit.position)) continue;
 
                 position = hit.position;
                 return true;
@@ -251,6 +251,20 @@ namespace EscapeWithYourFriends.AI
 
             position = zone.Centre;
             return false;
+        }
+
+        /// <summary>
+        /// The NavMesh is baked over everything walkable, the wreck's deck included, and the boar camp
+        /// beside the wreck put a boar on it (#214): shot from the sand, it looked like it was flying.
+        /// Animals start on the island itself.
+        /// </summary>
+        static bool OnTheGround(Vector3 position)
+        {
+            Terrain terrain = Terrain.activeTerrain;
+            if (terrain == null) return true;
+
+            float ground = terrain.SampleHeight(position) + terrain.GetPosition().y;
+            return position.y - ground < 1f;
         }
 
         bool Clear(Vector3 position)
