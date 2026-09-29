@@ -7994,6 +7994,33 @@ Three more, from the same runs:
 - **Friendly fire already works.** Neither `Weapon` nor `Health` checks which side the victim is on.
   `-gunTest` shoots the other process's player body, so there is nothing to add.
 
+## #197, #210: story beats, the seat view, and a plane that keeps to its strip
+
+**Story beats** (`World/StoryBeat.cs`). A few seconds of letterboxed camera at the moments that
+deserve one: arriving on each island (`IslandIntro`, on the wreck or the strip), the plane becoming
+whole (`PlaneAssembly`), finding the castaway (`Castaway`). `StoryBeat.Play(id, title, line, focus)`
+plays once per id per process and refuses when the player's camera is more than 60 m away from the
+focus, so a teammate finishing the plane across the island does not yank your view. It adds a
+CinemachineCamera at priority 30 (rig 10, death camera 20) and the brain blends in and out. The
+camera orbits 35° at 11 m, picking a start angle with a clear line of sight (a sphere cast that
+ignores the focus itself and players), clamped above the terrain. Any key or left click skips.
+Headless it records the id and draws nothing. The playthrough bot photographs each one
+(`beat_<id>.png`) and checks the plane and castaway beats played.
+
+FishNet calls a SyncVar's `OnChange` on the host only as the server, so the castaway beat does
+not filter on `asServer`. Once per id is what keeps it single.
+
+**Seat view** (`Player/PlayerCameraRig.cs`). Driving the buggy or the boat puts the camera at the
+seat's anchor plus 0.8 m, looking where the vehicle looks. The mouse turns the head ±120° from the
+nose. **V** toggles the chase camera. The plane defaults to chase (V swaps it to the seat) until
+it has a cockpit model (#203): from its seat the wing's underside filled the screen.
+
+**Plane ground steering** (`Vehicles/PlaneController.cs`). On the wheels, the roll axis steers
+(`GroundSteer`) and yaw is damped (`GroundYawDamping`), so a take-off roll holds its line and can be
+corrected. The parts hauled in can knock the parked plane twenty degrees off its strip. The
+playthrough bot now steers back to the strip's POI yaw before it lifts, which is what a pilot does.
+On island2 it went into the treeline without that.
+
 ## #206, #208: what loot looks like, and its icon
 
 `Editor/ItemArtFactory.cs`, run in batchmode **without** `-nographics` (the icons are rendered):

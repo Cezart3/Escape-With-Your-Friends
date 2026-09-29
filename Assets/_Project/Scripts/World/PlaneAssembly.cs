@@ -40,6 +40,7 @@ namespace EscapeWithYourFriends.World
         readonly List<GameObject> _pieces = new();
 
         float _objectiveAt;
+        bool _wasComplete, _primed;
 
         /// <summary>The one in the world, so the parts and the harness can find it without a search.</summary>
         public static PlaneAssembly Instance { get; private set; }
@@ -195,6 +196,13 @@ namespace EscapeWithYourFriends.World
             // One place, because every road to "it is whole" goes through here: the last part being
             // fitted, and a peer being handed a finished plane it never watched get built.
             if (Complete) Owned = true;
+
+            // #197. Only a plane finished in front of us: the first Show primes, so an airframe that
+            // arrives whole (Owned, a save, a late join) does not play it.
+            if (Complete && !_wasComplete && _primed)
+                StoryBeat.Play("plane", "Airworthy", "More or less.", transform);
+            _wasComplete = Complete;
+            _primed = true;
         }
 
         void Update()

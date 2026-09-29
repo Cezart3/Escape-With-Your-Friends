@@ -48,6 +48,33 @@ namespace EscapeWithYourFriends.World
             bot.StartCoroutine(bot.Run());
         }
 
+        float _beatSeen = -1f;
+        bool _beatShot;
+
+        /// <summary>
+        /// #197. The bot watches a story beat for two and a half seconds - long enough for a screenshot
+        /// of it - and then skips, like an impatient player. Its eye is Camera.main, and a camera
+        /// orbiting a wreck is no use for walking.
+        /// </summary>
+        void Update()
+        {
+            if (!StoryBeat.Playing) { _beatSeen = -1f; return; }
+            if (_beatSeen < 0f) { _beatSeen = Time.time; return; }
+            if (Time.time - _beatSeen < 2.5f) return;
+
+            // Shot this frame, skipped the next: a beat destroyed in the same Update never draws
+            // its letterbox into the capture.
+            if (!_beatShot)
+            {
+                _beatShot = true;
+                ScreenCapture.CaptureScreenshot(Path.Combine(_folder, $"beat_{StoryBeat.Played[StoryBeat.Played.Count - 1].Replace(':', '_')}.png"));
+                return;
+            }
+
+            _beatShot = false;
+            StoryBeat.Skip();
+        }
+
         void Check(string what, bool ok)
         {
             if (ok) _passed++; else _failed++;
@@ -599,7 +626,10 @@ namespace EscapeWithYourFriends.World
             if (!rider.IsSeated) yield break;
             PlaneController plane = rider.Vehicle.GetComponent<PlaneController>();
             string from = GameSceneLoader.Current;
-            Debug.Log($"[Playthrough] flying from {from}: driving {rider.IsDriving}, owner {plane.IsOwner}, {plane.FlightReport()}");
+            Debug.Log($"[Playthrough] flying from {from}: driving {rider.IsDriving}, owner {plane.IsOwner}, "
+                      + $"heading {plane.transform.eulerAngles.y:0}, at {plane.transform.position}, {plane.FlightReport()}");
+            POIEntry pad = POISpawner.Instance != null ? POISpawner.Instance.Catalog.Find("plane") : null;
+            float runway = pad != null ? pad.Yaw : plane.transform.eulerAngles.y;
             float began = Time.time, nextShot = Time.time + 10f, top = 0f, strip = plane.transform.position.y;
             _input.BotSprint = true;
 
@@ -612,7 +642,11 @@ namespace EscapeWithYourFriends.World
                 // levels its own wings, and every heading off a strip reaches the edge.
                 float pitch = !plane.IsAirborne ? (plane.Airspeed >= 20f ? 0.5f : 0f)
                             : alt < strip + 50f ? 0.3f : 0f;
-                float roll = 0f;
+                // On the wheels, keep to the strip's cleared line the way a pilot would: the parts
+                // hauled in knock the parked plane twenty degrees off it, and on island2 that was
+                // straight into the treeline.
+                float roll = plane.IsAirborne ? 0f
+                           : Mathf.Clamp(Mathf.DeltaAngle(plane.transform.eulerAngles.y, runway) / 15f, -1f, 1f);
                 _input.BotMove = new Vector2(roll, pitch);
                 if (Time.time > nextShot) { nextShot = Time.time + 15f; yield return Shot("flying"); }
                 yield return null;
@@ -664,6 +698,8 @@ namespace EscapeWithYourFriends.World
 
             yield return Fly();
             Check("that is the run", RunSummary.Over);
+            Check($"the story beats played ({string.Join(", ", StoryBeat.Played)})",
+                  StoryBeat.Played.Contains("plane") && StoryBeat.Played.Contains("castaway"));
             yield return new WaitForSeconds(3f);
             yield return Shot("the_end");
         }

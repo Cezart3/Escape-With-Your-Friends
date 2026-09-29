@@ -111,6 +111,9 @@ namespace EscapeWithYourFriends.Vehicles
 
         bool _hadDriver;
         bool _grounded, _touching;
+
+        /// <summary>rad/s² of nosewheel steering at full stick, and 1/s of yaw-rate damping, rolling.</summary>
+        const float GroundSteer = 0.8f, GroundYawDamping = 3f;
         int _contacts, _touches;
 
         /// <summary>What was under it last step, by name. Diagnostic only.</summary>
@@ -356,7 +359,18 @@ namespace EscapeWithYourFriends.Vehicles
             float bank = Bank / 45f;
 
             // Bank is turn. Nobody has to find a rudder key to get the nose round.
-            _body.AddTorque(transform.up * (bank * _yawFromBank * authority));
+            //
+            // In the air. On the ground the bank is the camber of the strip, not the pilot, and it
+            // turned an untouched take-off roll fifty degrees into a tree (playthrough bot, Island2).
+            // Rolling, the stick steers the nosewheel directly and the yaw rate is damped, so hands
+            // off means straight.
+            if (_grounded)
+            {
+                float yawRate = Vector3.Dot(_body.angularVelocity, transform.up);
+                _body.AddTorque(transform.up * (_roll * GroundSteer * authority - yawRate * GroundYawDamping),
+                                ForceMode.Acceleration);
+            }
+            else _body.AddTorque(transform.up * (bank * _yawFromBank * authority));
 
             // And with the stick centred it picks itself up. ponytail: a spring with no damper,
             // which is survivable only because the rigidbody's angular damping is the damper. If
