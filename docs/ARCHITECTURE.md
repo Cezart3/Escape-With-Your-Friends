@@ -8091,6 +8091,34 @@ collider. It then walks the player into one isolated tree of each kind, from 2.6
 ground, and checks three things for each tree: the player never reaches the tree's spot, stops
 within a hand of contact, and can back out a metre. Results: 56/0 on island, 47/0 on island2.
 
+## #200: where the buggy stops
+
+`-carTest` ends with a tour: the buggy drives nearest-next through every POI on land, steering like a
+driver would (a sphere cast at bumper height, 7 m ahead; blocked means turn to the freer of ±35°).
+Speed under 0.5 m/s for two seconds with throttle held is a stall. It backs off at opposite lock and
+tries again, twice per leg, 45 s per leg.
+
+Each stall is named from the contact that held it. `CarController` keeps the hardest contact since
+the last `WheelReport` (`LastHitPoint`, `LastHitCollider`), and the report clears it:
+
+- a non-terrain collider is a **prop**;
+- a terrain contact within 0.4 m of a tree instance's capsule is that **trunk** (tree colliders live
+  inside the `TerrainCollider`, so the instance list is the only way to tell them apart);
+- anything else is **the ground**, which is the bug the issue was about: seams, a crest under the
+  belly, invisible colliders.
+
+First full run: 51 stalls, none on the ground. They were every one against a trunk, a stump, a
+small boulder or a camp prop, clustered in the woods round base camp. A stump is 0.72 m tall and the
+wheel radius is 0.45 m, so those are real obstacles. The "random" stops from the playtest were the
+tree capsules standing off their trunks, which #199 fixed.
+
+One false positive came first: the pad tests left a 72 kN contact on record and the tour's first
+stall was blamed on it. Reading the report once before the tour clears it.
+
+The check is `no stall with nothing to stop it`. The tour's distance check only asks that the car
+got somewhere (over 50 m, one stop reached): the bot is a poor driver in woods, and a check that
+measured the bot would say nothing about the car.
+
 ---
 
 ## Data-driven content

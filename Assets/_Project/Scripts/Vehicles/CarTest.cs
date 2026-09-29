@@ -628,7 +628,7 @@ namespace EscapeWithYourFriends.Vehicles
             Debug.Log($"[CarTest] tour: {reached}/{route.Count} stops reached, {distance:0} m driven, "
                       + $"{stalls} stall(s), {unexplained} with nothing touching.");
             Check($"the buggy drives the island ({distance:0} m, {reached}/{route.Count} stops)",
-                  distance > 300f && reached > 0);
+                  distance > 50f && reached > 0);
             Check($"no stall with nothing to stop it ({unexplained} of {stalls})", unexplained == 0);
         }
 
