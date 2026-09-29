@@ -25,6 +25,16 @@ namespace EscapeWithYourFriends.Casino
     /// red or black, up to <see cref="MaxGambles"/> times. The win is already in their stack, so a
     /// gamble is an ordinary stake of it - fifty-fifty, paid two for one, no edge either way.
     /// Spinning again is how you walk away with it.
+    ///
+    /// Volcano and Reef sell their free spins outright: <see cref="SlotMath.BuyPrice"/> bets, and the
+    /// first drop is forced to trigger the feature. Same seed, same replay, one more bool on the wire.
+    ///
+    /// **The jackpot is one pot for the whole floor.** Every stake at any cabinet feeds it
+    /// <see cref="SlotMath.JackpotPct"/>%; every spin may drop it, decided by the seed on the server
+    /// like everything else, and the amount goes to clients with the seed. It lives on the server in
+    /// statics and every cabinet replicates the same number, so friends at different cabinets
+    /// watch one ticker climb. A dropped pot keeps showing until the winner's screen settles, so
+    /// the ticker never gives a spin away.
     /// </summary>
     public class SlotMachine : NetworkBehaviour
     {
@@ -72,6 +82,30 @@ namespace EscapeWithYourFriends.Casino
         /// <summary>The last card turned: 0 none since the last spin, 1 red, 2 black.</summary>
         readonly SyncVar<int> _turned = new();
 
+        /// <summary>The shared jackpot as this cabinet shows it, in chips. Server-written, the same on every cabinet.</summary>
+        readonly SyncVar<int> _jackpot = new();
+
+        /// <summary>The last spin's jackpot, 0 if it did not drop.</summary>
+        readonly SyncVar<int> _lastJackpot = new();
+
+        /// <summary>The last spin bought its feature.</summary>
+        readonly SyncVar<bool> _lastBuy = new();
+
+        /// <summary>Server: the pot, in hundredths of a chip so a 10-chip stake still adds to it.</summary>
+        static long _pot = SlotMath.JackpotSeed * 100L;
+
+        /// <summary>Server: dropped jackpots still on their winners' screens, shown on top of the pot.</summary>
+        static int _owed;
+
+        /// <summary>Server: every cabinet this server runs, to publish the pot to.</summary>
+        static readonly System.Collections.Generic.List<SlotMachine> Served = new();
+
+        /// <summary>Harness only: the next spin drops the jackpot whatever its seed says.</summary>
+        internal static bool ForceJackpot;
+
+        /// <summary>Server: the pot in hundredths of a chip. For the harness.</summary>
+        internal static long ServerPot => _pot;
+
         /// <summary>Every spawned cabinet on this peer, for the HUD, which would otherwise search the scene each frame.</summary>
         internal static readonly System.Collections.Generic.List<SlotMachine> All = new();
 
@@ -79,6 +113,9 @@ namespace EscapeWithYourFriends.Casino
         const float GambleHold = 15f;
 
         System.Random _rng;
+
+        /// <summary>Server: this cabinet's dropped jackpot still counted in <see cref="_owed"/>.</summary>
+        int _owing;
         NetworkObject _gambler;
         int _gambles;
         float _gambleUntil;
@@ -101,6 +138,11 @@ namespace EscapeWithYourFriends.Casino
         public int LastSeed => _lastSeed.Value;
         public int LastBet => _lastBet.Value;
         public int LastWin => _lastWin.Value;
+        public int Jackpot => _jackpot.Value;
+        public int LastJackpot => _lastJackpot.Value;
+
+        /// <summary>What the feature costs at the current bet, 0 on a cabinet without one.</summary>
+        public int BuyCost => Bet * SlotMath.BuyPrice(_kind);
         public int Gamble => _gamble.Value;
         public int GamblerId => _gamblerId.Value;
         public int Card => _turned.Value;
@@ -119,6 +161,9 @@ namespace EscapeWithYourFriends.Casino
         /// <summary>The spin this peer's screen is playing or last played. Local.</summary>
         public SlotResult Played { get; private set; }
 
+        /// <summary>The jackpot that came with <see cref="Played"/>, 0 if none. Local.</summary>
+        public int PlayedJackpot { get; private set; }
+
         /// <summary>The symbol drawn in each cell right now, what a camera would see.</summary>
         public int[] ShowingGrid() => _shown;
 
@@ -126,6 +171,33 @@ namespace EscapeWithYourFriends.Casino
         {
             base.OnStartServer();
             _rng = new System.Random();
+
+            // Statics outlive a session; a fresh server starts a fresh pot.
+            if (Served.Count == 0)
+            {
+                _pot = SlotMath.JackpotSeed * 100L;
+                _owed = 0;
+            }
+
+            Served.Add(this);
+            Publish();
+        }
+
+        public override void OnStopServer()
+        {
+            base.OnStopServer();
+            Served.Remove(this);
+
+            // Despawned mid-spin: Settle will never take its drop off the ticker.
+            _owed -= _owing;
+            _owing = 0;
+            Publish();
+        }
+
+        static void Publish()
+        {
+            int shown = (int)(_pot / 100) + _owed;
+            foreach (SlotMachine machine in Served) machine._jackpot.Value = shown;
         }
 
         /// <summary>A player who walks in late sees the last spin's final picture, not an empty cabinet.</summary>
@@ -137,7 +209,8 @@ namespace EscapeWithYourFriends.Casino
             // Mid-spin, the last seed is the spin still running: drawing its end would give it away.
             if (_lastBet.Value <= 0 || _busy.Value) return;
 
-            Played = SlotMath.Spin(_kind, _lastSeed.Value, _lastBet.Value);
+            Played = SlotMath.Spin(_kind, _lastSeed.Value, _lastBet.Value, _lastBuy.Value);
+            PlayedJackpot = _lastJackpot.Value;
             _settled = Played.Frames[Played.Frames.Count - 1];
             DrawStill(_settled);
         }
@@ -160,11 +233,12 @@ namespace EscapeWithYourFriends.Casino
 
         // ---------------------------------------------------------------- the buttons
 
-        /// <summary>Stakes the bet and spins. Returns the chips staked, 0 if refused.</summary>
+        /// <summary>Stakes the bet, or the feature's price when <paramref name="buy"/>, and spins. Returns the chips staked, 0 if refused.</summary>
         [Server]
-        public int ServerSpin(NetworkObject actor)
+        public int ServerSpin(NetworkObject actor, bool buy = false)
         {
             if (_busy.Value || actor == null) return 0;
+            if (buy && BuyCost <= 0) return 0;
 
             // The winner gets a moment with the card before somebody else's spin takes it away.
             if (_gamble.Value > 0 && actor != _gambler && _gambler != null && Time.time < _gambleUntil) return 0;
@@ -173,49 +247,77 @@ namespace EscapeWithYourFriends.Casino
             if (wallet == null) return 0;
 
             int bet = Bet;
-            if (wallet.ServerStakeChips(bet) <= 0) return 0;
+            int stake = buy ? BuyCost : bet;
+            if (wallet.ServerStakeChips(stake) <= 0) return 0;
 
-            World.RunSummary.ServerStaked(bet);
+            World.RunSummary.ServerStaked(stake);
 
             // Spinning again is collecting: whatever the card was offering is simply kept.
             EndOffer();
             _turned.Value = 0;
 
             int seed = _rng.Next();
-            SlotResult result = SlotMath.Spin(_kind, seed, bet);
+            SlotResult result = SlotMath.Spin(_kind, seed, bet, buy);
             LastResult = result;
+
+            _pot += (long)stake * SlotMath.JackpotPct;
+
+            int jackpot = 0;
+            // By the stake, so a bonus buy has its price's worth of chances.
+            if (ForceJackpot || SlotMath.JackpotHit(seed, stake))
+            {
+                ForceJackpot = false;
+                jackpot = (int)(_pot / 100);
+                _pot = SlotMath.JackpotSeed * 100L;
+                _owed += jackpot;
+                _owing = jackpot;
+            }
+
+            Publish();
 
             _busy.Value = true;
             _lastSeed.Value = seed;
             _lastBet.Value = bet;
+            _lastBuy.Value = buy;
+            _lastJackpot.Value = jackpot;
 
-            RpcPlay(seed, bet);
-            Play(result);
+            RpcPlay(seed, bet, buy, jackpot);
+            Play(result, jackpot);
 
-            StartCoroutine(Settle(actor, wallet, result));
+            StartCoroutine(Settle(actor, wallet, result, jackpot));
 
-            Debug.Log($"[Slots] {actor.name} spun {Title} for {bet}: seed {seed}, "
+            Debug.Log($"[Slots] {actor.name} {(buy ? "bought the feature on" : "spun")} {Title} for {stake}: seed {seed}, "
                       + $"{result.Frames.Count} picture(s), {result.Seconds:0.0}s, wins {result.Win}"
-                      + (result.FreeSpins > 0 ? $" with {result.FreeSpins} free spins." : "."));
+                      + (result.FreeSpins > 0 ? $" with {result.FreeSpins} free spins" : "")
+                      + (jackpot > 0 ? $" and the JACKPOT of {jackpot}." : "."));
 
-            return bet;
+            return stake;
         }
 
-        IEnumerator Settle(NetworkObject actor, Wallet wallet, SlotResult result)
+        IEnumerator Settle(NetworkObject actor, Wallet wallet, SlotResult result, int jackpot)
         {
             yield return new WaitForSeconds(result.Seconds + 0.2f);
 
-            _lastWin.Value = result.Win;
+            int win = result.Win + jackpot;
+            _lastWin.Value = win;
+
+            // Paid or forfeited, the dropped pot is off the ticker now.
+            if (jackpot > 0)
+            {
+                _owed -= _owing;
+                _owing = 0;
+                Publish();
+            }
 
             if (actor != null && wallet != null)
             {
-                if (result.Win > 0)
+                if (win > 0)
                 {
-                    wallet.ServerPayChips(result.Win);
+                    wallet.ServerPayChips(win);
 
                     if (_kind == SlotKind.Sevens)
                     {
-                        _gamble.Value = result.Win;
+                        _gamble.Value = win;
                         _gambler = actor;
                         _gamblerId.Value = actor.ObjectId;
                         _gambleUntil = Time.time + GambleHold;
@@ -302,7 +404,7 @@ namespace EscapeWithYourFriends.Casino
         // ---------------------------------------------------------------- the screen
 
         [ObserversRpc(ExcludeServer = true)]
-        void RpcPlay(int seed, int bet) => Play(SlotMath.Spin(_kind, seed, bet));
+        void RpcPlay(int seed, int bet, bool buy, int jackpot) => Play(SlotMath.Spin(_kind, seed, bet, buy), jackpot);
 
         [ObserversRpc(ExcludeServer = true)]
         void RpcCard(bool red) => ShowCard(red);
@@ -313,9 +415,10 @@ namespace EscapeWithYourFriends.Casino
             Audio.Sfx.Play(Audio.Sound.Click, transform.position);
         }
 
-        void Play(SlotResult result)
+        void Play(SlotResult result, int jackpot)
         {
             Played = result;
+            PlayedJackpot = jackpot;
             _playing = result;
             _frame = 0;
             _frameStarted = Time.time;
@@ -373,7 +476,7 @@ namespace EscapeWithYourFriends.Casino
             _playing = null;
             DrawStill(frame);
 
-            BigWin.Celebrate(transform.TransformPoint(0f, 1.5f, 0.3f), transform.position.y, Played.Win, Played.Bet);
+            BigWin.Celebrate(transform.TransformPoint(0f, 1.5f, 0.3f), transform.position.y, Played.Win, Played.Bet, PlayedJackpot);
         }
 
         /// <summary>How long a drop's reels spin before the last one stops.</summary>

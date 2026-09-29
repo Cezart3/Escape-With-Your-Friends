@@ -21,6 +21,9 @@ namespace EscapeWithYourFriends.Casino
     /// 2. The cabinets in the world. Every press takes the stake, pays exactly what the seed says,
     ///    and leaves the screen on the spin's last picture. Money never moves; the ledger balances.
     /// 3. The double-up card, and everything that is refused.
+    /// 4. The bonus buy and the shared jackpot: a buy always triggers and returns what the tuning
+    ///    said; every stake feeds one pot that every cabinet shows; a drop pays the pot, resets it
+    ///    and throws the JACKPOT banner.
     /// </summary>
     public class SlotTest : MonoBehaviour
     {
@@ -38,6 +41,13 @@ namespace EscapeWithYourFriends.Casino
             (SlotKind.Sevens, 1909820),
             (SlotKind.Volcano, 2055330),
             (SlotKind.Reef, 2131545),
+        };
+
+        /// <summary>The same seeds bought: what each feature won over <see cref="GoldenSpins"/> buys, under .NET.</summary>
+        static readonly (SlotKind Kind, long Won)[] GoldenBuys =
+        {
+            (SlotKind.Volcano, 264126835),
+            (SlotKind.Reef, 226769845),
         };
 
         /// <summary>Spins per game for the return-to-player check.</summary>
@@ -111,7 +121,8 @@ namespace EscapeWithYourFriends.Casino
             Wiring(machines);
 
             wallet.ServerSetBalance(500);
-            wallet.ServerSetChips(5000);
+            // Enough for a bonus buy at 20 after everything the gambling may lose.
+            wallet.ServerSetChips(20000);
             Wallet.ResetLedger();
             yield return new WaitForSeconds(0.3f);
 
@@ -130,6 +141,11 @@ namespace EscapeWithYourFriends.Casino
             SlotMachine sevens = machines.First(m => m.Kind == SlotKind.Sevens);
             player.ServerTeleport(sevens.transform.position + sevens.transform.forward * 1f, 0f);
             yield return Gambling(sevens, wallet, actor);
+
+            SlotMachine volcano = machines.First(m => m.Kind == SlotKind.Volcano);
+            player.ServerTeleport(volcano.transform.position + volcano.transform.forward * 1f, 0f);
+            yield return Buying(volcano, wallet, actor);
+            yield return Jackpot(volcano, machines, wallet, actor);
 
             int after = present.Sum(w => w.Balance);
             int joined = FindObjectsByType<Wallet>(FindObjectsSortMode.None).Except(present).Sum(w => w.Balance);
@@ -211,6 +227,21 @@ namespace EscapeWithYourFriends.Casino
                   BigWin.Tier(900, 100) == 0 && BigWin.Tier(1000, 100) == 1 && BigWin.Tier(2500, 100) == 2
                   && BigWin.Tier(5000, 100) == 3 && BigWin.Tier(100, 0) == 0);
 
+            Check("a jackpot outranks every tier and says so",
+                  BigWin.Name(BigWin.JackpotTier) == "JACKPOT" && BigWin.Seconds(BigWin.JackpotTier) > BigWin.Seconds(3));
+
+            // The drop rate is the bet over the odds: one in 1,500 at 100, ten times rarer at 10.
+            int hits100 = 0, hits10 = 0;
+            for (int i = 0; i < 300000; i++)
+            {
+                if (SlotMath.JackpotHit(i * 7919 + 13, 100)) hits100++;
+                if (SlotMath.JackpotHit(i * 7919 + 13, 10)) hits10++;
+            }
+
+            Check($"the jackpot drops about 1 in {SlotMath.JackpotOdds / 100} at 100 ({hits100} in 300000) "
+                  + $"and about ten times rarer at 10 ({hits10})",
+                  hits100 > 160 && hits100 < 240 && hits10 > 8 && hits10 < 35);
+
             int[] counted = Enumerable.Range(0, 11).Select(i => BigWin.Counted(3600, i * 0.35f, 3.5f)).ToArray();
             Check($"the banner counts up from 0 to the win without going back ({string.Join(" ", counted)})",
                   counted[0] == 0 && counted[10] == 3600 && counted.Zip(counted.Skip(1), (a, b) => a <= b).All(x => x));
@@ -252,6 +283,28 @@ namespace EscapeWithYourFriends.Casino
                 Check($"{kind}: {GoldenSpins} fixed seeds win {total}, as they did under .NET ({won})", total == won);
                 yield return null;
             }
+
+            foreach ((SlotKind kind, long won) in GoldenBuys)
+            {
+                long total = 0;
+                bool triggered = true;
+
+                for (int i = 0; i < GoldenSpins; i++)
+                {
+                    if (i % 2000 == 1999) yield return null;
+
+                    SlotResult r = SlotMath.Spin(kind, i * 7919 + 13, 100, buy: true);
+                    total += r.Win;
+                    if (r.FreeSpins <= 0 || !r.Bought) triggered = false;
+                }
+
+                double rtp = (double)total / GoldenSpins / 100 / SlotMath.BuyPrice(kind);
+                Check($"{kind}: every bought spin triggers the feature", triggered);
+                Check($"{kind}: {GoldenSpins} buys win {total}, as under .NET ({won}), a return of {rtp:P1} "
+                      + $"at {SlotMath.BuyPrice(kind)}x", total == won && rtp > 0.93 && rtp < 0.99);
+            }
+
+            Check("Sevens has nothing to buy", SlotMath.BuyPrice(SlotKind.Sevens) == 0);
         }
 
         IEnumerator Rtp()
@@ -304,7 +357,7 @@ namespace EscapeWithYourFriends.Casino
             foreach (SlotMachine machine in machines)
             {
                 SlotButton[] buttons = machine.GetComponentsInChildren<SlotButton>();
-                int wanted = machine.Kind == SlotKind.Sevens ? 4 : 2;
+                int wanted = machine.Kind == SlotKind.Sevens ? 4 : 3;
 
                 Check($"{machine.Title} has {wanted} buttons ({buttons.Length}), each its own NetworkObject",
                       buttons.Length == wanted && buttons.Select(b => b.NetworkObject).Distinct().Count() == wanted
@@ -341,7 +394,9 @@ namespace EscapeWithYourFriends.Casino
                 float giveUp = Time.time + result.Seconds + 10f;
                 while ((machine.Busy || machine.Animating) && Time.time < giveUp) yield return null;
 
-                if (wallet.Chips != before - result.Bet + result.Win)
+                // A jackpot can drop on any spin, one in several thousand at this stake.
+                int jackpot = machine.LastJackpot;
+                if (wallet.Chips != before - result.Bet + result.Win + jackpot)
                 {
                     paid = false;
                     Debug.LogError($"[SlotTest] {machine.Title} seed {result.Seed}: paid "
@@ -349,7 +404,7 @@ namespace EscapeWithYourFriends.Casino
                 }
 
                 if (SlotMath.Spin(machine.Kind, machine.LastSeed, machine.LastBet).Win != result.Win
-                    || machine.LastWin != result.Win)
+                    || machine.LastWin != result.Win + jackpot)
                     replayed = false;
 
                 if (!machine.ShowingGrid().SequenceEqual(result.Frames[result.Frames.Count - 1].Grid))
@@ -367,6 +422,78 @@ namespace EscapeWithYourFriends.Casino
             string line = UI.SlotBoard.Line(machine, wallet.Chips, -1);
             Check($"{machine.Title}: the board reads \"{title}\" over \"{line}\"",
                   title == machine.Title.ToUpperInvariant() && line.Contains($"bet {machine.Bet}"));
+        }
+
+        IEnumerator Buying(SlotMachine volcano, Wallet wallet, NetworkObject actor)
+        {
+            SlotButton buy = Button(volcano, SlotAction.Buy);
+            int before = wallet.Chips;
+            int cost = volcano.BuyCost;
+
+            Check($"the buy button offers the feature for {cost} ({SlotMath.BuyPrice(volcano.Kind)} x {volcano.Bet})",
+                  cost == volcano.Bet * SlotMath.Volcano.BuyPrice && buy.ServerCanInteract(actor));
+
+            buy.ServerInteract(actor);
+            SlotResult result = volcano.LastResult;
+
+            Check($"a buy takes the price and starts the feature ({before - wallet.Chips} taken, {result?.FreeSpins} free spins)",
+                  wallet.Chips == before - cost && volcano.Busy && result != null && result.Bought && result.FreeSpins > 0);
+            if (result == null || !volcano.Busy) yield break;
+
+            float giveUp = Time.time + result.Seconds + 10f;
+            while ((volcano.Busy || volcano.Animating) && Time.time < giveUp) yield return null;
+
+            Check($"and pays what its seed says ({result.Win}), replayed with the buy",
+                  wallet.Chips == before - cost + result.Win + volcano.LastJackpot
+                  && SlotMath.Spin(volcano.Kind, volcano.LastSeed, volcano.LastBet, buy: true).Win == result.Win);
+        }
+
+        IEnumerator Jackpot(SlotMachine volcano, SlotMachine[] machines, Wallet wallet, NetworkObject actor)
+        {
+            SlotButton spin = Button(volcano, SlotAction.Spin);
+
+            Check($"every cabinet shows the same jackpot ({string.Join(" ", machines.Select(m => m.Jackpot))})",
+                  machines.All(m => m.Jackpot == volcano.Jackpot) && volcano.Jackpot >= SlotMath.JackpotSeed);
+
+            // Feed it: one ordinary spin puts its share of the stake in the pot.
+            long pot = SlotMachine.ServerPot;
+            spin.ServerInteract(actor);
+            bool dropped = volcano.LastJackpot > 0;
+            Check($"a stake of {volcano.Bet} feeds the pot {volcano.Bet * SlotMath.JackpotPct} hundredths "
+                  + $"({pot} to {SlotMachine.ServerPot})",
+                  dropped || SlotMachine.ServerPot == pot + volcano.Bet * SlotMath.JackpotPct);
+
+            float giveUp = Time.time + 60f;
+            while ((volcano.Busy || volcano.Animating) && Time.time < giveUp) yield return null;
+
+            // Now drop it for certain.
+            int before = wallet.Chips;
+            int celebrated = BigWin.Celebrated;
+            int expected = (int)((SlotMachine.ServerPot + volcano.Bet * SlotMath.JackpotPct) / 100);
+
+            SlotMachine.ForceJackpot = true;
+            spin.ServerInteract(actor);
+            SlotResult result = volcano.LastResult;
+            yield return null;
+
+            Check($"a drop pays the whole pot ({volcano.LastJackpot}, expected {expected}) and resets it, "
+                  + $"but the ticker holds until the reels stop ({volcano.Jackpot})",
+                  volcano.LastJackpot == expected && SlotMachine.ServerPot == SlotMath.JackpotSeed * 100L
+                  && volcano.Jackpot >= expected && !SlotMachine.ForceJackpot);
+
+            giveUp = Time.time + result.Seconds + 10f;
+            while ((volcano.Busy || volcano.Animating) && Time.time < giveUp) yield return null;
+            yield return new WaitForSeconds(0.3f);
+
+            Check($"the winner is paid the spin and the jackpot ({wallet.Chips - before + result.Bet} = {result.Win} + {expected})",
+                  wallet.Chips == before - result.Bet + result.Win + expected && volcano.LastWin == result.Win + expected);
+            Check($"then every cabinet shows the fresh pot ({string.Join(" ", machines.Select(m => m.Jackpot))})",
+                  machines.All(m => m.Jackpot == SlotMath.JackpotSeed));
+            Check($"and the host threw the JACKPOT banner (tier {BigWin.Latest.Tier}, {BigWin.Latest.Win})",
+                  BigWin.Celebrated > celebrated && BigWin.Latest.Tier == BigWin.JackpotTier
+                  && BigWin.Latest.Win == result.Win + expected);
+            Check($"the board's ticker reads \"{UI.SlotBoard.JackpotLine(volcano.Jackpot)}\"",
+                  UI.SlotBoard.JackpotLine(volcano.Jackpot).StartsWith("JACKPOT"));
         }
 
         IEnumerator Gambling(SlotMachine sevens, Wallet wallet, NetworkObject actor)
@@ -490,7 +617,8 @@ namespace EscapeWithYourFriends.Casino
                 if (Time.time >= giveUp) break;
 
                 SlotResult played = sevens.Played;
-                bool agrees = played != null && played.Seed == sevens.LastSeed && played.Win == sevens.LastWin
+                bool agrees = played != null && played.Seed == sevens.LastSeed
+                              && played.Win + sevens.PlayedJackpot == sevens.LastWin
                               && sevens.ShowingGrid().SequenceEqual(played.Frames[played.Frames.Count - 1].Grid);
 
                 Check($"spin {seen + 1}: the host paid {sevens.LastWin}, this client replayed "
@@ -499,6 +627,7 @@ namespace EscapeWithYourFriends.Casino
             }
 
             Check($"the client watched {seen} spin(s)", seen >= Watched);
+            Check($"and sees the shared jackpot ({sevens.Jackpot})", sevens.Jackpot >= SlotMath.JackpotSeed);
             Report();
         }
 

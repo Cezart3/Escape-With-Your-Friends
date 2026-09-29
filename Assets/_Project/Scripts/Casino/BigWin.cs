@@ -58,11 +58,15 @@ namespace EscapeWithYourFriends.Casino
             return x >= 50 ? 3 : x >= 25 ? 2 : x >= 10 ? 1 : 0;
         }
 
+        /// <summary>The shared jackpot dropping: above every stake-multiple tier, whatever it paid.</summary>
+        public const int JackpotTier = 4;
+
         public static string Name(int tier) => tier switch
         {
             1 => "BIG WIN",
             2 => "MEGA WIN",
             3 => "EPIC WIN",
+            JackpotTier => "JACKPOT",
             _ => "",
         };
 
@@ -72,6 +76,7 @@ namespace EscapeWithYourFriends.Casino
             1 => 2.5f,
             2 => 3.5f,
             3 => 5f,
+            JackpotTier => 7f,
             _ => 0f,
         };
 
@@ -90,13 +95,15 @@ namespace EscapeWithYourFriends.Casino
         /// <summary>
         /// A win of <paramref name="win"/> on <paramref name="bet"/> landed at <paramref name="at"/>.
         /// Below the big tier this is the ordinary win chime; above it, the lot. Coins fall back to
-        /// <paramref name="floor"/>.
+        /// <paramref name="floor"/>. A <paramref name="jackpot"/> is added to the win and makes it
+        /// the jackpot tier.
         /// </summary>
-        public static void Celebrate(Vector3 at, float floor, int win, int bet)
+        public static void Celebrate(Vector3 at, float floor, int win, int bet, int jackpot = 0)
         {
+            win += Mathf.Max(0, jackpot);
             if (win <= 0) return;
 
-            int tier = Tier(win, bet);
+            int tier = jackpot > 0 ? JackpotTier : Tier(win, bet);
             if (tier == 0)
             {
                 Audio.Sfx.Play(Audio.Sound.Win, at);
@@ -117,7 +124,7 @@ namespace EscapeWithYourFriends.Casino
                 _instance = go.AddComponent<BigWin>();
             }
 
-            _instance.Burst(at, floor, tier * PerTier);
+            _instance.Burst(at, floor, Mathf.Min(Pool, tier * PerTier));
         }
 
         void Burst(Vector3 at, float floor, int count)

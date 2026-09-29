@@ -7633,6 +7633,45 @@ it with the box. A hole nothing moved into keeps its grey box; a model with no s
 dropped and the greybox kept, because a whole plane drawn over its own holes reads as finished. The wheels and every collider are the greybox's. `PlaneTurns` turns the model if it is found
 facing backwards. The loose parts lying on the island (`PlanePartBuilder`) are still boxes.
 
+
+## Shared jackpot and bonus buy (#174)
+
+**One pot for the floor.** `SlotMachine` keeps the jackpot in server statics: `_pot` in hundredths
+of a chip (so a 10-chip stake still adds to it) and `_owed`, the pots already dropped whose winners'
+screens are still playing. Every stake at any cabinet adds `SlotMath.JackpotPct` (1%) to it. Each
+cabinet has a `_jackpot` SyncVar that `Publish()` writes on every served cabinet at once, so all of
+them show the same number, `pot + owed`. Because a dropped pot stays in `owed` until `Settle`, the
+ticker does not fall before the reels stop, and it can't give a spin away. Statics outlive a
+session, so the first cabinet to start on a fresh server resets them. A cabinet despawned mid-spin
+takes its own drop (`_owing`) off the ticker in `OnStopServer`.
+
+**The hit is the seed's.** `SlotMath.JackpotHit(seed, stake)` runs its own `SlotRng`, salted, and
+returns true with odds `stake / JackpotOdds` (1 in 1,500 at 100; a Volcano buy at 100 is 13,700,
+about 1 in 11). The reel sequence is untouched, so
+every golden stays valid. The server sends the amount along with the seed in `RpcPlay`, and a client
+never computes it. The chance is proportional to the stake, so the pot is worth the same fraction of
+every stake: the 1% contribution plus the 500-chip reseed (500 / 150,000 of what is staked) adds
+about 1.3% to the return, on top of each game's base RTP.
+
+**The show** reuses `BigWin`. `JackpotTier` (4) sits above epic, reads JACKPOT, counts up for 7 s
+and throws the whole coin pool. `WinBanner` gets a fifth colour. `SlotBoard` shows a third line,
+`JACKPOT n`, that rolls up to the replicated value and snaps down when a pot drops.
+
+**Bonus buy.** `SlotMath.Spin(kind, seed, bet, buy)` rolls the first grid as usual, then `Force`
+turns random cells into volcanoes (4) or chests (3) until the feature triggers. The extra draws
+happen only when `buy` is set, so an ordinary seed plays exactly as before. Prices come from
+simulating 300k buys under .NET: Volcano 137 bets (96.4% on the harness seeds), Reef 119 (95.3%).
+Big-win tiers still count against the base bet, as real cabinets do. `_lastBuy` replicates so a
+late joiner replays the right spin. The button (`SlotAction.Buy`) is appended to the enum so
+serialised values keep their meaning. It uses the card button's red, so it adds no material to
+the scene.
+
+**Harness** (`-slotTest`): the drop rate at 100 and at 10; buy goldens for 20k seeds plus
+"every buy triggers"; the buy button's price and payout in the world; the pot growing by exactly
+the stake share; a forced drop (`SlotMachine.ForceJackpot`) that pays the pot, resets it, holds
+the ticker until settle and throws a tier-4 banner; every cabinet showing the same pot; and the
+client seeing it. Volcano and Reef now have three buttons.
+
 ---
 
 ## The look, from a screenshot: shade, canopies, the red bush, the lost sky

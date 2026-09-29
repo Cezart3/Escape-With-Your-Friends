@@ -16,6 +16,9 @@ namespace EscapeWithYourFriends.Casino
         /// <summary>Double-up card, Sevens only.</summary>
         Red,
         Black,
+
+        /// <summary>Buys the free spins outright, Volcano and Reef only.</summary>
+        Buy,
     }
 
     /// <summary>
@@ -54,6 +57,10 @@ namespace EscapeWithYourFriends.Casino
                         return wallet.Chips >= Machine.Bet ? $"Spin {Machine.Title} for {Machine.Bet} chips" : string.Empty;
                     case SlotAction.Bet:
                         return $"Bet {Machine.NextBet} (now {Machine.Bet})";
+                    case SlotAction.Buy:
+                        return Machine.BuyCost > 0 && wallet.Chips >= Machine.BuyCost
+                            ? $"Buy free spins for {Machine.BuyCost} chips"
+                            : string.Empty;
                     default:
                         if (Machine.Gamble <= 0 || local.ObjectId != Machine.GamblerId) return string.Empty;
                         return $"Double {Machine.Gamble} on {(_action == SlotAction.Red ? "red" : "black")}";
@@ -72,6 +79,9 @@ namespace EscapeWithYourFriends.Casino
                     return wallet != null && wallet.Chips >= Machine.Bet;
                 case SlotAction.Bet:
                     return true;
+                case SlotAction.Buy:
+                    Wallet buyer = actor.GetComponent<Wallet>();
+                    return Machine.BuyCost > 0 && buyer != null && buyer.Chips >= Machine.BuyCost;
                 default:
                     return Machine.CanGamble(actor);
             }
@@ -87,6 +97,7 @@ namespace EscapeWithYourFriends.Casino
                 case SlotAction.Bet: Machine.ServerNextBet(); break;
                 case SlotAction.Red: Machine.ServerGamble(actor, red: true); break;
                 case SlotAction.Black: Machine.ServerGamble(actor, red: false); break;
+                case SlotAction.Buy: Machine.ServerSpin(actor, buy: true); break;
             }
         }
 
