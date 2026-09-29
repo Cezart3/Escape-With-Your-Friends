@@ -166,6 +166,16 @@ namespace EscapeWithYourFriends.AI
 
             Check($"the zones populate themselves ({spawner.SpawnedTotal} spawned)", spawner.SpawnedTotal > 0);
 
+            // #214: the NavMesh covers the wreck's deck, and a boar started up there.
+            Terrain land = Terrain.activeTerrain;
+            string[] aloft = FindObjectsByType<Animal>(FindObjectsSortMode.None)
+                .Where(a => land != null
+                            && a.transform.position.y - (land.SampleHeight(a.transform.position) + land.GetPosition().y) > 1f)
+                .Select(a => $"{a.name} at {a.transform.position}")
+                .ToArray();
+            Check($"every animal starts on the island itself, none on a deck or a roof ({string.Join(", ", aloft)})",
+                  aloft.Length == 0);
+
             if (spawner.SpawnedTotal == 0)
             {
                 Debug.LogError("[AnimalTest] Nothing was ever spawned, so no behaviour can be measured. "
