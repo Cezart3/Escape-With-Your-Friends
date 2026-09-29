@@ -8091,6 +8091,24 @@ collider. It then walks the player into one isolated tree of each kind, from 2.6
 ground, and checks three things for each tree: the player never reaches the tree's spot, stops
 within a hand of contact, and can back out a metre. Results: 56/0 on island, 47/0 on island2.
 
+## #201: a sharp image
+
+The Low quality tier rendered at 0.8 scale and stretched the result back up bilinearly, so on the
+machines that pick Low the whole image was soft. The bot windows made it look worse still: they are
+1280x720 and Windows scales them again, which is not what a player sees, so blur in a bot screenshot
+is not evidence about the shipped game.
+
+Every tier now renders at scale 1.0. Low pays for it in shadows instead: the map drops from 1024 to
+512 and the distance from 45 m to 35 m, still one cascade. `RenderTuning.Apply` is where the numbers
+live and `ProjectSetup` seeds the same scale for a fresh checkout. Re-run `RenderTuning.Apply` in
+batchmode to rewrite the URP assets; nothing is edited by hand. There is no render-scale slider: the
+Settings screen only offers the quality tier, and a second knob for the same lever was not worth it
+while every tier is at 1.0.
+
+`-qualityTest` (any scene, host) walks every quality level, reads its URP asset and checks that its
+render scale is at least 1, or that it upscales with FSR when it is below 1. It cannot judge how the
+image looks; that is a playtest question.
+
 ---
 
 ## Data-driven content
