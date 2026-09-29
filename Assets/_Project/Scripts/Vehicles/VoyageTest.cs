@@ -125,6 +125,10 @@ namespace EscapeWithYourFriends.Vehicles
             yield return Cross("Island", "Island2", SecondIslandSize, motor);
             yield return Cross("Island2", "Island", FirstIslandSize, motor);
 
+            // Two scene loads later the shooter's tracer pool is still there to draw with.
+            var tracers = motor.GetComponent<Combat.TracerEffect>();
+            Check("the tracer pool survives the crossings", tracers == null || tracers.PoolAlive);
+
             Report();
         }
 
