@@ -6,6 +6,7 @@ using EscapeWithYourFriends.Data;
 using EscapeWithYourFriends.Economy;
 using EscapeWithYourFriends.Items;
 using EscapeWithYourFriends.Net;
+using EscapeWithYourFriends.Player;
 using EscapeWithYourFriends.Vehicles;
 using EscapeWithYourFriends.World;
 using FishNet;
@@ -39,6 +40,10 @@ namespace EscapeWithYourFriends.Core
         public int money;
         public int chips;
         public List<SavedSlot> bag = new();
+
+        /// <summary>Weapon skins owned and worn, by <see cref="WeaponSkin.Id"/>. #209.</summary>
+        public List<string> skins = new();
+        public List<string> wornSkins = new();
         public List<string> mods = new();
     }
 
@@ -236,6 +241,7 @@ namespace EscapeWithYourFriends.Core
                 wallet.ServerSetChips(saved.chips);
             }
 
+            body.GetComponent<SkinLocker>()?.ServerRestore(saved.skins, saved.wornSkins);
             var mods = body.GetComponent<Economy.WeaponMods>();
             if (mods != null) mods.ServerRestore(saved.mods);
 
@@ -336,6 +342,12 @@ namespace EscapeWithYourFriends.Core
                 saved.chips = wallet.Chips;
             }
 
+            var locker = body.GetComponent<SkinLocker>();
+            if (locker != null)
+            {
+                saved.skins = new List<string>(locker.Owned);
+                saved.wornSkins = new List<string>(locker.WornIds);
+            }
             var mods = body.GetComponent<Economy.WeaponMods>();
             if (mods != null) saved.mods = mods.Saved();
 
@@ -386,6 +398,8 @@ namespace EscapeWithYourFriends.Core
                     if (player == null) continue;
                     player.bag ??= new List<SavedSlot>();
                     player.mods ??= new List<string>();
+                    player.skins ??= new List<string>();
+                    player.wornSkins ??= new List<string>();
                 }
 
                 return file;

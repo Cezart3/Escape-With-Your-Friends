@@ -1,6 +1,7 @@
 using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.Data;
 using EscapeWithYourFriends.Items;
+using EscapeWithYourFriends.Player;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
 using UnityEngine;
@@ -159,6 +160,10 @@ namespace EscapeWithYourFriends.Economy
                 return 0;
             }
 
+            // A skin is sold like anything else and never reaches the bag (#209).
+            if (SkinCatalog.ForItem(line.Item, out WeaponSkin skin))
+                return ServerBuySkin(bag, wallet, skin, line.Price, out why);
+
             int stock = _remaining[offer];
             int want = Mathf.Max(0, count);
 
@@ -209,6 +214,34 @@ namespace EscapeWithYourFriends.Economy
                       + (line.Unlimited ? "." : $"; {_remaining[offer]} left on the shelf."));
 
             return sold;
+        }
+
+        /// <summary>
+        /// A skin unlocks and is worn at once. Owning it already just puts it back on, free: charging
+        /// twice for a colour you have would make switching back a punishment.
+        /// </summary>
+        [Server]
+        int ServerBuySkin(Inventory bag, Wallet wallet, WeaponSkin skin, int price, out string why)
+        {
+            why = null;
+
+            var locker = bag.GetComponent<SkinLocker>();
+            if (locker == null)
+            {
+                why = "you have nowhere to keep it";
+                return 0;
+            }
+
+            if (!locker.Owns(skin.Id) && !wallet.ServerTrySpend(price, $"bought the {skin.Label} skin"))
+            {
+                why = "you cannot afford it";
+                return 0;
+            }
+
+            locker.ServerUnlock(skin);
+            Debug.Log($"[ShopCounter] {bag.name} wears the {skin.Label} skin on the {skin.WeaponId}.");
+
+            return 1;
         }
 
         // ---------------------------------------------------------------- selling

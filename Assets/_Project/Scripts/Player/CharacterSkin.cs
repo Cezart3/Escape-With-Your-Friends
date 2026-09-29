@@ -98,6 +98,7 @@ namespace EscapeWithYourFriends.Player
         NetworkObject _network;
         Health _health;
         Inventory _inventory;
+        SkinLocker _skins;
 
         // The selected weapon, in the right hand (see Hold).
         GameObject _held;
@@ -121,6 +122,10 @@ namespace EscapeWithYourFriends.Player
         GameObject _heldPrefab;
         Transform _heldHand;
         Renderer[] _heldRenderers = Array.Empty<Renderer>();
+        string _heldWeaponId;
+        static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        static readonly int LegacyColorId = Shader.PropertyToID("_Color");
+        MaterialPropertyBlock _paint;
 
         /// <summary>What the hand holds, as the controller's Armed parameter: 0 nothing, 1 a gun, 2 a blade.</summary>
         int _armed;
@@ -173,7 +178,7 @@ namespace EscapeWithYourFriends.Player
         {
             bool headless = SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null;
 
-            if (!Wanted(headless, CommandLine.HasFlag("-skinTest")) || _bodies.Length == 0)
+            if (!Wanted(headless, CommandLine.HasFlag("-skinTest") || CommandLine.HasFlag("-skinShopTest")) || _bodies.Length == 0)
             {
                 foreach (Body body in _bodies)
                     if (body.Root != null) Destroy(body.Root);
@@ -203,10 +208,12 @@ namespace EscapeWithYourFriends.Player
             TryGetComponent(out _network);
             TryGetComponent(out _health);
             TryGetComponent(out _inventory);
+            TryGetComponent(out _skins);
 
             if (_weapon != null) { _weapon.Attacked += OnAttacked; _weapon.Reloading += OnReloading; }
             if (_identity != null) _identity.IdentityChanged += OnIdentity;
             if (_inventory != null) _inventory.Changed += Hold;
+            if (_skins != null) _skins.Changed += Tint;
 
             Show(_identity != null ? _identity.ColorIndex % _bodies.Length : 0);
             _wasAt = transform.position;
@@ -217,6 +224,7 @@ namespace EscapeWithYourFriends.Player
             if (_weapon != null) { _weapon.Attacked -= OnAttacked; _weapon.Reloading -= OnReloading; }
             if (_identity != null) _identity.IdentityChanged -= OnIdentity;
             if (_inventory != null) _inventory.Changed -= Hold;
+            if (_skins != null) _skins.Changed -= Tint;
             if (_viewRoot != null) Destroy(_viewRoot.gameObject);
         }
 
@@ -290,7 +298,8 @@ namespace EscapeWithYourFriends.Player
             bool melee = weapon != null && weapon.Kind == WeaponKind.Melee;
             _armed = prefab == null || hand == null || weapon == null ? 0 : melee ? 2 : 1;
 
-            if (prefab == _heldPrefab && hand == _heldHand) return;
+            _heldWeaponId = weapon != null ? weapon.Id : null;
+            if (prefab == _heldPrefab && hand == _heldHand) { Tint(); return; }
 
             if (_held != null) Destroy(_held);
             if (_view != null) Destroy(_view);
@@ -318,6 +327,7 @@ namespace EscapeWithYourFriends.Player
             if (weapon != null && !melee) _muzzle = Tip(_held);
 
             ViewModel(prefab, id, weapon, melee);
+            Tint();
 
             // Now, not at LateUpdate: otherwise the owner sees their own weapon for one frame.
             _hidden = null;
@@ -325,6 +335,30 @@ namespace EscapeWithYourFriends.Player
         }
 
         /// <summary>A copy of an item's model to hold: nothing on it may collide or fall.</summary>
+        /// <summary>
+        /// Paints the weapon in the hand and its first-person copy with the skin this weapon wears (#209),
+        /// or clears the paint when it wears none. A property block, so no material is made or edited.
+        /// </summary>
+        void Tint()
+        {
+            Color? tint = _skins != null ? _skins.TintFor(_heldWeaponId) : null;
+
+            _paint ??= new MaterialPropertyBlock();
+            _paint.Clear();
+            if (tint is Color colour)
+            {
+                _paint.SetColor(BaseColorId, colour);
+                _paint.SetColor(LegacyColorId, colour);
+            }
+
+            foreach (Renderer renderer in _heldRenderers)
+                if (renderer != null) renderer.SetPropertyBlock(tint.HasValue ? _paint : null);
+
+            if (_view != null)
+                foreach (Renderer renderer in _view.GetComponentsInChildren<Renderer>(true))
+                    renderer.SetPropertyBlock(tint.HasValue ? _paint : null);
+        }
+
         static GameObject Model(GameObject prefab, string name)
         {
             GameObject model = Instantiate(prefab);

@@ -8301,6 +8301,32 @@ leaves are not culled; the camp just stops topping up.
 
 `-nativeTest` checks `ForParty(6, 4) == 6`, `ForParty(6, 1) < 6` and `ForParty(1, 1) == 1`.
 
+## #209: weapon skins
+
+A skin is a colour tint for one weapon: id, label, weapon id, `Color`, price. They are rows in
+`SkinCatalog.All` (`Data/SkinCatalog.cs`), not assets - four values that nothing references by object.
+Shipped: pistol Gold and Jungle camo, rifle Bone, machete Obsidian.
+
+- **Bought at the trader, as a stand-in item.** `ItemFactory` seeds one `skin_<id>` `ItemDef` per skin and
+  `ShopFactory` lists each as an unlimited offer at the skin's price. `ShopCounter.ServerBuy` recognises
+  the item (`SkinCatalog.ForItem`) and calls `ServerBuySkin` instead of filling a bag: it spends the
+  price, unlocks the skin and wears it at once. Owning it already re-wears it for free, so switching
+  back is never a second charge. Smaller than teaching the shop a second kind of row: the shelf, the
+  screen, the buy RPC and the reach check are all reused unchanged.
+- **`SkinLocker`** sits on the player. What each weapon wears is a `SyncDictionary<weaponId, skinId>`,
+  so friends see it; what you own is a server-side set. Server-authoritative, like the wallet.
+- **Saved** in `SavedPlayer.skins` / `wornSkins` (owned and worn skin ids), keyed by `PlayerKey` like the
+  rest, restored in `RunSave.ServerApply`. Additive, so the save version does not change.
+- **Drawn** by `CharacterSkin.Tint`, whenever the held item or the worn skin changes: a
+  `MaterialPropertyBlock` (`_BaseColor` and `_Color`) on every renderer of the hand copy and the
+  first-person copy. No material is made. It replaces the colour outright, so a skin flattens a
+  multi-material model to one colour.
+- Skins are ignored by selling (value 0) and never enter a bag.
+
+Regenerate: `ItemFactory.Build`, `PlayerPrefabBuilder.BuildPlayerPrefab`, then `ShopFactory.Build` with
+`-rebuildShop` (the shelf is only rewritten on request; this resets prices). Harness: `-skinShopTest`,
+solo host, `-scene island`.
+
 ## Tracers across the voyage
 
 `TracerEffect` parents its pooled tracers and impact bits to a root of their own, not to the
