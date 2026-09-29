@@ -173,6 +173,26 @@ namespace EscapeWithYourFriends.Vehicles
             Check($"four seats ({hull.SeatCount})", hull.SeatCount == 4);
             Check($"and a hull with mass ({body.mass:0} kg)", body.mass > 1f);
 
+            // #203. A model, not the boxes: drawn under Art, under the vehicle cap, with the hull,
+            // bow and console boxes no longer drawn. The hull keeps the collider the floats measure.
+            Transform art = hull.transform.Find("Art");
+            int triangles = art != null ? ArtVisual.Triangles(art.gameObject) : 0;
+            Check($"the boat draws a model under Art ({triangles} triangles)",
+                  art != null && art.GetComponent<ArtVisual>() != null && triangles > 100);
+            Check($"and it is under the vehicle cap ({triangles}/{ArtVisual.Cap(ArtCategory.Vehicle)})",
+                  triangles <= ArtVisual.Cap(ArtCategory.Vehicle));
+
+            var drawn = new List<string>();
+            foreach (string name in new[] { "Hull", "Bow", "Console" })
+            {
+                Transform box = hull.transform.Find(name);
+                if (box != null && box.TryGetComponent(out MeshRenderer renderer) && renderer.enabled) drawn.Add(name);
+            }
+
+            Check($"no greybox box is still drawn ({string.Join(", ", drawn)})", drawn.Count == 0);
+            Check("and the hull still has its collider",
+                  hull.transform.Find("Hull") != null && hull.transform.Find("Hull").GetComponent<Collider>() != null);
+
             Debug.Log($"[BoatTest] boat at {body.position.ToString("F2")}, {boat.FloatCount} float(s), "
                       + $"{body.mass:0} kg, top speed {boat.TopSpeed:0} m/s.");
         }

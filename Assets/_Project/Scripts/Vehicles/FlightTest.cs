@@ -153,6 +153,27 @@ namespace EscapeWithYourFriends.Vehicles
             Check($"the plane has four seats ({vehicle.SeatCount})", vehicle.SeatCount == 4);
             Check("and it is not flyable with three holes in it", !plane.Flyable);
 
+            // #203. A model, not the boxes: drawn under Art, light enough, and none of the greybox
+            // pieces it replaced still drawing. Colliders are the boxes' and stay.
+            Transform art = vehicle.transform.Find("Art");
+            int triangles = art != null ? ArtVisual.Triangles(art.gameObject) : 0;
+            Check($"the plane draws a model under Art ({triangles} triangles)",
+                  art != null && art.GetComponent<ArtVisual>() != null && triangles > 100);
+            Check($"and it is under the vehicle cap ({triangles}/{ArtVisual.Cap(ArtCategory.Vehicle)})",
+                  triangles <= ArtVisual.Cap(ArtCategory.Vehicle));
+
+            var drawn = new System.Collections.Generic.List<string>();
+            foreach (string name in new[] { "Fuselage", "Cockpit", "Wing.Port", "Tail.Fin", "Tail.Stabiliser" })
+            {
+                Transform box = vehicle.transform.Find(name);
+                if (box != null && box.TryGetComponent(out MeshRenderer renderer) && renderer.enabled) drawn.Add(name);
+            }
+
+            Check($"no greybox box is still drawn ({string.Join(", ", drawn)})", drawn.Count == 0);
+            Check("and the fuselage still has its collider",
+                  vehicle.transform.Find("Fuselage") != null
+                  && vehicle.transform.Find("Fuselage").GetComponent<Collider>() != null);
+
             Vector3 was = plane.transform.position;
 
             plane.ServerDrive(0f, 0f, power: true, brake: false);
