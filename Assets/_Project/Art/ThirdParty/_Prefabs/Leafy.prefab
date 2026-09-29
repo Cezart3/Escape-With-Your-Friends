@@ -73,6 +73,7 @@ MonoBehaviour:
   Id: Leafy
   Category: 1
   Upright: 0
+  Trunk: {x: NaN, y: NaN}
 --- !u!1001 &1842534758604678576
 PrefabInstance:
   m_ObjectHideFlags: 0

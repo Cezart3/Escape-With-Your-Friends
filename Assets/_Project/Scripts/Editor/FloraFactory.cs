@@ -27,6 +27,9 @@ namespace EscapeWithYourFriends.EditorTools
         /// index into this array per tree, so the order is part of the saved terrain and appending
         /// is safe where reordering is not.
         /// </summary>
+        /// <summary>Batchmode entry: rebuilds the tree prototypes in place, islands untouched (#199).</summary>
+        public static void Bake() => EnsurePrototypes();
+
         public static GameObject[] EnsurePrototypes()
         {
             var prototypes = new GameObject[IslandFlora.PrototypeCount];

@@ -73,6 +73,7 @@ MonoBehaviour:
   Id: Fern
   Category: 1
   Upright: 0
+  Trunk: {x: NaN, y: NaN}
 --- !u!1001 &1880516338668874999
 PrefabInstance:
   m_ObjectHideFlags: 0

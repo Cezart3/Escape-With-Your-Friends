@@ -73,6 +73,7 @@ MonoBehaviour:
   Id: Bush
   Category: 1
   Upright: 0
+  Trunk: {x: NaN, y: NaN}
 --- !u!1001 &4946985381996487076
 PrefabInstance:
   m_ObjectHideFlags: 0
