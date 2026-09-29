@@ -269,7 +269,7 @@ namespace EscapeWithYourFriends.World
         IEnumerator FirstIsland()
         {
             yield return Shot("spawn");
-            Check($"the first objective says something (\"{Objective.Text}\")", !string.IsNullOrEmpty(Objective.Text));
+            Check($"the first objective points at the wreck (\"{Objective.Text}\")", Objective.Text != null && Objective.Text.Contains("wreck"));
 
             // ------------------------------------------------ the wreck, and what lies at it
             Landmark wreck = Landmark.All.Find(l => l.Id == "wreck");
@@ -327,6 +327,8 @@ namespace EscapeWithYourFriends.World
                       health == null || health.Current < was);
                 yield return Shot("after_shooting");
                 Check($"the hunter is still standing ({Me.Current:0} hp)", !Me.IsIncapacitated);
+                yield return new WaitForSeconds(1f);
+                Check($"after the wreck it points at the boat (\"{Objective.Text}\")", Objective.Text != null && Objective.Text.Contains("boat"));
             }
 
             // ------------------------------------------------ the trader and the boat, in trips
@@ -472,7 +474,9 @@ namespace EscapeWithYourFriends.World
                 }
                 if (part != null && part.Carrier != _motor.NetworkObject)
                     Debug.Log($"[Playthrough] the {label} is at {part.transform.position}, the eye at {Eye} "
-                              + $"({Vector3.Distance(part.transform.position, Eye):0.0}m); crosshair "
+                              + $"({Vector3.Distance(part.transform.position, Eye):0.0}m), spawned {part.IsSpawned}, "
+                              + $"server {part.IsServerStarted}, scene {part.gameObject.scene.name}, "
+                              + $"kinematic {part.GetComponent<Rigidbody>()?.isKinematic}, {PlanePart.All.Count} parts; crosshair "
                               + $"\"{_motor.GetComponent<PlayerInteractor>().Aimed?.Prompt}\", "
                               + $"colliders {string.Join(",", part.GetComponentsInChildren<Collider>().Select(c => c.GetType().Name + (c.isTrigger ? "(trigger)" : "") + (c.enabled ? "" : "(off)")))}.");
                 Check($"E lifts the {label}", part != null && part.Carrier == _motor.NetworkObject);
@@ -514,6 +518,13 @@ namespace EscapeWithYourFriends.World
                 yield return new WaitForSeconds(0.2f);
                 _input.BotPress("interact");
                 yield return new WaitForSeconds(0.8f);
+            }
+            if (!rider.IsSeated && Camera.main != null)
+            {
+                Transform eye = Camera.main.transform;
+                string seen = Physics.Raycast(eye.position, eye.forward, out RaycastHit hit, 10f, ~0, QueryTriggerInteraction.Ignore)
+                    ? $"{hit.collider.name} ({hit.collider.GetType().Name}) {hit.distance:0.0}m" : "nothing";
+                Debug.Log($"[Playthrough] can't board: eye {eye.position}, {what} at {vehicle.transform.position}, looking at {seen}.");
             }
             Check($"E boards the {what}", rider.IsSeated);
             yield return Shot("aboard_" + what);

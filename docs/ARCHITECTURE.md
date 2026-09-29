@@ -7868,6 +7868,37 @@ at $3, and a box of pistol rounds was eight shift-clicks. `-shopTest` (pair) 65/
 
 ---
 
+## The wreck comes first
+
+A fresh spawn read "Fix the boat: 0/4 parts" instead of "Search the wreck on the beach". Both lines
+are written every frame by somebody - `IslandIntro` for the wreck, `Castaway.Say` for the chain
+from the boat onward - and the castaway, standing next to the player, won.
+
+`IslandIntro.Visited` is a static that goes true the first time any player body comes within 14 m
+of the wreck landmark. `Castaway.Say` leaves the objective alone while nobody has been there and
+the boat has nothing fitted. A static, like `PlaneAssembly.Owned`, because the wreck lives on the
+first island only and the flag only ever has to answer "has this run started yet".
+
+`RescueTest` starts past the wreck, so it sets `Visited` itself. The playthrough bot now checks the
+line names the wreck at spawn and the boat after the wreck.
+
+Three more from the same fresh-world runs:
+
+- **The engine fell through Island2.** `POIFactory` put it six metres from the wreck along the
+  wreck's own facing, which is the long axis of a fourteen-metre hull: the engine spawned inside it
+  and physics pushed it out downwards. The bot followed it five million metres down. It now sits six
+  metres to the side (`-island 2 -rebuildPois`; only `part.engine` moved in `POIs2.asset`). It still
+  fell after the moved spawn, but only after a boat crossing and never on a direct load, so a part
+  now stays kinematic where the island put it until somebody first lifts it (`ServerPutDown` already
+  makes a dropped one dynamic), and a part below -30 m goes back to where it started.
+- **E did nothing at the plane.** The interactor's cast stops at the first thing with nothing to
+  offer, and with a pistol out that was the player's own arm, 0.3 m in front of the camera at the
+  wrong pitch. Hits on your own NetworkObject are skipped.
+- **ShopTest took the first counter it found**, and on some runs that was the casino's barman, who
+  sells grog. It now takes one that stocks rope.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**

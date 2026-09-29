@@ -102,6 +102,8 @@ namespace EscapeWithYourFriends.AI
             Debug.Log($"[RescueTest] their legs: agent enabled {legs.enabled}, on the mesh "
                       + $"{legs.isOnNavMesh}, {legs.speed:0.0} m/s.");
 
+            // The harness starts past the wreck, so the chain has moved on from IslandIntro's line.
+            World.IslandIntro.Visited = true;
             // Before the plane: the chain is about the boat, and they will not be led anywhere.
             yield return new WaitForSeconds(1.5f);
             if (!PlaneAssembly.Owned)
