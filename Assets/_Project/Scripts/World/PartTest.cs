@@ -326,6 +326,20 @@ namespace EscapeWithYourFriends.World
             Check("and put down again with the same key", !part.IsCarried);
             Check($"leaving the objective still asking for one (\"{Objective.Text}\")",
                   Objective.Active && PlanePart.All.Any(p => Objective.Text.Contains(p.Label)));
+
+            // The banner used to say "Find the propeller" until the last part was in. It has to follow the plane.
+            PlaneAssembly plane = PlaneAssembly.Instance;
+            if (plane == null) { Fail("the island has a plane to fit parts to"); yield break; }
+            string before = Objective.Text;
+            Check($"the objective counts the plane's parts (\"{before}\")", before.Contains($"{plane.Fitted}/{plane.Needed}"));
+
+            part.ServerInteract(who);
+            yield return null;
+            plane.ServerInteract(who);
+            yield return new WaitForSeconds(1.1f);
+            Check($"a part fitted moves the count ({plane.Fitted}/{plane.Needed})", plane.Fitted == 1);
+            Check($"and the objective follows (\"{Objective.Text}\")",
+                  Objective.Text != before && Objective.Text.Contains($"{plane.Fitted}/{plane.Needed}"));
         }
 
         // ---------------------------------------------------------------- helpers

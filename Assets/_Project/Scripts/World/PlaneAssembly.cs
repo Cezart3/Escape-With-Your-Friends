@@ -288,6 +288,9 @@ namespace EscapeWithYourFriends.World
             return fitted;
         }
 
+        /// <summary>The objective line while parts are still out in the world: the count, and what is left.</summary>
+        public string Status => $"Fix the plane: {Fitted}/{Needed} parts ({Missing()} still to find)";
+
         public string Missing()
         {
             var left = new List<string>();
