@@ -74,6 +74,9 @@ namespace EscapeWithYourFriends.Combat
             // Parented to the scene rather than to the player: a tracer is a mark left in the world,
             // and one that slid sideways because the shooter kept running would read as a laser sight.
             _root = new GameObject($"{name} tracers").transform;
+            // The player crosses scenes (the voyage); its pool must too, or every bit is a dead
+            // reference in Update from the island on.
+            DontDestroyOnLoad(_root.gameObject);
         }
 
         void OnEnable()
@@ -95,6 +98,8 @@ namespace EscapeWithYourFriends.Combat
             if (_root != null) Destroy(_root.gameObject);
             if (_flash != null) Destroy(_flash.gameObject);
         }
+
+        internal bool PoolAlive => _root != null;
 
         void Update()
         {

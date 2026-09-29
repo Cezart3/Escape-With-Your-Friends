@@ -8301,6 +8301,17 @@ leaves are not culled; the camp just stops topping up.
 
 `-nativeTest` checks `ForParty(6, 4) == 6`, `ForParty(6, 1) < 6` and `ForParty(1, 1) == 1`.
 
+## Tracers across the voyage
+
+`TracerEffect` parents its pooled tracers and impact bits to a root of their own, not to the
+shooter, so a tracer stays where it was drawn. That root was a plain scene object, and the player is
+not: the voyage to island 2 unloaded the root with the first island, and from then on every frame
+walked a list of destroyed bits. The long bot playthrough logged a hundred thousand
+`NullReferenceException`s from `TracerEffect.Update` after landing. The root is now
+`DontDestroyOnLoad`, and still destroyed with its owner.
+
+`-voyageTest` checks `PoolAlive` after both crossings.
+
 ---
 
 ## Data-driven content
