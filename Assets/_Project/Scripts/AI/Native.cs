@@ -100,6 +100,7 @@ namespace EscapeWithYourFriends.AI
 
         NativeState _state = NativeState.Idle;
         Vector3 _camp;
+        float _lateClaimAfter;
 
         /// <summary>Whether this body came out of a camp with stores in it. Decides its loot table.</summary>
         bool _stocked;
@@ -418,6 +419,7 @@ namespace EscapeWithYourFriends.AI
             // its shoulder that still went looking for a second victim would drop the first one every
             // time somebody walked past, which is a mechanic nobody can read.
             if (_state == NativeState.Flee || _state == NativeState.Abduct) return;
+            if (ClaimLate()) return;
 
             float night = Alertness;
             float notice = _def.NoticeRadius(night);
@@ -733,6 +735,37 @@ namespace EscapeWithYourFriends.AI
             return best;
         }
 
+        /// <summary>
+        /// A body that went down with no taker inside <see cref="NativeDef.AbductRadius"/> - a dart
+        /// from range, a fall, an empty stomach - was only ever offered once, at the instant it hit
+        /// the floor, and a spearman strolling past a minute later walked round it. Playtest: "we go
+        /// down and nobody drags us". Now any hauler that comes within range of a downed, unheld body
+        /// takes it. Bodies already at this camp are left where they are, or delivery would re-claim
+        /// what it just delivered.
+        /// </summary>
+        bool ClaimLate()
+        {
+            if (!_def.Abducts || Time.time < _lateClaimAfter) return false;
+
+            foreach (NetworkPlayerRegistry.PlayerBody player in NetworkPlayerRegistry.Players)
+            {
+                if (!player.IsValid) continue;
+
+                var health = player.Object.GetComponent<Health>();
+                var body = player.Object.GetComponent<Carryable>();
+                if (health == null || body == null || health.State != LifeState.Downed) continue;
+                if (body.IsCarried || Claimed(body)) continue;
+                if (Vector3.Distance(body.transform.position, _camp) < 10f) continue;
+                if (Vector3.Distance(transform.position, body.transform.position) > _def.AbductRadius) continue;
+
+                EnterAbduct(body, health);
+                Debug.Log($"[Native] {_def.Id} {ObjectId} claimed {health.ObjectId} late; hauling to {_delivery}.");
+                return true;
+            }
+
+            return false;
+        }
+
         /// <summary>Whether somebody already has a hand on this body. Cheap: there are never many.</summary>
         static bool Claimed(Carryable body)
         {
@@ -880,6 +913,8 @@ namespace EscapeWithYourFriends.AI
         /// </summary>
         void Release()
         {
+            // A haul that ended - unreachable camp, timeout - is not picked straight back up by ClaimLate.
+            _lateClaimAfter = Time.time + 30f;
             if (_haul != null && _haul.Carrier == NetworkObject) _haul.ServerDetach();
 
             _haul = null;
