@@ -153,7 +153,15 @@ namespace EscapeWithYourFriends.AI
             _stage.OnChange -= OnStageChanged;
         }
 
-        void OnStageChanged(int previous, int next, bool asServer) => Say();
+        void OnStageChanged(int previous, int next, bool asServer)
+        {
+            Say();
+
+            // #197. Local on each peer. The host hears this only as the server (the bot never saw
+            // it with asServer false); Play runs once per id, so both calls are harmless.
+            if (previous == (int)Stage.Waiting && next == (int)Stage.Following)
+                World.StoryBeat.Play("castaway", "Found them", "They waited. Barely.", transform);
+        }
 
         void Update()
         {

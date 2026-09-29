@@ -283,13 +283,24 @@ namespace EscapeWithYourFriends.Player
             Vector3 eye;
             if (vehicle != null)
             {
-                // Seated, a chase camera: first person from a kart seat is a view of the bonnet or the
-                // sky. Orbits the vehicle with the same mouse look, pulled back by the vehicle's size.
-                eye = ChaseEye(vehicle, look);
+                // #210. Seated, first person from the seat by default: the chase camera made you look
+                // perched on the roof of your own car. V swaps to the chase view and back.
+                var keys = UnityEngine.InputSystem.Keyboard.current;
+                if (IsOwner && keys != null && keys.vKey.wasPressedThisFrame) _chaseView = !_chaseView;
+
+                // The greybox plane has no cockpit: from the seat the high wing filled two thirds of
+                // the screen. It keeps the chase view until #203 gives it one.
+                bool chase = _chaseView != vehicle.TryGetComponent(out PlaneController _);
+                if (chase) eye = ChaseEye(vehicle, look);
+                else eye = SeatEye(vehicle, ref look);
                 _followed = eye;
                 _followValid = true;
             }
-            else eye = Follow(EyePosition(), limp ? _ragdollFollowResponse : _followResponse, dt);
+            else
+            {
+                _seatedIn = null;
+                eye = Follow(EyePosition(), limp ? _ragdollFollowResponse : _followResponse, dt);
+            }
 
             // Bob and shake are added after the follow filter, not before it: they are supposed to be
             // sharp. Smoothing a footstep is the same as deleting it.
@@ -338,6 +349,35 @@ namespace EscapeWithYourFriends.Player
 
         Vehicle _chased;
         float _chaseRadius;
+
+        bool _chaseView;
+        Vehicle _seatedIn;
+        float _seatYaw;
+
+        /// <summary>
+        /// Head height over the seat anchor, along the vehicle's up. The view turns with the vehicle.
+        /// Mouse yaw is measured from where you were looking when you sat down, and clamped so you
+        /// can look out of the side window but not through the back of your own head.
+        /// </summary>
+        const float SeatEyeHeight = 0.8f;
+        const float SeatLookLimit = 120f;
+
+        Vector3 SeatEye(Vehicle vehicle, ref Quaternion look)
+        {
+            float yaw = _input != null && _input.IsBound ? _input.Yaw : 0f;
+            if (_seatedIn != vehicle)
+            {
+                _seatedIn = vehicle;
+                _seatYaw = yaw;
+            }
+
+            float local = Mathf.Clamp(Mathf.DeltaAngle(_seatYaw, yaw), -SeatLookLimit, SeatLookLimit);
+            look = vehicle.transform.rotation * Quaternion.Euler(_pitch, local, 0f);
+
+            Transform anchor = _rider != null ? vehicle.SeatAnchor(_rider.Seat) : null;
+            Vector3 seat = anchor != null ? anchor.position : vehicle.transform.position;
+            return seat + vehicle.transform.up * SeatEyeHeight;
+        }
 
         /// <summary>Behind and above the vehicle along the look, pulled in where terrain or a wall is closer.</summary>
         Vector3 ChaseEye(Vehicle vehicle, Quaternion look)

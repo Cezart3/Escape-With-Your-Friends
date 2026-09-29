@@ -63,6 +63,7 @@ namespace EscapeWithYourFriends.UI
         public Image Icon { get; private set; }
 
         Text _name;
+        bool _wide;
         Text _count;
         Text _note;
         ISlotHost _host;
@@ -83,6 +84,7 @@ namespace EscapeWithYourFriends.UI
             view._host = host;
             view.Kind = kind;
             view.Index = index;
+            view._wide = wide;
 
             // The background is the raycast target, so the whole square is grabbable rather than
             // only the letters on it.
@@ -135,13 +137,16 @@ namespace EscapeWithYourFriends.UI
 
             ItemDef def = stack.Def;
 
-            _name.text = def == null
+            Sprite icon = def != null ? def.Icon : null;
+
+            // A square with a picture in it needs no caption written across the picture; a shop row
+            // keeps its name beside it.
+            _name.text = def == null || (icon != null && !_wide)
                 ? string.Empty
                 : string.IsNullOrWhiteSpace(def.DisplayName) ? def.Id : def.DisplayName;
 
             _count.text = stack.Count > 1 ? stack.Count.ToString() : string.Empty;
 
-            Sprite icon = def != null ? def.Icon : null;
             Icon.sprite = icon;
             Icon.color = icon != null ? Color.white : new Color(1f, 1f, 1f, 0f);
 

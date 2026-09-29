@@ -7994,6 +7994,59 @@ Three more, from the same runs:
 - **Friendly fire already works.** Neither `Weapon` nor `Health` checks which side the victim is on.
   `-gunTest` shoots the other process's player body, so there is nothing to add.
 
+## #197, #210: story beats, the seat view, and a plane that keeps to its strip
+
+**Story beats** (`World/StoryBeat.cs`). A few seconds of letterboxed camera at the moments that
+deserve one: arriving on each island (`IslandIntro`, on the wreck or the strip), the plane becoming
+whole (`PlaneAssembly`), finding the castaway (`Castaway`). `StoryBeat.Play(id, title, line, focus)`
+plays once per id per process and refuses when the player's camera is more than 60 m away from the
+focus, so a teammate finishing the plane across the island does not yank your view. It adds a
+CinemachineCamera at priority 30 (rig 10, death camera 20) and the brain blends in and out. The
+camera orbits 35° at 11 m, picking a start angle with a clear line of sight (a sphere cast that
+ignores the focus itself and players), clamped above the terrain. Any key or left click skips.
+Headless it records the id and draws nothing. The playthrough bot photographs each one
+(`beat_<id>.png`) and checks the plane and castaway beats played.
+
+FishNet calls a SyncVar's `OnChange` on the host only as the server, so the castaway beat does
+not filter on `asServer`. Once per id is what keeps it single.
+
+**Seat view** (`Player/PlayerCameraRig.cs`). Driving the buggy or the boat puts the camera at the
+seat's anchor plus 0.8 m, looking where the vehicle looks. The mouse turns the head ±120° from the
+nose. **V** toggles the chase camera. The plane defaults to chase (V swaps it to the seat) until
+it has a cockpit model (#203): from its seat the wing's underside filled the screen.
+
+**Plane ground steering** (`Vehicles/PlaneController.cs`). On the wheels, the roll axis steers
+(`GroundSteer`) and yaw is damped (`GroundYawDamping`), so a take-off roll holds its line and can be
+corrected. The parts hauled in can knock the parked plane twenty degrees off its strip. The
+playthrough bot now steers back to the strip's POI yaw before it lifts, which is what a pilot does.
+On island2 it went into the treeline without that.
+
+## #206, #208: what loot looks like, and its icon
+
+`Editor/ItemArtFactory.cs`, run in batchmode **without** `-nographics` (the icons are rendered):
+
+    Unity.exe -batchmode -quit -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.ItemArtFactory.Build
+
+A boar used to drop two yellow cubes: 29 of the 44 items had no `WorldPrefab`, and `WorldItem` falls
+back to a greybox. Now:
+
+- **Kit items** (meat, fish, coconut, bottles, planks, flint, scrap, cloth, kits) wear a Kenney model
+  (Food Kit, new; Survival Kit, more pieces), fitted with `ArtDress.FitBox` to a size in metres.
+  The glbs come from the CC0 mirror and are converted with `tools/art/glb2fbx.py` in Blender.
+- **Everything else** (ammo boxes, shells, pearl, rope, feather, bandage, torch, boot, hide, rod,
+  jerrycan, tyre) is a few colliderless primitives in `Palette` colours. Cheap, but they read.
+- Prefabs land in `Prefabs/Items/<id>.prefab`. A world prefab somebody else chose (the guns, from
+  `WeaponFactory`) is never replaced; one this factory made is rebuilt every run.
+- Then **every** item with a world prefab is photographed (orthographic, three-quarter view,
+  transparent, 128 px) into `Art/Icons/<id>.png`, imported as a Sprite and assigned to `_icon`.
+  The pistol and its rounds finally have icons. A new item gets one by existing.
+
+`WorldItem.Fit` now also shrinks the pickup box's **height** to the model (the footprint stays
+generous): a steak in the 56 cm cube hovered 20 cm over the sand.
+
+Harness: `-itemTest`, `-lootTest`, `-weaponTest` (unchanged; they cover the prefabs spawning and
+the boxes); the look was checked on the icon sheet and the bot's screenshots.
+
 ## Water: no foam polygons on flat sand at sea level
 
 The playtest showed pale-white polygons on the beach and under the wreck. The wreck's pad and the
