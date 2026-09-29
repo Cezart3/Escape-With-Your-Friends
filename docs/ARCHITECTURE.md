@@ -8111,6 +8111,40 @@ image looks; that is a playtest question.
 
 ---
 
+## #202: the sea to the horizon
+
+**What showed.** From the plane the square edge of the wave patch could be seen against the flat
+ring, and past the ring there was void: the ring reached 4000 m from the camera while the far plane
+is 5000 m, so at altitude the last kilometre of view was clear colour with a hard line where the
+water stopped.
+
+**Why.** The patch already flattens its waves to exactly zero over its last 70 m and the vertex
+normal fades with them, so the geometry meets the ring cleanly. What still differed was the
+per-pixel ripple normals, which are deliberately not faded at the seam (fading them at the patch
+border left the ring mirror-flat against a rippled sea, the older bug). From altitude they also
+shimmer into a noisy band near the horizon. And the ring's reach came only from `WaterHorizon` on
+the island profile, unrelated to the camera.
+
+**What changed.**
+- `Water.shader` gained `_RippleFade` (start, end in metres). The ripple normals are scaled by
+  `1 - smoothstep` of the distance from the camera, not from the patch. It starts at twice the patch
+  half-extent, well outside the patch, so it is one smooth function of world position with no seam
+  of its own, and the far sea calms toward the fresnel horizon colour.
+- `WaterFactory.EnsureRingMesh` takes the larger of `WaterHorizon` and `CameraTuning.FarPlane` as
+  the ring's outer half-width. The ring follows the camera in xz like the patch, so it reaches the
+  far plane in every direction from any altitude and the world's edge is clipped by the camera
+  instead of being visible. `EnsureMaterial` pushes `_RippleFade` next to `_PatchFade`.
+- The ring mesh is rebuilt when its outer size changes; the material is rewritten every run.
+  Regenerate through `TerrainGenerator.GenerateIsland`, which calls `WaterFactory.EnsureWater`.
+
+**How it is tested.** `-waterTest` with `-scene island` (`WaterTest`, registered in
+`NetworkBootstrap`): the ring mesh reaches the far plane, the ring follows the camera, the wave
+fade and the ripple fade are configured, and the ripple fade starts outside the patch. It prints
+`[WaterTest] N passed, M failed.` Headless cannot render, so how the horizon looks from altitude is
+still for a human with a screen.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**

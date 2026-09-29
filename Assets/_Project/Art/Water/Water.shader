@@ -34,6 +34,7 @@ Shader "EWYF/Water"
         _WaveC ("Wave C", Vector) = (0.60, -0.80, 0.09, 0.370)
         _WaveSpeed ("Angular speeds (a, b, c)", Vector) = (0.475, 0.656, 0.628, 0)
         _PatchFade ("Wave fade (start, end) in object space", Vector) = (250, 320, 0, 0)
+        _RippleFade ("Ripple fade (start, end) metres from the camera", Vector) = (600, 2000, 0, 0)
 
         [Header(Surface detail)]
         [Normal] _NormalMap ("Ripple normals", 2D) = "bump" {}
@@ -98,6 +99,7 @@ Shader "EWYF/Water"
                 float4 _WaveC;
                 float4 _WaveSpeed;
                 float4 _PatchFade;
+                float4 _RippleFade;
                 float4 _NormalScroll;
                 float _IslandSize;
                 float _ShoreDepth;
@@ -192,7 +194,15 @@ Shader "EWYF/Water"
 
                 float3 n1 = UnpackNormal(SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, uv1));
                 float3 n2 = UnpackNormal(SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, uv2));
-                float2 ripple = (n1.xy + n2.xy) * _NormalStrength;
+
+                // Ripples thin out with distance from the eye, not from the patch edge. Measured from
+                // the patch they would stop at the seam and leave the mirror-flat ring the paragraph
+                // above warns about; measured from the camera they are one smooth function of world
+                // position that starts far outside the patch, so the seam cannot show. From altitude
+                // it also stops sub-pixel ripples shimmering into a noisy band at the horizon.
+                float eyeDistance = distance(IN.positionWS.xz, _WorldSpaceCameraPos.xz);
+                float rippleFade = 1.0 - smoothstep(_RippleFade.x, max(_RippleFade.y, _RippleFade.x + 1.0), eyeDistance);
+                float2 ripple = (n1.xy + n2.xy) * _NormalStrength * rippleFade;
 
                 float3 normalWS = normalize(IN.normalWS + float3(ripple.x, 0.0, ripple.y));
 
