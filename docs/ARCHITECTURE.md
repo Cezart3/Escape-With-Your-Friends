@@ -8288,6 +8288,19 @@ fade and the ripple fade are configured, and the ripple fade starts outside the 
 `[WaterTest] N passed, M failed.` Headless cannot render, so how the horizon looks from altitude is
 still for a human with a screen.
 
+## Camps sized for the party
+
+A camp's `Population` and `NightExtra` are written for four players. `NativeSpawner.Top` now tops a
+camp up to `ForParty(camp.Wanted(night), clients)`: 55% of the roster solo, 70% for two, 85% for
+three, all of it for four, never under one. `Camp.Wanted` itself is unchanged, so the economy
+numbers `LootTest` reads off it still describe the four-player island.
+
+Why: the full bot playthrough, solo, was downed nine times on island 2 and never reached the
+propeller; almost every down was a headhunter's 31-damage club. Natives already alive when a player
+leaves are not culled; the camp just stops topping up.
+
+`-nativeTest` checks `ForParty(6, 4) == 6`, `ForParty(6, 1) < 6` and `ForParty(1, 1) == 1`.
+
 ---
 
 ## Data-driven content

@@ -160,7 +160,8 @@ namespace EscapeWithYourFriends.AI
         void Top(Camp camp, float night)
         {
             List<Native> live = Live(camp);
-            if (live.Count >= camp.Wanted(night)) return;
+            int wanted = ForParty(camp.Wanted(night), _manager.ServerManager.Clients.Count);
+            if (live.Count >= wanted) return;
 
             if (_blockedUntil.TryGetValue(camp, out float until) && Time.time < until) return;
 
@@ -172,8 +173,16 @@ namespace EscapeWithYourFriends.AI
             live.Add(native);
 
             Debug.Log($"[NativeSpawner] {camp.Role.Id} into {camp.Id} at {position}; "
-                      + $"{live.Count}/{camp.Wanted(night)} there (night {night:F2}).");
+                      + $"{live.Count}/{wanted} there (night {night:F2}).");
         }
+
+        /// <summary>
+        /// A camp's roster is written for four. Fewer players meet fewer natives: 55% of it solo,
+        /// 70% for two, 85% for three, never under one. A solo run into a full island 2 camp was a
+        /// down every minute in the bot's playthrough.
+        /// </summary>
+        internal static int ForParty(int wanted, int players) =>
+            wanted <= 0 ? 0 : Mathf.Max(1, Mathf.CeilToInt(wanted * (0.4f + 0.15f * Mathf.Clamp(players, 1, 4))));
 
         /// <summary>
         /// Puts one native on the ground at a point, ignoring camps, rosters and clearance. Server
