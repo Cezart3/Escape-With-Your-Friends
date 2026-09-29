@@ -1,0 +1,19 @@
+	Food Kit
+
+	Created/distributed by Kenney (www.kenney.nl)
+
+			------------------------------
+
+	License: (Creative Commons Zero, CC0)
+	http://creativecommons.org/publicdomain/zero/1.0/
+
+	You can use this content for personal, educational, and commercial purposes.
+
+	Support by crediting 'Kenney' or 'www.kenney.nl' (this is not a requirement)
+
+			------------------------------
+
+	Provenance note (added by the EWYF build, not by Kenney): these FBX files were converted with
+	Blender 5.2 (tools/art/glb2fbx.py) from the glTF-binary copies in the CC0 mirror
+	https://github.com/shorepine/kenney (3d/food), whose LICENSE.txt is Kenney's CC0 licence.
+	The survival-kit additions (fish, bottles, resources, bedroll) came the same way from 3d/survival.

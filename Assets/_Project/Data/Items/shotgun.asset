@@ -19,7 +19,7 @@ MonoBehaviour:
   _category: 5
   _maxStack: 1
   _weight: 3.2
-  _icon: {fileID: 0}
+  _icon: {fileID: 1275589539659018210, guid: 32a993057a7f8bd4a881a960d3cdc171, type: 3}
   _worldPrefab: {fileID: 5708676297218836568, guid: 65d41adc684fdbe429de1fa4c08d611d, type: 3}
   _effect: {fileID: 0}
   _useSeconds: 1.5

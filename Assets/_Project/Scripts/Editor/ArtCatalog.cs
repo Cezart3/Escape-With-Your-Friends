@@ -120,6 +120,10 @@ namespace EscapeWithYourFriends.EditorTools
             // P4, the weapons (T12). Flat colours like the furniture: grey, dark, wood and the rest.
             new("Kenney", "Weapon", "weapon", "https://kenney.nl/assets/weapon-pack", false),
 
+            // #206, what lies on the ground. From the CC0 mirror (github.com/shorepine/kenney), glb
+            // converted to FBX by tools/art/glb2fbx.py, like the weapon pack.
+            new("Kenney", "Food", "food", "https://kenney.nl/assets/food-kit", true),
+
             // The one kit still on flat colours: wood, carpet, metal, woodDark. See ArtLibrary.Remap.
             new("Kenney", "Furniture", "furniture", "https://kenney.nl/assets/furniture-kit", false),
 
@@ -254,6 +258,21 @@ namespace EscapeWithYourFriends.EditorTools
             // The gull has none: no Quaternius bird was found to name.
             new("Deer", "Animals", "Deer", ArtCategory.Animal),
             new("Boar", "FarmAnimals", "Pig", ArtCategory.Animal),
+
+            // --- items lying on the ground (ItemArtFactory, #206) --------------------------------
+            new("MeatRaw", "Food", "meat-raw", Small, upright: true),
+            new("MeatCooked", "Food", "meat-cooked", Small),
+            new("FishCooked", "Food", "fish", Small),
+            new("Coconut", "Food", "coconut", Small),
+            new("Rum", "Food", "bottle-oil", Small),
+            new("FishRaw", "Survival", "fish", Small),
+            new("GlassBottle", "Survival", "bottle", Small),
+            new("WaterBottle", "Survival", "bottle-large", Small),
+            new("Planks", "Survival", "resource-planks", Small),
+            new("Flint", "Survival", "resource-stone", Small),
+            new("Firewood", "Survival", "resource-wood", Small),
+            new("ScrapMetal", "Survival", "metal-panel-screws-half", Small),
+            new("ClothRoll", "Survival", "bedroll-packed", Small),
 
             // --- the weapons (WeaponFactory.Art) -------------------------------------------------
             // Fitted to the weapon's old box. The knife stands on its handle in the kit, and says so
