@@ -1204,7 +1204,9 @@ namespace EscapeWithYourFriends.AI
                 var stack = new ItemStack(index, count);
 
                 float angle = lines * Mathf.PI * 0.7f;
-                Vector3 offset = new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * 0.55f;
+                // Clear of the body: at 0.55 m the corpse fell on its own loot and the crosshair found
+                // the body instead for the ten seconds it lies there (playthrough bot, Island2).
+                Vector3 offset = new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * 1.4f;
 
                 WorldItemSpawner.Drop(stack, transform.position + offset + Vector3.up * 0.4f,
                                       Quaternion.identity);

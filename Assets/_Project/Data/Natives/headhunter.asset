@@ -16,9 +16,9 @@ MonoBehaviour:
   _displayName: Headhunter
   _description: Does not flee, does not tire, and has done this before.
   _role: 1
-  _maxHealth: 140
+  _maxHealth: 130
   _walkSpeed: 2.2
-  _runSpeed: 7.4
+  _runSpeed: 7
   _patrolRadius: 26
   _idleSeconds: {x: 2, y: 4}
   _dayNotice: 26
@@ -31,7 +31,7 @@ MonoBehaviour:
   _dayLeash: 70
   _nightLeash: 170
   _fleeHealth: 0
-  _attackDamage: 34
+  _attackDamage: 31
   _attackRange: 2.8
   _attackInterval: 1.6
   _attackStun: 1.2
@@ -64,6 +64,10 @@ MonoBehaviour:
     Min: 1
     Max: 2
     Chance: 0.6
+  - Item: {fileID: 11400000, guid: 68e4e002373b16e4db2bc877a59b00f7, type: 2}
+    Min: 6
+    Max: 10
+    Chance: 0.9
   _villageLoot:
   - Item: {fileID: 11400000, guid: 44d7ece014ee47d4487c3aa022dc80be, type: 2}
     Min: 2
@@ -81,6 +85,10 @@ MonoBehaviour:
     Min: 1
     Max: 2
     Chance: 0.6
+  - Item: {fileID: 11400000, guid: 68e4e002373b16e4db2bc877a59b00f7, type: 2}
+    Min: 6
+    Max: 10
+    Chance: 0.9
   - Item: {fileID: 11400000, guid: bca846cb3a39c9d4cb5289bde5b78b74, type: 2}
     Min: 4
     Max: 8

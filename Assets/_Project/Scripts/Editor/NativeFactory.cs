@@ -160,11 +160,16 @@ namespace EscapeWithYourFriends.EditorTools
             // times the health, half again the damage, sight and memory of a scout, and it does not
             // run away at all. Meeting one on the beach is the thirty-second version of "this island
             // is not the other island".
+            //
+            // Softened after a fresh-world bot run died at the cave on a loop with a pistol: 140 hp
+            // was six rounds and 34 damage was three hits, so a pair was a wipe. 130 is five, 31 is
+            // four hits, and 7.0 m/s lets a sprint get away again, which the fairness lever promises.
+            // Still over the spearman by Island2Test's margins.
             new("headhunter", "Headhunter", "Does not flee, does not tire, and has done this before.",
-                NativeRole.Spearman, health: 140f, walk: 2.2f, run: 7.4f, patrol: 26f, idle: new Vector2(2f, 4f),
+                NativeRole.Spearman, health: 130f, walk: 2.2f, run: 7.0f, patrol: 26f, idle: new Vector2(2f, 4f),
                 dayNotice: 26f, nightNotice: 40f, vision: 75f, earshot: 10f,
                 memory: 14f, investigate: 8f, alarm: 60f, dayLeash: 70f, nightLeash: 170f, fleeAt: 0f,
-                damage: 34f, reach: 2.8f, interval: 1.6f, stun: 1.2f, knockback: 1300f, windup: 0.35f,
+                damage: 31f, reach: 2.8f, interval: 1.6f, stun: 1.2f, knockback: 1300f, windup: 0.35f,
                 ranged: false, standoff: 2.8f, spread: 0f,
                 body: new Vector3(0.68f, 1.92f, 0.46f), colour: new Color(0.24f, 0.19f, 0.18f),
                 mark: new Color(0.78f, 0.10f, 0.12f), agentRadius: 0.46f),
@@ -209,6 +214,9 @@ namespace EscapeWithYourFriends.EditorTools
             ("headhunter", "flint", 2, 4, 1f),
             ("headhunter", "pearl", 1, 1, 0.35f),
             ("headhunter", "meat_cooked", 1, 2, 0.6f),
+            // Island2 has no shop: the rounds you go in with are the rounds you have, unless the
+            // people shooting back pay for them.
+            ("headhunter", "pistol_ammo", 6, 10, 0.9f),
 
             ("blowgunner", "feather", 3, 5, 1f),
             ("blowgunner", "flint", 2, 3, 1f),
@@ -292,9 +300,15 @@ namespace EscapeWithYourFriends.EditorTools
                 string path = $"{Folder}/{seed.Id}.asset";
                 var def = AssetDatabase.LoadAssetAtPath<NativeDef>(path);
 
-                if (def == null)
+                // -reseed headhunter,scout: those rows overwrite their assets, AnimalFactory's rule.
+                string[] args = System.Environment.GetCommandLineArgs();
+                int at = System.Array.IndexOf(args, "-reseed");
+                bool reseed = def != null && at >= 0 && at + 1 < args.Length
+                              && System.Array.IndexOf(args[at + 1].Split(','), seed.Id) >= 0;
+
+                if (def == null || reseed)
                 {
-                    def = ScriptableObject.CreateInstance<NativeDef>();
+                    if (def == null) def = ScriptableObject.CreateInstance<NativeDef>();
                     def.Configure(seed.Id, seed.Name, seed.Description, seed.Role, seed.Health, seed.Walk,
                                   seed.Run, seed.Patrol, seed.Idle, seed.DayNotice, seed.NightNotice,
                                   seed.Vision, seed.Earshot, seed.Memory, seed.Investigate, seed.Alarm,
@@ -303,8 +317,8 @@ namespace EscapeWithYourFriends.EditorTools
                                   seed.Standoff, seed.Spread, seed.Body, seed.Colour, seed.Mark,
                                   seed.AgentRadius);
 
-                    AssetDatabase.CreateAsset(def, path);
-                    made++;
+                    if (reseed) EditorUtility.SetDirty(def);
+                    else { AssetDatabase.CreateAsset(def, path); made++; }
                 }
 
                 all.Add(def);

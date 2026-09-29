@@ -444,14 +444,28 @@ namespace EscapeWithYourFriends.Combat
                 Vector3 shot = Scatter(direction, weapon.Spread + Wobble());
                 ends[i] = originPosition + shot * weapon.Range;
 
-                if (!Physics.Raycast(originPosition, shot, out RaycastHit hit, weapon.Range,
-                                     _hitMask, QueryTriggerInteraction.Ignore))
-                    continue;
+                // Every hit, nearest first, past your own body: a single Raycast stopped at the
+                // shooter's own arm or leg when aiming down at something close, and the round did
+                // nothing. The playthrough bot emptied twenty into a boar at its feet this way.
+                RaycastHit[] hits = Physics.RaycastAll(originPosition, shot, weapon.Range, _hitMask,
+                                                       QueryTriggerInteraction.Ignore);
+                System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+                Health victim = null;
+                bool landed = false;
+                RaycastHit hit = default;
+                foreach (RaycastHit candidate in hits)
+                {
+                    victim = candidate.collider.GetComponentInParent<Health>();
+                    if (victim != null && victim == _health) continue;
+                    hit = candidate;
+                    landed = true;
+                    break;
+                }
+                if (!landed) continue;
 
                 ends[i] = hit.point;
-
-                Health victim = hit.collider.GetComponentInParent<Health>();
-                if (victim == null || victim == _health) continue;
+                if (victim == null) continue;
 
                 // No dedupe here, unlike the swing. Every pellet of a shotgun blast that lands on the
                 // same person is meant to hurt - that is what makes it a shotgun. The melee list
