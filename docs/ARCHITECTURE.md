@@ -8143,6 +8143,14 @@ While any plane part lay loose, `PlanePart.PointAtOne` wrote a fixed "Find the X
 
 The sentence now comes from `PlaneAssembly.Status` ("Fix the plane: 1/3 parts (engine and wing still to find)"), the same shape as the boat's "Fix the boat: 3/4 parts". It is derived from the replicated `_fitted` mask, so every peer reads the same line, and the target still points at a loose part. Harness: `-partTest` (pair, `-scene island2`) checks the count is in the line and that it changes after a part is fitted.
 
+## #207: a native is as wide as it looks
+
+The bot's playthrough took six pistol shots to take 52 hp off a Blowgunner and three for 55 off a
+boar. Every hit does the same 26; the difference was hits. `Native.Configure` sized the capsule by the
+body's *depth* (`min(x, z) / 2`, 0.175 m), a 0.35 m tube inside a 0.5 m silhouette, so with the
+pistol's 1.5° spread two shots in three passed through an arm. It now takes the width (`max`), 0.25 m.
+`-nativeTest` checks a spawned native's radius is at least 0.22 m.
+
 ---
 
 ## Data-driven content
