@@ -7932,6 +7932,9 @@ Three more, from the same runs:
 - **The Island2 take-off ran into the base camp.** The plane faced the camp and rolled into the
   shelter posts sixty metres on. Tail to the camp now, as on the first island (`-island 2
   -rebuildPois`; only the plane's yaw moved, -39 to 141).
+- **The engine took two tries to lift.** The wreck's mast stood between the bot's eye and the
+  engine on the camp side. It sits on the far side of the hull now (`Facing(wreck, camp) - 90`),
+  and the first E lifts it in both bot runs.
 
 ---
 
