@@ -8137,6 +8137,45 @@ while every tier is at 1.0.
 render scale is at least 1, or that it upscales with FSR when it is below 1. It cannot judge how the
 image looks; that is a playtest question.
 
+## #204: every state has a clip
+
+Every state the body can be in now has a clip, and every transition between them blends. All of it is
+derived on each peer from state already replicated; nothing new goes over the wire. Swimming reads
+`WaterSurface.IsSubmerged` 0.9 m above the feet (the probe `SurvivalStats` uses for warmth), and
+reload rides `Weapon.Reloading`, the observers call every peer already gets.
+
+| State | Source of truth | Clip | Blend |
+|---|---|---|---|
+| Idle / walk / jog / sprint | measured speed | `Idle_Loop`, `Walk_Loop`, `Jog_Fwd_Loop`, `Sprint_Loop` (1D tree on Speed) | in the tree |
+| Jump / fall | vertical speed, not swimming | `Jump_Loop` | 0.15 s |
+| Crouch | not on the body: `PlayerMotor` crouch slows the player and the tree plays `Walk_Loop` at 2.2 m/s | `Walk_Loop` | in the tree |
+| Swim (new) | submerged at the waist | `Swim_Idle_Loop` / `Swim_Fwd_Loop` (tree on Speed) | 0.25 s in and out |
+| Carry | `CarrySystem.IsCarrying` | `Driving_Loop` on the arms (layer 1) | layer weight, 0.25 s |
+| Seated / driving | `VehicleRider.IsSeated` | `Driving_Loop` | 0.3 s in and out (was 0.15) |
+| Entering / leaving a seat | the same bool | blended into and out of `Driving_Loop`; `Sitting_Enter/Exit` are unused, the vehicle places the body | 0.3 s |
+| Aim / hold a gun | inventory selection | `Pistol_Idle_Loop` on the arms (layer 2) | layer weight, 0.17 s |
+| Fire | `Weapon.Attacked` | `Pistol_Shoot` | 0.05 s in, 0.1 s out |
+| Reload (new) | `Weapon.Reloading(started)`, guns only | `Pistol_Reload` on the arms | 0.1 s in, 0.15 s out |
+| Melee swing | `Weapon.Attacked`, blade in hand | `Sword_Attack` | 0.05 s in, 0.1 s out |
+| Punch | `Weapon.Attacked`, fists | `Punch_Jab` | 0.15 s in, 0.1 s out |
+| Downed / limp | `RagdollController.IsRagdolled` | animator off, skin follows the physics bones | none needed: physics is continuous |
+| Getting up | ragdoll ends | 0.35 s slerp from the last limp pose into the animator | 0.35 s |
+| Dead (native) | `Dead` bool | `Death01` | 0.15 s |
+
+`CharacterArt.BuildController` adds the `Swimming` bool and `Reload` trigger, the Swim state, the
+Armed layer's Reload state, and the longer seat blends. It also fails the build, naming the
+transition, if any transition on any layer has a zero duration (`Snaps`). Rebuild the controller,
+then the prefab so it picks it up:
+
+    -executeMethod EscapeWithYourFriends.EditorTools.CharacterArt.Build -artZips "D:\Downloads\ewyf-art"
+    -executeMethod EscapeWithYourFriends.EditorTools.PlayerPrefabBuilder.BuildPlayerPrefab
+
+`-skinTest` (host, solo, `-scene island`) checks that the controller has every parameter and state
+above, that `Weapon.Reloading` reaches the Armed layer's Reload state within a second (when the
+first weapon with a model is a gun), and that forcing the swim state reaches Swim within 1.5 s and
+returns to Move afterwards. The zero-duration rule is enforced at controller build time, because
+the runtime animator does not expose transitions.
+
 ---
 
 ## Data-driven content

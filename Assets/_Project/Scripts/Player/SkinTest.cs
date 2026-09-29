@@ -228,7 +228,53 @@ namespace EscapeWithYourFriends.Player
                 Check($"and the arms hold it like a {(armed.Kind == WeaponKind.Melee ? "blade" : "gun")} " +
                       $"(layer weight {armedWeight:F2}; re-run CharacterArt.Build if 0)",
                       armedWeight > 0.9f && skin.ArmedWeight > 0.9f);
+
+                // Reload (#204): the weapon's own event, as every peer gets it. A gun only.
+                if (armed.Kind != WeaponKind.Melee)
+                {
+                    skin.OnReloading(armed, true);
+                    bool reloading = false;
+                    for (float waited = 0f; !reloading && waited < 1f; waited += Time.deltaTime)
+                    {
+                        yield return null;
+                        reloading = worn.Animator.GetCurrentAnimatorStateInfo(2).IsName("Reload");
+                    }
+
+                    Check("a reload starts the arms' reload clip within a second", reloading);
+                }
             }
+
+            // Every state of #204 exists in the controller (re-run CharacterArt.Build if not).
+            Animator animator = worn.Animator;
+            foreach (string parameter in new[] { "Speed", "Airborne", "Seated", "Punch", "Dead", "Armed", "Fire", "Swimming", "Reload" })
+                Check($"the controller has the {parameter} parameter", animator.parameters.Any(p => p.name == parameter));
+
+            foreach (string state in new[] { "Base Layer.Move", "Base Layer.Seated", "Base Layer.Air", "Base Layer.Punch",
+                                             "Base Layer.Dead", "Base Layer.Swim", "Carry.Carry", "Armed.Gun", "Armed.Blade",
+                                             "Armed.Reload" })
+                Check($"the controller has the {state} state", animator.HasState(state.StartsWith("Base") ? 0 : state.StartsWith("Carry") ? 1 : 2,
+                                                                                Animator.StringToHash(state)));
+
+            // Swimming, forced: the sea is not under the spawn point.
+            skin.ForceSwim = true;
+            bool swimming = false;
+            for (float waited = 0f; !swimming && waited < 1.5f; waited += Time.deltaTime)
+            {
+                yield return null;
+                swimming = animator.GetCurrentAnimatorStateInfo(0).IsName("Swim");
+            }
+
+            skin.ForceSwim = false;
+            Check("swimming reaches the Swim state within 1.5 s", swimming);
+
+            bool wading = false;
+            for (float waited = 0f; !wading && waited < 1.5f; waited += Time.deltaTime)
+            {
+                yield return null;
+                wading = animator.GetCurrentAnimatorStateInfo(0).IsName("Move");
+            }
+
+            Check("and leaving the water returns to Move", wading);
 
             // The NPCs (T10): the barman on one island, the castaway on the other, natives if on.
             NpcSkin[] npcs = NpcSkin.Live.Where(n => n != null).ToArray();
