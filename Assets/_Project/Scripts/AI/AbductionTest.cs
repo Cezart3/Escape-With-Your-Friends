@@ -135,6 +135,7 @@ namespace EscapeWithYourFriends.AI
             yield return Broke(spawner, spearman, motor, health, stun, body, ragdoll);
             yield return Rescued(spawner, spearman, motor, health, stun, body, ragdoll);
             yield return Delivered(spawner, spearman, motor, health, stun, body, ragdoll);
+            yield return Late(spawner, spearman, motor, health, stun, body);
 
             Report();
         }
@@ -246,6 +247,35 @@ namespace EscapeWithYourFriends.AI
             }
 
             Clear(near, middle, far, shooter);
+            Reset(health, stun);
+        }
+
+        /// <summary>
+        /// Nobody in range when the body hit the floor. A spearman that turns up afterwards still
+        /// takes it - the playtest where nobody ever got dragged anywhere.
+        /// </summary>
+        IEnumerator Late(NativeSpawner spawner, NativeDef def, PlayerMotor motor, Health health,
+                         StunState stun, Carryable body)
+        {
+            Reset(health, stun);
+            yield return null;
+
+            Vector3 origin = motor.transform.position;
+            health.ServerDown(new DamageInfo(0f, DamageType.Blunt));
+            yield return null;
+
+            Native native = Place(spawner, def, Beside(origin, 10f, 90f), Ground(origin + motor.transform.forward * 40f));
+            if (native == null)
+            {
+                Check("a native can be placed after the fall", false);
+                Reset(health, stun);
+                yield break;
+            }
+
+            yield return Until(() => native == null || native.Haul == body, 3f);
+            Check("a native arriving after the fall still claims the body", native != null && native.Haul == body);
+
+            Clear(native);
             Reset(health, stun);
         }
 

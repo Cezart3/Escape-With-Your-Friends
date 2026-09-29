@@ -7938,6 +7938,25 @@ Three more, from the same runs:
 
 ---
 
+## Playtest fixes: the chequered sea, late abductions, friendly fire
+
+- **The sea was a checkerboard with a see-through horizon.** `WaterDepth*.png` imported as a
+  single-channel texture with the default *Alpha* component, so it became Alpha8 and sampled as
+  `(0,0,0,a)`. The shader reads `.r`, so every pixel of ocean was zero-depth shallows: the surf band
+  covered the whole sea, its two crossing sines drew the checkerboard, and the shallow alpha let the
+  dark lower skybox through the horizon ring. `WaterFactory` now asks for the *Red* component (R8).
+  Regenerated with `GenerateIsland -island 1` and `-island 2`.
+- **Nobody got dragged.** A downed body was offered to the natives once, at the instant it fell.
+  Downed by a dart from range, a fall or hunger, with no hauler inside its radius, it was never
+  offered again. `Native.ClaimLate` runs on the sense tick: a hauler that comes within
+  `AbductRadius` of a downed, unheld body takes it. Bodies within 10 m of that native's own camp are
+  skipped so a delivery is not re-claimed, and a native that just let go waits 30 s.
+  `-abductTest` checks a spearman placed after the fall.
+- **Friendly fire already works.** Neither `Weapon` nor `Health` checks which side the victim is on.
+  `-gunTest` shoots the other process's player body, so there is nothing to add.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**
