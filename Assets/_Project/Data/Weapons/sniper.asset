@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.WeaponDef
   _id: sniper
   _displayName: Sniper Rifle
-  _description: Five rounds and a very long reach. Costs about what the boat does.
+  _description: Five rounds and a very long reach. The last gun anybody buys.
   _kind: 1
   _item: {fileID: 11400000, guid: 3a8e1dd0b74b651428370572530131d8, type: 2}
   _hit:

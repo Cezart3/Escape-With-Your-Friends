@@ -186,7 +186,7 @@ namespace EscapeWithYourFriends.EditorTools
                 pellets: 1, spread: 0.2f, recoil: 6.0f, rpm: 40f, magazine: 5, ammo: "rifle_ammo",
                 reload: 3.0f,
                 size: new Vector3(0.07f, 0.11f, 1.55f), colour: new Color(0.30f, 0.34f, 0.28f),
-                description: "Five rounds and a very long reach. Costs about what the boat does."),
+                description: "Five rounds and a very long reach. The last gun anybody buys."),
 
             // The proof that the other branch is real. Balance is #51's problem, not this issue's.
             new("pistol", "Pistol", "pistol", WeaponKind.Hitscan, 1,
