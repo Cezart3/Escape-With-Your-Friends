@@ -314,8 +314,8 @@ namespace EscapeWithYourFriends.Items
         /// <summary>
         /// Stretches the box to a model longer than it. A rifle used to keep the pile's cube: balanced
         /// inside it, and half in the sand once the drop's random rotation had its way. It now lies as
-        /// long as it looks, on its flat side. A smaller model keeps the cube, which is generous on
-        /// purpose: a berry is picked up by the box, not by its pixels.
+        /// long as it looks, on its flat side. A smaller model keeps the cube's footprint, which is
+        /// generous on purpose: a berry is picked up by the box, not by its pixels.
         /// </summary>
         void Fit(GameObject visual)
         {
@@ -332,7 +332,15 @@ namespace EscapeWithYourFriends.Items
             box.center = _restCentre;
 
             if (visual == null || Drawn(box.transform, visual) is not Bounds drawn) return;
-            if (Longest(drawn.size) <= Longest(_restSize)) return;
+
+            if (Longest(drawn.size) <= Longest(_restSize))
+            {
+                // Generous around, but as tall as the thing: a steak in a 56 cm cube hovered 20 cm
+                // over the sand.
+                box.center = new Vector3(_restCentre.x, drawn.center.y, _restCentre.z);
+                box.size = new Vector3(_restSize.x, Mathf.Max(drawn.size.y, MinThickness), _restSize.z);
+                return;
+            }
 
             box.center = drawn.center;
             box.size = Vector3.Max(drawn.size, Vector3.one * MinThickness);

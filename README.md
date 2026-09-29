@@ -171,3 +171,9 @@ This project is built with [Claude Code](https://claude.com/claude-code) driving
 - **blender-mcp** ([ahujasid/blender-mcp](https://github.com/ahujasid/blender-mcp)) — low-poly modelling, plus CC0 assets from Poly Haven.
 
 What the agent cannot do: playtesting, tuning game feel, and final art direction. Those stay human.
+
+## Licence
+
+Proprietary. Copyright (c) 2026 Cezar Tocaciu, all rights reserved. The source is visible, but you
+may not copy, modify, redistribute or reuse any of it. See [LICENSE](LICENSE). Third-party parts
+(FishNet, Facepunch.Steamworks, CC0 art) keep their own licences, which are listed there.

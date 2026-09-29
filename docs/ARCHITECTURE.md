@@ -8021,6 +8021,42 @@ corrected. The parts hauled in can knock the parked plane twenty degrees off its
 playthrough bot now steers back to the strip's POI yaw before it lifts, which is what a pilot does.
 On island2 it went into the treeline without that.
 
+## #206, #208: what loot looks like, and its icon
+
+`Editor/ItemArtFactory.cs`, run in batchmode **without** `-nographics` (the icons are rendered):
+
+    Unity.exe -batchmode -quit -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.ItemArtFactory.Build
+
+A boar used to drop two yellow cubes: 29 of the 44 items had no `WorldPrefab`, and `WorldItem` falls
+back to a greybox. Now:
+
+- **Kit items** (meat, fish, coconut, bottles, planks, flint, scrap, cloth, kits) wear a Kenney model
+  (Food Kit, new; Survival Kit, more pieces), fitted with `ArtDress.FitBox` to a size in metres.
+  The glbs come from the CC0 mirror and are converted with `tools/art/glb2fbx.py` in Blender.
+- **Everything else** (ammo boxes, shells, pearl, rope, feather, bandage, torch, boot, hide, rod,
+  jerrycan, tyre) is a few colliderless primitives in `Palette` colours. Cheap, but they read.
+- Prefabs land in `Prefabs/Items/<id>.prefab`. A world prefab somebody else chose (the guns, from
+  `WeaponFactory`) is never replaced; one this factory made is rebuilt every run.
+- Then **every** item with a world prefab is photographed (orthographic, three-quarter view,
+  transparent, 128 px) into `Art/Icons/<id>.png`, imported as a Sprite and assigned to `_icon`.
+  The pistol and its rounds finally have icons. A new item gets one by existing.
+
+`WorldItem.Fit` now also shrinks the pickup box's **height** to the model (the footprint stays
+generous): a steak in the 56 cm cube hovered 20 cm over the sand.
+
+Harness: `-itemTest`, `-lootTest`, `-weaponTest` (unchanged; they cover the prefabs spawning and
+the boxes); the look was checked on the icon sheet and the bot's screenshots.
+
+## Water: no foam polygons on flat sand at sea level
+
+The playtest showed pale-white polygons on the beach and under the wreck. The wreck's pad and the
+flattest tideline sit within centimetres of the sea plane, so the plane cut through the terrain's
+triangles there. The baked depth mask reads ~0 at those spots, which the shader drew as full
+shallow-alpha foam. `Water.shader` now multiplies alpha by `smoothstep(0, _EdgeFade / _ShoreDepth,
+mask)` (`_EdgeFade` = 0.35 m). The last few centimetres are a transparent film, and the surf line
+sits just offshore. No terrain regeneration was needed. Checked on the bot's wreck and sailing
+screenshots.
+
 ---
 
 ## Data-driven content

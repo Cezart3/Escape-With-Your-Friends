@@ -15,7 +15,8 @@ never straight into the game.
 |---|---|---|---|---|
 | Pirate Kit | Kenney | https://kenney.nl/assets/pirate-kit | CC0 1.0 | Rocks, thatched huts, crates |
 | Pirate Kit | Quaternius | https://quaternius.com/packs/piratekit.html | CC0 1.0 (check: the zip has no licence file) | Palms, the shipwreck and its boat, the cave cliffs, barrels, bottles, the chest |
-| Survival Kit | Kenney | https://kenney.nl/assets/survival-kit | CC0 1.0 | Pines, logs, stumps, grass, floors and walls, the camp, chests, tools |
+| Survival Kit | Kenney | https://kenney.nl/assets/survival-kit | CC0 1.0 | Pines, logs, stumps, grass, floors and walls, the camp, chests, tools; dropped fish, bottles, planks, stone, firewood, scrap, cloth |
+| Food Kit | Kenney | https://kenney.nl/assets/food-kit | CC0 1.0 | Dropped meat, cooked fish, coconuts, the grog bottle |
 | Platformer Kit | Kenney | https://kenney.nl/assets/platformer-kit | CC0 1.0 | Jungle trees, plants, flowers |
 | Coaster Kit | Kenney | https://kenney.nl/assets/coaster-kit | CC0 1.0 | Jungle trees |
 | Castle Kit | Kenney | https://kenney.nl/assets/castle-kit | CC0 1.0 | Highland trees |
