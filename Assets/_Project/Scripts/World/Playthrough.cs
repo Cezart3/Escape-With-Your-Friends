@@ -81,7 +81,7 @@ namespace EscapeWithYourFriends.World
             Debug.Log($"[Playthrough] {(ok ? "PASS" : "FAIL")} {what}");
         }
 
-        bool _hitShot;
+        bool _hitShot, _fought;
 
         IEnumerator Shot(string name)
         {
@@ -189,6 +189,10 @@ namespace EscapeWithYourFriends.World
         /// <summary>Shoots until it is dead or twenty trigger pulls are spent.</summary>
         IEnumerator Fight(Component prey, bool photo)
         {
+            // The first fight is photographed wherever it happens: an animal that charges on the way
+            // is often the only one the short runs see.
+            photo |= !_fought;
+            _fought = true;
             Weapon weapon = _motor.GetComponent<Weapon>();
             Health health = prey.GetComponent<Health>();
             if (weapon.Equipped == null) yield return Hold("pistol");
@@ -403,6 +407,11 @@ namespace EscapeWithYourFriends.World
             yield return new WaitForSeconds(3f);
             Check($"R loads it ({weapon?.Loaded} in the magazine)", weapon != null && weapon.Loaded > 0);
             yield return Shot("pistol_in_hand");
+
+            // Whatever is selected is in the hand, not only a gun: a box of rounds, for the photo.
+            yield return Hold("pistol_ammo");
+            yield return Shot("ammo_in_hand");
+            yield return Hold("pistol");
 
             // ------------------------------------------------ an animal to shoot
             Animal prey = FindObjectsByType<Animal>(FindObjectsSortMode.None)

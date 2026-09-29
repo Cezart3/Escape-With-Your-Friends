@@ -8067,11 +8067,22 @@ The playtest said hit registration looked wrong. The hits were right; nothing sh
   URP Particles/Unlit, additive, so the vertex-colour fade along the line works.
 - **The tracer started at the eye.** That is where the server's ray leaves, but a line from the eye
   is a dot for the shooter and a line out of everybody else's forehead. It is drawn from the muzzle
-  now. For the shooter, whose own gun is hidden, that is a point low and right of the camera. For
-  everybody else it is `CharacterSkin.Muzzle`, the front face of the gun in the hand. **The end is
-  still the server's hit point**. `-gunTest` now checks that every hit is exactly the end of a
+  now. For the shooter it is the tip of the gun on their screen (`CharacterSkin.ViewMuzzle`, below).
+  For everybody else it is `CharacterSkin.Muzzle`, the front face of the gun in the hand. **The end
+  is still the server's hit point**. `-gunTest` now checks that every hit is exactly the end of a
   drawn tracer.
-- **Muzzle flash**: an additive sphere and a point light for 50 ms.
+- **Muzzle flash**: a small additive star (a core along the barrel, two thin blades across it),
+  parented to that same tip for 50 ms, so it points wherever the gun points. The first version had a
+  point light, and it drew a bright disc on the ground every shot, so the light is gone.
+- **The item in your own hand.** The body's copy of the held model is shadow-only for its owner,
+  because the camera is inside the head. So `CharacterSkin` builds a second copy that hangs off the
+  camera, low and right. A gun lies along the view, with its back at least 28 cm out (the near plane
+  is 15 cm) and at most 55 cm long. A blade stands up and forward. Anything else is turned three
+  quarters and shrunk to 22 cm. It kicks back and up on each attack, bobs with walking, and hides
+  while carrying, seated, ragdolled, dead or in a story beat. Any selected item is now drawn, in the
+  hand for everyone else and in front of the camera for you: a non-weapon wears its ground model,
+  shrunk to 30 cm and held by its middle. `-skinTest` checks the view copy and its muzzle, and a
+  plain item held hand-sized.
 - **Impacts**: `Weapon.ApplyHit`'s observers RPC arrives before the shot's, so the ends that drew
   blood are known when the ends come in. Those throw dark red bits. Every other end that stopped
   short of the gun's range throws sand-coloured dust. Bits are pooled cubes (at most 96),

@@ -18,8 +18,9 @@ namespace EscapeWithYourFriends.Combat
     /// Only the start is a lie. The server's rays leave from the eye, and a tracer from the eye is a
     /// dot in the middle of the shooter's screen and a line out of everybody else's forehead, which
     /// is most of why hits did not read as hits. It is drawn from the muzzle instead: the gun in the
-    /// hand for everybody else, a point low and right of the camera for the shooter, whose own gun is
-    /// hidden. The end is the server's, to the centimetre (GunTest checks it).
+    /// hand for everybody else, the gun in front of the camera for the shooter (CharacterSkin's view
+    /// model). The flash hangs off that same tip, so it follows the gun wherever it points. The end is
+    /// the server's, to the centimetre (GunTest checks it).
     ///
     /// The body hits arrive first: <c>Weapon.ApplyHit</c> sends its observers RPC before the shot's,
     /// so by the time the ends come in, the ones that drew blood are known. Every other end that
@@ -62,7 +63,6 @@ namespace EscapeWithYourFriends.Combat
         Material _bloodMaterial, _dustMaterial;
 
         Transform _root, _flash;
-        Light _flashLight;
         float _flashUntil, _markerUntil;
         CharacterSkin _skin;
 
@@ -93,6 +93,7 @@ namespace EscapeWithYourFriends.Combat
         void OnDestroy()
         {
             if (_root != null) Destroy(_root.gameObject);
+            if (_flash != null) Destroy(_flash.gameObject);
         }
 
         void Update()
@@ -151,8 +152,9 @@ namespace EscapeWithYourFriends.Combat
             float width = weapon != null && weapon.Pellets > 1 ? _width * 0.6f : _width;
             // Half a metre from the shooter's eye, a bullet's width is a plank's.
             if (_weapon.IsOwner) width *= 0.3f;
-            Vector3 muzzle = Muzzle(origin);
-            Flash(muzzle);
+            Transform tip = Tip();
+            Vector3 muzzle = tip != null ? tip.position : origin;
+            Flash(tip);
 
             foreach (Vector3 end in ends)
             {
@@ -175,43 +177,54 @@ namespace EscapeWithYourFriends.Combat
             _bodyHits.Clear();
         }
 
-        /// <summary>Where the shot is seen to leave from. See the class comment.</summary>
-        Vector3 Muzzle(Vector3 eye)
+        /// <summary>Where the shot is seen to leave from: the gun you see. See the class comment.</summary>
+        Transform Tip()
         {
-            if (_weapon.IsOwner && Camera.main != null)
-            {
-                Transform view = Camera.main.transform;
-                return view.position + view.right * 0.14f - view.up * 0.11f + view.forward * 0.6f;
-            }
-
-            return _skin != null && _skin.Muzzle != null ? _skin.Muzzle.position : eye;
+            if (_skin == null) return null;
+            if (_weapon.IsOwner && _skin.ViewMuzzle != null) return _skin.ViewMuzzle;
+            return _skin.Muzzle;
         }
 
-        void Flash(Vector3 at)
+        /// <summary>
+        /// A small star at the tip, along the barrel: a core pushed forward and two thin blades across
+        /// it, spun a random amount each shot. Parented to the tip, so it points the way the gun does.
+        /// No light: a point light a metre from the ground drew a bright disc on it every shot.
+        /// </summary>
+        void Flash(Transform tip)
         {
+            if (tip == null) return;
+
             if (_flash == null)
             {
-                GameObject flash = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                Destroy(flash.GetComponent<Collider>());
-                flash.name = "Muzzle flash";
-                flash.transform.SetParent(_root, false);
-                flash.transform.localScale = new Vector3(0.035f, 0.035f, 0.07f);
-                var renderer = flash.GetComponent<MeshRenderer>();
-                renderer.sharedMaterial = new Material(_material) { color = new Color(0.9f, 0.6f, 0.25f) };
-                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-
-                _flashLight = flash.AddComponent<Light>();
-                _flashLight.type = LightType.Point;
-                _flashLight.range = 5f;
-                _flashLight.intensity = 4f;
-                _flashLight.color = new Color(1f, 0.8f, 0.5f);
-                _flash = flash.transform;
+                _flash = new GameObject("Muzzle flash").transform;
+                var material = new Material(_material) { color = new Color(1f, 0.7f, 0.3f) };
+                Piece(material, new Vector3(0f, 0f, 0.04f), 0f, new Vector3(0.018f, 0.018f, 0.08f));
+                Piece(material, new Vector3(0f, 0f, 0.012f), 45f, new Vector3(0.06f, 0.008f, 0.008f));
+                Piece(material, new Vector3(0f, 0f, 0.012f), -45f, new Vector3(0.06f, 0.008f, 0.008f));
             }
 
-            _flash.position = at;
-            if (Camera.main != null) _flash.rotation = Camera.main.transform.rotation;
+            _flash.SetParent(tip, false);
+            _flash.localPosition = Vector3.zero;
+            _flash.localRotation = Quaternion.Euler(0f, 0f, Random.Range(0f, 90f));
+            // The tip's scale is the gun's: a model shrunk to fit the view would shrink its flash too.
+            Vector3 scale = tip.lossyScale;
+            _flash.localScale = new Vector3(1f / scale.x, 1f / scale.y, 1f / scale.z) * Random.Range(0.8f, 1.2f);
             _flash.gameObject.SetActive(true);
             _flashUntil = Time.time + FlashSeconds;
+        }
+
+        void Piece(Material material, Vector3 at, float roll, Vector3 size)
+        {
+            GameObject piece = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            Destroy(piece.GetComponent<Collider>());
+            piece.transform.SetParent(_flash, false);
+            piece.transform.localPosition = at;
+            piece.transform.localRotation = Quaternion.Euler(0f, 0f, roll);
+            piece.transform.localScale = size;
+            var renderer = piece.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
         }
 
         /// <summary>A handful of small cubes thrown from a point: dust off sand and wood, blood off a body.</summary>
