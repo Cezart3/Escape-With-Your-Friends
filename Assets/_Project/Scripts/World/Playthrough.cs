@@ -99,10 +99,11 @@ namespace EscapeWithYourFriends.World
                 if (Time.time > nextThreat)
                 {
                     nextThreat = Time.time + 0.5f;
-                    Animal threat = Threat();
+                    Component threat = PlanePart.HeldBy(_motor.NetworkObject) == null && Count("pistol") > 0
+                                         && (_motor.GetComponent<Weapon>().Loaded > 0 || Count("pistol_ammo") > 0) ? Threat() : null;
                     if (threat != null)
                     {
-                        Debug.Log($"[Playthrough] a {threat.Def?.Id} is after me on the way to {where}; shooting it.");
+                        Debug.Log($"[Playthrough] a {threat.name} is after me on the way to {where}; shooting it.");
                         yield return Fight(threat, false);
                         lastProgress = Time.time;
                     }
@@ -156,7 +157,7 @@ namespace EscapeWithYourFriends.World
         }
 
         /// <summary>Shoots until it is dead or twenty trigger pulls are spent.</summary>
-        IEnumerator Fight(Animal prey, bool photo)
+        IEnumerator Fight(Component prey, bool photo)
         {
             Weapon weapon = _motor.GetComponent<Weapon>();
             Health health = prey.GetComponent<Health>();
@@ -174,7 +175,7 @@ namespace EscapeWithYourFriends.World
                 }
                 _input.BotMove = Vector2.zero;
                 if (weapon.Loaded == 0) { _input.BotPress("reload"); yield return new WaitForSeconds(2.5f); }
-                Look(prey.transform.position + Vector3.up * 0.5f);
+                Look(Chest(prey));
                 yield return new WaitForSeconds(0.15f);
                 if (i == 0 && photo) yield return Shot("aim_animal");
                 _input.BotPress("attack");
@@ -184,10 +185,19 @@ namespace EscapeWithYourFriends.World
 
         Health Me => _motor.GetComponent<Health>();
 
-        /// <summary>Whatever animal has picked this player as its target, if it is close.</summary>
-        Animal Threat() => FindObjectsByType<Animal>(FindObjectsSortMode.None)
-            .FirstOrDefault(a => a.Target == Me && a.Def != null && a.Def.Temperament != Temperament.Skittish && a.GetComponent<Health>() is Health h && !h.IsDead
-                                 && Vector3.Distance(a.transform.position, _motor.transform.position) < 20f);
+        /// <summary>Whatever animal or native has picked this player as its target, if it is close.</summary>
+        Component Threat()
+        {
+            Component animal = FindObjectsByType<Animal>(FindObjectsSortMode.None)
+                .FirstOrDefault(a => a.Target == Me && a.Def != null && a.Def.Temperament != Temperament.Skittish && a.GetComponent<Health>() is Health h && !h.IsDead
+                                     && Vector3.Distance(a.transform.position, _motor.transform.position) < 20f);
+            if (animal != null) return animal;
+            return FindObjectsByType<Native>(FindObjectsSortMode.None)
+                .FirstOrDefault(n => n.Target == Me && n.GetComponent<Health>() is Health h && !h.IsDead
+                                     && Vector3.Distance(n.transform.position, _motor.transform.position) < 25f);
+        }
+
+        static Vector3 Chest(Component c) => c.transform.position + Vector3.up * (c is Native ? 1.2f : 0.5f);
 
         /// <summary>Down with nobody to lift you: log it and wait for whatever the game does next.</summary>
         IEnumerator WaitOutDown()
@@ -200,11 +210,10 @@ namespace EscapeWithYourFriends.World
             yield return new WaitForSeconds(2f);
         }
 
-        bool Sees(Animal prey)
+        bool Sees(Component prey)
         {
-            Vector3 chest = prey.transform.position + Vector3.up * 0.5f;
-            return Physics.Linecast(Eye, chest, out RaycastHit hit, ~0, QueryTriggerInteraction.Ignore)
-                && hit.collider.GetComponentInParent<Animal>() == prey;
+            return Physics.Linecast(Eye, Chest(prey), out RaycastHit hit, ~0, QueryTriggerInteraction.Ignore)
+                && hit.collider.GetComponentInParent<Health>() == prey.GetComponent<Health>();
         }
 
         static float Flat(Vector3 a, Vector3 b) => Vector2.Distance(new Vector2(a.x, a.z), new Vector2(b.x, b.z));
@@ -346,7 +355,12 @@ namespace EscapeWithYourFriends.World
                         trading.RequestBuy(counter, offer, 1);
                         yield return new WaitForSeconds(0.4f);
                     }
+                    // Thirty-six rounds do not last to the far island's boars and natives.
+                    int ammo = System.Array.FindIndex(counter.Shop.Offers, o => o.IsValid && o.Item.Id == "pistol_ammo");
+                    if (trip == 1 && ammo >= 0)
+                        { trading.RequestBuy(counter, ammo, 36); yield return new WaitForSeconds(0.4f); }
                     Debug.Log($"[Playthrough] trip {trip}: carrying {Count(BoatVoyage.PartItem)} part(s), {_bag.Weight:0}kg.");
+                    Debug.Log($"[Playthrough] pistol rounds: {Count("pistol_ammo")}.");
                     yield return Shot($"bought_trip{trip}");
                     _input.BotPress("inventory");
                     yield return new WaitForSeconds(0.5f);

@@ -7839,6 +7839,26 @@ with a save on Island (the save sails there, then the rescue). What it found, ea
 
 ---
 
+## The boar, retuned after a fresh-world bot run
+
+A fresh-world run of the playthrough bot (`-scene island -noSave`, natives and animals on) went down
+five times on the first walk from spawn to the wreck, unarmed: `boar.camp` puts five boars within
+130 m of the camp, and each one sensed you at 30 m and charged at 7.2 m/s against a 7.5 m/s sprint.
+The boar is described as having bad eyesight; now it has. `AnimalFactory` seed: sense 30 -> 18 m,
+react 16 -> 14 m (`-animalTest` spawns one 12 m ahead and needs the charge), run 7.2 -> 6.2 m/s.
+Reseeded with `AnimalFactory.Build -reseed boar`. The next fresh run reached the wreck, the pistol,
+the trader and the boat at full health; `-animalTest` 93/0.
+
+The bot also learned two things a player does: it shoots natives that target it (not only animals),
+only when it has rounds and is not carrying a plane part, and it buys a box of 36 pistol rounds at
+the trader on the first trip.
+
+Open, for a playtest to judge: on Island2 the bot still goes down near the plane. It runs out of
+rounds against charging boars (three kills in a magazine-and-a-half), and headhunters hit for 34.
+The bot aims badly at a charging animal, so this may be the bot and not the island.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**
