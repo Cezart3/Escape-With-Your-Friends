@@ -94,6 +94,10 @@ namespace EscapeWithYourFriends.Vehicles
         Vector3 _hitPush;
         float _hitHeight;
 
+        /// <summary>Where the hardest contact since the last report was, and with what. Read by CarTest's tour.</summary>
+        internal Vector3 LastHitPoint { get; private set; }
+        internal Collider LastHitCollider { get; private set; }
+
         /// <summary>
         /// Steering angle, for the front wheels you can see. A SyncVar rather than something derived,
         /// because a client cannot work out which way the wheels are pointed from a body that is
@@ -157,6 +161,7 @@ namespace EscapeWithYourFriends.Vehicles
             _hitForce = 0f;
             _hitPush = Vector3.zero;
             _hitHeight = float.NaN;
+            LastHitCollider = null;
 
             return $"{(_body.IsSleeping() ? "ASLEEP" : "awake")}, "
                    + $"{grounded}/4 grounded, {rpm / 4f:0} rpm avg, slip {slip:0.00}, "
@@ -322,6 +327,8 @@ namespace EscapeWithYourFriends.Vehicles
             // indistinguishable from the magnitude alone.
             _hitPush = other.impulse / Time.fixedDeltaTime;
             _hitHeight = other.contactCount > 0 ? other.GetContact(0).point.y : float.NaN;
+            if (other.contactCount > 0) LastHitPoint = other.GetContact(0).point;
+            LastHitCollider = other.collider;
         }
 
         void FixedUpdate()
