@@ -8312,6 +8312,35 @@ walked a list of destroyed bits. The long bot playthrough logged a hundred thous
 
 `-voyageTest` checks `PoolAlive` after both crossings.
 
+## Weapon mods (economy overhaul)
+
+Per-weapon upgrades bought at the trader with the weapon in your hand. `Economy/WeaponMods.cs` on the
+player, harness `-gunsmithTest` (solo, `-scene island`).
+
+| Track | Levels | First level | Top level | Effect |
+|---|---|---|---|---|
+| Firepower | 5 | 25% of the weapon | 5x the weapon | +12% damage per level |
+| Scope | 4 | 50% | 5x | ADS zoom 1.25x (iron) -> 2x, 3x, 4.5x, 6x |
+| Red dot | 1 | 75% | - | aimed scatter halved again, dot drawn while aiming |
+| Flashlight | 1 | 30% | - | spot light on the camera, toggled with **T** |
+| Recoil grip | 1 | 3x | - | kick x0.35 |
+
+- **Prices are multipliers of the weapon's shop price**, read off the counter you stand at. Levels
+  climb geometrically between the first and last multiplier and round to three significant figures.
+  A counter that does not sell the gun (the barman) cannot mod it; a pistol's full kit is under 4k,
+  a 250k gun's firepower 5 alone is 1.25M. Grind or gamble, by design.
+- **Mods belong to the player, per weapon id**, in a `SyncDictionary<string, byte>` ("rifle/Sight"
+  -> level). Dropping a gun and picking up another of the same kind keeps them. Saved in
+  `SavedPlayer.mods` as "rifle/Sight=2" lines.
+- Melee weapons take firepower only; guns take all five.
+- **Aiming**: right mouse with a gun in hand raises it (the taser keeps right mouse otherwise).
+  `Weapon.Aiming` is set by `PlayerCombatInput` and sent with the shot; the server halves the cone
+  (a quarter with the red dot). The camera zooms by the sight level and scales look speed by 1/zoom.
+- The server reads damage, scatter and the price; the owner's camera reads zoom, the red dot, the
+  grip's kick and the light. The light is local only: squadmates do not see your beam.
+- The shop panel grew to 31 shelf rows plus 5 gunsmith rows (two columns, 40 px pitch, taller than
+  the chest panel). The gunsmith rows show the held weapon's icon and "Scope 1/4  $194".
+
 ---
 
 ## Data-driven content

@@ -39,6 +39,7 @@ namespace EscapeWithYourFriends.Core
         public int money;
         public int chips;
         public List<SavedSlot> bag = new();
+        public List<string> mods = new();
     }
 
     /// <summary>Upgrades bolted to one vehicle, by tier per part. Matched by scene object name.</summary>
@@ -235,6 +236,9 @@ namespace EscapeWithYourFriends.Core
                 wallet.ServerSetChips(saved.chips);
             }
 
+            var mods = body.GetComponent<Economy.WeaponMods>();
+            if (mods != null) mods.ServerRestore(saved.mods);
+
             var bag = body.GetComponent<Inventory>();
             if (bag != null && ItemCatalog.Active != null)
             {
@@ -332,6 +336,9 @@ namespace EscapeWithYourFriends.Core
                 saved.chips = wallet.Chips;
             }
 
+            var mods = body.GetComponent<Economy.WeaponMods>();
+            if (mods != null) saved.mods = mods.Saved();
+
             var bag = body.GetComponent<Inventory>();
             if (bag == null) return;
 
@@ -375,7 +382,11 @@ namespace EscapeWithYourFriends.Core
                 file.vehicles ??= new List<SavedVehicle>();
 
                 foreach (SavedPlayer player in file.players)
-                    if (player != null) player.bag ??= new List<SavedSlot>();
+                {
+                    if (player == null) continue;
+                    player.bag ??= new List<SavedSlot>();
+                    player.mods ??= new List<string>();
+                }
 
                 return file;
             }

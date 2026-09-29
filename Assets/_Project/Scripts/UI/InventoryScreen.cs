@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using EscapeWithYourFriends.Data;
 using EscapeWithYourFriends.Items;
 using EscapeWithYourFriends.Player;
@@ -62,6 +63,9 @@ namespace EscapeWithYourFriends.UI
 
         Inventory _bag;
         Economy.Trading _trading;
+        Economy.WeaponMods _mods;
+        Combat.Weapon _weapon;
+        readonly List<Economy.ModTrack> _modTracks = new();
         Storage _chest;
         Economy.ShopCounter _counter;
         SlotView _hovered;
@@ -76,12 +80,17 @@ namespace EscapeWithYourFriends.UI
         public const int BagSlots = 20;
 
         /// <summary>
-        /// How many shelf lines the screen can draw, in two columns. The trader has 24; at 16 in one
-        /// column the last eight - every gun and the boat part the whole run is saving for - were
-        /// drawn off the bottom of the panel, found by the playthrough bot's screenshot.
+        /// How many shelf lines the screen can draw, in two columns. At 16 in one column the last
+        /// eight - every gun and the boat part the whole run is saving for - were drawn off the bottom
+        /// of the panel, found by the playthrough bot's screenshot. The shop panel is taller than the
+        /// chest's now, so rows keep their height as the shelf grows.
         /// </summary>
-        public const int ShopRows = 24;
+        public const int ShopRows = 31;
+
+        /// <summary>The gunsmith lines after the shelf: one per mod the weapon in your hand takes.</summary>
+        const int ModRows = 5;
         const int ShopColumns = 2;
+        const float ShopPitch = 40f;
         const float RowGap = 3f;
 
         // ---------------------------------------------------------------- building
@@ -151,8 +160,10 @@ namespace EscapeWithYourFriends.UI
 
             // Twice the chest's width, growing rightwards so the bag still does not move.
             float shopWidth = ShopColumns * gridWidth + PanelGap + PanelPad * 2f;
+            int perColumn = (ShopRows + ModRows + ShopColumns - 1) / ShopColumns;
+            float shopHeight = perColumn * ShopPitch;
             _shopPanel = Panel("Shop", new Vector2((panelWidth + PanelGap) * 0.5f + (shopWidth - panelWidth) * 0.5f, 0f),
-                               shopWidth, chestHeight + PanelPad * 2f + HeaderHeight,
+                               shopWidth, shopHeight + PanelPad * 2f + HeaderHeight,
                                out _shopHeader, out RectTransform shopGrid);
 
             _bagSlots = Grid(bagGrid, SlotKind.Bag, BagSlots);
@@ -160,19 +171,17 @@ namespace EscapeWithYourFriends.UI
 
             // The shelf shares the chest's rectangle, because only one of them is ever open: you are
             // either at a chest or at a counter, never both.
-            int perColumn = ShopRows / ShopColumns;
-            float pitch = (chestHeight + RowGap) / perColumn;
-            _shopRows = new SlotView[ShopRows];
-            for (int i = 0; i < ShopRows; i++)
+            _shopRows = new SlotView[ShopRows + ModRows];
+            for (int i = 0; i < _shopRows.Length; i++)
                 _shopRows[i] = SlotView.Create(shopGrid, this, SlotKind.Shop, i,
-                                               new Vector2(i / perColumn * (gridWidth + PanelGap), -(i % perColumn) * pitch),
-                                               new Vector2(gridWidth, pitch - RowGap));
+                                               new Vector2(i / perColumn * (gridWidth + PanelGap), -(i % perColumn) * ShopPitch),
+                                               new Vector2(gridWidth, ShopPitch - RowGap));
 
             _hint = HudFactory.Label(_root, "Hint", 14, TextAnchor.UpperCenter);
             _hint.color = new Color(0.72f, 0.72f, 0.78f);
             HudFactory.Anchor((RectTransform)_hint.transform, new Vector2(0.5f, 0.5f),
                               new Vector2(0.5f, 1f),
-                              new Vector2(0f, -(bagHeight + PanelPad * 2f + HeaderHeight) * 0.5f - 14f),
+                              new Vector2(0f, -(Mathf.Max(bagHeight, shopHeight) + PanelPad * 2f + HeaderHeight) * 0.5f - 14f),
                               new Vector2(900f, 20f));
             _hint.text = "drag to move  -  shift-drag for half  -  right-click to store or sell  -  tab to close";
 
@@ -276,6 +285,8 @@ namespace EscapeWithYourFriends.UI
 
             _bag = holder.Bag;
             _trading = holder.Trading;
+            _mods = _bag != null ? _bag.GetComponent<Economy.WeaponMods>() : null;
+            _weapon = _bag != null ? _bag.GetComponent<Combat.Weapon>() : null;
 
             if (_bag == null || !_bag.IsSpawned)
             {
@@ -361,7 +372,9 @@ namespace EscapeWithYourFriends.UI
             Data.ShopDef shop = _counter.Shop;
             _shopHeader.text = $"{shop.DisplayName}   pays {shop.BuyBackFraction:P0} of value";
 
-            for (int i = 0; i < _shopRows.Length; i++)
+            DrawMods(shop);
+
+            for (int i = 0; i < ShopRows; i++)
             {
                 SlotView row = _shopRows[i];
                 bool live = i < _counter.OfferCount;
@@ -383,8 +396,46 @@ namespace EscapeWithYourFriends.UI
             }
         }
 
+        /// <summary>
+        /// The gunsmith lines: the next level of every mod the weapon in your hand takes, priced off
+        /// this counter. Drawn with the weapon's own icon and the mod in the note. Empty-handed, at
+        /// the barman, or holding something nobody here sells, the lines are hidden.
+        /// </summary>
+        void DrawMods(Data.ShopDef shop)
+        {
+            Data.WeaponDef weapon = _weapon != null ? _weapon.Equipped : null;
+            int weaponPrice = Economy.WeaponMods.WeaponPrice(shop, weapon);
+
+            _modTracks.Clear();
+            if (_mods != null && weaponPrice > 0)
+                foreach (Economy.ModTrack track in System.Enum.GetValues(typeof(Economy.ModTrack)))
+                    if (Economy.WeaponMods.Fits(weapon, track)) _modTracks.Add(track);
+
+            for (int m = 0; m < ModRows; m++)
+            {
+                SlotView row = _shopRows[ShopRows + m];
+                bool live = m < _modTracks.Count;
+                if (row.gameObject.activeSelf != live) row.gameObject.SetActive(live);
+                if (!live) continue;
+
+                Economy.ModTrack track = _modTracks[m];
+                int level = _mods.Level(weapon, track), levels = Economy.WeaponMods.Levels(track);
+                row.Draw(new ItemStack(Data.ItemCatalog.Active != null ? Data.ItemCatalog.Active.IndexOf(weapon.Item) : (ushort)0, 1));
+                string name = levels > 1 ? $"{Economy.WeaponMods.Label(track)} {level}/{levels}" : Economy.WeaponMods.Label(track);
+                row.SetNote(level >= levels
+                                ? $"{name}   owned"
+                                : $"{name}   ${Economy.WeaponMods.Price(weaponPrice, track, level + 1):N0}");
+            }
+        }
+
         void DrawMessage()
         {
+            if (_mods != null && _mods.LastRefusal != null && _mods.LastRefusal != _shownRefusal)
+            {
+                _shownRefusal = _mods.LastRefusal;
+                _messageUntil = Time.time + 3f;
+            }
+
             if (_trading != null && _trading.LastRefusal != null
                 && _trading.LastRefusal != _shownRefusal)
             {
@@ -514,7 +565,12 @@ namespace EscapeWithYourFriends.UI
                     return;
 
                 case SlotKind.Shop:
-                    if (_counter != null && _trading != null)
+                    if (slot.Index >= ShopRows)
+                    {
+                        int mod = slot.Index - ShopRows;
+                        if (_mods != null && mod < _modTracks.Count) _mods.RequestBuy(_modTracks[mod]);
+                    }
+                    else if (_counter != null && _trading != null)
                     {
                         // Shift buys a stack, up to 36: rounds are sold one at a time, and a box took
                         // eight shift-clicks at five (playthrough bot).

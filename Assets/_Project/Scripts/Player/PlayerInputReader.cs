@@ -111,6 +111,12 @@ namespace EscapeWithYourFriends.Player
         /// </summary>
         public bool AttackHeld { get; private set; }
 
+        /// <summary>Right mouse held: the taser's button, and the aim button while a gun is in hand.</summary>
+        public bool AltAttackHeld { get; private set; }
+
+        /// <summary>Scales look speed. The camera lowers it while zoomed, so a scope is not twitchy.</summary>
+        public float LookScale { get; set; } = 1f;
+
         /// <summary>True while this reader is driving a body, i.e. we own it.</summary>
         public bool IsBound => _bound;
 
@@ -214,7 +220,7 @@ namespace EscapeWithYourFriends.Player
             {
                 Move = Vector2.zero;
                 Sprint = Crouch = false;
-                InteractHeld = DropHeld = AttackHeld = false;
+                InteractHeld = DropHeld = AttackHeld = AltAttackHeld = false;
                 ClearQueued();
             }
 
@@ -265,6 +271,7 @@ namespace EscapeWithYourFriends.Player
             // than throwing and leaving the player unable to move at all.
             _use = _map.FindAction("Use", throwIfNotFound: false);
             _reload = _map.FindAction("Reload", throwIfNotFound: false);
+            _flashlight = _map.FindAction("Flashlight", throwIfNotFound: false);
             _hotbarScroll = _map.FindAction("HotbarScroll", throwIfNotFound: false);
             _toggleInventory = _map.FindAction("ToggleInventory", throwIfNotFound: false);
             _toggleSettings = _map.FindAction("ToggleSettings", throwIfNotFound: false);
@@ -294,7 +301,7 @@ namespace EscapeWithYourFriends.Player
 
             Move = Vector2.zero;
             Sprint = Crouch = false;
-            InteractHeld = DropHeld = AttackHeld = false;
+            InteractHeld = DropHeld = AttackHeld = AltAttackHeld = false;
             ClearQueued();
 
             ApplyCursorLock(false);
@@ -364,7 +371,7 @@ namespace EscapeWithYourFriends.Player
             {
                 Move = Vector2.zero;
                 Sprint = Crouch = false;
-                InteractHeld = DropHeld = AttackHeld = false;
+                InteractHeld = DropHeld = AttackHeld = AltAttackHeld = false;
                 return;
             }
 
@@ -374,11 +381,12 @@ namespace EscapeWithYourFriends.Player
             InteractHeld = _interact.IsPressed();
             DropHeld = _drop.IsPressed();
             AttackHeld = _attack.IsPressed();
+            AltAttackHeld = _altAttack.IsPressed();
 
             Vector2 look = _look.ReadValue<Vector2>();
             // The serialized value is the tuned look speed and the setting is a multiplier over it,
             // rather than a replacement: "1.0" then means the speed somebody actually playtested. #84.
-            float speed = _lookSensitivity * Core.GameSettings.Sensitivity;
+            float speed = _lookSensitivity * Core.GameSettings.Sensitivity * LookScale;
 
             Yaw = Mathf.Repeat(Yaw + look.x * speed, 360f);
             Pitch = Mathf.Clamp(Pitch - look.y * speed, _minPitch, _maxPitch);
@@ -392,6 +400,7 @@ namespace EscapeWithYourFriends.Player
             _dropQueued |= _drop.WasPressedThisFrame();
             if (_use != null) _useQueued |= _use.WasPressedThisFrame();
             if (_reload != null) _reloadQueued |= _reload.WasPressedThisFrame();
+            if (_flashlight != null) _flashlightQueued |= _flashlight.WasPressedThisFrame();
 
             ReadHotbar();
         }
@@ -481,6 +490,11 @@ namespace EscapeWithYourFriends.Player
         public bool ConsumeUse() => Consume(ref _useQueued);
 
         public bool ConsumeReload() => Consume(ref _reloadQueued);
+
+        public bool ConsumeFlashlight() => Consume(ref _flashlightQueued);
+
+        InputAction _flashlight;
+        bool _flashlightQueued;
 
         public bool ConsumeToggleInventory() => Consume(ref _toggleInventoryQueued);
 
