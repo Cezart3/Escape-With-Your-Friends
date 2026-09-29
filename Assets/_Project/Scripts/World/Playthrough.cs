@@ -162,6 +162,8 @@ namespace EscapeWithYourFriends.World
             Weapon weapon = _motor.GetComponent<Weapon>();
             Health health = prey.GetComponent<Health>();
             if (weapon.Equipped == null) yield return Hold("pistol");
+            float hpBefore = health.Current, near = Flat(prey.transform.position, _motor.transform.position);
+            int shots = 0;
             for (int i = 0; i < 20 && prey != null && !health.IsDead && !Me.IsIncapacitated; i++)
             {
                 // A trunk in the way is the bot's problem, not the gun's: close in until the eye
@@ -179,8 +181,11 @@ namespace EscapeWithYourFriends.World
                 yield return new WaitForSeconds(0.15f);
                 if (i == 0 && photo) yield return Shot("aim_animal");
                 _input.BotPress("attack");
+                shots++;
                 yield return new WaitForSeconds(0.4f);
             }
+            Debug.Log($"[Playthrough] fight with {prey.name}: {shots} shot(s) from {near:0}m, {hpBefore:0} -> "
+                      + $"{(health != null ? health.Current : 0f):0} hp, {weapon.Loaded} loaded, {Count("pistol_ammo")} spare.");
         }
 
         Health Me => _motor.GetComponent<Health>();
@@ -432,6 +437,15 @@ namespace EscapeWithYourFriends.World
         {
             yield return new WaitForSeconds(2f);
             PlaneAssembly plane = PlaneAssembly.Instance;
+            // Started here rather than sailed here: arrive as a player would, armed.
+            if (Count("pistol") == 0 && ItemCatalog.Active != null)
+            {
+                _bag.Add(ItemCatalog.Active.Find("pistol"), 1);
+                _bag.Add(ItemCatalog.Active.Find("pistol_ammo"), 72);
+                yield return Hold("pistol");
+                _input.BotPress("reload");
+                yield return new WaitForSeconds(2.5f);
+            }
             Check($"there is a plane on {GameSceneLoader.Current}", plane != null);
             Check($"and {PlanePart.All.Count} parts lying about for it", PlanePart.All.Count > 0 || (plane != null && plane.Complete));
             if (plane == null) yield break;
