@@ -310,6 +310,7 @@ namespace EscapeWithYourFriends.Net
             UI.UiTest.Begin();
             Economy.MoneyTest.Begin();
             Economy.ShopTest.Begin();
+            Economy.SkinShopTest.Begin();
             Combat.WeaponTest.Begin();
             Combat.MeleeTest.Begin();
             Combat.GunTest.Begin();

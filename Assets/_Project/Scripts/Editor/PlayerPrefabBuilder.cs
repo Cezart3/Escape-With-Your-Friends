@@ -298,6 +298,10 @@ namespace EscapeWithYourFriends.EditorTools
             var trading = root.AddComponent<Trading>();
             trading.Configure(inventory, wallet);
 
+            // Weapon skins bought at the trader (#209). Nothing to wire: it is only a server-side
+            // set and a replicated map.
+            root.AddComponent<SkinLocker>();
+
             // One component for every weapon in the game. It reads the selected hotbar slot and
             // asks the catalog what that item is, so there is nothing here to change when a weapon is
             // added - which is the whole of #49's acceptance.

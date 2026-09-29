@@ -6,6 +6,7 @@ using EscapeWithYourFriends.Data;
 using EscapeWithYourFriends.Economy;
 using EscapeWithYourFriends.Items;
 using EscapeWithYourFriends.Net;
+using EscapeWithYourFriends.Player;
 using EscapeWithYourFriends.Vehicles;
 using EscapeWithYourFriends.World;
 using FishNet;
@@ -39,6 +40,10 @@ namespace EscapeWithYourFriends.Core
         public int money;
         public int chips;
         public List<SavedSlot> bag = new();
+
+        /// <summary>Weapon skins owned and worn, by <see cref="WeaponSkin.Id"/>. #209.</summary>
+        public List<string> skins = new();
+        public List<string> wornSkins = new();
     }
 
     /// <summary>Upgrades bolted to one vehicle, by tier per part. Matched by scene object name.</summary>
@@ -235,6 +240,8 @@ namespace EscapeWithYourFriends.Core
                 wallet.ServerSetChips(saved.chips);
             }
 
+            body.GetComponent<SkinLocker>()?.ServerRestore(saved.skins, saved.wornSkins);
+
             var bag = body.GetComponent<Inventory>();
             if (bag != null && ItemCatalog.Active != null)
             {
@@ -332,6 +339,13 @@ namespace EscapeWithYourFriends.Core
                 saved.chips = wallet.Chips;
             }
 
+            var locker = body.GetComponent<SkinLocker>();
+            if (locker != null)
+            {
+                saved.skins = new List<string>(locker.Owned);
+                saved.wornSkins = new List<string>(locker.WornIds);
+            }
+
             var bag = body.GetComponent<Inventory>();
             if (bag == null) return;
 
@@ -375,7 +389,12 @@ namespace EscapeWithYourFriends.Core
                 file.vehicles ??= new List<SavedVehicle>();
 
                 foreach (SavedPlayer player in file.players)
-                    if (player != null) player.bag ??= new List<SavedSlot>();
+                    if (player != null)
+                    {
+                        player.bag ??= new List<SavedSlot>();
+                        player.skins ??= new List<string>();
+                        player.wornSkins ??= new List<string>();
+                    }
 
                 return file;
             }

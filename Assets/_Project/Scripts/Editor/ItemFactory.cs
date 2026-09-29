@@ -148,12 +148,18 @@ namespace EscapeWithYourFriends.EditorTools
             new("boat_part", "Boat Part", ItemCategory.Quest, 1, 12f, 0, "One of the pieces that gets you off this island."),
         };
 
+        /// <summary>The seeds plus one stand-in per weapon skin (#209): what the trader lists, never carried.</summary>
+        static IEnumerable<Seed> AllSeeds()
+            => Seeds.Concat(SkinCatalog.All.Select(skin => new Seed(
+                skin.ItemId, $"{skin.Label} skin", ItemCategory.Misc, 1, 0f, 0,
+                $"A {skin.Label.ToLower()} finish for the {skin.WeaponId}. Worn as soon as it is bought.")));
+
         public static void Build()
         {
             Directory.CreateDirectory(Folder);
 
             int created = 0;
-            foreach (Seed seed in Seeds)
+            foreach (Seed seed in AllSeeds())
                 if (Ensure(seed)) created++;
 
             AssetDatabase.SaveAssets();
@@ -254,7 +260,7 @@ namespace EscapeWithYourFriends.EditorTools
             if (catalog == null)
             {
                 Directory.CreateDirectory(Folder);
-                foreach (Seed seed in Seeds) Ensure(seed);
+                foreach (Seed seed in AllSeeds()) Ensure(seed);
                 AssetDatabase.SaveAssets();
                 Rebuild();
                 catalog = AssetDatabase.LoadAssetAtPath<ItemCatalog>(CatalogPath);
