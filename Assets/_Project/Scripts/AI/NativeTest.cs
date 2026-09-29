@@ -368,6 +368,8 @@ namespace EscapeWithYourFriends.AI
 
             Debug.Log($"[NativeTest] the island holds {day} natives by day and {night} at night.");
             Check($"the island gets busier after dark ({day} -> {night})", night > day);
+            Check($"a camp is full for four ({NativeSpawner.ForParty(6, 4)}/6) and thinner solo ({NativeSpawner.ForParty(6, 1)}/6)",
+                  NativeSpawner.ForParty(6, 4) == 6 && NativeSpawner.ForParty(6, 1) < 6 && NativeSpawner.ForParty(1, 1) == 1);
         }
 
         // ---------------------------------------------------------------- senses
