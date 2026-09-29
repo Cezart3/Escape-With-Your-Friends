@@ -105,6 +105,7 @@ namespace EscapeWithYourFriends.World
                     {
                         Debug.Log($"[Playthrough] a {threat.name} is after me on the way to {where}; shooting it.");
                         yield return Fight(threat, false);
+                        if (threat is Native) yield return Scavenge(15f);
                         lastProgress = Time.time;
                     }
                 }
@@ -184,8 +185,53 @@ namespace EscapeWithYourFriends.World
                 shots++;
                 yield return new WaitForSeconds(0.4f);
             }
+            // Reload between fights, not at the start of the next one: 2.5 s with a headhunter
+            // closing at 7 m/s is the fight lost (Island2 with natives, bot downed on an empty gun).
+            if (!Me.IsIncapacitated && weapon.Equipped != null && weapon.Loaded < weapon.Equipped.Magazine
+                && Count("pistol_ammo") > 0)
+            {
+                _input.BotPress("reload");
+                yield return new WaitForSeconds(2.5f);
+            }
             Debug.Log($"[Playthrough] fight with {prey.name}: {shots} shot(s) from {near:0}m, {hpBefore:0} -> "
                       + $"{(health != null ? health.Current : 0f):0} hp, {weapon.Loaded} loaded, {Count("pistol_ammo")} spare.");
+        }
+
+        bool _scavenging;
+
+        /// <summary>
+        /// Picks up the pistol rounds lying within <paramref name="radius"/>, as a player would after
+        /// a fight: natives drop them, and Island2 has no shop. Without this the bot reached the
+        /// village empty and died there on a loop.
+        /// </summary>
+        IEnumerator Scavenge(float radius)
+        {
+            if (_scavenging || PlanePart.HeldBy(_motor.NetworkObject) != null) yield break;
+            _scavenging = true;
+            for (int n = 0; n < 4 && !Me.IsIncapacitated; n++)
+            {
+                WorldItem item = FindObjectsByType<WorldItem>(FindObjectsSortMode.None)
+                    .Where(i => i.Stack.Def != null && i.Stack.Def.Id == "pistol_ammo"
+                                && Flat(i.transform.position, _motor.transform.position) < radius)
+                    .OrderBy(i => Flat(i.transform.position, _motor.transform.position)).FirstOrDefault();
+                if (item == null) break;
+                yield return Walk("ammo", item.transform.position, 1.8f, 30f);
+                int before = Count("pistol_ammo");
+                for (int t = 0; t < 6 && item != null && Count("pistol_ammo") == before; t++)
+                {
+                    Look(item.transform.position);
+                    yield return new WaitForSeconds(0.2f);
+                    _input.BotPress("interact");
+                    yield return new WaitForSeconds(0.5f);
+                }
+                string seen = Camera.main != null && Physics.Raycast(Camera.main.transform.position, Camera.main.transform.forward,
+                                  out RaycastHit hit, 5f, ~0, QueryTriggerInteraction.Ignore)
+                    ? $"{hit.collider.name} under {hit.collider.transform.root.name}" : "nothing";
+                Debug.Log($"[Playthrough] scavenged pistol rounds: {before} -> {Count("pistol_ammo")} (looking at {seen}, "
+                          + $"crosshair \"{_motor.GetComponent<PlayerInteractor>().Aimed?.Prompt}\").");
+                if (Count("pistol_ammo") == before) break;
+            }
+            _scavenging = false;
         }
 
         Health Me => _motor.GetComponent<Health>();
@@ -448,6 +494,13 @@ namespace EscapeWithYourFriends.World
                 _input.BotPress("reload");
                 yield return new WaitForSeconds(2.5f);
             }
+            // Island2's wreck washes up the same crate as the first one's: rounds for the village.
+            Landmark wreck2 = Landmark.All.Find(l => l.Id == "wreck");
+            if (wreck2 != null)
+            {
+                yield return Walk("wreck", wreck2.transform.position, 8f, 90f);
+                yield return Scavenge(22f);
+            }
             Check($"there is a plane on {GameSceneLoader.Current}", plane != null);
             Check($"and {PlanePart.All.Count} parts lying about for it", PlanePart.All.Count > 0 || (plane != null && plane.Complete));
             if (plane == null) yield break;
@@ -466,7 +519,10 @@ namespace EscapeWithYourFriends.World
                 {
                     if (Vector3.Distance(part.transform.position, Eye) > 3f)
                         yield return Walk(label, part.transform.position, 1.5f, 30f);
-                    Look(part.transform.position);
+                    // The middle of the crate, not its pivot: the pivot is on the ground, and a look
+                    // at the ground finds the ground first.
+                    Collider box = part.GetComponent<Collider>();
+                    Look(box != null ? box.bounds.center : part.transform.position);
                     yield return new WaitForSeconds(0.2f);
                     if (i == 0) yield return Shot("lift_" + label);
                     _input.BotPress("interact");

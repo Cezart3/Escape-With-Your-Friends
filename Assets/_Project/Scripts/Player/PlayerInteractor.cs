@@ -94,9 +94,6 @@ namespace EscapeWithYourFriends.Player
 
             foreach (RaycastHit hit in hits)
             {
-                // Overlapping at the start - your own capsule, mostly. SphereCast never reported these.
-                if (hit.distance <= 0f && hit.point == Vector3.zero) continue;
-
                 // In parents, not on the collider: a machine's hit box is a child mesh, and the
                 // component that knows what the machine does sits on the networked root.
                 //
@@ -115,8 +112,10 @@ namespace EscapeWithYourFriends.Player
                 }
 
                 NetworkObject owner = hit.collider.GetComponentInParent<NetworkObject>();
-                // Your own limbs: the arm holding a pistol sits in front of the camera, and at the
-                // wrong pitch it was the nearest hit and stopped the look (playthrough bot, at the plane).
+                // Your own capsule and limbs: the arm holding a pistol sits in front of the camera, and
+                // at the wrong pitch it was the nearest hit and stopped the look. This used to be a
+                // skip of every hit overlapping the cast's start, which also threw away the plane you
+                // were pressed against and left E doing nothing at 0.4 m (playthrough bot).
                 if (owner == NetworkObject) continue;
                 if (held != null && owner == held.NetworkObject)
                 {

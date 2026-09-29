@@ -600,7 +600,10 @@ namespace EscapeWithYourFriends.EditorTools
                 // #72 widened it. Full throttle is 9000N on 1100kg, so the take-off roll is about
                 // twenty-five metres and a 22m pad ran out from under it half way. A strip is the one
                 // pad on the island that has a length requirement rather than a footprint.
-                Entry("plane", PlaneBuilder.PlanePath, strip, Facing(strip, camp),
+                //
+                // Tail to the camp, as on the first island: nose-first it rolled sixty metres into
+                // the base camp's shelter posts and stopped there (playthrough bot).
+                Entry("plane", PlaneBuilder.PlanePath, strip, Facing(strip, camp) + 180f,
                       pad: 30f, falloff: 20f, raise: 0.2f, maxSlope: 0.25f)
             };
         }

@@ -7899,6 +7899,42 @@ Three more from the same fresh-world runs:
 
 ---
 
+## Island2 with natives on: the headhunter, softened
+
+The first bot run from a fresh Island with natives on reached Island2 and died at the cave and the
+village on a loop. Numbers from the log: a headhunter was 140 hp (six pistol rounds at ~26), hit
+for 34 (three hits to down a 100 hp player), came in pairs, and ran at 7.4 m/s against a 7.5 m/s
+sprint. Island2 has no shop, and headhunters dropped no pistol rounds.
+
+- `NativeFactory` headhunter: 130 hp (five rounds), 31 damage (four hits), 7.0 m/s, so running is
+  an answer again. Still over the spearman by `Island2Test`'s 1.5x health and 1.4x damage.
+  `NativeFactory.Build -reseed headhunter` overwrites an existing asset, AnimalFactory's rule;
+  without it a seed change never reaches the asset.
+- Headhunters drop 6-10 pistol rounds (90%), on both tables.
+- Native loot lands 1.4 m out instead of 0.55 m, clear of the body.
+- `Island2Test` asked for exactly five POIs; the plane, its parts and the mooring since made it ten.
+
+The bot now reloads after every fight rather than at the start of the next, and picks up pistol
+rounds after killing a native and at Island2's wreck. With natives on it still does not clear the
+village solo: it cannot sneak, hits about half its shots, and never eats, so an hour of deaths ends
+in starvation ("downed by Environment"). That is the bot, not the island; four players who bought
+a shotgun on the first island are who the village is for. Runs with `-noNatives` go end to end.
+
+Three more, from the same runs:
+
+- **Guns missed at close range.** `Weapon.ResolveHitscan` took the first `Raycast` hit and threw the
+  round away if it was the shooter's own body, which is what it was when aiming down at something
+  close: the bot put twenty rounds into a boar at its feet for no damage. It now walks
+  `RaycastAll` nearest first and skips the shooter.
+- **E did nothing pressed against the plane.** `PlayerInteractor` dropped every hit that overlapped
+  the cast's start, meant for your own capsule, which also dropped a fuselage 0.4 m away. Your own
+  body is now skipped by owner instead, so the overlap rule is gone.
+- **The Island2 take-off ran into the base camp.** The plane faced the camp and rolled into the
+  shelter posts sixty metres on. Tail to the camp now, as on the first island (`-island 2
+  -rebuildPois`; only the plane's yaw moved, -39 to 141).
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**
