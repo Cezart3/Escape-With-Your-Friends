@@ -8312,6 +8312,14 @@ walked a list of destroyed bits. The long bot playthrough logged a hundred thous
 
 `-voyageTest` checks `PoolAlive` after both crossings.
 
+## Late guns (economy overhaul)
+
+The gun ladder now runs to the run's real ceiling. Trader prices (`ShopFactory.Stock`): pistol 180, shotgun 2500, SMG 8000, rifle 25000, machine gun 90000, sniper rifle 250000, one of each on the shelf. Knife (60) and hatchet (90) stay early and cheap; ammo prices are unchanged.
+
+Two new hitscan weapons are rows in `WeaponFactory.Seeds`, both on `rifle_ammo`: `machinegun` (tier 3, 620 rpm, 60 rounds, 3.5s reload, 50 damage, spread 2.5) and `sniper` (tier 4, 40 rpm, 5 rounds, 3s reload, 195 damage, range 200). Their ItemDefs live in `ItemFactory` with a `Value` of at most a tenth of the shop price, so the trader's half-of-value buyback can never turn buy-then-sell into a profit. The Kenney pack has no LMG, so the machine gun wears the SMG model scaled up and the sniper the rifle model, via `WeaponFactory.Art`.
+
+`Shop.asset` is only written once, so an existing checkout needs `-rebuildShop` (which resets every price) to pick the new prices up. `-shopTest` checks the ladder is strictly ascending, the two new prices, catalog membership, hitscan kind and the buyback bound.
+
 ---
 
 ## Data-driven content

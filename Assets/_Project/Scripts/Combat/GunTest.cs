@@ -322,7 +322,7 @@ namespace EscapeWithYourFriends.Combat
                 {
                     Check($"a {gun.Id} deals the {gun.Hit.Damage:F0} per pellet its own asset says, "
                           + $"never a number the caller supplied ({dealt:F0} across {hits})",
-                          Mathf.Abs(dealt - gun.Hit.Damage * hits) < 0.01f);
+                          Mathf.Abs(dealt - Mathf.Min(gun.Hit.Damage * hits, before)) < 0.01f); // a hit cannot take more than the victim had (the sniper one-shots)
 
                     proven++;
                 }

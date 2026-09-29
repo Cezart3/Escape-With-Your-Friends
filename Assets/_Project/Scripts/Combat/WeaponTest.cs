@@ -404,7 +404,7 @@ namespace EscapeWithYourFriends.Combat
 
                 // Per hit, not per shot: a shotgun blast is eight rays and every one that connects is
                 // meant to hurt, so what the asset promises is the damage of a single pellet.
-                if (Mathf.Abs(dealt - def.Hit.Damage * landed) > 0.01f)
+                if (Mathf.Abs(dealt - Mathf.Min(def.Hit.Damage * landed, start)) > 0.01f) // a hit cannot take more than the victim had
                 {
                     Debug.LogError($"[WeaponTest] {def.Id} dealt {dealt} across {landed} hit(s), "
                                    + $"its asset says {def.Hit.Damage} each.");

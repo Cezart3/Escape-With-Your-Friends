@@ -130,6 +130,10 @@ namespace EscapeWithYourFriends.EditorTools
             // buying the cheap box.
             new("shotgun", "Shotgun", ItemCategory.Weapon, 1, 3.2f, 200, "Eight pellets and an apology. Devastating up close, useless across a field."),
             new("rifle", "Hunting Rifle", ItemCategory.Weapon, 1, 4.1f, 320, "One round, one animal, a long walk to collect it."),
+            // The late-game ladder. Values stay tiny next to the shop price (a tenth or less) so a
+            // buy-then-sell round trip can never be a profit; the trader pays half of value.
+            new("machinegun", "Machine Gun", ItemCategory.Weapon, 1, 7.5f, 1500, "Sixty rounds of bad news. Heavy enough that you notice every one."),
+            new("sniper", "Sniper Rifle", ItemCategory.Weapon, 1, 5.2f, 4000, "One round, one very long conversation with somebody who is not listening."),
             new("smg", "Submachine Gun", ItemCategory.Weapon, 1, 2.6f, 260, "Empties a magazine faster than you can decide whether you meant to."),
             new("shotgun_shell", "Shotgun Shells", ItemCategory.Material, 24, 0.05f, 5, "Fat, heavy, and worth it once."),
             new("rifle_ammo", "Rifle Rounds", ItemCategory.Material, 30, 0.03f, 9, "Expensive per shot, which is the point of aiming."),

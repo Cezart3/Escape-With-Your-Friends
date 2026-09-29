@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b81482618dd810141af52ce8f2208db6, type: 3}
+  m_Name: machinegun
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.WeaponDef
+  _id: machinegun
+  _displayName: Machine Gun
+  _description: Sixty rounds, ten a second. Nothing about it is subtle.
+  _kind: 1
+  _item: {fileID: 11400000, guid: 95f9ed7607398dc4d9663529cdc7c7fb, type: 2}
+  _hit:
+    _damage: 50
+    _damageType: 0
+    _knockback: 60
+    _upwardBias: 0.08
+    _stunDuration: 0.5
+  _cooldown: 0
+  _windup: 0
+  _range: 140
+  _radius: 0
+  _coneHalfAngle: 5
+  _maxTargets: 1
+  _shotRange: 140
+  _pellets: 1
+  _spread: 2.5
+  _recoil: 1.3
+  _roundsPerMinute: 620
+  _magazine: 60
+  _reloadSeconds: 3.5
+  _ammo: {fileID: 11400000, guid: bca846cb3a39c9d4cb5289bde5b78b74, type: 2}
+  _viewPrefab: {fileID: 2708779698322774027, guid: 1fb85bc56d3c85f4eb992f8c9cdd6291, type: 3}
+  _tier: 3
+  _upgradesTo: {fileID: 0}
