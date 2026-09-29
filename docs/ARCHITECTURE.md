@@ -7994,6 +7994,16 @@ Three more, from the same runs:
 - **Friendly fire already works.** Neither `Weapon` nor `Health` checks which side the victim is on.
   `-gunTest` shoots the other process's player body, so there is nothing to add.
 
+## Water: no foam polygons on flat sand at sea level
+
+The playtest showed pale-white polygons on the beach and under the wreck. The wreck's pad and the
+flattest tideline sit within centimetres of the sea plane, so the plane cut through the terrain's
+triangles there. The baked depth mask reads ~0 at those spots, which the shader drew as full
+shallow-alpha foam. `Water.shader` now multiplies alpha by `smoothstep(0, _EdgeFade / _ShoreDepth,
+mask)` (`_EdgeFade` = 0.35 m). The last few centimetres are a transparent film, and the surf line
+sits just offshore. No terrain regeneration was needed. Checked on the bot's wreck and sailing
+screenshots.
+
 ---
 
 ## Data-driven content
