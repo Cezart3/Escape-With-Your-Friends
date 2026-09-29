@@ -4,6 +4,7 @@ using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.Data;
 using EscapeWithYourFriends.Items;
 using EscapeWithYourFriends.Vehicles;
+using EscapeWithYourFriends.World;
 using FishNet.Object;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -92,6 +93,23 @@ namespace EscapeWithYourFriends.Player
 
         // The selected weapon, in the right hand (see Hold).
         GameObject _held;
+        Transform _muzzle;
+
+        /// <summary>The tip of the gun in the hand, where a shot visibly leaves from (#207). Null with no gun.</summary>
+        internal Transform Muzzle => _muzzle;
+
+        // The same model again, low and right in front of the owner's camera, where the hand's copy
+        // is only a shadow (see ViewModel). Built for every player, shown only in your own first person.
+        Transform _viewRoot;
+        GameObject _view;
+        Transform _viewMuzzle;
+        float _kick;
+
+        /// <summary>The first-person model's tip while it is on screen, else null. The shot is drawn from here.</summary>
+        internal Transform ViewMuzzle => _viewRoot != null && _viewRoot.gameObject.activeInHierarchy ? _viewMuzzle : null;
+
+        /// <summary>The first-person model, whether or not it is shown. The harness reads it.</summary>
+        internal GameObject View => _view;
         GameObject _heldPrefab;
         Transform _heldHand;
         Renderer[] _heldRenderers = Array.Empty<Renderer>();
@@ -190,6 +208,7 @@ namespace EscapeWithYourFriends.Player
             if (_weapon != null) _weapon.Attacked -= OnAttacked;
             if (_identity != null) _identity.IdentityChanged -= OnIdentity;
             if (_inventory != null) _inventory.Changed -= Hold;
+            if (_viewRoot != null) Destroy(_viewRoot.gameObject);
         }
 
         void OnIdentity(PlayerIdentity identity)
@@ -204,6 +223,7 @@ namespace EscapeWithYourFriends.Player
             // stays set, so the swing would play on the way out of the car. Something in the hand is
             // used by the arms; bare fists are the whole body's punch.
             if (Active == null || (_rider != null && _rider.IsSeated)) return;
+            _kick = 1f;
 
             Animator animator = Active.Animator;
             if (_armed > 0 && animator.layerCount > ArmedLayer) animator.SetTrigger(FireId);
@@ -228,48 +248,40 @@ namespace EscapeWithYourFriends.Player
                 : null;
 
         /// <summary>
-        /// Draws the selected weapon in the right hand. Read off the replicated inventory, so every peer
-        /// draws everybody's, and nothing new is networked. The model is the weapon's view prefab, the
-        /// one it also wears on the ground; an item that is not a weapon stays in the bag.
+        /// Draws the selected item in the right hand. Read off the replicated inventory, so every peer
+        /// draws everybody's, and nothing new is networked. A weapon wears its view prefab, the one it
+        /// also wears on the ground; any other item wears its ground model, shrunk to fit a hand.
         ///
         /// The grip is read off the hand itself, so it is right in any pose the clip has it in: a gun
         /// points from the wrist through the knuckles with its top to the thumb, and a blade stands out
         /// of the fist on the thumb side with its edge the way the knuckles face. The hand closes on
-        /// the back of a gun's body, or the end of a blade's handle (<see cref="GripPoint"/>).
+        /// the back of a gun's body, the end of a blade's handle, or the middle of anything else
+        /// (<see cref="GripPoint"/>).
         /// </summary>
         void Hold()
         {
             Body body = Active;
             ItemDef item = _inventory != null && _inventory.SlotCount > 0 ? _inventory.Selected.Def : null;
             WeaponDef weapon = item != null && WeaponCatalog.Active != null ? WeaponCatalog.Active.ForItem(item) : null;
-            GameObject prefab = weapon != null ? weapon.ViewPrefab : null;
+            GameObject prefab = weapon != null && weapon.ViewPrefab != null ? weapon.ViewPrefab : item != null ? item.WorldPrefab : null;
             Transform hand = body != null ? Hand(body) : null;
             bool melee = weapon != null && weapon.Kind == WeaponKind.Melee;
-            _armed = prefab == null || hand == null ? 0 : melee ? 2 : 1;
+            _armed = prefab == null || hand == null || weapon == null ? 0 : melee ? 2 : 1;
 
             if (prefab == _heldPrefab && hand == _heldHand) return;
 
             if (_held != null) Destroy(_held);
-            _held = null;
+            if (_view != null) Destroy(_view);
+            _held = _view = null;
+            _muzzle = _viewMuzzle = null;
             _heldPrefab = prefab;
             _heldHand = hand;
             _heldRenderers = Array.Empty<Renderer>();
             if (prefab == null || hand == null) return;
 
-            _held = Instantiate(prefab);
-            _held.name = $"Held ({weapon.Id})";
-
-            // A collider under the hand would join the player's own and catch every ray aimed past it.
-            foreach (Collider collider in _held.GetComponentsInChildren<Collider>(true))
-            {
-                collider.enabled = false;
-                Destroy(collider);
-            }
-            foreach (Rigidbody rigidbody in _held.GetComponentsInChildren<Rigidbody>(true))
-            {
-                rigidbody.isKinematic = true;
-                Destroy(rigidbody);
-            }
+            string id = weapon != null ? weapon.Id : item.Id;
+            _held = Model(prefab, $"Held ({id})");
+            if (weapon == null) Shrink(_held.transform, _held, 0.3f);
 
             Transform knuckle = body.Animator.GetBoneTransform(HumanBodyBones.RightMiddleProximal);
             Transform thumb = body.Animator.GetBoneTransform(HumanBodyBones.RightThumbProximal);
@@ -278,19 +290,123 @@ namespace EscapeWithYourFriends.Player
             Vector3 palm = knuckle != null ? Vector3.Lerp(hand.position, knuckle.position, 0.5f) : hand.position;
 
             _held.transform.rotation = melee ? Quaternion.LookRotation(side, -along) : Quaternion.LookRotation(along, side);
-            _held.transform.position += palm - _held.transform.TransformPoint(GripPoint(_held, melee));
+            _held.transform.position += palm - _held.transform.TransformPoint(GripPoint(_held, melee, weapon == null));
             _held.transform.SetParent(hand, true);
             _heldRenderers = _held.GetComponentsInChildren<Renderer>(true);
+            if (weapon != null && !melee) _muzzle = Tip(_held);
+
+            ViewModel(prefab, id, weapon, melee);
 
             // Now, not at LateUpdate: otherwise the owner sees their own weapon for one frame.
             _hidden = null;
             Visibility(body);
         }
 
+        /// <summary>A copy of an item's model to hold: nothing on it may collide or fall.</summary>
+        static GameObject Model(GameObject prefab, string name)
+        {
+            GameObject model = Instantiate(prefab);
+            model.name = name;
+
+            // A collider under the hand would join the player's own and catch every ray aimed past it.
+            foreach (Collider collider in model.GetComponentsInChildren<Collider>(true))
+            {
+                collider.enabled = false;
+                Destroy(collider);
+            }
+            foreach (Rigidbody rigidbody in model.GetComponentsInChildren<Rigidbody>(true))
+            {
+                rigidbody.isKinematic = true;
+                Destroy(rigidbody);
+            }
+
+            return model;
+        }
+
+        /// <summary>Scales a model down until its longest side, measured in <paramref name="space"/>, is at most <paramref name="longest"/>.</summary>
+        static void Shrink(Transform space, GameObject model, float longest)
+        {
+            if (WorldItem.Drawn(space, model) is not Bounds drawn) return;
+            float size = Mathf.Max(drawn.size.x, drawn.size.y, drawn.size.z);
+            if (size > longest) model.transform.localScale *= longest / size;
+        }
+
+        /// <summary>The kit lays a gun along +z, muzzle forward: the tip is the front face, a little high.</summary>
+        static Transform Tip(GameObject gun)
+        {
+            if (WorldItem.Drawn(gun.transform, gun) is not Bounds drawn) return null;
+
+            var tip = new GameObject("Muzzle").transform;
+            tip.SetParent(gun.transform, false);
+            tip.localPosition = new Vector3(drawn.center.x, drawn.center.y + drawn.extents.y * 0.3f, drawn.max.z);
+            return tip;
+        }
+
+        /// <summary>
+        /// What you see of the thing in your own hand. The hand's copy cannot be it: the camera is
+        /// inside the head, the arms swing with the clip, and a gun that points where the clip points
+        /// rather than at the crosshair reads as broken. So a second copy hangs off the camera, low and
+        /// right, the way every shooter draws it. A gun lies along the view with its back a little
+        /// past the near plane, a blade stands up and forward, and anything else is turned three
+        /// quarters so it reads as an object.
+        /// </summary>
+        void ViewModel(GameObject prefab, string id, WeaponDef weapon, bool melee)
+        {
+            if (_viewRoot == null)
+            {
+                _viewRoot = new GameObject($"{name} first-person view").transform;
+                _viewRoot.gameObject.SetActive(false);
+            }
+
+            _view = Model(prefab, $"View ({id})");
+            Transform model = _view.transform;
+            model.SetParent(_viewRoot, false);
+            model.localRotation = weapon == null ? Quaternion.Euler(20f, -35f, 0f)
+                                  : melee ? Quaternion.Euler(-50f, -10f, 0f)
+                                  : Quaternion.identity;
+            Shrink(_viewRoot, _view, weapon == null ? 0.22f : 0.55f);
+
+            if (WorldItem.Drawn(_viewRoot, _view) is Bounds drawn)
+            {
+                // Its back no nearer than 28 cm: the near plane is 15, and a clipped stock is a hole.
+                var at = new Vector3(0.19f, -0.19f, Mathf.Max(0.28f + drawn.extents.z, 0.5f));
+                model.localPosition += at - drawn.center;
+            }
+
+            foreach (Renderer renderer in _view.GetComponentsInChildren<Renderer>(true))
+                renderer.shadowCastingMode = ShadowCastingMode.Off;
+
+            if (weapon != null && !melee) _viewMuzzle = Tip(_view);
+        }
+
+        /// <summary>Follows the camera it hangs from, shows only in your own first person, kicks when fired.</summary>
+        void PoseView(float dt)
+        {
+            if (_viewRoot == null) return;
+
+            Camera camera = Camera.main;
+            bool carrying = ForceCarry || (_carry != null && _carry.IsCarrying);
+            bool shown = _view != null && camera != null && _hidden == true && !carrying
+                         && (_ragdoll == null || !_ragdoll.IsRagdolled) && !StoryBeat.Playing;
+
+            if (_viewRoot.gameObject.activeSelf != shown) _viewRoot.gameObject.SetActive(shown);
+            if (!shown) return;
+
+            // Parented rather than copied each frame: the camera moves in the brain's LateUpdate, and
+            // a copy taken before it would trail a frame behind every turn of the head.
+            if (_viewRoot.parent != camera.transform) _viewRoot.SetParent(camera.transform, false);
+
+            _kick = Mathf.MoveTowards(_kick, 0f, dt * 7f);
+            float bob = Mathf.Sin(Time.time * 9f) * 0.006f * Mathf.Clamp01(_speed / 4f);
+            _viewRoot.localPosition = new Vector3(0f, bob, -0.05f * _kick);
+            _viewRoot.localRotation = Quaternion.Euler(-7f * _kick, 0f, 0f);
+        }
+
         /// <summary>Where the hand closes on a model, in its own space. It lies along +z, tip forward (WeaponFactory).</summary>
-        static Vector3 GripPoint(GameObject model, bool melee)
+        static Vector3 GripPoint(GameObject model, bool melee, bool plain)
         {
             if (WorldItem.Drawn(model.transform, model) is not Bounds drawn) return Vector3.zero;
+            if (plain) return drawn.center;
             return melee
                 ? new Vector3(drawn.center.x, drawn.center.y, drawn.min.z + drawn.size.z * 0.1f)
                 : new Vector3(drawn.center.x, drawn.min.y + drawn.size.y * 0.3f, drawn.center.z - drawn.size.z * 0.2f);
@@ -320,6 +436,7 @@ namespace EscapeWithYourFriends.Player
             }
 
             Visibility(body);
+            PoseView(dt);
         }
 
         /// <summary>Lays the model along the physics skeleton.</summary>

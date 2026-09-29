@@ -146,6 +146,14 @@ namespace EscapeWithYourFriends.AI
 
             Check($"the camps man themselves ({spawner.SpawnedTotal} spawned)", spawner.SpawnedTotal > 0);
 
+            // A native is as wide as a player to shoot at: the capsule covers the shoulders.
+            foreach (Native native in FindObjectsByType<Native>(FindObjectsSortMode.None))
+                if (native.TryGetComponent(out CapsuleCollider body))
+                {
+                    Check($"{native.name} is as wide as its shoulders to a bullet (radius {body.radius:F2} m)", body.radius >= 0.22f);
+                    break;
+                }
+
             NativeDef spearman = natives.Find("spearman");
             NativeDef blowgunner = natives.Find("blowgunner");
             NativeDef scout = natives.Find("scout");

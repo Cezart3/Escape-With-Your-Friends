@@ -81,6 +81,8 @@ namespace EscapeWithYourFriends.World
             Debug.Log($"[Playthrough] {(ok ? "PASS" : "FAIL")} {what}");
         }
 
+        bool _hitShot, _fought;
+
         IEnumerator Shot(string name)
         {
             yield return new WaitForEndOfFrame();
@@ -187,6 +189,10 @@ namespace EscapeWithYourFriends.World
         /// <summary>Shoots until it is dead or twenty trigger pulls are spent.</summary>
         IEnumerator Fight(Component prey, bool photo)
         {
+            // The first fight is photographed wherever it happens: an animal that charges on the way
+            // is often the only one the short runs see.
+            photo |= !_fought;
+            _fought = true;
             Weapon weapon = _motor.GetComponent<Weapon>();
             Health health = prey.GetComponent<Health>();
             if (weapon.Equipped == null) yield return Hold("pistol");
@@ -208,8 +214,27 @@ namespace EscapeWithYourFriends.World
                 Look(Chest(prey));
                 yield return new WaitForSeconds(0.15f);
                 if (i == 0 && photo) yield return Shot("aim_animal");
+                bool landed = false;
+                void OnLanded(Vector3 c) => landed = true;
+                weapon.HitLanded += OnLanded;
                 _input.BotPress("attack");
                 shots++;
+                // The tracer lives 90 ms and arrives a network tick after the trigger: caught on the
+                // frame the shot comes back, with the flash (#207).
+                if (i == 0 && photo)
+                {
+                    bool fired = false;
+                    void OnFired(Vector3 o, Vector3[] e) => fired = true;
+                    weapon.Fired += OnFired;
+                    for (float t = 0f; !fired && t < 0.5f; t += Time.deltaTime) yield return null;
+                    weapon.Fired -= OnFired;
+                    yield return Shot("firing");
+                }
+                // The first round that connects, photographed a beat later: the blood and the
+                // hitmarker (#207).
+                for (float t = 0f; !landed && t < 0.4f; t += Time.deltaTime) yield return null;
+                weapon.HitLanded -= OnLanded;
+                if (landed && photo && !_hitShot) { _hitShot = true; yield return new WaitForSeconds(0.06f); yield return Shot("hit"); }
                 yield return new WaitForSeconds(0.4f);
             }
             // Reload between fights, not at the start of the next one: 2.5 s with a headhunter
@@ -382,6 +407,11 @@ namespace EscapeWithYourFriends.World
             yield return new WaitForSeconds(3f);
             Check($"R loads it ({weapon?.Loaded} in the magazine)", weapon != null && weapon.Loaded > 0);
             yield return Shot("pistol_in_hand");
+
+            // Whatever is selected is in the hand, not only a gun: a box of rounds, for the photo.
+            yield return Hold("pistol_ammo");
+            yield return Shot("ammo_in_hand");
+            yield return Hold("pistol");
 
             // ------------------------------------------------ an animal to shoot
             Animal prey = FindObjectsByType<Animal>(FindObjectsSortMode.None)
