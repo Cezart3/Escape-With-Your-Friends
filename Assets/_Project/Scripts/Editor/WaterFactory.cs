@@ -1,4 +1,5 @@
 using System.IO;
+using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.World;
 using UnityEditor;
 using UnityEngine;
@@ -48,6 +49,17 @@ namespace EscapeWithYourFriends.EditorTools
         /// than throwing if the shader is missing, because a scene with no water is a better failure
         /// than a terrain generation that dies half way through.
         /// </summary>
+        /// <summary>
+        /// The water of every island and nothing else, for a change to the water alone:
+        /// <c>-executeMethod EscapeWithYourFriends.EditorTools.WaterFactory.Apply</c>.
+        /// </summary>
+        public static void Apply()
+        {
+            foreach (string guid in AssetDatabase.FindAssets("t:IslandProfile"))
+                EnsureWater(AssetDatabase.LoadAssetAtPath<IslandProfile>(AssetDatabase.GUIDToAssetPath(guid)));
+            AssetDatabase.SaveAssets();
+        }
+
         public static GameObject EnsureWater(IslandProfile profile)
         {
             _suffix = profile != null && profile.Id == POIFactory.SecondIslandId ? "2" : "";
@@ -340,6 +352,9 @@ namespace EscapeWithYourFriends.EditorTools
             float band = Mathf.Clamp(profile.WaterFadeBand, 1f, extent - 1f);
             material.SetVector("_PatchFade", new Vector4(extent - band, extent, 0f, 0f));
 
+            // Ripples fade by distance from the camera, starting well outside the patch (#202).
+            material.SetVector("_RippleFade", new Vector4(extent * 2f, Mathf.Max(extent * 6f, extent * 2f + 1f), 0f, 0f));
+
             material.SetFloat("_IslandSize", profile.Size);
             material.SetFloat("_ShoreDepth", profile.ShoreFadeDepth);
             material.SetFloat("_FoamWidth", profile.FoamWidth);
@@ -425,7 +440,10 @@ namespace EscapeWithYourFriends.EditorTools
         static Mesh EnsureRingMesh(IslandProfile profile)
         {
             float inner = PatchExtent(profile);
-            float outer = Mathf.Max(inner * 2f, profile.WaterHorizon);
+            // Never short of the camera's far plane: the ring follows the camera, so a ring that
+            // reaches the far plane in every direction means the sea runs to the horizon from any
+            // altitude and the edge of the world is clipped away, not visible (#202).
+            float outer = Mathf.Max(inner * 2f, profile.WaterHorizon, CameraTuning.FarPlane);
 
             var existing = AssetDatabase.LoadAssetAtPath<Mesh>(RingMeshPath);
             if (existing != null

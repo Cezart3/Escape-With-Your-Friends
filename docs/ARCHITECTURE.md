@@ -8057,6 +8057,42 @@ mask)` (`_EdgeFade` = 0.35 m). The last few centimetres are a transparent film, 
 sits just offshore. No terrain regeneration was needed. Checked on the bot's wreck and sailing
 screenshots.
 
+## #207: shots that read as hits
+
+The playtest said hit registration looked wrong. The hits were right; nothing showed them:
+
+- **The tracer had no material.** `PlayerPrefabBuilder` made it in memory and handed it to the
+  prefab, which keeps no reference to a non-asset object, so `_material` was `{fileID: 0}` in
+  `Player.prefab` and every tracer was drawn with nothing. It is now `Art/Stylized/Tracer.mat`:
+  URP Particles/Unlit, additive, so the vertex-colour fade along the line works.
+- **The tracer started at the eye.** That is where the server's ray leaves, but a line from the eye
+  is a dot for the shooter and a line out of everybody else's forehead. It is drawn from the muzzle
+  now. For the shooter it is the tip of the gun on their screen (`CharacterSkin.ViewMuzzle`, below).
+  For everybody else it is `CharacterSkin.Muzzle`, the front face of the gun in the hand. **The end
+  is still the server's hit point**. `-gunTest` now checks that every hit is exactly the end of a
+  drawn tracer.
+- **Muzzle flash**: a small additive star (a core along the barrel, two thin blades across it),
+  parented to that same tip for 50 ms, so it points wherever the gun points. The first version had a
+  point light, and it drew a bright disc on the ground every shot, so the light is gone.
+- **The item in your own hand.** The body's copy of the held model is shadow-only for its owner,
+  because the camera is inside the head. So `CharacterSkin` builds a second copy that hangs off the
+  camera, low and right. A gun lies along the view, with its back at least 28 cm out (the near plane
+  is 15 cm) and at most 55 cm long. A blade stands up and forward. Anything else is turned three
+  quarters and shrunk to 22 cm. It kicks back and up on each attack, bobs with walking, and hides
+  while carrying, seated, ragdolled, dead or in a story beat. Any selected item is now drawn, in the
+  hand for everyone else and in front of the camera for you: a non-weapon wears its ground model,
+  shrunk to 30 cm and held by its middle. `-skinTest` checks the view copy and its muzzle, and a
+  plain item held hand-sized.
+- **Impacts**: `Weapon.ApplyHit`'s observers RPC arrives before the shot's, so the ends that drew
+  blood are known when the ends come in. Those throw dark red bits. Every other end that stopped
+  short of the gun's range throws sand-coloured dust. Bits are pooled cubes (at most 96),
+  simulated by hand with gravity for 0.55 s. There are no rigidbodies.
+- **Hitmarker**: when your own shot lands, four strokes open round the crosshair for 180 ms, with a
+  high click in your ears.
+
+All of it lives in `Combat/TracerEffect.cs` and skips headless. The victim's flinch was already
+there (`StunState` shove, camera shake).
+
 ## #214: the "flying" boar
 
 The bot photographed a boar several metres up in the air after a hit. It was not knockback:
@@ -8175,6 +8211,54 @@ above, that `Weapon.Reloading` reaches the Armed layer's Reload state within a s
 first weapon with a model is a gun), and that forcing the swim state reaches Swim within 1.5 s and
 returns to Move afterwards. The zero-duration rule is enforced at controller build time, because
 the runtime animator does not expose transitions.
+
+## island2 objective: the plane's objective
+
+While any plane part lay loose, `PlanePart.PointAtOne` wrote a fixed "Find the X and haul it to the plane", naming whichever loose part came first in `PlanePart.All`. The line never mentioned the plane, so fitting the engine and the wing left it reading "propeller" until the last part was in hand.
+
+The sentence now comes from `PlaneAssembly.Status` ("Fix the plane: 1/3 parts (engine and wing still to find)"), the same shape as the boat's "Fix the boat: 3/4 parts". It is derived from the replicated `_fitted` mask, so every peer reads the same line, and the target still points at a loose part. Harness: `-partTest` (pair, `-scene island2`) checks the count is in the line and that it changes after a part is fitted.
+
+## #207: a native is as wide as it looks
+
+The bot's playthrough took six pistol shots to take 52 hp off a Blowgunner and three for 55 off a
+boar. Every hit does the same 26; the difference was hits. `Native.Configure` sized the capsule by the
+body's *depth* (`min(x, z) / 2`, 0.175 m), a 0.35 m tube inside a 0.5 m silhouette, so with the
+pistol's 1.5° spread two shots in three passed through an arm. It now takes the width (`max`), 0.25 m.
+`-nativeTest` checks a spawned native's radius is at least 0.22 m.
+
+---
+
+## #202: the sea to the horizon
+
+**What showed.** From the plane the square edge of the wave patch could be seen against the flat
+ring, and past the ring there was void: the ring reached 4000 m from the camera while the far plane
+is 5000 m, so at altitude the last kilometre of view was clear colour with a hard line where the
+water stopped.
+
+**Why.** The patch already flattens its waves to exactly zero over its last 70 m and the vertex
+normal fades with them, so the geometry meets the ring cleanly. What still differed was the
+per-pixel ripple normals, which are deliberately not faded at the seam (fading them at the patch
+border left the ring mirror-flat against a rippled sea, the older bug). From altitude they also
+shimmer into a noisy band near the horizon. And the ring's reach came only from `WaterHorizon` on
+the island profile, unrelated to the camera.
+
+**What changed.**
+- `Water.shader` gained `_RippleFade` (start, end in metres). The ripple normals are scaled by
+  `1 - smoothstep` of the distance from the camera, not from the patch. It starts at twice the patch
+  half-extent, well outside the patch, so it is one smooth function of world position with no seam
+  of its own, and the far sea calms toward the fresnel horizon colour.
+- `WaterFactory.EnsureRingMesh` takes the larger of `WaterHorizon` and `CameraTuning.FarPlane` as
+  the ring's outer half-width. The ring follows the camera in xz like the patch, so it reaches the
+  far plane in every direction from any altitude and the world's edge is clipped by the camera
+  instead of being visible. `EnsureMaterial` pushes `_RippleFade` next to `_PatchFade`.
+- The ring mesh is rebuilt when its outer size changes; the material is rewritten every run.
+  Regenerate through `TerrainGenerator.GenerateIsland`, which calls `WaterFactory.EnsureWater`.
+
+**How it is tested.** `-waterTest` with `-scene island` (`WaterTest`, registered in
+`NetworkBootstrap`): the ring mesh reaches the far plane, the ring follows the camera, the wave
+fade and the ripple fade are configured, and the ripple fade starts outside the patch. It prints
+`[WaterTest] N passed, M failed.` Headless cannot render, so how the horizon looks from altitude is
+still for a human with a screen.
 
 ---
 

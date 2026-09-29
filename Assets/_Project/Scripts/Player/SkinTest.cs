@@ -242,6 +242,32 @@ namespace EscapeWithYourFriends.Player
 
                     Check("a reload starts the arms' reload clip within a second", reloading);
                 }
+
+                // First person: the same model hangs off the camera, where the hand's copy is a shadow.
+                GameObject view = skin.View;
+                Check($"and again in front of your own camera ({(Camera.main != null ? "shown" : "no camera")})",
+                      view != null && view.GetComponentsInChildren<Renderer>().Length > 0
+                      && view.GetComponentsInChildren<Collider>().All(c => !c.enabled)
+                      && (Camera.main == null || view.activeInHierarchy));
+                if (armed.Kind != WeaponKind.Melee)
+                    Check("with a muzzle on each copy for the shot to leave from",
+                          skin.Muzzle != null && view != null && view.GetComponentsInChildren<Transform>().Any(t => t.name == "Muzzle"));
+
+                // Anything else selected is held too, not only weapons.
+                ItemDef plain = ItemCatalog.Active == null ? null
+                    : ItemCatalog.Active.Items.FirstOrDefault(d => d != null && d.WorldPrefab != null && weapons.ForItem(d) == null);
+                if (plain != null)
+                {
+                    inventory.Add(plain, 1);
+                    inventory.ServerSelect(Enumerable.Range(0, inventory.SlotCount).FirstOrDefault(s => inventory[s].Def == plain));
+                    for (float waited = 0f; (skin.Held == null || !skin.Held.name.Contains(plain.Id)) && waited < 2f; waited += Time.deltaTime)
+                        yield return null;
+
+                    Bounds? size = skin.Held != null ? WorldItem.Drawn(skin.transform, skin.Held) : null;
+                    Check($"a plain {plain.Id} is held too, hand-sized ({(size is Bounds b ? b.size.magnitude : 0f):F2} m)",
+                          skin.Held != null && skin.Held.name.Contains(plain.Id) && skin.View != null
+                          && size is Bounds s2 && s2.size.magnitude < 0.6f);
+                }
             }
 
             // Every state of #204 exists in the controller (re-run CharacterArt.Build if not).

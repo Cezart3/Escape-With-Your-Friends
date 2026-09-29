@@ -343,7 +343,8 @@ namespace EscapeWithYourFriends.World
             // there the line belongs to PlaneAssembly. Two components writing one string at 2Hz is
             // two components flickering, so this one stops rather than competing. #71.
             if (loose != null)
-                Objective.Set($"Find the {loose._label} and haul it to the plane", loose.transform);
+                Objective.Set(PlaneAssembly.Instance != null ? PlaneAssembly.Instance.Status
+                                  : $"Find the {loose._label} and haul it to the plane", loose.transform);
         }
     }
 }

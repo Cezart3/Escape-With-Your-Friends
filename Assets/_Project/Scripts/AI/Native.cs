@@ -311,7 +311,9 @@ namespace EscapeWithYourFriends.AI
 
             if (_collider != null)
             {
-                _collider.radius = Mathf.Max(0.1f, Mathf.Min(size.x, size.z) * 0.5f);
+                // Shoulder width, not chest depth: a 0.35 m tube inside a 0.5 m body lets a shot that
+                // visibly lands on an arm pass through, and a pistol then misses two shots in three.
+                _collider.radius = Mathf.Max(0.1f, Mathf.Max(size.x, size.z) * 0.5f);
                 _collider.height = Mathf.Max(_collider.radius * 2f, size.y);
                 _collider.center = new Vector3(0f, size.y * 0.5f, 0f);
             }
