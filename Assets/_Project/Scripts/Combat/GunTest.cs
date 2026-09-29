@@ -262,9 +262,25 @@ namespace EscapeWithYourFriends.Combat
 
                 Reset(health, stun);
 
+                // #207: the tracer every peer draws has to end where the server's hit was, or a
+                // hit reads as a miss. Both come from the host's own observers RPCs, run locally.
+                var contacts = new List<Vector3>();
+                Vector3[] drawn = null;
+                void OnHit(Vector3 contact) => contacts.Add(contact);
+                void OnShot(Vector3 origin, Vector3[] ends) => drawn = ends;
+                attacker.HitLanded += OnHit;
+                attacker.Fired += OnShot;
+
                 int loadedBefore = attacker.Loaded;
                 int hits = attacker.ServerAttackNow(Toward(attacker, victim));
                 int spent = loadedBefore - attacker.Loaded;
+
+                attacker.HitLanded -= OnHit;
+                attacker.Fired -= OnShot;
+                if (hits > 0)
+                    Check($"every {gun.Id} hit is the end of a drawn tracer ({contacts.Count} hit(s))",
+                          drawn != null && contacts.Count == hits
+                          && contacts.All(c => drawn.Any(e => (e - c).sqrMagnitude < 0.0001f)));
 
                 Check($"one pull of a {gun.Id} trigger spends exactly one round, whatever it throws "
                       + $"({gun.Pellets} pellet(s), {hits} landed)",

@@ -116,6 +116,30 @@ namespace EscapeWithYourFriends.EditorTools
                 new(0f, -0.22f, 0f), Vector3.zero, new(0.11f, 0.22f, 0.11f), 4f),
         };
 
+        const string TracerMaterialPath = "Assets/_Project/Art/Stylized/Tracer.mat";
+
+        /// <summary>Additive and vertex-coloured, so a tracer glows, fades along its length, and adds up.</summary>
+        static Material TracerMaterial()
+        {
+            var material = AssetDatabase.LoadAssetAtPath<Material>(TracerMaterialPath);
+            if (material == null)
+            {
+                material = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit")) { name = "Tracer" };
+                AssetDatabase.CreateAsset(material, TracerMaterialPath);
+            }
+
+            material.SetFloat("_Surface", 1f);
+            material.SetFloat("_Blend", 2f);
+            material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.One);
+            material.SetFloat("_ZWrite", 0f);
+            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            material.SetColor("_BaseColor", Color.white);
+            EditorUtility.SetDirty(material);
+            return material;
+        }
+
         public static void BuildPlayerPrefab()
         {
             Directory.CreateDirectory(PrefabDir);
@@ -283,12 +307,12 @@ namespace EscapeWithYourFriends.EditorTools
             // Tracers are drawn from what the server already resolved, so this is a listener and
             // never a source of truth. Unlit and additive-ish: a bullet trail that takes lighting
             // disappears at night, which is the half of the day it matters most.
+            //
+            // Saved as an asset. It used to be made in memory and handed to the prefab, which does not
+            // keep a reference to an object that is not an asset: every tracer anybody ever fired was
+            // drawn with no material at all (#207).
             var tracers = root.AddComponent<TracerEffect>();
-            tracers.Configure(weapon, new Material(Shader.Find("Universal Render Pipeline/Unlit"))
-            {
-                name = "Tracer",
-                color = new Color(1f, 0.85f, 0.45f, 0.9f),
-            });
+            tracers.Configure(weapon, TracerMaterial());
 
             // Turning the weapon you have into the next one in its line. Added after the weapon it
             // reads, because an upgrade carries the loaded magazine across, and after the wallet and

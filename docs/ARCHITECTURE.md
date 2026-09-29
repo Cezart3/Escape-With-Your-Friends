@@ -8004,6 +8004,31 @@ mask)` (`_EdgeFade` = 0.35 m). The last few centimetres are a transparent film, 
 sits just offshore. No terrain regeneration was needed. Checked on the bot's wreck and sailing
 screenshots.
 
+## #207: shots that read as hits
+
+The playtest said hit registration looked wrong. The hits were right; nothing showed them:
+
+- **The tracer had no material.** `PlayerPrefabBuilder` made it in memory and handed it to the
+  prefab, which keeps no reference to a non-asset object, so `_material` was `{fileID: 0}` in
+  `Player.prefab` and every tracer was drawn with nothing. It is now `Art/Stylized/Tracer.mat`:
+  URP Particles/Unlit, additive, so the vertex-colour fade along the line works.
+- **The tracer started at the eye.** That is where the server's ray leaves, but a line from the eye
+  is a dot for the shooter and a line out of everybody else's forehead. It is drawn from the muzzle
+  now. For the shooter, whose own gun is hidden, that is a point low and right of the camera. For
+  everybody else it is `CharacterSkin.Muzzle`, the front face of the gun in the hand. **The end is
+  still the server's hit point**. `-gunTest` now checks that every hit is exactly the end of a
+  drawn tracer.
+- **Muzzle flash**: an additive sphere and a point light for 50 ms.
+- **Impacts**: `Weapon.ApplyHit`'s observers RPC arrives before the shot's, so the ends that drew
+  blood are known when the ends come in. Those throw dark red bits. Every other end that stopped
+  short of the gun's range throws sand-coloured dust. Bits are pooled cubes (at most 96),
+  simulated by hand with gravity for 0.55 s. There are no rigidbodies.
+- **Hitmarker**: when your own shot lands, four strokes open round the crosshair for 180 ms, with a
+  high click in your ears.
+
+All of it lives in `Combat/TracerEffect.cs` and skips headless. The victim's flinch was already
+there (`StunState` shove, camera shake).
+
 ---
 
 ## Data-driven content

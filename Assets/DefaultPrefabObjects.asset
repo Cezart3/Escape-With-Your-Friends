@@ -13,9 +13,6 @@ MonoBehaviour:
   m_Name: DefaultPrefabObjects
   m_EditorClassIdentifier: FishNet.Runtime::FishNet.Managing.Object.DefaultPrefabObjects
   _prefabs:
-  - {fileID: 8348650230455863312, guid: 196b9e232ea1a0d4e8c6c41db1a3c19c, type: 3}
-  - {fileID: 1876762230570009471, guid: cf2d8198bef89dd4da53b383a36d369d, type: 3}
-  - {fileID: 520484938875732306, guid: 6fbcf239a09acd046bb88312356b67a6, type: 3}
   - {fileID: 6864973059503036892, guid: ff368d683922b9f468df813b468ac4fa, type: 3}
   - {fileID: 3147191381890212601, guid: d509fb77476f79a488a7804df1809d97, type: 3}
   - {fileID: 5803726882759300370, guid: 476aebebb1c042e4caf175146350498e, type: 3}
@@ -24,6 +21,7 @@ MonoBehaviour:
   - {fileID: 5788127164604745780, guid: b0ec9be0adf97eb4a9a790eebc993c6c, type: 3}
   - {fileID: 8791500000690380068, guid: ed2d1d702f81b434fa840d12cb065a79, type: 3}
   - {fileID: 7147793677435025715, guid: e77d1e96bf3419c49aed550588400808, type: 3}
+  - {fileID: 8348650230455863312, guid: 196b9e232ea1a0d4e8c6c41db1a3c19c, type: 3}
   - {fileID: 4741254953944288886, guid: 74455c1323942cc4bb038fa8d447cdf7, type: 3}
   - {fileID: 1257734652810796982, guid: bebf7eaf339e797408aa9b81330219b7, type: 3}
   - {fileID: 4559497138046877268, guid: 914bd40ac242ff0498429031fd04039f, type: 3}
@@ -33,8 +31,10 @@ MonoBehaviour:
   - {fileID: 4531440845832883637, guid: 95c4a47c65fceb449a176e29345fea6f, type: 3}
   - {fileID: 8008766923461078500, guid: bb88daa8cfeb041408885e011be92ab8, type: 3}
   - {fileID: 3301667816051393499, guid: 3baee3b3442dc5d4db6a78075e7f587f, type: 3}
+  - {fileID: 520484938875732306, guid: 6fbcf239a09acd046bb88312356b67a6, type: 3}
   - {fileID: 2109766671296794327, guid: ea16aec9b1244a142ac9dbb78756bf7e, type: 3}
   - {fileID: 7902103712135646924, guid: ee59a999da722d04fa7015287a126772, type: 3}
+  - {fileID: 1876762230570009471, guid: cf2d8198bef89dd4da53b383a36d369d, type: 3}
   - {fileID: 2327327759718728831, guid: 43814f57b9d1bf348879fdb7060ec0a2, type: 3}
   - {fileID: 6479053752779136244, guid: 5be143da314fb5648a319dba1c4c1c7b, type: 3}
   - {fileID: 6263055462330699957, guid: 5126e6a3d6e4dff44a57236180dcfa51, type: 3}

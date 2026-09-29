@@ -92,6 +92,10 @@ namespace EscapeWithYourFriends.Player
 
         // The selected weapon, in the right hand (see Hold).
         GameObject _held;
+        Transform _muzzle;
+
+        /// <summary>The tip of the gun in the hand, where a shot visibly leaves from (#207). Null with no gun.</summary>
+        internal Transform Muzzle => _muzzle;
         GameObject _heldPrefab;
         Transform _heldHand;
         Renderer[] _heldRenderers = Array.Empty<Renderer>();
@@ -281,6 +285,14 @@ namespace EscapeWithYourFriends.Player
             _held.transform.position += palm - _held.transform.TransformPoint(GripPoint(_held, melee));
             _held.transform.SetParent(hand, true);
             _heldRenderers = _held.GetComponentsInChildren<Renderer>(true);
+
+            // The kit lays a gun along +z, muzzle forward: the tip is the front face, a little high.
+            if (!melee && WorldItem.Drawn(_held.transform, _held) is Bounds gun)
+            {
+                _muzzle = new GameObject("Muzzle").transform;
+                _muzzle.SetParent(_held.transform, false);
+                _muzzle.localPosition = new Vector3(gun.center.x, gun.center.y + gun.extents.y * 0.3f, gun.max.z);
+            }
 
             // Now, not at LateUpdate: otherwise the owner sees their own weapon for one frame.
             _hidden = null;
