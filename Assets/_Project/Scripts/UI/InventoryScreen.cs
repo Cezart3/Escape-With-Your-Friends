@@ -515,7 +515,13 @@ namespace EscapeWithYourFriends.UI
 
                 case SlotKind.Shop:
                     if (_counter != null && _trading != null)
-                        _trading.RequestBuy(_counter, slot.Index, IsShiftHeld() ? 5 : 1);
+                    {
+                        // Shift buys a stack, up to 36: rounds are sold one at a time, and a box took
+                        // eight shift-clicks at five (playthrough bot).
+                        Data.ItemDef item = _counter.OfferAt(slot.Index).Item;
+                        int many = item != null ? Mathf.Min(item.MaxStack, 36) : 5;
+                        _trading.RequestBuy(_counter, slot.Index, IsShiftHeld() ? many : 1);
+                    }
 
                     return;
             }

@@ -7857,6 +7857,15 @@ Open, for a playtest to judge: on Island2 the bot still goes down near the plane
 rounds against charging boars (three kills in a magazine-and-a-half), and headhunters hit for 34.
 The bot aims badly at a charging animal, so this may be the bot and not the island.
 
+A follow-up run on a fresh Island2, the bot armed with a pistol and 72 rounds, logged every fight
+(`[Playthrough] fight with X: n shot(s) from d m, hp before -> after, loaded, spare`). The guns
+are fine: a boar takes four pistol rounds, a headhunter (140 hp) about six at ~26 each. What downs
+the bot is that headhunters hit for 34 and come in pairs, and that a part on your shoulder means no
+gun. That is balance for a playtest to judge (four players, the trader's shotgun and rifle), not a bug.
+
+**Shift-click in the shop buys a stack** (up to 36) instead of five. Rounds are sold one at a time
+at $3, and a box of pistol rounds was eight shift-clicks. `-shopTest` (pair) 65/0.
+
 ---
 
 ## Data-driven content
