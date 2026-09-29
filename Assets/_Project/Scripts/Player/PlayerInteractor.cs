@@ -115,6 +115,9 @@ namespace EscapeWithYourFriends.Player
                 }
 
                 NetworkObject owner = hit.collider.GetComponentInParent<NetworkObject>();
+                // Your own limbs: the arm holding a pistol sits in front of the camera, and at the
+                // wrong pitch it was the nearest hit and stopped the look (playthrough bot, at the plane).
+                if (owner == NetworkObject) continue;
                 if (held != null && owner == held.NetworkObject)
                 {
                     if (interactable != null) { fallback = interactable; fallbackObject = owner; }

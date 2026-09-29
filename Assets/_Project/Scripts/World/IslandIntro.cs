@@ -26,6 +26,14 @@ namespace EscapeWithYourFriends.World
 
         float _giveUpAt;
         bool _done;
+        Landmark _target;
+
+        /// <summary>
+        /// This peer's player has stood at the wreck. Until then the Castaway's chain leaves the wreck
+        /// line up: the boat line had taken over by the time anybody spawned, and a fresh player was
+        /// sent 98m to the boat with no gun and the pistol lying at the wreck (playthrough bot).
+        /// </summary>
+        public static bool Visited { get; internal set; }
 
         void Start()
         {
@@ -35,7 +43,15 @@ namespace EscapeWithYourFriends.World
 
         void Update()
         {
-            if (_done) return;
+            if (_done)
+            {
+                if (!Visited && _target != null && Time.frameCount % 15 == 0)
+                    foreach (Player.PlayerMotor motor in FindObjectsByType<Player.PlayerMotor>(FindObjectsSortMode.None))
+                        if (motor != null && motor.IsOwner
+                            && Vector3.Distance(motor.transform.position, _target.transform.position) < 14f)
+                            Visited = true;
+                return;
+            }
 
             // The landmarks are spawned by the server and arrive on a client whenever they arrive.
             // Polling for a few seconds is both simpler and more robust than an event that has
@@ -44,6 +60,7 @@ namespace EscapeWithYourFriends.World
             if (target != null)
             {
                 Objective.Set(_firstObjective, target.transform);
+                _target = target;
                 _done = true;
                 return;
             }

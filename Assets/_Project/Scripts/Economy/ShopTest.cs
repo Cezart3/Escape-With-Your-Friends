@@ -89,7 +89,7 @@ namespace EscapeWithYourFriends.Economy
             while (Time.time < deadline && counter == null)
             {
                 counter = FindObjectsByType<ShopCounter>(FindObjectsSortMode.None)
-                          .FirstOrDefault(c => c != null && c.IsSpawned);
+                          .FirstOrDefault(c => c != null && c.IsSpawned && OfferOf(c, ItemCatalog.Active.Find("rope")) >= 0);
 
                 if (counter == null) yield return new WaitForSeconds(0.5f);
             }
