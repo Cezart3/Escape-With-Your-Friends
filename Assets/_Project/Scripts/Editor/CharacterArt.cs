@@ -67,11 +67,19 @@ namespace EscapeWithYourFriends.EditorTools
         const string AirClip = "Jump_Loop";
         const string PunchClip = "Punch_Jab";
 
+        // In water to the waist: treading it, and going somewhere in it (blended on Speed).
+        const string SwimIdleClip = "Swim_Idle_Loop";
+        const string SwimClip = "Swim_Fwd_Loop";
+
+        /// <summary>Seconds to blend into and out of a seat: getting in moves the whole body.</summary>
+        const float SeatBlend = 0.3f;
+
         // The arms with something in the right hand: at rest, and using it.
         const string GunClip = "Pistol_Idle_Loop";
         const string ShootClip = "Pistol_Shoot";
         const string BladeClip = "Sword_Idle";
         const string SlashClip = "Sword_Attack";
+        const string ReloadClip = "Pistol_Reload";
 
         // Only natives die standing up; a player is a ragdoll by then.
         const string DeathClip = "Death01";
@@ -500,7 +508,7 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
-        /// The one controller every body shares. Seven parameters, which is everything the rest of the
+        /// The one controller every body shares. Nine parameters, which is everything the rest of the
         /// game already knows about a body: how fast it goes, whether it is off the ground, in a seat,
         /// throwing a punch, (a native) dead, and what is in its hand and whether it is being used.
         /// Carrying and holding a weapon are layers over the arms rather than states, so either can
@@ -527,6 +535,8 @@ namespace EscapeWithYourFriends.EditorTools
             controller.AddParameter("Dead", AnimatorControllerParameterType.Bool);
             controller.AddParameter("Armed", AnimatorControllerParameterType.Int);
             controller.AddParameter("Fire", AnimatorControllerParameterType.Trigger);
+            controller.AddParameter("Swimming", AnimatorControllerParameterType.Bool);
+            controller.AddParameter("Reload", AnimatorControllerParameterType.Trigger);
 
             AnimatorState move = controller.CreateBlendTreeInController("Move", out BlendTree tree, 0);
             tree.blendType = BlendTreeType.Simple1D;
@@ -548,8 +558,33 @@ namespace EscapeWithYourFriends.EditorTools
             if (clip != null)
             {
                 AnimatorState seated = State(machine, "Seated", clip);
-                Quick(machine.AddAnyStateTransition(seated)).AddCondition(AnimatorConditionMode.If, 0f, "Seated");
-                Quick(seated.AddTransition(move)).AddCondition(AnimatorConditionMode.IfNot, 0f, "Seated");
+                // Slower than the rest: 0.15 s of a whole body getting in or out reads as a snap.
+                AnimatorStateTransition sit = Quick(machine.AddAnyStateTransition(seated));
+                sit.duration = SeatBlend;
+                sit.AddCondition(AnimatorConditionMode.If, 0f, "Seated");
+                AnimatorStateTransition stand = Quick(seated.AddTransition(move));
+                stand.duration = SeatBlend;
+                stand.AddCondition(AnimatorConditionMode.IfNot, 0f, "Seated");
+            }
+
+            // Swimming: a blend tree of its own, so treading water and striking out are one state.
+            AnimationClip treading = Clip(clips, SwimIdleClip, missing), striking = Clip(clips, SwimClip, missing);
+            if (treading != null && striking != null)
+            {
+                AnimatorState swim = controller.CreateBlendTreeInController("Swim", out BlendTree swimTree, 0);
+                swimTree.blendType = BlendTreeType.Simple1D;
+                swimTree.blendParameter = "Speed";
+                swimTree.useAutomaticThresholds = false;
+                swimTree.AddChild(treading, 0f);
+                swimTree.AddChild(striking, 2f);
+
+                AnimatorStateTransition wade = Quick(machine.AddAnyStateTransition(swim));
+                wade.duration = 0.25f;
+                wade.AddCondition(AnimatorConditionMode.If, 0f, "Swimming");
+                wade.AddCondition(AnimatorConditionMode.IfNot, 0f, "Seated");
+                AnimatorStateTransition leave = Quick(swim.AddTransition(move));
+                leave.duration = 0.25f;
+                leave.AddCondition(AnimatorConditionMode.IfNot, 0f, "Swimming");
             }
 
             clip = Clip(clips, AirClip, missing);
@@ -559,6 +594,7 @@ namespace EscapeWithYourFriends.EditorTools
                 AnimatorStateTransition jump = Quick(machine.AddAnyStateTransition(air));
                 jump.AddCondition(AnimatorConditionMode.If, 0f, "Airborne");
                 jump.AddCondition(AnimatorConditionMode.IfNot, 0f, "Seated");
+                jump.AddCondition(AnimatorConditionMode.IfNot, 0f, "Swimming");
                 Quick(air.AddTransition(move)).AddCondition(AnimatorConditionMode.IfNot, 0f, "Airborne");
             }
 
@@ -606,13 +642,15 @@ namespace EscapeWithYourFriends.EditorTools
 
             Armed(controller, mask, clips, missing);
 
+            bool snaps = Snaps(controller);
+
             EditorUtility.SetDirty(controller);
             AssetDatabase.SaveAssets();
 
             foreach (string name in missing.Distinct())
                 Debug.LogWarning($"[CharacterArt] No clip called {name} in the library; that state is left out.");
 
-            bool ok = !missing.Contains("Idle_Loop") && !missing.Contains("Walk_Loop");
+            bool ok = !missing.Contains("Idle_Loop") && !missing.Contains("Walk_Loop") && !snaps;
             if (!ok)
                 Debug.LogError($"[CharacterArt] The library has no Idle_Loop or no Walk_Loop. What it has: "
                                + string.Join(", ", clips.Values.Select(c => c.name).OrderBy(n => n)));
@@ -662,7 +700,54 @@ namespace EscapeWithYourFriends.EditorTools
                 back.duration = 0.1f;
             }
 
+            // Reload: a gun's only (Armed 1, the rule CharacterSkin sets the trigger under).
+            AnimationClip reload = Clip(clips, ReloadClip, missing);
+            if (reload != null)
+            {
+                AnimatorState reloading = State(machine, "Reload", reload);
+                AnimatorStateTransition load = machine.AddAnyStateTransition(reloading);
+                load.hasExitTime = false;
+                load.duration = 0.1f;
+                load.canTransitionToSelf = false;
+                load.AddCondition(AnimatorConditionMode.If, 0f, "Reload");
+                load.AddCondition(AnimatorConditionMode.Equals, 1f, "Armed");
+
+                AnimatorStateTransition done = reloading.AddTransition(holdGun);
+                done.hasExitTime = true;
+                done.exitTime = 0.9f;
+                done.duration = 0.15f;
+            }
+
             controller.layers = layers;
+        }
+
+        /// <summary>
+        /// A transition with no blend is a snap, and the one thing here a terminal cannot see. Every
+        /// transition on every layer - out of Move, Seated, Swim, Air and the arms' states - must
+        /// have a duration; the build fails naming the ones that do not.
+        /// </summary>
+        static bool Snaps(AnimatorController controller)
+        {
+            bool snaps = false;
+
+            foreach (AnimatorControllerLayer layer in controller.layers)
+            {
+                var transitions = new List<(string From, AnimatorStateTransition Transition)>();
+                transitions.AddRange(layer.stateMachine.anyStateTransitions.Select(t => ("Any", t)));
+                foreach (ChildAnimatorState child in layer.stateMachine.states)
+                    transitions.AddRange(child.state.transitions.Select(t => (child.state.name, t)));
+
+                foreach ((string from, AnimatorStateTransition transition) in transitions)
+                {
+                    if (transition.duration > 0f) continue;
+
+                    snaps = true;
+                    string to = transition.destinationState != null ? transition.destinationState.name : "?";
+                    Debug.LogError($"[CharacterArt] {layer.name}: {from} -> {to} has a zero blend; it would snap.");
+                }
+            }
+
+            return snaps;
         }
 
         static AnimatorState State(AnimatorStateMachine machine, string name, Motion motion)
