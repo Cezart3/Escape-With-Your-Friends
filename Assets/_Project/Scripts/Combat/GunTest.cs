@@ -408,6 +408,12 @@ namespace EscapeWithYourFriends.Combat
 
                 Debug.Log($"[GunTest] {buckshot.Id} at 2.5m landed {best} pellet(s) in one shot.");
 
+                // #228: PhysX queries a CharacterController at 0.8 of its size, so a shot at a
+                // standing player's head flew over it until the player got a full-size hitbox.
+                Check("a level shot at eye height hits a standing player's head",
+                      Physics.RaycastAll(attacker.AimOrigin.position, Toward(attacker, victim), 10f, ~0, QueryTriggerInteraction.Collide)
+                             .Any(h => h.collider.GetComponentInParent<Weapon>() == victim && PlayerMotor.IsHitbox(h.collider)));
+
                 Check($"a {buckshot.Id} lands more than one of its {buckshot.Pellets} pellets on one "
                       + "person at close range, which is the entire reason it exists",
                       best >= 2);

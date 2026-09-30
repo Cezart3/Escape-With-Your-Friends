@@ -144,6 +144,16 @@ namespace EscapeWithYourFriends.Player
         [SerializeField] float _groundStick = 2f;
 
         CharacterController _controller;
+
+        /// <summary>
+        /// What a bullet hits (#228). PhysX builds a CharacterController's scene-query shape at 0.8 of
+        /// its size (the CCT's scaleCoeff), so a raycast met a 1.4 m capsule with a 0.24 m radius and
+        /// passed clean over the head of a standing player. This trigger is the full capsule, kept
+        /// in step with the crouch and switched off with the controller. Nothing in the game listens
+        /// for trigger events, and hitscan only accepts a trigger that is one of these.
+        /// </summary>
+        CapsuleCollider _hitbox;
+
         Health _health;
         StunState _stun;
         SurvivalStats _stats;
@@ -192,6 +202,16 @@ namespace EscapeWithYourFriends.Player
 
         public bool IsCrouching => _crouching;
 
+        /// <summary>Whether <paramref name="collider"/> is a player's hitbox rather than some other trigger.</summary>
+        internal static bool IsHitbox(Collider collider)
+            => collider is CapsuleCollider && collider.isTrigger && collider.TryGetComponent(out PlayerMotor _);
+
+        // A seated or ragdolled player has no controller, and the bones or the seat are what get hit.
+        void LateUpdate()
+        {
+            if (_hitbox.enabled != _controller.enabled) _hitbox.enabled = _controller.enabled;
+        }
+
         /// <summary>Where the camera sits, in local space. Drops with the crouch.</summary>
         public float EyeHeight => (_crouching ? _crouchHeight : _standHeight) - 0.2f;
 
@@ -207,6 +227,10 @@ namespace EscapeWithYourFriends.Player
             _rider = GetComponent<Vehicles.VehicleRider>();
 
             if (_input == null) _input = GetComponent<PlayerInputReader>();
+
+            _hitbox = gameObject.AddComponent<CapsuleCollider>();
+            _hitbox.isTrigger = true;
+            _hitbox.radius = _controller.radius;
 
             ApplyHeight(standing: true);
 
@@ -510,6 +534,9 @@ namespace EscapeWithYourFriends.Player
             _controller.height = height;
             // Feet stay put: the head is what moves when you crouch.
             _controller.center = new Vector3(0f, height * 0.5f, 0f);
+
+            _hitbox.height = height;
+            _hitbox.center = _controller.center;
         }
 
         bool HasHeadroom()

@@ -456,8 +456,9 @@ namespace EscapeWithYourFriends.Combat
                 // Every hit, nearest first, past your own body: a single Raycast stopped at the
                 // shooter's own arm or leg when aiming down at something close, and the round did
                 // nothing. The playthrough bot emptied twenty into a boar at its feet this way.
+                // Triggers too, for the player hitbox (#228); every other trigger is skipped below.
                 RaycastHit[] hits = Physics.RaycastAll(originPosition, shot, weapon.Range, _hitMask,
-                                                       QueryTriggerInteraction.Ignore);
+                                                       QueryTriggerInteraction.Collide);
                 System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
 
                 Health victim = null;
@@ -465,6 +466,7 @@ namespace EscapeWithYourFriends.Combat
                 RaycastHit hit = default;
                 foreach (RaycastHit candidate in hits)
                 {
+                    if (candidate.collider.isTrigger && !PlayerMotor.IsHitbox(candidate.collider)) continue;
                     victim = candidate.collider.GetComponentInParent<Health>();
                     if (victim != null && victim == _health) continue;
                     hit = candidate;
@@ -504,8 +506,10 @@ namespace EscapeWithYourFriends.Combat
         {
             if (spreadDegrees <= 0f) return direction;
 
+            // In the shot's own frame. A world-frame pitch is a rotation about world X, which does
+            // nothing to a shot fired along X: a shotgun facing east or west threw a flat fan (#228).
             Vector2 disc = UnityEngine.Random.insideUnitCircle * spreadDegrees;
-            return Quaternion.Euler(disc.y, disc.x, 0f) * direction;
+            return Quaternion.LookRotation(direction) * Quaternion.Euler(disc.y, disc.x, 0f) * Vector3.forward;
         }
 
         // ---------------------------------------------------------------- damage
