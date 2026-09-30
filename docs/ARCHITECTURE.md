@@ -8375,6 +8375,35 @@ player, harness `-gunsmithTest` (solo, `-scene island`).
 - The shop panel grew to 31 shelf rows plus 5 gunsmith rows (two columns, 40 px pitch, taller than
   the chest panel). The gunsmith rows show the held weapon's icon and "Scope 1/4  $194".
 
+## #228: the player hitbox and the shot's own frame
+
+A shotgun at 2.5 m landed none of its eight pellets in GunTest. There were two causes.
+
+**PhysX queries a CharacterController at 0.8 of its size.** The CCT builds its kinematic actor with
+`scaleCoeff` 0.8, and Unity does not expose it. A raycast at a standing player met a capsule
+0.17-1.57 m tall with a 0.24 m radius, not the 0-1.75 m, 0.3 m one the controller reports. An
+`OverlapSphere` still found the full one. So a level shot at eye height (1.55 m, on a tiny slope)
+passed over the head of every standing player. Probing the height in 10 cm steps showed the gap.
+
+`PlayerMotor` now adds a trigger `CapsuleCollider` at the controller's true size:
+
+- `ApplyHeight` keeps it in step with the crouch.
+- `LateUpdate` switches it off with the controller, so a seated or ragdolled player is hit through
+  the seat or the bones as before.
+- `Weapon.ResolveHitscan` queries with `QueryTriggerInteraction.Collide` and skips every trigger
+  that `PlayerMotor.IsHitbox` does not recognise.
+- Every overlap in the game already passes `Ignore`, and no script has `OnTriggerEnter`, so
+  nothing else notices the new trigger.
+
+**The scatter was in world frame.** `Quaternion.Euler(pitch, yaw, 0) * direction` pitches about
+world X, which does nothing to a shot fired along X. A gun facing east or west threw a flat fan,
+and one facing north or south a round cone. GunTest's lane happened to turn east, so every pellet
+stayed at eye height. `Scatter` now rotates in the shot's own frame through `LookRotation`.
+
+**Harness:** GunTest checks that a level eye-height ray reaches the victim's hitbox, and the shotgun
+now lands 7 of 8 pellets. Results: GunTest 151/0, WeaponTest 28/0, MeleeTest 33/0,
+VehicleTest 79/0.
+
 ---
 
 ## Data-driven content
