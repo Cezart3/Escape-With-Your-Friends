@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 1
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 2100000, guid: 3f5d06fa00992b24b911b4251eb879ba, type: 2}
+  m_SkyboxMaterial: {fileID: 0}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -323,6 +323,16 @@ MonoBehaviour:
     Centre: {x: 9, y: 0.31938165, z: -47}
     Radius: 120
     Population: 5
+  - Id: jaguar.wild
+    Species: {fileID: 11400000, guid: e3ce662894f77754a8252d47bc9e1fe6, type: 2}
+    Centre: {x: 218, y: 3.2374923, z: 228}
+    Radius: 70
+    Population: 3
+  - Id: stag.wild
+    Species: {fileID: 11400000, guid: 334862ada75c7f14f95a0b01d0c35528, type: 2}
+    Centre: {x: 218, y: 3.2374923, z: 228}
+    Radius: 90
+    Population: 4
   _prefab: {fileID: 2327327759718728831, guid: 43814f57b9d1bf348879fdb7060ec0a2, type: 3}
   _catalog: {fileID: 11400000, guid: c5188fe110818f643af51bf0e58c2bb2, type: 2}
   _tickSeconds: 5

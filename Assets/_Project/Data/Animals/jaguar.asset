@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 97bf2813582055649a8d3d9d465530db, type: 3}
+  m_Name: jaguar
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.AnimalDef
+  _id: jaguar
+  _displayName: Jaguar
+  _description: Faster than you, quieter than you, and wearing the most expensive
+    coat on the island.
+  _temperament: 1
+  _maxHealth: 150
+  _walkSpeed: 2.2
+  _runSpeed: 7.4
+  _wanderRadius: 35
+  _idleSeconds: {x: 2, y: 5}
+  _senseRadius: 26
+  _reactRadius: 22
+  _calmSeconds: 10
+  _attackDamage: 20
+  _attackRange: 2.2
+  _attackInterval: 1.3
+  _attackStun: 0.4
+  _attackKnockback: 400
+  _bodySize: {x: 0.7, y: 0.8, z: 1.9}
+  _colour: {r: 0.78, g: 0.58, b: 0.22, a: 1}
+  _agentRadius: 0.5
+  _wild: 1
+  _loot:
+  - Item: {fileID: 11400000, guid: 2431beb64366e8040954ec04ddfdda57, type: 2}
+    Min: 1
+    Max: 1
+    Chance: 1
+  - Item: {fileID: 11400000, guid: f18af961747c8da4e83016e6d41901c3, type: 2}
+    Min: 1
+    Max: 2
+    Chance: 0.9
+  - Item: {fileID: 11400000, guid: aadaf72418e25a84a92c275a53f5c7e9, type: 2}
+    Min: 2
+    Max: 3
+    Chance: 1

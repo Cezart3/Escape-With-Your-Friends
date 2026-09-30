@@ -208,7 +208,9 @@ namespace EscapeWithYourFriends.Economy
 
             foreach (AnimalDef def in animals.Animals)
             {
-                if (def == null || def.Loot == null) continue;
+                // The wild zone's species are a late-game trip across the island, not the evening's
+                // hunt near camp this rate is about.
+                if (def == null || def.Loot == null || def.Wild) continue;
 
                 coins += Paid(def.Loot, shop);
                 kilos += Carried(def.Loot);

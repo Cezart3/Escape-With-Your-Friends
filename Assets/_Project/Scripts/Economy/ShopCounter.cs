@@ -45,6 +45,11 @@ namespace EscapeWithYourFriends.Economy
 
         float _nextRestock;
 
+        /// <summary>The run's <see cref="GameStage"/>, mirrored so a client's shop header can say it.</summary>
+        readonly SyncVar<int> _stage = new();
+
+        public int Stage => _stage.Value;
+
         public ShopDef Shop => _shop;
 
         public int OfferCount => _shop != null ? _shop.Count : 0;
@@ -92,6 +97,7 @@ namespace EscapeWithYourFriends.Economy
 
         void Update()
         {
+            if (IsServerStarted && _stage.Value != GameStage.Stage) _stage.Value = GameStage.Stage;
             if (!IsServerStarted || _shop == null || Time.time < _nextRestock) return;
 
             _nextRestock = Time.time + _shop.RestockSeconds;
@@ -277,7 +283,7 @@ namespace EscapeWithYourFriends.Economy
             }
 
             ItemDef def = stack.Def;
-            int each = _shop.PriceFor(def);
+            int each = GameStage.SellPrice(_shop, def, GameStage.Stage);
 
             if (each <= 0)
             {

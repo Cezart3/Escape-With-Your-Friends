@@ -65,6 +65,9 @@ namespace EscapeWithYourFriends.Core
         public string island = "Island";
         public bool planeOwned;
         public List<string> planeParts = new();
+
+        /// <summary>How far up the gun ladder the squad got. See <see cref="GameStage"/>.</summary>
+        public int stage;
         public List<SavedPlayer> players = new();
         public List<SavedVehicle> vehicles = new();
     }
@@ -293,6 +296,7 @@ namespace EscapeWithYourFriends.Core
             if (!string.IsNullOrEmpty(GameSceneLoader.Current)) _run.island = GameSceneLoader.Current;
 
             _run.planeOwned |= PlaneAssembly.Owned;
+            _run.stage = GameStage.Stage;
 
             PlaneAssembly plane = PlaneAssembly.Instance;
             if (plane != null)

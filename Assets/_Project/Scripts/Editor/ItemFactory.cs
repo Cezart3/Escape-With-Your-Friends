@@ -85,6 +85,11 @@ namespace EscapeWithYourFriends.EditorTools
             // with a hatchet a better idea than picking up another plank.
             new("hide", "Hide", ItemCategory.Material, 10, 1.2f, 26, "Scraped and dried. The trader always wants one."),
             new("feather", "Feather", ItemCategory.Material, 20, 0.05f, 7, "Light, plentiful, and worth almost nothing individually."),
+            // The wild zone's trophies (economy overhaul). Worth the walk at any stage, a fortune at a
+            // late one: the trader's buy-back of drops grows with the game stage.
+            new("jaguar_pelt", "Jaguar Pelt", ItemCategory.Material, 5, 2.5f, 600, "Spotted, flawless, and the reason the trader keeps a strongbox."),
+            new("fang", "Jaguar Fang", ItemCategory.Material, 20, 0.1f, 80, "A tooth the length of your finger. Collectors ask no questions."),
+            new("antler", "Antler", ItemCategory.Material, 10, 1.5f, 360, "Twelve points. Somebody on the mainland will pay a lot to hang it on a wall."),
 
             // Fishing's half (#54). A boot is worth *zero*, not one: the trader floors every price they
             // are willing to pay at a coin, so one coin would still be a sale and the joke would be a

@@ -8404,6 +8404,63 @@ stayed at eye height. `Scatter` now rotates in the shot's own frame through `Loo
 now lands 7 of 8 pellets. Results: GunTest 151/0, WeaponTest 28/0, MeleeTest 33/0,
 VehicleTest 79/0.
 
+## Game stage and the wild zone (economy overhaul)
+
+The late guns cost 90k and 250k, and a boar's hide is worth 13 at the counter. Without something
+that grows, the last rungs are a wall. Two things close it.
+
+**The game stage** (`Economy/GameStage.cs`) is the reward for climbing the gun ladder. The first
+time anybody holds a gun whose shop price reaches a threshold, the stage rises and never falls:
+
+| Gun held   | Price   | Stage | Drops sell at |
+|------------|---------|-------|---------------|
+| pistol     | 180     | 0     | x1            |
+| shotgun    | 2,500   | 1     | x1.5          |
+| smg        | 8,000   | 2     | x2.25         |
+| rifle      | 25,000  | 3     | x3.38         |
+| machinegun | 90,000  | 4     | x5.06         |
+| sniper     | 250,000 | 5     | x7.59         |
+
+- **Only drops scale.** A drop is anything in an animal's loot or a fish catch, read off the
+  catalogs so a new species needs no list. An item the shop itself sells stays at its flat
+  buy-back, because a box of rounds that sells back at 7x is a money printer.
+- **Server state.** `WeaponMods.Update` reports each newly equipped hitscan gun to
+  `GameStage.Observe`, priced at the highest counter that sells it. `ShopCounter` mirrors the
+  stage in a SyncVar, so the shop header shows `stage N: drops xM` to clients. The sell path
+  prices through `GameStage.SellPrice`.
+- **Saved with the run** as `SavedRun.stage`. `Stage` is the max of the session and the save, so a
+  reload cannot lose it.
+
+**The wild zone** (`AnimalFactory.BakeZones`) is a pair of zones at the standable land farthest
+from the base camp: a 10 m grid over the island, above +3 m, slope under 20 degrees. On Island it
+sits 408 m from camp, and on Island2 235 m. Two species live only there:
+
+- **jaguar**: aggressive, 150 hp, runs 7.4 (faster than a sprint). Drops a pelt (600), 1-2 fangs
+  (80 each) and meat. Worth 743 a kill, ten boars.
+- **stag**: skittish, senses at 55 m, runs 8.5. Drops 1-2 antlers (360 each), hide and meat.
+  Worth 635. It is meant to need a rifle and a scope.
+
+`AnimalDef.Wild` marks them. It is set every bake like the loot, from `AnimalFactory.WildSpecies`.
+The early-game hunting rate in `EconomyModel.Hunting` and AnimalTest's "a sprint catches prey"
+check both skip wild species, since neither is about the evening's hunt near camp.
+
+Regenerating: run `ItemFactory.Build` and `AnimalFactory.Build`, then
+`-executeMethod EscapeWithYourFriends.EditorTools.AnimalFactory.Rezone`. Rezone re-bakes only the
+zones of both island scenes, without a full terrain regenerate. It loads the profile after
+`OpenScene`, which unloads it along with the POI catalog; loaded first, every zone lands on the
+origin.
+
+**Harness:** `-stageTest -scene island -noNatives -noAnimals -save -savePath X`, solo, 20 checks:
+
+- the ladder and the multiplier
+- a pistol leaves the stage alone, a rifle raises it to 3, and it never falls
+- the counter mirrors it
+- a pelt sells at x3.375 while stock sells flat
+- a save round trip
+- the wild zone exists, sits over 300 m from camp and holds the only jaguars
+- a jaguar spawned there lands on the NavMesh
+- a jaguar kill is worth more than five boars
+
 ---
 
 ## Data-driven content

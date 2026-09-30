@@ -42,6 +42,9 @@ namespace EscapeWithYourFriends.EditorTools
 
         internal const string PrefabPath = PrefabDir + "/Animal.prefab";
 
+        /// <summary>The species that only live in the wild zone. See <see cref="AnimalDef.Wild"/>.</summary>
+        static readonly string[] WildSpecies = { "jaguar", "stag" };
+
         readonly struct Seed
         {
             public readonly string Id;
@@ -135,6 +138,25 @@ namespace EscapeWithYourFriends.EditorTools
                 damage: 0f, reach: 1f, interval: 2f, stun: 0f, knockback: 0f,
                 body: new Vector3(0.35f, 0.35f, 0.55f), colour: new Color(0.86f, 0.86f, 0.82f),
                 agentRadius: 0.25f),
+
+            // The far side of the island (economy overhaul), listed in WildSpecies. Both live only in the wild zone, as far
+            // from the camp as the land goes, and both carry what the trader pays real money for -
+            // which the game stage multiplies as the squad's guns get better.
+            new("jaguar", "Jaguar", "Faster than you, quieter than you, and wearing the most expensive coat on the island.",
+                // Outruns a sprint on purpose: the answer to a jaguar is a gun, not your legs.
+                Temperament.Aggressive, health: 150f, walk: 2.2f, run: 7.4f, wander: 35f, idle: new Vector2(2f, 5f),
+                sense: 26f, react: 22f, calm: 10f,
+                damage: 20f, reach: 2.2f, interval: 1.3f, stun: 0.4f, knockback: 400f,
+                body: new Vector3(0.7f, 0.8f, 1.9f), colour: new Color(0.78f, 0.58f, 0.22f),
+                agentRadius: 0.5f),
+
+            new("stag", "Stag", "Hears you from sixty metres and is gone at fifty. Worth the long shot.",
+                // A sense radius past any pistol's reach: the rifle and the scope are what bring one down.
+                Temperament.Skittish, health: 70f, walk: 2.6f, run: 8.5f, wander: 60f, idle: new Vector2(2f, 6f),
+                sense: 55f, react: 38f, calm: 10f,
+                damage: 0f, reach: 1f, interval: 2f, stun: 0f, knockback: 0f,
+                body: new Vector3(0.8f, 1.6f, 2.0f), colour: new Color(0.42f, 0.28f, 0.16f),
+                agentRadius: 0.55f),
         };
 
         /// <summary>
@@ -155,6 +177,14 @@ namespace EscapeWithYourFriends.EditorTools
 
             ("gull", "meat_raw", 1, 1, 0.8f),
             ("gull", "feather", 2, 4, 1f),
+
+            ("jaguar", "jaguar_pelt", 1, 1, 1f),
+            ("jaguar", "fang", 1, 2, 0.9f),
+            ("jaguar", "meat_raw", 2, 3, 1f),
+
+            ("stag", "antler", 1, 2, 1f),
+            ("stag", "hide", 1, 2, 1f),
+            ("stag", "meat_raw", 3, 5, 1f),
         };
 
         static string[] Reseed
@@ -275,6 +305,7 @@ namespace EscapeWithYourFriends.EditorTools
                 def.SetLoot(drops.TryGetValue(def.Id, out List<LootDrop> list)
                                 ? list.ToArray()
                                 : Array.Empty<LootDrop>());
+                def.SetWild(Array.IndexOf(WildSpecies, def.Id) >= 0);
 
                 EditorUtility.SetDirty(def);
             }
@@ -486,6 +517,7 @@ namespace EscapeWithYourFriends.EditorTools
             Vector2 cave = At(pois, "cave", camp);
             Vector2 village = At(pois, "village", camp);
             Vector2 wreck = At(pois, "wreck", camp);
+            Vector2 wild = Wild(shape, profile, camp);
 
             var zones = new List<AnimalSpawner.Zone>
             {
@@ -494,6 +526,8 @@ namespace EscapeWithYourFriends.EditorTools
                 Zone("deer.inland", catalog.Find("deer"), cave, 160f, 6, shape),
                 Zone("deer.village", catalog.Find("deer"), village, 140f, 4, shape),
                 Zone("gull.shore", catalog.Find("gull"), wreck, 120f, 5, shape),
+                Zone("jaguar.wild", catalog.Find("jaguar"), wild, 70f, 3, shape),
+                Zone("stag.wild", catalog.Find("stag"), wild, 90f, 4, shape),
             };
 
             zones.RemoveAll(z => z.Species == null);
@@ -519,6 +553,61 @@ namespace EscapeWithYourFriends.EditorTools
                 Radius = radius,
                 Population = population,
             };
+
+        /// <summary>
+        /// The standable ground furthest from the camp: a 10 m grid over the island, land well above
+        /// the sea and gentle enough to walk. Where the valuable animals live, so getting to them is
+        /// the trip across the island the price is paying for.
+        /// </summary>
+        static Vector2 Wild(IslandShape shape, IslandProfile profile, Vector2 camp)
+        {
+            float half = profile != null ? profile.Size * 0.5f - 20f : 300f;
+            Vector2 best = camp;
+            float bestDistance = 0f;
+
+            for (float x = -half; x <= half; x += 10f)
+            for (float z = -half; z <= half; z += 10f)
+            {
+                if (shape.HeightAt(x, z) < IslandShape.SeaLevel + 3f || shape.SlopeAt(x, z) > 20f) continue;
+
+                float distance = (new Vector2(x, z) - camp).sqrMagnitude;
+                if (distance <= bestDistance) continue;
+
+                bestDistance = distance;
+                best = new Vector2(x, z);
+            }
+
+            return best;
+        }
+
+        /// <summary>
+        /// Re-bakes the animal zones of every island scene and nothing else:
+        /// <c>-executeMethod EscapeWithYourFriends.EditorTools.AnimalFactory.Rezone</c>. Run Build first
+        /// for new species.
+        /// </summary>
+        public static void Rezone()
+        {
+            foreach (string guid in AssetDatabase.FindAssets("t:IslandProfile"))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                string scene = $"Assets/_Project/Scenes/{AssetDatabase.LoadAssetAtPath<IslandProfile>(path).Id}.unity";
+                if (!File.Exists(scene)) continue;
+
+                // OpenScene unloads unused assets - the profile and its POI catalog among them (see
+                // TerrainGenerator.WriteScene) - so both are loaded after it, not before.
+                UnityEngine.SceneManagement.Scene opened = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scene);
+                var profile = AssetDatabase.LoadAssetAtPath<IslandProfile>(path);
+                if (profile.Pois == null)
+                    profile.Pois = AssetDatabase.LoadAssetAtPath<POICatalog>(POIFactory.CatalogPathFor(profile));
+
+                AnimalSpawner spawner = UnityEngine.Object.FindAnyObjectByType<AnimalSpawner>();
+                if (spawner == null) continue;
+
+                BakeZones(profile, spawner);
+                UnityEditor.SceneManagement.EditorSceneManager.SaveScene(opened);
+                Debug.Log($"[AnimalFactory] Rezoned {scene}.");
+            }
+        }
 
         static Vector2 At(POICatalog pois, string id, Vector2 fallback)
         {

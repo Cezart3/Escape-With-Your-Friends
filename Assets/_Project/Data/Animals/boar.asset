@@ -32,6 +32,7 @@ MonoBehaviour:
   _bodySize: {x: 0.85, y: 0.85, z: 1.7}
   _colour: {r: 0.3, g: 0.23, b: 0.18, a: 1}
   _agentRadius: 0.55
+  _wild: 0
   _loot:
   - Item: {fileID: 11400000, guid: aadaf72418e25a84a92c275a53f5c7e9, type: 2}
     Min: 2
