@@ -39,15 +39,21 @@ namespace EscapeWithYourFriends.Casino
         static readonly (SlotKind Kind, long Won)[] Golden =
         {
             (SlotKind.Sevens, 1909820),
-            (SlotKind.Volcano, 2055330),
+            (SlotKind.Volcano, 1996820),
             (SlotKind.Reef, 2131545),
         };
 
         /// <summary>The same seeds bought: what each feature won over <see cref="GoldenSpins"/> buys, under .NET.</summary>
         static readonly (SlotKind Kind, long Won)[] GoldenBuys =
         {
-            (SlotKind.Volcano, 264126835),
+            (SlotKind.Volcano, 195264855),
             (SlotKind.Reef, 226769845),
+        };
+
+        /// <summary>The same seeds with the ante on, under Mono.</summary>
+        static readonly (SlotKind Kind, long Won)[] GoldenAnte =
+        {
+            (SlotKind.Volcano, 2197430),
         };
 
         /// <summary>Spins per game for the return-to-player check.</summary>
@@ -146,6 +152,7 @@ namespace EscapeWithYourFriends.Casino
             SlotMachine volcano = machines.First(m => m.Kind == SlotKind.Volcano);
             player.ServerTeleport(volcano.transform.position + volcano.transform.forward * 1f, 0f);
             yield return Buying(volcano, wallet, actor);
+            yield return Anteing(volcano, wallet, actor);
             yield return Jackpot(volcano, machines, wallet, actor);
 
             int after = present.Sum(w => w.Balance);
@@ -306,20 +313,41 @@ namespace EscapeWithYourFriends.Casino
             }
 
             Check("Sevens has nothing to buy", SlotMath.BuyPrice(SlotKind.Sevens) == 0);
+
+            foreach ((SlotKind kind, long won) in GoldenAnte)
+            {
+                long total = 0;
+                bool flagged = true;
+                for (int i = 0; i < GoldenSpins; i++)
+                {
+                    SlotResult r = SlotMath.Spin(kind, i * 7919 + 13, 100, ante: true);
+                    total += r.Win;
+                    if (!r.Ante) flagged = false;
+                }
+
+                Check($"{kind}: {GoldenSpins} ante spins win {total}, as under Mono ({won})", total == won && flagged);
+                Check($"{kind}: a bought spin ignores the ante", !SlotMath.Spin(kind, 13, 100, buy: true, ante: true).Ante);
+            }
+
+            Check("only the Volcano has an ante", SlotMath.HasAnte(SlotKind.Volcano)
+                  && !SlotMath.HasAnte(SlotKind.Sevens) && !SlotMath.HasAnte(SlotKind.Reef));
+            Check($"the ante stakes a quarter more ({SlotMath.AnteStake(100)} on 100)", SlotMath.AnteStake(100) == 125);
+            Check($"orbs run to x{SlotMath.Volcano.OrbValues[^1]}", SlotMath.Volcano.OrbValues[^1] == 500);
         }
 
         IEnumerator Rtp()
         {
             // Bands, not points: a fixed seed run is one sample of a volatile game. The tuned figure
             // over millions of spins is about 95% for each; see docs/ARCHITECTURE.md.
-            (SlotKind kind, double low, double high)[] bands =
+            (SlotKind kind, bool ante, double low, double high)[] bands =
             {
-                (SlotKind.Sevens, 0.93, 0.98),
-                (SlotKind.Volcano, 0.88, 1.03),
-                (SlotKind.Reef, 0.88, 1.03),
+                (SlotKind.Sevens, false, 0.93, 0.98),
+                (SlotKind.Volcano, false, 0.88, 1.03),
+                (SlotKind.Volcano, true, 0.88, 1.03),
+                (SlotKind.Reef, false, 0.88, 1.03),
             };
 
-            foreach ((SlotKind kind, double low, double high) in bands)
+            foreach ((SlotKind kind, bool ante, double low, double high) in bands)
             {
                 float started = Time.realtimeSinceStartup;
                 long staked = 0, won = 0;
@@ -329,8 +357,8 @@ namespace EscapeWithYourFriends.Casino
                 {
                     if (i % 20000 == 19999) yield return null;
 
-                    SlotResult r = SlotMath.Spin(kind, i * 7919 + 13, 100);
-                    staked += 100;
+                    SlotResult r = SlotMath.Spin(kind, i * 7919 + 13, 100, ante: ante);
+                    staked += ante ? SlotMath.AnteStake(100) : 100;
                     won += r.Win;
                     if (r.Win > 0) hits++;
                     if (r.FreeSpins > 0) features++;
@@ -339,11 +367,11 @@ namespace EscapeWithYourFriends.Casino
                 }
 
                 double rtp = (double)won / staked;
-                Debug.Log($"[SlotTest] {kind}: {RtpSpins} spins, return {rtp:P2}, hits {100.0 * hits / RtpSpins:0.0}%, "
+                Debug.Log($"[SlotTest] {kind}{(ante ? " ante" : "")}: {RtpSpins} spins, return {rtp:P2}, hits {100.0 * hits / RtpSpins:0.0}%, "
                           + $"features {features}, best {biggest / 100}x, capped {capped}, "
                           + $"{Time.realtimeSinceStartup - started:0.0}s.");
 
-                Check($"{kind} returns {rtp:P2}, inside {low:P0}-{high:P0}", rtp >= low && rtp <= high);
+                Check($"{kind}{(ante ? " with the ante" : "")} returns {rtp:P2}, inside {low:P0}-{high:P0}", rtp >= low && rtp <= high);
                 Check($"{kind} never pays past {SlotMath.MaxWinX}x", biggest <= SlotMath.MaxWinX * 100);
                 if (kind != SlotKind.Sevens) Check($"{kind} reaches its feature ({features} times)", features > 100);
             }
@@ -358,7 +386,7 @@ namespace EscapeWithYourFriends.Casino
             foreach (SlotMachine machine in machines)
             {
                 SlotButton[] buttons = machine.GetComponentsInChildren<SlotButton>();
-                int wanted = machine.Kind == SlotKind.Sevens ? 4 : 3;
+                int wanted = machine.Kind == SlotKind.Sevens || SlotMath.HasAnte(machine.Kind) ? 4 : 3;
 
                 Check($"{machine.Title} has {wanted} buttons ({buttons.Length}), each its own NetworkObject",
                       buttons.Length == wanted && buttons.Select(b => b.NetworkObject).Distinct().Count() == wanted
@@ -447,6 +475,35 @@ namespace EscapeWithYourFriends.Casino
             Check($"and pays what its seed says ({result.Win}), replayed with the buy",
                   wallet.Chips == before - cost + result.Win + volcano.LastJackpot
                   && SlotMath.Spin(volcano.Kind, volcano.LastSeed, volcano.LastBet, buy: true).Win == result.Win);
+        }
+
+        IEnumerator Anteing(SlotMachine volcano, Wallet wallet, NetworkObject actor)
+        {
+            SlotButton ante = Button(volcano, SlotAction.Ante);
+            SlotButton buy = Button(volcano, SlotAction.Buy);
+            SlotButton spin = Button(volcano, SlotAction.Spin);
+
+            ante.ServerInteract(actor);
+            Check($"the ante button turns it on: a spin now stakes {volcano.Stake} on a bet of {volcano.Bet}",
+                  volcano.Ante && volcano.Stake == SlotMath.AnteStake(volcano.Bet));
+            Check("and the buy is off while it is", volcano.BuyCost == 0 && !buy.ServerCanInteract(actor));
+
+            int before = wallet.Chips;
+            spin.ServerInteract(actor);
+            SlotResult result = volcano.LastResult;
+            Check($"an ante spin takes {before - wallet.Chips}", wallet.Chips == before - volcano.Stake && result != null && result.Ante);
+            if (result == null || !volcano.Busy) yield break;
+
+            float giveUp = Time.time + result.Seconds + 10f;
+            while ((volcano.Busy || volcano.Animating) && Time.time < giveUp) yield return null;
+
+            Check($"and pays what its seed says with the ante ({result.Win})",
+                  wallet.Chips == before - volcano.Stake + result.Win + volcano.LastJackpot
+                  && SlotMath.Spin(volcano.Kind, volcano.LastSeed, volcano.LastBet, ante: true).Win == result.Win
+                  && volcano.Played != null && volcano.Played.Ante);
+
+            ante.ServerInteract(actor);
+            Check("pressed again, the ante is off and the buy is back", !volcano.Ante && volcano.BuyCost > 0);
         }
 
         IEnumerator Jackpot(SlotMachine volcano, SlotMachine[] machines, Wallet wallet, NetworkObject actor)

@@ -7325,7 +7325,7 @@ symbols and numbers are ours; the mechanics are the genre's common stock.
 | Cabinet | Grid | How it pays | The extra |
 |---|---|---|---|
 | **Coconut Sevens** | 5x3 | 20 fixed lines, 3+ left to right; stars pay anywhere | Double-up card: red or black, up to 5 times |
-| **Wrath of the Volcano** | 6x5 | 8+ of a symbol anywhere; winners burst and the rest tumble | Lava orbs (x2-x100) multiply a paying sequence; 4 volcanoes give 15 free spins where the orbs add up |
+| **Wrath of the Volcano** | 6x5 | 8+ of a symbol anywhere; winners burst and the rest tumble | Lava orbs (x2-x500) multiply a paying sequence; 4 volcanoes give 15 free spins where the orbs add up; ante bet (#255) |
 | **Reef Rush** | 7x7 | Clusters of 5+ touching; burst and tumble | A cell burst twice becomes a x2 spot, then x4 ... x128; 3+ chests give free spins where the spots never reset |
 
 **The game is arithmetic, and it lives in one file.** `SlotMath` takes a kind, a seed and a bet and
@@ -7660,7 +7660,7 @@ and throws the whole coin pool. `WinBanner` gets a fifth colour. `SlotBoard` sho
 **Bonus buy.** `SlotMath.Spin(kind, seed, bet, buy)` rolls the first grid as usual, then `Force`
 turns random cells into volcanoes (4) or chests (3) until the feature triggers. The extra draws
 happen only when `buy` is set, so an ordinary seed plays exactly as before. Prices come from
-simulating 300k buys under .NET: Volcano 137 bets (96.4% on the harness seeds), Reef 119 (95.3%).
+simulating 300k buys under .NET: Volcano 137 bets (96.4% on the harness seeds; 100 bets since #255), Reef 119 (95.3%).
 Big-win tiers still count against the base bet, as real cabinets do. `_lastBuy` replicates so a
 late joiner replays the right spin. The button (`SlotAction.Buy`) is appended to the enum so
 serialised values keep their meaning. It uses the card button's red, so it adds no material to
@@ -8571,6 +8571,53 @@ Two more causes were not the game's. Playthrough shots are captured at 1280x720,
 Game view blurs at a scale above 1x. `docs/PLAYING.md` now says so, along with how to keep a
 hybrid-GPU laptop on its discrete card. The user's laptop runs the build on its RTX 4060 at
 Very High.
+
+## Wrath of the Volcano, the whole concept (#255)
+
+The Volcano cabinet already played the pay-anywhere, tumble-and-orbs game. This adds the three
+things the genre's best-known version of it has and ours did not:
+
+| | Before | Now |
+|---|---|---|
+| Orbs | x2-x100 | x2-x500; x250 and x500 are 4 in 10,000 orbs |
+| Ante | none | 1.25x the stake, the volcano weight 36 -> 45 on the base reels: feature 1 in ~440 -> 1 in ~200 |
+| Bonus buy | 137x | **100x** |
+| Free-spin orb rate | 50 per mille | 32 per mille, so a feature is worth ~98x instead of ~130x |
+| Base orb rate | 12 per mille | 14 per mille, which puts the return lost from the feature back into the base game |
+
+Retriggers (+5 spins on three volcanoes in a free spin) were already in.
+
+**Return, tuned by simulation under Mono** with `SlotMath.cs` compiled outside Unity, 3M spins
+each: base game 95.3%, ante 95.9% of the larger stake, bought feature 97.6%. The tool is the
+compiler that ships with the Editor. No .NET SDK is installed, and none is needed:
+
+```bash
+M=/d/Unity/Editors/6000.3.23f1/Editor/Data/MonoBleedingEdge
+"$M/bin/mono.exe" "$M/lib/mono/4.5/csc.exe" -langversion:preview -optimize+ -out:sim.exe Sim.cs \
+  Assets/_Project/Scripts/Casino/SlotMath.cs && "$M/bin/mono.exe" sim.exe
+```
+
+`Sim.cs` is a `Main` that calls `SlotMath.Spin` in a loop. Mono is the backend that ships, so its
+totals are what the harness's golden numbers are checked against. The Sevens and Reef totals came
+out identical to the .NET ones, as they must.
+
+**The ante is a cabinet setting, not a bet.** It is a `SyncVar<bool>` on `SlotMachine`, flipped by
+a fifth button (`SlotAction.Ante`, Volcano only). While it is on:
+- `Stake` is `SlotMath.AnteStake(Bet)`, a quarter more, and every win is still counted on the bet;
+- `BuyCost` is 0, so no one can buy the feature. That is the genre's rule: the ante and the buy are
+  two ways to pay for the feature, and you pick one.
+
+The flag rides with the seed (`RpcPlay`, `_lastAnte` for late joiners), the same as the buy's.
+`SlotMath.Spin` ignores it on a bought spin and on a game without one, so a bad flag cannot change
+a spin.
+
+### Harness
+
+`-slotTest`, a pair, is now 90 + 5 checks. The new checks:
+- Volcano's golden totals: base, bought, and ante (`GoldenAnte`);
+- the ante's return band;
+- the ante button's stake, refusing the buy, paying the seed, and turning off again;
+- four buttons on the Volcano.
 
 ---
 

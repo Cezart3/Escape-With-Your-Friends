@@ -104,6 +104,9 @@ namespace EscapeWithYourFriends.Casino
 
         /// <summary>The feature was bought: the first drop was forced to trigger it.</summary>
         public bool Bought;
+
+        /// <summary>Played with the ante: a quarter more staked, the feature twice as likely. See <see cref="SlotMath.AnteStake"/>.</summary>
+        public bool Ante;
         public readonly List<SlotFrame> Frames = new();
 
         public float Seconds
@@ -149,15 +152,16 @@ namespace EscapeWithYourFriends.Casino
             _ => "Reef Rush",
         };
 
-        public static SlotResult Spin(SlotKind kind, int seed, int bet, bool buy = false)
+        public static SlotResult Spin(SlotKind kind, int seed, int bet, bool buy = false, bool ante = false)
         {
-            var result = new SlotResult { Kind = kind, Seed = seed, Bet = bet, Bought = buy };
+            ante &= HasAnte(kind) && !buy;
+            var result = new SlotResult { Kind = kind, Seed = seed, Bet = bet, Bought = buy, Ante = ante };
             var rng = new SlotRng(seed);
 
             switch (kind)
             {
                 case SlotKind.Sevens: Sevens.Play(ref rng, result); break;
-                case SlotKind.Volcano: Volcano.Play(ref rng, result, buy); break;
+                case SlotKind.Volcano: Volcano.Play(ref rng, result, buy, ante); break;
                 default: Reef.Play(ref rng, result, buy); break;
             }
 
@@ -185,6 +189,12 @@ namespace EscapeWithYourFriends.Casino
             SlotKind.Reef => Reef.BuyPrice,
             _ => 0,
         };
+
+        /// <summary>Games with an ante: a quarter more on every spin for twice the chance of the feature. No buying with it on.</summary>
+        public static bool HasAnte(SlotKind kind) => kind == SlotKind.Volcano;
+
+        /// <summary>What a spin at <paramref name="bet"/> stakes with the ante on. Pays are still on the bet.</summary>
+        public static int AnteStake(int bet) => bet + bet / 4;
 
         /// <summary>Every stake puts this many hundredths of itself into the shared jackpot.</summary>
         public const int JackpotPct = 1;
@@ -332,7 +342,8 @@ namespace EscapeWithYourFriends.Casino
         /// Six by five, and a symbol pays if there are eight or more of it anywhere. Winners burst,
         /// the rest fall, new ones drop in, and it goes again until nothing pays. Lava orbs carry a
         /// multiplier; when a sequence has paid, every orb still on screen adds into one multiplier
-        /// for the lot. Four volcanoes start fifteen free spins, where the orbs keep adding up.
+        /// for the lot. Four volcanoes start fifteen free spins, where the orbs keep adding up, and
+        /// three more in a free spin add five. The ante bet thickens the volcanoes on the base reels.
         /// </summary>
         public static class Volcano
         {
@@ -369,30 +380,37 @@ namespace EscapeWithYourFriends.Casino
             public static readonly int[] Weights = { 300, 280, 260, 240, 220, 170, 150, 130, 100, 36 };
             static readonly int WeightTotal = Sum(Weights);
 
+            /// <summary>The base reels with the ante on: only the volcano is heavier, enough to double the feature.</summary>
+            public static readonly int[] AnteWeights = { 300, 280, 260, 240, 220, 170, 150, 130, 100, 45 };
+            static readonly int AnteTotal = Sum(AnteWeights);
+
             /// <summary>Free spins lean on the low symbols, so the screen pays more often while the orbs pile up.</summary>
             public static readonly int[] FreeWeights = { 380, 340, 290, 240, 210, 160, 140, 115, 90, 20 };
             static readonly int FreeTotal = Sum(FreeWeights);
 
             /// <summary>An orb in this many thousandths of cells, base game and free spins.</summary>
-            public const int OrbPerMille = 12;
-            public const int FreeOrbPerMille = 50;
+            public const int OrbPerMille = 14;
+            public const int FreeOrbPerMille = 32;
 
-            public static readonly int[] OrbValues = { 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 50, 100 };
-            public static readonly int[] OrbWeights = { 300, 200, 150, 110, 80, 60, 40, 25, 15, 10, 6, 3, 1 };
+            public static readonly int[] OrbValues = { 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 50, 100, 250, 500 };
+            public static readonly int[] OrbWeights = { 3000, 2000, 1500, 1100, 800, 600, 400, 250, 150, 100, 60, 30, 10, 3, 1 };
             static readonly int OrbTotal = Sum(OrbWeights);
 
             /// <summary>The bonus buy, in bets.</summary>
-            public const int BuyPrice = 137;
+            public const int BuyPrice = 100;
 
-            public static void Play(ref SlotRng rng, SlotResult result, bool buy)
+            const int Base = 0, WithAnte = 1, Free = 2;
+
+            public static void Play(ref SlotRng rng, SlotResult result, bool buy, bool ante)
             {
+                int reels = ante ? WithAnte : Base;
                 var orbs = new int[Cells];
                 var grid = new int[Cells];
-                for (int i = 0; i < Cells; i++) grid[i] = Roll(ref rng, orbs, i, false);
+                for (int i = 0; i < Cells; i++) grid[i] = Roll(ref rng, orbs, i, reels);
                 if (buy) Force(ref rng, grid, orbs, Peak, 4);
 
                 int peaks = Count(grid, Peak);
-                long total = Sequence(ref rng, result, grid, orbs, 0, -1, 0, out _);
+                long total = Sequence(ref rng, result, grid, orbs, reels, 0, -1, 0, out _);
 
                 if (peaks >= 4)
                 {
@@ -409,7 +427,7 @@ namespace EscapeWithYourFriends.Casino
                         left--;
                         orbs = new int[Cells];
                         grid = new int[Cells];
-                        for (int i = 0; i < Cells; i++) grid[i] = Roll(ref rng, orbs, i, true);
+                        for (int i = 0; i < Cells; i++) grid[i] = Roll(ref rng, orbs, i, Free);
 
                         if (Count(grid, Peak) >= 3)
                         {
@@ -417,23 +435,28 @@ namespace EscapeWithYourFriends.Casino
                             result.FreeSpins += Retrigger;
                         }
 
-                        total = Sequence(ref rng, result, grid, orbs, total, left, running, out running);
+                        total = Sequence(ref rng, result, grid, orbs, Free, total, left, running, out running);
                     }
                 }
 
                 result.WinPct = total;
             }
 
-            static int Roll(ref SlotRng rng, int[] orbs, int cell, bool free)
+            static int Roll(ref SlotRng rng, int[] orbs, int cell, int reels)
             {
-                if (rng.Range(1000) < (free ? FreeOrbPerMille : OrbPerMille))
+                if (rng.Range(1000) < (reels == Free ? FreeOrbPerMille : OrbPerMille))
                 {
                     orbs[cell] = OrbValues[rng.Pick(OrbWeights, OrbTotal)];
                     return Orb;
                 }
 
                 orbs[cell] = 0;
-                return free ? rng.Pick(FreeWeights, FreeTotal) : rng.Pick(Weights, WeightTotal);
+                return reels switch
+                {
+                    Free => rng.Pick(FreeWeights, FreeTotal),
+                    WithAnte => rng.Pick(AnteWeights, AnteTotal),
+                    _ => rng.Pick(Weights, WeightTotal),
+                };
             }
 
             /// <summary>
@@ -441,7 +464,7 @@ namespace EscapeWithYourFriends.Casino
             /// <paramref name="freeLeft"/> is not -1 and the orbs of every paying sequence add into
             /// <paramref name="runningMultiplier"/>, which then multiplies that sequence.
             /// </summary>
-            static long Sequence(ref SlotRng rng, SlotResult result, int[] grid, int[] orbs,
+            static long Sequence(ref SlotRng rng, SlotResult result, int[] grid, int[] orbs, int reels,
                                  long before, int freeLeft, int runningMultiplier, out int runningAfter)
             {
                 long raw = 0;
@@ -464,7 +487,7 @@ namespace EscapeWithYourFriends.Casino
                     first = false;
 
                     if (pays == 0) break;
-                    Tumble(ref rng, grid, orbs, winning, freeLeft >= 0);
+                    Tumble(ref rng, grid, orbs, winning, reels);
                 }
 
                 int orbSum = 0;
@@ -509,7 +532,7 @@ namespace EscapeWithYourFriends.Casino
             }
 
             /// <summary>Winners out, everything above falls, new symbols in on top. Orbs and volcanoes fall like anything else.</summary>
-            static void Tumble(ref SlotRng rng, int[] grid, int[] orbs, bool[] winning, bool free)
+            static void Tumble(ref SlotRng rng, int[] grid, int[] orbs, bool[] winning, int reels)
             {
                 for (int c = 0; c < Cols; c++)
                 {
@@ -528,7 +551,7 @@ namespace EscapeWithYourFriends.Casino
                     for (; write >= 0; write--)
                     {
                         int i = c * Rows + write;
-                        grid[i] = Roll(ref rng, orbs, i, free);
+                        grid[i] = Roll(ref rng, orbs, i, reels);
                     }
                 }
             }

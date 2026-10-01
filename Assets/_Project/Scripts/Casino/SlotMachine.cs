@@ -28,6 +28,7 @@ namespace EscapeWithYourFriends.Casino
     ///
     /// Volcano and Reef sell their free spins outright: <see cref="SlotMath.BuyPrice"/> bets, and the
     /// first drop is forced to trigger the feature. Same seed, same replay, one more bool on the wire.
+    /// Volcano also has the ante: a quarter more per spin, twice the feature, no buying while it is on.
     ///
     /// **The jackpot is one pot for the whole floor.** Every stake at any cabinet feeds it
     /// <see cref="SlotMath.JackpotPct"/>%; every spin may drop it, decided by the seed on the server
@@ -91,6 +92,12 @@ namespace EscapeWithYourFriends.Casino
         /// <summary>The last spin bought its feature.</summary>
         readonly SyncVar<bool> _lastBuy = new();
 
+        /// <summary>The ante is on: every spin stakes a quarter more for twice the feature. Volcano only.</summary>
+        readonly SyncVar<bool> _ante = new();
+
+        /// <summary>The last spin was played with the ante.</summary>
+        readonly SyncVar<bool> _lastAnte = new();
+
         /// <summary>Server: the pot, in hundredths of a chip so a 10-chip stake still adds to it.</summary>
         static long _pot = SlotMath.JackpotSeed * 100L;
 
@@ -142,8 +149,13 @@ namespace EscapeWithYourFriends.Casino
         public int Jackpot => _jackpot.Value;
         public int LastJackpot => _lastJackpot.Value;
 
-        /// <summary>What the feature costs at the current bet, 0 on a cabinet without one.</summary>
-        public int BuyCost => Bet * SlotMath.BuyPrice(_kind);
+        /// <summary>What the feature costs at the current bet, 0 on a cabinet without one or with the ante on.</summary>
+        public int BuyCost => Ante ? 0 : Bet * SlotMath.BuyPrice(_kind);
+
+        public bool Ante => _ante.Value;
+
+        /// <summary>What one spin takes from the wallet: the bet, or a quarter more with the ante.</summary>
+        public int Stake => Ante ? SlotMath.AnteStake(Bet) : Bet;
         public int Gamble => _gamble.Value;
         public int GamblerId => _gamblerId.Value;
         public int Card => _turned.Value;
@@ -210,7 +222,7 @@ namespace EscapeWithYourFriends.Casino
             // Mid-spin, the last seed is the spin still running: drawing its end would give it away.
             if (_lastBet.Value <= 0 || _busy.Value) return;
 
-            Played = SlotMath.Spin(_kind, _lastSeed.Value, _lastBet.Value, _lastBuy.Value);
+            Played = SlotMath.Spin(_kind, _lastSeed.Value, _lastBet.Value, _lastBuy.Value, _lastAnte.Value);
             PlayedJackpot = _lastJackpot.Value;
             _settled = Played.Frames[Played.Frames.Count - 1];
             DrawStill(_settled);
@@ -248,7 +260,8 @@ namespace EscapeWithYourFriends.Casino
             if (wallet == null) return 0;
 
             int bet = Bet;
-            int stake = buy ? BuyCost : bet;
+            bool ante = !buy && Ante;
+            int stake = buy ? BuyCost : Stake;
             if (wallet.ServerStakeChips(stake) <= 0) return 0;
 
             World.RunSummary.ServerStaked(stake);
@@ -258,7 +271,7 @@ namespace EscapeWithYourFriends.Casino
             _turned.Value = 0;
 
             int seed = _rng.Next();
-            SlotResult result = SlotMath.Spin(_kind, seed, bet, buy);
+            SlotResult result = SlotMath.Spin(_kind, seed, bet, buy, ante);
             LastResult = result;
 
             _pot += (long)stake * SlotMath.JackpotPct;
@@ -280,9 +293,10 @@ namespace EscapeWithYourFriends.Casino
             _lastSeed.Value = seed;
             _lastBet.Value = bet;
             _lastBuy.Value = buy;
+            _lastAnte.Value = ante;
             _lastJackpot.Value = jackpot;
 
-            RpcPlay(seed, bet, buy, jackpot);
+            RpcPlay(seed, bet, buy, ante, jackpot);
             Play(result, jackpot);
 
             StartCoroutine(Settle(actor, wallet, result, jackpot));
@@ -339,6 +353,15 @@ namespace EscapeWithYourFriends.Casino
         {
             if (_busy.Value) return false;
             _betIndex.Value = (_betIndex.Value + 1) % SlotMath.Bets.Length;
+            return true;
+        }
+
+        /// <summary>Flips the ante. Refused mid-spin and on a cabinet without one.</summary>
+        [Server]
+        public bool ServerToggleAnte()
+        {
+            if (_busy.Value || !SlotMath.HasAnte(_kind)) return false;
+            _ante.Value = !_ante.Value;
             return true;
         }
 
@@ -405,7 +428,7 @@ namespace EscapeWithYourFriends.Casino
         // ---------------------------------------------------------------- the screen
 
         [ObserversRpc(ExcludeServer = true)]
-        void RpcPlay(int seed, int bet, bool buy, int jackpot) => Play(SlotMath.Spin(_kind, seed, bet, buy), jackpot);
+        void RpcPlay(int seed, int bet, bool buy, bool ante, int jackpot) => Play(SlotMath.Spin(_kind, seed, bet, buy, ante), jackpot);
 
         [ObserversRpc(ExcludeServer = true)]
         void RpcCard(bool red) => ShowCard(red);

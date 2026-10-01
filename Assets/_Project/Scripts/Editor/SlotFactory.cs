@@ -422,6 +422,10 @@ namespace EscapeWithYourFriends.EditorTools
             {
                 // The bonus buy, in the card's red so it costs the scene no new material.
                 Button(root.transform, SlotAction.Buy, new Vector3(0f, 0.97f, 0.2f), new Color(0.72f, 0.28f, 0.22f), 0.9f);
+
+                // The ante, between the buy and the stake, in the stake's gold.
+                if (SlotMath.HasAnte(kind))
+                    Button(root.transform, SlotAction.Ante, new Vector3(-0.15f, 0.97f, 0.2f), new Color(0.83f, 0.68f, 0.24f), 0.7f);
             }
 
             GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, path, out bool success);
