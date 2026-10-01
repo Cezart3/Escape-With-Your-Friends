@@ -8488,6 +8488,35 @@ damage record; add it if griefing shows up in public lobbies.
 
 ---
 
+## The gun ladder, after How to Fish
+
+How to Fish prices its guns 50, 150, 650, 3,800 and 20,000. The shotgun is three pistols away, so the
+first real upgrade comes in the first half hour. Each rung after that is four to six times the last
+and comes with a new place to spend it. Ours climbed 180, 2,500, 8,000, 25,000, 90,000 and 250,000.
+That put a fourteen-times wall right after the pistol, and the last two guns sat past the end of the
+run.
+
+| Gun | Was | Now |
+|---|---|---|
+| pistol | 180 | 180 |
+| shotgun | 2,500 | 550 |
+| smg | 8,000 | 2,300 |
+| rifle | 25,000 | 6,500 |
+| machine gun | 90,000 | 20,000 |
+| sniper | 250,000 | 70,000 |
+
+`GameStage.Thresholds` follow the guns: 550, 2300, 6500, 20000 and 70000. The shotgun now buys
+stage 1 early, so drops sell at x1.5 from the first half hour on, and `-economyTest` moved the boat
+from 2.07 sessions to 1.64. That is about two and a half hours, still past Steam's two-hour refund
+window but much closer to it. Mod prices are multiples of the gun's own price (`WeaponMods`), so they
+followed without a change. The rifle arrives about when the boat does; the machine gun and the sniper
+are island 2's answer to the village.
+
+The shelf is written once, so the change needed `ShopFactory.Build -rebuildShop`.
+`-shopTest` 72/0, `-stageTest` 20/0, `-gunsmithTest` 25/0, `-economyTest` 27/0.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**

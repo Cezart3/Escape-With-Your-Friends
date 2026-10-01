@@ -24,7 +24,7 @@ namespace EscapeWithYourFriends.Economy
     public static class GameStage
     {
         /// <summary>The shop price a held gun must reach for each stage, 1 to 5.</summary>
-        public static readonly int[] Thresholds = { 2500, 8000, 25000, 90000, 250000 };
+        public static readonly int[] Thresholds = { 550, 2300, 6500, 20000, 70000 };
 
         public const float PerStage = 1.5f;
 

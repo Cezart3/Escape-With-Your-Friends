@@ -403,10 +403,10 @@ namespace EscapeWithYourFriends.Economy
             int mgOffer = mgItem != null ? OfferOf(counter, mgItem) : -1;
             int sniperOffer = sniperItem != null ? OfferOf(counter, sniperItem) : -1;
 
-            Check("the trader sells the machine gun for 90000",
-                  mgOffer >= 0 && counter.OfferAt(mgOffer).Price == 90000);
-            Check("and the sniper for 250000",
-                  sniperOffer >= 0 && counter.OfferAt(sniperOffer).Price == 250000);
+            Check("the trader sells the machine gun for 20000",
+                  mgOffer >= 0 && counter.OfferAt(mgOffer).Price == 20000);
+            Check("and the sniper for 70000",
+                  sniperOffer >= 0 && counter.OfferAt(sniperOffer).Price == 70000);
 
             foreach ((string id, ItemDef item, int offer) in new[] { ("machinegun", mgItem, mgOffer), ("sniper", sniperItem, sniperOffer) })
             {
