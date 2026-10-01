@@ -102,6 +102,10 @@ namespace EscapeWithYourFriends.Core
         {
             if (int.TryParse(requested, out int index)) return index;
 
+            // A preset's name first: "-quality High" means the High preset, which stands on Unity's
+            // "Very High" level, not on the level Unity happens to call "High".
+            if (System.Enum.TryParse(requested, true, out VideoSettings.Preset preset)) return VideoSettings.LevelOf(preset);
+
             string[] names = QualitySettings.names;
             for (int i = 0; i < names.Length; i++)
                 if (string.Equals(names[i], requested, System.StringComparison.OrdinalIgnoreCase)) return i;

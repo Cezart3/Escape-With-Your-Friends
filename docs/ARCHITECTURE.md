@@ -8919,6 +8919,51 @@ VSync off and the 144 cap. It then clears every key.
 **Not added:** particle and water quality options. Nothing reads them yet; they arrive with #251 and
 #247.
 
+## The perf route and beauty shots (#239)
+
+`World/LookRoute.cs` is the look epic's instrument: one fixed route of camera spots round the
+island, flown by a camera of its own. Hooked in `NetworkBootstrap` beside `ShotTest`. It needs a
+window (no `-nographics`) and a host, so it is not a headless harness. It measures and shoots, and a
+person reads the result.
+
+- **The route.** Spawn beach, wreck, jungle by the cave, village, trader, the casino floor, the
+  slot row with every cabinet spinning, the island's highest point looking at its middle, and the
+  plane. Each spot comes off a `Landmark`, so a moved POI moves its spot. A missing landmark is
+  logged and skipped, so Island2 still runs a shorter route.
+- **`-perfRoute <file.md>`** holds each spot 1.5 s to settle, then 5 s, with VSync and the cap off
+  and the clock frozen at noon. It appends one markdown table: p50, p95 and worst frame time, then
+  batches, SetPass calls, triangles and shadow casters off the render `ProfilerRecorder` counters.
+  The counters exist in development builds only. `-commit <hash>` is written into the header,
+  because a build has no git.
+- **`-beautyShots <folder>`** shoots every spot at noon, dusk and night, at the monitor's native
+  resolution, into `<folder>/<preset>`. The 1280x720 playthrough shots looked pixelated fullscreen;
+  that was the capture size, not the game.
+- **The camera.** A copy of the player's camera, tagged `MainCamera` so whatever follows the camera
+  follows it. The player's camera is switched off, so the numbers are one camera's. Canvases are
+  hidden so the shots are the world. Every slot machine is spun from the host's wallet, topped up
+  for it, because that is the casino's worst case.
+- **Two things fight the camera.** `PlayerCameraRig` puts a live `CinemachineBrain` on whatever
+  `Camera.main` is, every frame, and a brain flies its camera to the player's eye; the route camera
+  carries a disabled one so the rig leaves it alone. The first-person gun hangs off `Camera.main`
+  too; the host's `CharacterSkin.ForceCarry` puts it away. Story beats stay quiet while a route
+  runs (`LookRoute.Running`), or the title card lands in a shot.
+- **`tools/perf-route.sh`** runs the route on every tier on both GPUs of the dev laptop: Medium,
+  High and Ultra on the RTX 4060, and Low, Medium and High on the Radeon 760M, the min-spec proxy.
+  It appends to `docs/PERF.md`. The iGPU run uses a copy of the build pinned to the power-saving GPU
+  by a per-exe Windows GPU preference. A run whose log does not name the GPU it was meant for is
+  failed, since Windows ignores the preference silently.
+- **`-quality High` means the preset.** It used to pick Unity level 3, named "High", which is the
+  Medium preset's URP asset. `GraphicsBoot.ByName` tries the preset names first.
+
+**Baseline** (commit 9d12636, before the look pass): every tier meets its target. The 4060 is
+CPU-bound at about 4 ms on Low and Medium. High's cost is batches and triangles at range: the
+overlook and the plane draw 8 500-10 700 batches and 19-20 M triangles against Medium's 2 100 and
+4.5 M. A look PR that makes Medium on the 760M worse by more than 1 ms at p95 says why.
+
+The baseline shots show two things for later passes. From the overlook at dusk the sea is a flat
+square with a hard edge and black beyond it (#247). The slot cabinets are flat colour with no glow,
+lit or not (#252).
+
 ---
 
 ## Data-driven content

@@ -92,6 +92,8 @@ namespace EscapeWithYourFriends.Core
 
         public static Values Current { get { Load(); return _values; } }
 
+        public static int LevelOf(Preset preset) => Levels[(int)preset];
+
         /// <summary>A preset's values. Public so the menu and the harness can compare against it.</summary>
         public static Values Of(Preset preset) => Presets[(int)preset];
 

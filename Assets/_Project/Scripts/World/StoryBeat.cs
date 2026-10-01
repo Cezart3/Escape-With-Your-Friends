@@ -48,7 +48,9 @@ namespace EscapeWithYourFriends.World
         /// </summary>
         public static bool Play(string id, string title, string line, Transform focus)
         {
-            if (focus == null || _played.Contains(id)) return false;
+            // The look route flies its camera past every beat's focus; a title card in a perf frame or
+            // a beauty shot is noise.
+            if (focus == null || _played.Contains(id) || LookRoute.Running) return false;
 
             Camera main = Camera.main;
             if (main != null && Vector3.Distance(main.transform.position, focus.position) > Reach) return false;
