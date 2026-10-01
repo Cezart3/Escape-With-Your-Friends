@@ -47,6 +47,11 @@ namespace EscapeWithYourFriends.Core
             // textures and shadow maps costs nothing anyone can see.
             QualitySettings.SetQualityLevel(chosen, applyExpensiveChanges: true);
 
+            // Every texture sharp at a glancing angle, which is how the ground is always seen. Most of
+            // ours import with aniso 1, so "per texture" meant none, and the beach smeared into a
+            // blur a few metres out. Costs next to nothing on anything Medium runs on.
+            if (chosen >= Medium) QualitySettings.anisotropicFiltering = AnisotropicFiltering.ForceEnable;
+
             Debug.Log($"[GraphicsBoot] Quality '{QualitySettings.names[chosen]}' ({chosen}) - {why}. "
                       + $"{SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize}MB video, "
                       + $"{SystemInfo.systemMemorySize}MB system, {SystemInfo.processorCount} cores.");
@@ -113,6 +118,12 @@ namespace EscapeWithYourFriends.Core
         {
             string device = SystemInfo.graphicsDeviceName ?? "";
 
+            if (IsCurrentIntegrated(device))
+            {
+                why = "a current integrated GPU (Radeon 6xxM and up, Intel Arc)";
+                return Medium;
+            }
+
             if (IsIntegrated(device))
             {
                 why = "integrated graphics";
@@ -127,6 +138,25 @@ namespace EscapeWithYourFriends.Core
 
             why = $"{SystemInfo.graphicsMemorySize}MB of video memory on a discrete GPU";
             return High;
+        }
+
+        /// <summary>
+        /// RDNA 2 and 3 integrated parts (Radeon 610M to 890M) and Intel's Arc graphics. They carry
+        /// the Medium tier at 1080p, the tier docs/ART-PLAN.md holds the 760M to; Low switched off
+        /// HDR, and with it half the grade, and made the game look ten years older than it is.
+        /// </summary>
+        static bool IsCurrentIntegrated(string device)
+        {
+            string lower = device.ToLowerInvariant();
+            if (lower.Contains("arc") && lower.Contains("intel")) return true;
+            if (!lower.Contains("radeon")) return false;
+
+            for (int i = 0; i < lower.Length - 3; i++)
+                if (lower[i] >= '6' && lower[i] <= '9' && char.IsDigit(lower[i + 1]) && char.IsDigit(lower[i + 2])
+                    && lower[i + 3] == 'm' && (i == 0 || !char.IsDigit(lower[i - 1])))
+                    return true;
+
+            return false;
         }
 
         static bool IsIntegrated(string device)

@@ -70,7 +70,15 @@ namespace EscapeWithYourFriends.World
             if (camera == null) return;
 
             UniversalAdditionalCameraData data = camera.GetUniversalAdditionalCameraData();
-            if (data != null) data.renderPostProcessing = true;
+            if (data == null) return;
+            data.renderPostProcessing = true;
+
+            // Edges. SMAA rather than FXAA, which blurs the whole frame to soften the stairs, and
+            // rather than MSAA, which the URP assets leave off for cost. Low keeps none: it is the
+            // tier for parts that cannot spare the millisecond.
+            bool low = QualitySettings.GetQualityLevel() < 2;
+            data.antialiasing = low ? AntialiasingMode.None : AntialiasingMode.SubpixelMorphologicalAntiAliasing;
+            data.antialiasingQuality = AntialiasingQuality.High;
         }
 
         /// <summary>
