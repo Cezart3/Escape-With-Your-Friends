@@ -19,6 +19,9 @@ namespace EscapeWithYourFriends.Casino
 
         /// <summary>Buys the free spins outright, Volcano and Reef only.</summary>
         Buy,
+
+        /// <summary>Turns the ante on or off, Volcano only.</summary>
+        Ante,
     }
 
     /// <summary>
@@ -56,13 +59,17 @@ namespace EscapeWithYourFriends.Casino
                 switch (_action)
                 {
                     case SlotAction.Spin:
-                        return wallet.Chips >= Machine.Bet ? $"Spin {Machine.Title} for {Machine.Bet} chips" : string.Empty;
+                        return wallet.Chips >= Machine.Stake ? $"Spin {Machine.Title} for {Machine.Stake} chips" : string.Empty;
                     case SlotAction.Bet:
                         return $"Bet {Machine.NextBet} (now {Machine.Bet})";
                     case SlotAction.Buy:
                         return Machine.BuyCost > 0 && wallet.Chips >= Machine.BuyCost
                             ? $"Buy free spins for {Machine.BuyCost} chips"
                             : string.Empty;
+                    case SlotAction.Ante:
+                        return Machine.Ante
+                            ? $"Ante off (spins back to {Machine.Bet})"
+                            : $"Ante on: spins cost {SlotMath.AnteStake(Machine.Bet)}, free spins twice as likely, no buying";
                     default:
                         if (Machine.Gamble <= 0 || local.ObjectId != Machine.GamblerId) return string.Empty;
                         return $"Double {Machine.Gamble} on {(_action == SlotAction.Red ? "red" : "black")}";
@@ -78,9 +85,11 @@ namespace EscapeWithYourFriends.Casino
             {
                 case SlotAction.Spin:
                     Wallet wallet = actor.GetComponent<Wallet>();
-                    return wallet != null && wallet.Chips >= Machine.Bet;
+                    return wallet != null && wallet.Chips >= Machine.Stake;
                 case SlotAction.Bet:
                     return true;
+                case SlotAction.Ante:
+                    return SlotMath.HasAnte(Machine.Kind);
                 case SlotAction.Buy:
                     Wallet buyer = actor.GetComponent<Wallet>();
                     return Machine.BuyCost > 0 && buyer != null && buyer.Chips >= Machine.BuyCost;
@@ -100,6 +109,7 @@ namespace EscapeWithYourFriends.Casino
                 case SlotAction.Red: Machine.ServerGamble(actor, red: true); break;
                 case SlotAction.Black: Machine.ServerGamble(actor, red: false); break;
                 case SlotAction.Buy: Machine.ServerSpin(actor, buy: true); break;
+                case SlotAction.Ante: Machine.ServerToggleAnte(); break;
             }
         }
 
