@@ -44,6 +44,7 @@ namespace EscapeWithYourFriends.Casino
         internal static void Begin()
         {
             if (_started || !CommandLine.HasFlag("-blackjackTest")) return;
+            CasinoDays.AllOpen = true;   // the table, not the calendar; -casinoDaysTest has that
 
             _started = true;
 

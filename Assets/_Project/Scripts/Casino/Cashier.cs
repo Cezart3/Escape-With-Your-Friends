@@ -1,6 +1,7 @@
 using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.Economy;
 using FishNet.Object;
+using FishNet.Object.Synchronizing;
 using UnityEngine;
 
 namespace EscapeWithYourFriends.Casino
@@ -44,8 +45,19 @@ namespace EscapeWithYourFriends.Casino
         [Min(1)]
         [SerializeField] int _chunk = 100;
 
+        // The casino's day, for clients: see CasinoDays.
+        readonly SyncVar<int> _day = new();
+
         public CageDirection Direction => _direction;
-        public int Chunk => _chunk;
+
+        /// <summary>The chunk at today's limits: bigger chips, bigger stacks to buy them in.</summary>
+        public int Chunk => CasinoDays.Scaled(_chunk);
+
+        void Update()
+        {
+            if (IsServerStarted) { if (_day.Value != CasinoDays.Day) _day.Value = CasinoDays.Day; }
+            else if (IsClientStarted) CasinoDays.Mirror = _day.Value;
+        }
 
         /// <summary>
         /// What the crosshair says, read off the local player's own wallet. An empty prompt means
@@ -102,7 +114,7 @@ namespace EscapeWithYourFriends.Casino
         int Moving(Wallet wallet)
         {
             int available = _direction == CageDirection.Buy ? wallet.Balance : wallet.Chips;
-            return Mathf.Min(_chunk, available);
+            return Mathf.Min(Chunk, available);
         }
 
         /// <summary>Same shape as the vehicle prompt's; see <c>Items.Storage</c> for the original.</summary>

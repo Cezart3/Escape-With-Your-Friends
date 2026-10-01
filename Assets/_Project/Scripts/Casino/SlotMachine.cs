@@ -132,8 +132,9 @@ namespace EscapeWithYourFriends.Casino
 
         public SlotKind Kind => _kind;
         public string Title => SlotMath.Title(_kind);
-        public int Bet => SlotMath.Bets[Mathf.Clamp(_betIndex.Value, 0, SlotMath.Bets.Length - 1)];
-        public int NextBet => SlotMath.Bets[(_betIndex.Value + 1) % SlotMath.Bets.Length];
+        public int Bet => CasinoDays.Scaled(SlotMath.Bets[Mathf.Clamp(_betIndex.Value, 0, SlotMath.Bets.Length - 1)]);
+        public int NextBet => CasinoDays.Scaled(SlotMath.Bets[(_betIndex.Value + 1) % SlotMath.Bets.Length]);
+        public bool Open => CasinoDays.IsOpen(CasinoDays.Of(_kind));
         public bool Busy => _busy.Value;
         public int LastSeed => _lastSeed.Value;
         public int LastBet => _lastBet.Value;

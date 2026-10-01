@@ -44,6 +44,8 @@ namespace EscapeWithYourFriends.Casino
             get
             {
                 if (Machine == null || Machine.Busy) return string.Empty;
+                if (!Machine.Open)
+                    return _action == SlotAction.Spin ? CasinoDays.Closed(Machine.Title, CasinoDays.Of(Machine.Kind)) : string.Empty;
 
                 NetworkObject local = ClientManager != null && ClientManager.Connection != null
                     ? ClientManager.Connection.FirstObject
@@ -70,7 +72,7 @@ namespace EscapeWithYourFriends.Casino
 
         public bool ServerCanInteract(NetworkObject actor)
         {
-            if (Machine == null || Machine.Busy || actor == null) return false;
+            if (Machine == null || Machine.Busy || actor == null || !Machine.Open) return false;
 
             switch (_action)
             {

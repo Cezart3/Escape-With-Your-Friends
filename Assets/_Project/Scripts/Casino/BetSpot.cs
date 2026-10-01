@@ -37,7 +37,7 @@ namespace EscapeWithYourFriends.Casino
 
         public BetKind Kind => _kind;
         public int Number => _number;
-        public int Chunk => _chunk;
+        public int Chunk => CasinoDays.Scaled(_chunk);
 
         public RouletteWheel Table => _table != null ? _table : _table = GetComponentInParent<RouletteWheel>();
 
@@ -52,7 +52,7 @@ namespace EscapeWithYourFriends.Casino
                 Wallet mine = LocalWallet();
                 if (mine == null) return string.Empty;
 
-                int stake = Mathf.Min(_chunk, mine.Chips);
+                int stake = Mathf.Min(Chunk, mine.Chips);
                 if (stake <= 0) return string.Empty;
 
                 return $"Put {stake} on {Label}";
@@ -74,7 +74,7 @@ namespace EscapeWithYourFriends.Casino
             Wallet wallet = actor != null ? actor.GetComponent<Wallet>() : null;
             if (wallet == null) return;
 
-            int stake = Mathf.Min(_chunk, wallet.Chips);
+            int stake = Mathf.Min(Chunk, wallet.Chips);
             if (stake <= 0) return;
 
             Table.ServerPlaceBet(actor, _kind, _number, stake);

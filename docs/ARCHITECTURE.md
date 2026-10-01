@@ -8517,6 +8517,42 @@ The shelf is written once, so the change needed `ShopFactory.Build -rebuildShop`
 
 ---
 
+## Casino days: a new game every day, bigger chips every day
+
+Gamble With Your Friends paces its casino over twelve days: new floors open as the days go by, and
+each floor has more games and higher limits. Our day is twenty minutes (`WorldClock`), so a run of
+three to four hours lives about ten of them. `CasinoDays` uses the same shape, one step per day:
+
+| Day | Opens | Stakes |
+|---|---|---|
+| 1 | roulette | x1 |
+| 2 | blackjack | x1.5 |
+| 3 | Coconut Sevens | x2.25 |
+| 4 | Volcano | x3.4 |
+| 5 | Reef | x5.1 |
+| 11+ | | x57, the cap |
+
+- **A closed game says when it opens.** The spin button or the first blackjack seat reads
+  "Coconut Sevens opens on day 3 (today is day 1)" and refuses the press on the server, so a
+  player sees what is coming.
+- **Every stake grows by the day's scale.** Roulette chips, the blackjack chunk (and its ten-chunk
+  seat cap), the four slot stakes and the cage's exchange chunk are all `CasinoDays.Scaled(base)`:
+  x1.5 per day, the same step `GameStage` pays drops at, rounded to three figures.
+- **The day survives a save.** `SavedRun.day` holds it. The live value is the saved days, read once
+  per session, plus `WorldClock.Day`; reading it only once is what stops a save from counting the
+  session twice. A client reads the day off the cage (`Cashier` mirrors it in a SyncVar), the way the
+  shop counter mirrors the stage.
+
+New games join the calendar by adding to `CasinoGame` and `Opens`. Video poker and the "specials"
+(crash, mines) are next.
+
+`-casinoDaysTest` (solo, `-save -savePath X`) runs 17 checks: one game a day, closed games refuse a
+player with chips, stakes x2.25 on day 3, the cap, and the save round trip. `-slotTest` and
+`-blackjackTest` set `CasinoDays.AllOpen`, since they test the games and not the calendar. Slots
+77/0, blackjack 68/0, roulette 26/0.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**

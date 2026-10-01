@@ -64,6 +64,7 @@ namespace EscapeWithYourFriends.Casino
         internal static void Begin()
         {
             if (_started || !CommandLine.HasFlag("-slotTest")) return;
+            CasinoDays.AllOpen = true;   // the cabinets, not the calendar; -casinoDaysTest has that
 
             _started = true;
 
