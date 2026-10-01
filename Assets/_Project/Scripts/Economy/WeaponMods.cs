@@ -70,6 +70,22 @@ namespace EscapeWithYourFriends.Economy
             _wallet = GetComponent<Wallet>();
         }
 
+        WeaponDef _observed;
+
+        /// <summary>Server: tell the <see cref="GameStage"/> whenever this player picks up a different gun.</summary>
+        void Update()
+        {
+            if (!IsServerStarted || _weapon == null || _weapon.Equipped == _observed) return;
+
+            _observed = _weapon.Equipped;
+            if (_observed == null || _observed.Kind != WeaponKind.Hitscan) return;
+
+            int price = 0;
+            foreach (ShopCounter counter in FindObjectsByType<ShopCounter>(FindObjectsSortMode.None))
+                if (counter != null) price = Mathf.Max(price, WeaponPrice(counter.Shop, _observed));
+            GameStage.Observe(price, $"{name} holding the {_observed.Id}");
+        }
+
         // ---------------------------------------------------------------- the table
 
         public static int Levels(ModTrack track) => Tracks[(int)track].Levels;

@@ -130,6 +130,10 @@ namespace EscapeWithYourFriends.Data
         [Tooltip("Metres the navigation agent takes up. Too wide and it will not fit between trees.")]
         [SerializeField] float _agentRadius = 0.5f;
 
+        [Tooltip("Lives only in the far wild zone and is priced for the late game. The early-game "
+                 + "hunting sums in EconomyModel and AnimalTest leave it out.")]
+        [SerializeField] bool _wild;
+
         [Header("Loot")]
         [Tooltip("What the carcass leaves behind. Rolled once per kill, on the server.")]
         [SerializeField] LootDrop[] _loot = Array.Empty<LootDrop>();
@@ -140,6 +144,7 @@ namespace EscapeWithYourFriends.Data
 
         public Temperament Temperament => _temperament;
         public bool IsAggressive => _temperament == Temperament.Aggressive;
+        public bool Wild => _wild;
         public float MaxHealth => Mathf.Max(1f, _maxHealth);
 
         public float WalkSpeed => Mathf.Max(0.1f, _walkSpeed);
@@ -218,5 +223,8 @@ namespace EscapeWithYourFriends.Data
 
         /// <summary>Bake time only. Structural, so it is re-applied on every run.</summary>
         public void SetLoot(LootDrop[] loot) => _loot = loot ?? Array.Empty<LootDrop>();
+
+        /// <summary>Bake time only. Structural like the loot.</summary>
+        public void SetWild(bool wild) => _wild = wild;
     }
 }

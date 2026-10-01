@@ -258,7 +258,8 @@ namespace EscapeWithYourFriends.AI
 
                 // Both prey species have to be catchable by a sprinting player (7.5 m/s), or hunting
                 // is gated behind the firearms in #51 and stops being an *early* money source.
-                if (!def.IsAggressive)
+                // The wild zone's stag is the exception on purpose: it is the rifle's animal.
+                if (!def.IsAggressive && !def.Wild)
                     Check($"{def.Id} can be run down by a sprint ({def.RunSpeed:0.0} < "
                           + $"{sprint:0.0})", def.RunSpeed < sprint);
 

@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Items
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.ItemCatalog
   _items:
+  - {fileID: 11400000, guid: adfa6df2aa8f4bc4885457c0f1598fcb, type: 2}
   - {fileID: 11400000, guid: 03b4974ef88400841acbaab33c34b8d3, type: 2}
   - {fileID: 11400000, guid: 824f7266f5cf17145ae427803853352d, type: 2}
   - {fileID: 11400000, guid: d63758aec8be21e4187e94ef47391954, type: 2}
@@ -25,6 +26,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b8f1a12a98416a44998536741bdd05a4, type: 2}
   - {fileID: 11400000, guid: 662efe19d56c0da498bebe063b2acc8a, type: 2}
   - {fileID: 11400000, guid: 9366714560bc9354db9fd5ff7d3dc17f, type: 2}
+  - {fileID: 11400000, guid: f18af961747c8da4e83016e6d41901c3, type: 2}
   - {fileID: 11400000, guid: b52201feb5380bf44bb982e34d2a60a0, type: 2}
   - {fileID: 11400000, guid: 5b47e66cf6e90bb47a51c02f4e5facdb, type: 2}
   - {fileID: 11400000, guid: 36a70704b68b76349bd4649fb83bacd9, type: 2}
@@ -35,6 +37,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 242440bf7bf9196499fa8d68fe099d1e, type: 2}
   - {fileID: 11400000, guid: 11f255b34be69014a99ef3d635c64651, type: 2}
   - {fileID: 11400000, guid: 44d7ece014ee47d4487c3aa022dc80be, type: 2}
+  - {fileID: 11400000, guid: 2431beb64366e8040954ec04ddfdda57, type: 2}
   - {fileID: 11400000, guid: 26b6cba5de2aae54a85162c70fad7849, type: 2}
   - {fileID: 11400000, guid: 6396132b9743971449dfd22df3684777, type: 2}
   - {fileID: 11400000, guid: 95f9ed7607398dc4d9663529cdc7c7fb, type: 2}

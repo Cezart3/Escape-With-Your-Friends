@@ -370,7 +370,8 @@ namespace EscapeWithYourFriends.UI
             if (!has) return;
 
             Data.ShopDef shop = _counter.Shop;
-            _shopHeader.text = $"{shop.DisplayName}   pays {shop.BuyBackFraction:P0} of value";
+            _shopHeader.text = $"{shop.DisplayName}   pays {shop.BuyBackFraction:P0} of value"
+                               + (_counter.Stage > 0 ? $"   stage {_counter.Stage}: drops x{Economy.GameStage.Multiplier(_counter.Stage):0.##}" : "");
 
             DrawMods(shop);
 

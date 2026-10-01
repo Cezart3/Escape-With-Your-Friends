@@ -316,6 +316,7 @@ namespace EscapeWithYourFriends.Net
             Combat.GunTest.Begin();
             Economy.UpgradeTest.Begin();
             Economy.GunsmithTest.Begin();
+            Economy.StageTest.Begin();
             AI.AnimalTest.Begin();
             World.TreeTest.Begin();
             Core.QualityTest.Begin();
