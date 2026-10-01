@@ -30,6 +30,12 @@ namespace EscapeWithYourFriends.Casino
     /// first drop is forced to trigger the feature. Same seed, same replay, one more bool on the wire.
     /// Volcano also has the ante: a quarter more per spin, twice the feature, no buying while it is on.
     ///
+    /// **Lagoon Catch can be left to farm** (<see cref="ServerAutoplay"/>). One player owns the
+    /// autoplay; each spin is an ordinary <see cref="ServerSpin"/> staked from their wallet, the next
+    /// one as soon as the last has paid. It stops when the spins run out, when a stake bounces, when
+    /// the owner's body is gone, or on the feature, which then plays out like any other spin. Nobody
+    /// else can spin the cabinet meanwhile; they see whose it is and how many spins are left.
+    ///
     /// **The jackpot is one pot for the whole floor.** Every stake at any cabinet feeds it
     /// <see cref="SlotMath.JackpotPct"/>%; every spin may drop it, decided by the seed on the server
     /// like everything else, and the amount goes to clients with the seed. It lives on the server in
@@ -98,6 +104,21 @@ namespace EscapeWithYourFriends.Casino
         /// <summary>The last spin was played with the ante.</summary>
         readonly SyncVar<bool> _lastAnte = new();
 
+        /// <summary>Autoplay spins still to go, 0 when none is running.</summary>
+        readonly SyncVar<int> _autoLeft = new();
+
+        /// <summary>Object id of whoever the autoplay is spending, or -1.</summary>
+        readonly SyncVar<int> _autoOwnerId = new(-1);
+
+        /// <summary>Their name, for everybody else's prompt.</summary>
+        readonly SyncVar<string> _autoOwnerName = new();
+
+        /// <summary>The autoplay lengths. The first press starts the first; each press by the owner raises it to the next, and past the last stops it.</summary>
+        public static readonly int[] AutoSpins = { 10, 25, 50, 100 };
+
+        /// <summary>Harness only: seeds the server spins with, in order, before it goes back to rolling its own.</summary>
+        internal static readonly System.Collections.Generic.Queue<int> Seeds = new();
+
         /// <summary>Server: the pot, in hundredths of a chip so a 10-chip stake still adds to it.</summary>
         static long _pot = SlotMath.JackpotSeed * 100L;
 
@@ -126,6 +147,10 @@ namespace EscapeWithYourFriends.Casino
         NetworkObject _gambler;
         int _gambles;
         float _gambleUntil;
+        NetworkObject _autoOwner;
+
+        /// <summary>Server: true while the autoplay itself is pressing spin, the only spin it lets through.</summary>
+        bool _autoTurn;
 
         // The screen, local to every peer. Nothing below is replicated.
         SlotResult _playing;
@@ -156,6 +181,20 @@ namespace EscapeWithYourFriends.Casino
 
         /// <summary>What one spin takes from the wallet: the bet, or a quarter more with the ante.</summary>
         public int Stake => Ante ? SlotMath.AnteStake(Bet) : Bet;
+        public int AutoLeft => _autoLeft.Value;
+        public int AutoOwnerId => _autoOwnerId.Value;
+        public string AutoOwnerName => _autoOwnerName.Value;
+
+        /// <summary>What the owner's next press of the autoplay button raises it to, or 0 when it would stop it.</summary>
+        public int NextAuto
+        {
+            get
+            {
+                foreach (int spins in AutoSpins) if (spins > _autoLeft.Value) return spins;
+                return 0;
+            }
+        }
+
         public int Gamble => _gamble.Value;
         public int GamblerId => _gamblerId.Value;
         public int Card => _turned.Value;
@@ -252,6 +291,7 @@ namespace EscapeWithYourFriends.Casino
         {
             if (_busy.Value || actor == null) return 0;
             if (buy && BuyCost <= 0) return 0;
+            if (_autoLeft.Value > 0 && !_autoTurn) return 0;
 
             // The winner gets a moment with the card before somebody else's spin takes it away.
             if (_gamble.Value > 0 && actor != _gambler && _gambler != null && Time.time < _gambleUntil) return 0;
@@ -270,7 +310,7 @@ namespace EscapeWithYourFriends.Casino
             EndOffer();
             _turned.Value = 0;
 
-            int seed = _rng.Next();
+            int seed = Seeds.Count > 0 ? Seeds.Dequeue() : _rng.Next();
             SlotResult result = SlotMath.Spin(_kind, seed, bet, buy, ante);
             LastResult = result;
 
@@ -345,6 +385,69 @@ namespace EscapeWithYourFriends.Casino
             }
 
             _busy.Value = false;
+        }
+
+        /// <summary>
+        /// The autoplay button. Starts <see cref="AutoSpins"/>[0] spins for <paramref name="actor"/>;
+        /// pressed again by them, raises it to <see cref="NextAuto"/>, or stops it past the last.
+        /// Refused to anybody else while it runs, and on a cabinet without autoplay.
+        /// </summary>
+        [Server]
+        public bool ServerAutoplay(NetworkObject actor)
+        {
+            if (!SlotMath.HasAutoplay(_kind) || actor == null) return false;
+
+            if (_autoLeft.Value > 0)
+            {
+                if (actor != _autoOwner) return false;
+
+                int next = NextAuto;
+                if (next > 0) _autoLeft.Value = next;
+                else EndAuto();
+                return true;
+            }
+
+            if (_busy.Value) return false;
+
+            var identity = actor.GetComponent<Player.PlayerIdentity>();
+            _autoOwner = actor;
+            _autoOwnerId.Value = actor.ObjectId;
+            _autoOwnerName.Value = identity != null ? identity.DisplayName : actor.name;
+            _autoLeft.Value = AutoSpins[0];
+            StartCoroutine(Autoplay());
+
+            Debug.Log($"[Slots] {actor.name} started autoplay on {Title}.");
+            return true;
+        }
+
+        IEnumerator Autoplay()
+        {
+            string why = "its spins ran out";
+
+            while (_autoLeft.Value > 0)
+            {
+                while (_busy.Value) yield return null;
+                if (_autoLeft.Value <= 0) { why = "its owner stopped it"; break; }
+                if (_autoOwner == null || !_autoOwner.IsSpawned) { why = "its owner left"; break; }
+
+                _autoTurn = true;
+                int staked = ServerSpin(_autoOwner);
+                _autoTurn = false;
+                if (staked <= 0) { why = "the stake bounced"; break; }
+
+                _autoLeft.Value--;
+                if (LastResult.FreeSpins > 0) { why = "it hooked the feature"; break; }
+            }
+
+            Debug.Log($"[Slots] Autoplay on {Title} stopped: {why}.");
+            EndAuto();
+        }
+
+        void EndAuto()
+        {
+            _autoLeft.Value = 0;
+            _autoOwnerId.Value = -1;
+            _autoOwner = null;
         }
 
         /// <summary>Cycles the stake. Refused mid-spin.</summary>

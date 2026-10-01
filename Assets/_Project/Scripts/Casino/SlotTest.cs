@@ -42,6 +42,7 @@ namespace EscapeWithYourFriends.Casino
             (SlotKind.Volcano, 1996820),
             (SlotKind.Reef, 2131545),
             (SlotKind.Fruit, 2170385),
+            (SlotKind.Lagoon, 1989425),
         };
 
         /// <summary>The same seeds bought: what each feature won over <see cref="GoldenSpins"/> buys, under .NET.</summary>
@@ -50,6 +51,7 @@ namespace EscapeWithYourFriends.Casino
             (SlotKind.Volcano, 195264855),
             (SlotKind.Reef, 226769845),
             (SlotKind.Fruit, 190986010),
+            (SlotKind.Lagoon, 176305550),
         };
 
         /// <summary>The same seeds with the ante on, under Mono.</summary>
@@ -166,8 +168,12 @@ namespace EscapeWithYourFriends.Casino
             Check($"every chip is accounted for ({Wallet.Staked} staked, {Wallet.PaidOut} paid, {wallet.Chips} held)",
                   wallet.Chips == chips - Wallet.Staked + Wallet.PaidOut);
 
-            // Last: it sets the stack outright, which the ledger above would rightly not balance.
+            // Last: they set the stack outright, which the ledger above would rightly not balance.
             yield return Refusals(sevens, wallet, actor);
+
+            SlotMachine lagoon = machines.First(m => m.Kind == SlotKind.Lagoon);
+            player.ServerTeleport(lagoon.transform.position + lagoon.transform.forward * 1f, 0f);
+            yield return Autoplaying(lagoon, wallet, actor);
 
             Report();
 
@@ -337,6 +343,7 @@ namespace EscapeWithYourFriends.Casino
                   && !SlotMath.HasAnte(SlotKind.Sevens) && !SlotMath.HasAnte(SlotKind.Reef));
 
             yield return Bombs();
+            yield return Catching();
             Check($"the ante stakes a quarter more ({SlotMath.AnteStake(100)} on 100)", SlotMath.AnteStake(100) == 125);
             Check($"orbs run to x{SlotMath.Volcano.OrbValues[^1]}", SlotMath.Volcano.OrbValues[^1] == 500);
         }
@@ -353,6 +360,7 @@ namespace EscapeWithYourFriends.Casino
                 (SlotKind.Reef, false, 0.88, 1.03),
                 (SlotKind.Fruit, false, 0.88, 1.03),
                 (SlotKind.Fruit, true, 0.88, 1.03),
+                (SlotKind.Lagoon, false, 0.88, 1.03),
             };
 
             foreach ((SlotKind kind, bool ante, double low, double high) in bands)
@@ -394,7 +402,8 @@ namespace EscapeWithYourFriends.Casino
             foreach (SlotMachine machine in machines)
             {
                 SlotButton[] buttons = machine.GetComponentsInChildren<SlotButton>();
-                int wanted = machine.Kind == SlotKind.Sevens || SlotMath.HasAnte(machine.Kind) ? 4 : 3;
+                int wanted = machine.Kind == SlotKind.Sevens || SlotMath.HasAnte(machine.Kind)
+                             || SlotMath.HasAutoplay(machine.Kind) ? 4 : 3;
 
                 Check($"{machine.Title} has {wanted} buttons ({buttons.Length}), each its own NetworkObject",
                       buttons.Length == wanted && buttons.Select(b => b.NetworkObject).Distinct().Count() == wanted
@@ -522,6 +531,145 @@ namespace EscapeWithYourFriends.Casino
             for (int c = 0; c < grid.Length; c++) grid[c] = c < 8 ? 0 : 1 + c % 8;
             Check($"Fruit: eight berries pay its own table ({SlotMath.Fruit.Evaluate(grid, null)})",
                   SlotMath.Fruit.Evaluate(grid, null) == SlotMath.Fruit.Pays[0][0]);
+        }
+
+        /// <summary>
+        /// Lagoon Catch on paper: the catch on a grid built by hand, the castaway on the lines, and,
+        /// read off 2,000 bought features, the levels it climbs and where its symbols may land.
+        /// </summary>
+        IEnumerator Catching()
+        {
+            var grid = new int[SlotMath.Lagoon.Cells];
+            for (int i = 0; i < grid.Length; i++) grid[i] = (i % 3 + i / 3) % 2 == 0 ? SlotMath.Lagoon.Shell : SlotMath.Lagoon.Crab;
+            grid[1] = SlotMath.Lagoon.Fish;          // x2
+            grid[5] = SlotMath.Lagoon.Fish + 2;      // x10
+            grid[13] = SlotMath.Lagoon.Fish + 4;     // x50
+            Check($"Lagoon: the fish on screen are worth {SlotMath.Lagoon.Collect(grid)} hundredths (x2 + x10 + x50)",
+                  SlotMath.Lagoon.Collect(grid) == 6200);
+
+            // Middle line: a castaway, two boats, a hook. No other line has three of anything.
+            var line = new[]
+            {
+                SlotMath.Lagoon.Tackle, SlotMath.Lagoon.Castaway, SlotMath.Lagoon.Rod,
+                SlotMath.Lagoon.Shell, SlotMath.Lagoon.Boat, SlotMath.Lagoon.Starfish,
+                SlotMath.Lagoon.Crab, SlotMath.Lagoon.Boat, SlotMath.Lagoon.Bobber,
+                SlotMath.Lagoon.Shell, SlotMath.Lagoon.Hook, SlotMath.Lagoon.Starfish,
+                SlotMath.Lagoon.Crab, SlotMath.Lagoon.Rod, SlotMath.Lagoon.Bobber,
+            };
+            var won = new bool[line.Length];
+            long boats = SlotMath.Lagoon.Evaluate(line, won);
+            Check($"Lagoon: a castaway stands in for a boat ({boats} = {SlotMath.Lagoon.Pays[SlotMath.Lagoon.Boat][0]})",
+                  boats == SlotMath.Lagoon.Pays[SlotMath.Lagoon.Boat][0] && won[1] && won[4] && won[7] && !won[10]);
+
+            var five = new int[SlotMath.Lagoon.Cells];
+            for (int i = 0; i < five.Length; i++) five[i] = SlotMath.Lagoon.Castaway;
+            Check("Lagoon: five castaways pay as five boats on every line",
+                  SlotMath.Lagoon.Evaluate(five, null) == SlotMath.Lagoon.Pays[SlotMath.Lagoon.Boat][2] * SlotMath.Lagoon.Lines.Length);
+
+            bool castawayInBase = false, hookInFree = false, caught = false, levelled = false, tenfold = false;
+            for (int i = 0; i < 2000; i++)
+            {
+                if (i % 200 == 199) yield return null;
+                int seed = i * 7919 + 13;
+
+                SlotResult bought = SlotMath.Spin(SlotKind.Lagoon, seed, 100, buy: true);
+                foreach (SlotFrame f in bought.Frames)
+                {
+                    if (f.FreeSpinsLeft >= 0 && System.Array.IndexOf(f.Grid, SlotMath.Lagoon.Hook) >= 0) hookInFree = true;
+                    if (f.FreeSpinsLeft >= 0 && !f.Drop) caught = true;
+                    if (f.Multiplier == 2) levelled = true;
+                    if (f.Multiplier == 10) tenfold = true;
+                }
+
+                foreach (SlotFrame f in SlotMath.Spin(SlotKind.Lagoon, seed, 100).Frames)
+                    if (f.FreeSpinsLeft < 0 && System.Array.IndexOf(f.Grid, SlotMath.Lagoon.Castaway) >= 0) castawayInBase = true;
+            }
+
+            Check("Lagoon: castaways reel fish in during free spins", caught);
+            Check("Lagoon: four castaways lift the catch to x2", levelled);
+            Check("Lagoon: and a long enough feature reaches x10", tenfold);
+            Check("Lagoon: no castaway on the base reels, no hook in free spins", !castawayInBase && !hookInFree);
+        }
+
+        /// <summary>
+        /// Lagoon's autoplay in the world. Seeds are queued so the spins are known: losers, then a
+        /// loser run into a stack that covers only three, then a feature in the middle of a run.
+        /// </summary>
+        IEnumerator Autoplaying(SlotMachine lagoon, Wallet wallet, NetworkObject actor)
+        {
+            SlotButton auto = Button(lagoon, SlotAction.Auto);
+            int stake = lagoon.Stake;
+
+            // Seeds that pay nothing and drop no jackpot, and the shortest feature among the first few.
+            var losers = new System.Collections.Generic.List<int>();
+            int feature = 0;
+            float shortest = float.MaxValue;
+            for (int seed = 1; seed < 20000 && (losers.Count < 8 || seed < 4000); seed++)
+            {
+                if (SlotMath.JackpotHit(seed, stake)) continue;
+                SlotResult r = SlotMath.Spin(SlotKind.Lagoon, seed, lagoon.Bet);
+                if (r.FreeSpins > 0 && r.Seconds < shortest) { shortest = r.Seconds; feature = seed; }
+                else if (r.Win == 0 && losers.Count < 8) losers.Add(seed);
+            }
+
+            // 1. Three stakes' worth, ten spins asked for: three spins, then it stops on the empty stack.
+            SlotMachine.Seeds.Clear();
+            foreach (int seed in losers.Take(5)) SlotMachine.Seeds.Enqueue(seed);
+            wallet.ServerSetChips(stake * 3);
+            yield return new WaitForSeconds(0.2f);
+
+            Check($"the autoplay button is there for {stake * 3} chips", auto.ServerCanInteract(actor));
+            auto.ServerInteract(actor);
+            Check($"pressed, it starts {SlotMachine.AutoSpins[0]} spins in the presser's name",
+                  lagoon.AutoOwnerId == actor.ObjectId && lagoon.AutoLeft > 0);
+
+            float giveUp = Time.time + 40f;
+            while (lagoon.AutoLeft > 0 && Time.time < giveUp) yield return null;
+            Check($"every spin is staked from the owner and it stops at zero chips ({wallet.Chips} left, "
+                  + $"{SlotMachine.Seeds.Count} queued seeds unspun)",
+                  wallet.Chips == 0 && lagoon.AutoLeft == 0 && SlotMachine.Seeds.Count == 2);
+
+            // 2. A feature on the third spin: the autoplay stops there and the feature pays.
+            while (lagoon.Busy) yield return null;
+            SlotMachine.Seeds.Clear();
+            SlotMachine.Seeds.Enqueue(losers[5]);
+            SlotMachine.Seeds.Enqueue(losers[6]);
+            SlotMachine.Seeds.Enqueue(feature);
+            SlotMachine.Seeds.Enqueue(losers[7]);
+            wallet.ServerSetChips(stake * 50);
+            yield return new WaitForSeconds(0.2f);
+
+            auto.ServerInteract(actor);
+            giveUp = Time.time + 20f + shortest * 1.2f;
+            while ((lagoon.AutoLeft > 0 || lagoon.Busy) && Time.time < giveUp) yield return null;
+
+            SlotResult last = lagoon.LastResult;
+            Check($"it stops on the feature ({last.FreeSpins} free spins on seed {last.Seed}, {SlotMachine.Seeds.Count} seed left)",
+                  lagoon.AutoLeft == 0 && last.Seed == feature && last.FreeSpins > 0 && SlotMachine.Seeds.Count == 1);
+            Check($"and the feature plays out and pays ({last.Win})",
+                  !lagoon.Busy && wallet.Chips == stake * 47 + last.Win + lagoon.LastJackpot);
+
+            // 3. Only its owner can raise or stop it; nobody else can spin meanwhile.
+            SlotMachine.Seeds.Clear();
+            for (int n = 0; n < 40; n++) SlotMachine.Seeds.Enqueue(losers[n % 5]);
+            auto.ServerInteract(actor);
+            int raised = lagoon.NextAuto;
+            auto.ServerInteract(actor);
+            Check($"pressed again by its owner, it runs to {raised}", lagoon.AutoLeft == raised);
+
+            NetworkObject other = FindObjectsByType<Player.PlayerMotor>(FindObjectsSortMode.None)
+                .Select(m => m.NetworkObject).FirstOrDefault(n => n != actor);
+            if (other != null)
+                Check("anybody else is refused the cabinet while it runs",
+                      !auto.ServerCanInteract(other) && !Button(lagoon, SlotAction.Spin).ServerCanInteract(other)
+                      && lagoon.ServerSpin(other) == 0);
+
+            for (int n = 0; n < SlotMachine.AutoSpins.Length + 1 && lagoon.AutoLeft > 0; n++) auto.ServerInteract(actor);
+            Check("pressed past the last length, it stops", lagoon.AutoLeft == 0 && lagoon.AutoOwnerId == -1);
+
+            giveUp = Time.time + 10f;
+            while (lagoon.Busy && Time.time < giveUp) yield return null;
+            SlotMachine.Seeds.Clear();
         }
 
         IEnumerator Anteing(SlotMachine volcano, Wallet wallet, NetworkObject actor)

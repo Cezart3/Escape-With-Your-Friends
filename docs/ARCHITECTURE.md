@@ -8711,6 +8711,8 @@ one player would let in whoever stood behind them, so it teleports instead:
 `-casinoAll` sets `CasinoDays.AllOpen`. Every game opens on day 1 and the VIP door is free, so
 every gambling mechanic can be reached in a fresh game without grinding days.
 
+Play mode has no command line, so the Editor has the same switch as a menu item: `EWYF/Casino: open everything` (`CasinoAllMenu`). It is kept in `EditorPrefs` and read by `CasinoDays.AllOpen` under `UNITY_EDITOR`, so it holds until unticked and never reaches a build.
+
 ### Deferred
 
 The issue asked for high-limit VIP roulette and blackjack tables. They are not in this change.
@@ -8732,6 +8734,87 @@ second table needs those tests reworked first.
 Two older checks assumed the shack:
 - `SlotTest` now expects one cabinet for each `SlotKind`, not three;
 - `DrunkTest` lets the barman stand up to 10 m from the table, not 6. The bar is now 8 m away.
+
+## Lagoon Catch: the farming slot, with autoplay (#257)
+
+The fifth cabinet, `SlotKind.Lagoon`, is the genre's fishing concept with our own symbols and
+numbers. It stands in the VIP room and opens on day 7.
+
+### The game
+
+- **Grid:** 5x3, ten fixed lines (the first ten of Coconut Sevens').
+- **Symbols:** seven payers, from shell to boat, then five fish:
+
+  | Fish | Minnow | Snapper | Grouper | Marlin | Golden marlin |
+  |---|---|---|---|---|---|
+  | Worth | x2 | x5 | x10 | x25 | x50 |
+
+  Each value is its own symbol, so the grid alone says what every fish is worth. On the lines,
+  any fish counts as the same "fish" symbol.
+- **The feature:** 3, 4 or 5 golden hooks anywhere pay 2x, 10x or 50x and start 10, 15 or 20 free
+  spins.
+- **The castaway** appears only in free spins:
+  - he is a wild on the lines;
+  - each castaway on screen collects every fish's value;
+  - every fourth castaway caught adds ten spins and raises the collect multiplier to x2, x3, then
+    x10, from the next spin on;
+  - the board's title shows the multiplier.
+- **Frames:** a free spin is one drop picture, plus a catch picture when castaways reel fish in.
+
+| | Base | Buy (94x) |
+|---|---|---|
+| Return (2M spins, Mono) | 95.8% | ~95.5% |
+| Feature | 1 in ~190 spins, ~100x on average | |
+
+There is no ante.
+
+### Autoplay
+
+`SlotMath.HasAutoplay` is true for Lagoon only. Its cabinet has a fourth button where the ante
+would sit.
+
+**Owning an autoplay**
+- The first press starts 10 spins in the presser's name.
+- The owner can press again to raise it to 25, then 50, then 100. A press past 100 stops it.
+
+**How it spins**
+- `SlotMachine.Autoplay` waits for the last spin to pay, then calls `ServerSpin` for the owner.
+- Each spin is an ordinary stake from the owner's wallet, so the ledger, the jackpot and the replay
+  are unchanged.
+
+**It stops when:**
+- the spins run out;
+- a stake bounces (out of chips);
+- the owner's body despawns;
+- or a spin hits the feature, which then plays out and pays like any other spin.
+
+**While it runs, nobody else can spin.** `ServerSpin` refuses anything but the autoplay's own
+press. Everybody else's prompt says "Ana is autoplaying: 37 spins left", and the slot board adds
+`AUTO 37 (Ana)`.
+
+`SlotMachine.Seeds` is a harness-only queue. The server takes its next seeds from it before
+rolling its own, so a test can line up losers and a feature.
+
+**Not done:** the issue's "the whole server hears the big win". `BigWin` is heard within 10 m, and
+there is no server-wide announcement channel to put it on yet.
+
+### Harness
+
+`-slotTest`, a pair, is now 145 + 5 checks. The new checks:
+- Lagoon's golden totals, base and bought;
+- its return band;
+- the catch on a hand-built grid (x2 + x10 + x50 = 62x);
+- a castaway standing in for a boat, and five castaways paying as five boats on all ten lines;
+- from 2,000 bought features: castaways reel fish in, the catch reaches x2 and x10, no castaway ever
+  lands on the base reels, and no hook lands in free spins.
+
+In the world, with queued seeds:
+- 10 autoplay spins on three stakes' worth of chips: three spins, then a stop at zero chips;
+- a feature on the third spin: the autoplay stops there and the feature pays;
+- the owner can raise the autoplay and stop it;
+- the other player is refused the cabinet meanwhile.
+
+`-casinoFloorTest` (now 40 checks) expects Lagoon in the VIP room.
 
 ---
 

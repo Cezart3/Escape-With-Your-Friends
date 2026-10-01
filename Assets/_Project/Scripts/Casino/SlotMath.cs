@@ -17,6 +17,9 @@ namespace EscapeWithYourFriends.Casino
 
         /// <summary>Volcano's grid and tumbles, no base multipliers, bombs that multiply one sequence each in free spins.</summary>
         Fruit,
+
+        /// <summary>Five reels, ten lines, fish worth chips, and a castaway wild who reels them in during free spins.</summary>
+        Lagoon,
     }
 
     /// <summary>
@@ -145,14 +148,15 @@ namespace EscapeWithYourFriends.Casino
         /// <summary>No spin pays more than this many times the bet. Keeps a lucky night finite.</summary>
         public const int MaxWinX = 5000;
 
-        public static int Cols(SlotKind kind) => kind switch { SlotKind.Sevens => 5, SlotKind.Volcano or SlotKind.Fruit => 6, _ => 7 };
-        public static int Rows(SlotKind kind) => kind switch { SlotKind.Sevens => 3, SlotKind.Volcano or SlotKind.Fruit => 5, _ => 7 };
+        public static int Cols(SlotKind kind) => kind switch { SlotKind.Sevens or SlotKind.Lagoon => 5, SlotKind.Volcano or SlotKind.Fruit => 6, _ => 7 };
+        public static int Rows(SlotKind kind) => kind switch { SlotKind.Sevens or SlotKind.Lagoon => 3, SlotKind.Volcano or SlotKind.Fruit => 5, _ => 7 };
 
         public static string Title(SlotKind kind) => kind switch
         {
             SlotKind.Sevens => "Coconut Sevens",
             SlotKind.Volcano => "Wrath of the Volcano",
             SlotKind.Fruit => "Fruit Tumble",
+            SlotKind.Lagoon => "Lagoon Catch",
             _ => "Reef Rush",
         };
 
@@ -167,6 +171,7 @@ namespace EscapeWithYourFriends.Casino
                 case SlotKind.Sevens: Sevens.Play(ref rng, result); break;
                 case SlotKind.Volcano: Volcano.Play(ref rng, result, buy, ante, Volcano.Rules); break;
                 case SlotKind.Fruit: Volcano.Play(ref rng, result, buy, ante, Fruit.Rules); break;
+                case SlotKind.Lagoon: Lagoon.Play(ref rng, result, buy); break;
                 default: Reef.Play(ref rng, result, buy); break;
             }
 
@@ -193,6 +198,7 @@ namespace EscapeWithYourFriends.Casino
             SlotKind.Volcano => Volcano.BuyPrice,
             SlotKind.Fruit => Fruit.BuyPrice,
             SlotKind.Reef => Reef.BuyPrice,
+            SlotKind.Lagoon => Lagoon.BuyPrice,
             _ => 0,
         };
 
@@ -201,6 +207,9 @@ namespace EscapeWithYourFriends.Casino
 
         /// <summary>What a spin at <paramref name="bet"/> stakes with the ante on. Pays are still on the bet.</summary>
         public static int AnteStake(int bet) => bet + bet / 4;
+
+        /// <summary>Games a player can leave spinning on their own: Lagoon Catch, the one built to be farmed.</summary>
+        public static bool HasAutoplay(SlotKind kind) => kind == SlotKind.Lagoon;
 
         /// <summary>Every stake puts this many hundredths of itself into the shared jackpot.</summary>
         public const int JackpotPct = 1;
@@ -676,6 +685,191 @@ namespace EscapeWithYourFriends.Casino
             }.Ready();
 
             public static long Evaluate(int[] grid, bool[] winning) => Volcano.Evaluate(Rules, grid, winning);
+        }
+
+        // ================================================================ Lagoon Catch
+
+        /// <summary>
+        /// Five reels, three rows, ten lines, and fish that carry a chip value: x2, x5, x10, x25 or
+        /// x50 the bet, one symbol per value so the grid alone says what every fish is worth. In the
+        /// base game a fish is just a line symbol. Three golden hooks anywhere start free spins, and
+        /// there the castaway lands: a wild on the lines who also reels in every fish on screen, each
+        /// castaway the lot. Every fourth castaway caught adds ten spins and lifts what the castaways
+        /// collect to x2, then x3, then x10, from the next spin on.
+        /// </summary>
+        public static class Lagoon
+        {
+            public const int Cols = 5, Rows = 3, Cells = Cols * Rows;
+
+            public const int Shell = 0, Starfish = 1, Crab = 2, Bobber = 3, Tackle = 4, Rod = 5, Boat = 6;
+
+            /// <summary>The first fish. Fish + i is worth <see cref="FishValues"/>[i] bets.</summary>
+            public const int Fish = 7;
+            public const int Castaway = 12, Hook = 13;
+
+            public static readonly string[] Names =
+            {
+                "Shell", "Starfish", "Crab", "Bobber", "Tackle box", "Rod", "Boat",
+                "Minnow", "Snapper", "Grouper", "Marlin", "Golden marlin", "Castaway", "Golden hook",
+            };
+
+            public static readonly int[] FishValues = { 2, 5, 10, 25, 50 };
+
+            /// <summary>The first ten of Sevens' lines.</summary>
+            public static readonly int[][] Lines = Sevens.Lines[..10];
+
+            /// <summary>
+            /// Per line symbol, 3, 4 and 5 in a row, in hundredths of the bet: the seven payers, then
+            /// any fish, whatever it is worth.
+            /// </summary>
+            public static readonly int[][] Pays =
+            {
+                new[] { 125, 250, 1250 },
+                new[] { 125, 250, 1250 },
+                new[] { 125, 375, 1875 },
+                new[] { 125, 375, 1875 },
+                new[] { 250, 750, 3750 },
+                new[] { 375, 1250, 5000 },
+                new[] { 500, 2500, 12500 },
+                new[] { 250, 750, 2500 },
+            };
+
+            /// <summary>Hooks anywhere: 3, 4, 5, in hundredths of the bet.</summary>
+            public static readonly int[] HookPays = { 200, 1000, 5000 };
+
+            /// <summary>Free spins for 3, 4 and 5 hooks.</summary>
+            public static readonly int[] FreeSpinsFor = { 10, 15, 20 };
+
+            /// <summary>What the castaways' catch is multiplied by, level by level. Four castaways to a level.</summary>
+            public static readonly int[] Levels = { 1, 2, 3, 10 };
+            public const int PerLevel = 4, LevelSpins = 10;
+
+            /// <summary>Per symbol, in the order above. No castaway on the base reels; no hook in free spins.</summary>
+            public static readonly int[] Weights = { 300, 300, 260, 260, 180, 140, 100, 70, 40, 20, 8, 2, 0, 42 };
+            public static readonly int[] FreeWeights = { 300, 300, 260, 260, 180, 140, 100, 90, 45, 18, 5, 1, 35, 0 };
+            static readonly int WeightTotal = Sum(Weights);
+            static readonly int FreeTotal = Sum(FreeWeights);
+
+            public const int BuyPrice = 94;
+
+            public static bool IsFish(int symbol) => symbol >= Fish && symbol < Castaway;
+
+            public static void Play(ref SlotRng rng, SlotResult result, bool buy)
+            {
+                var grid = new int[Cells];
+                for (int i = 0; i < Cells; i++) grid[i] = rng.Pick(Weights, WeightTotal);
+                if (buy) Force(ref rng, grid, null, Hook, 3);
+
+                var winning = new bool[Cells];
+                long total = Evaluate(grid, winning);
+
+                int hooks = Count(grid, Hook);
+                if (hooks >= 3)
+                {
+                    total += HookPays[Math.Min(hooks, 5) - 3];
+                    for (int i = 0; i < Cells; i++) if (grid[i] == Hook) winning[i] = true;
+                }
+
+                result.Frames.Add(new SlotFrame
+                {
+                    Grid = grid, Winning = winning, RunningPct = total, Drop = true,
+                    Seconds = total > 0 ? 3f : 2.2f,
+                });
+
+                if (hooks >= 3)
+                {
+                    int left = FreeSpinsFor[Math.Min(hooks, 5) - 3];
+                    result.FreeSpins = left;
+                    int caught = 0, level = 0;
+
+                    while (left > 0 && total < MaxWinX * 100L)
+                    {
+                        left--;
+                        grid = new int[Cells];
+                        for (int i = 0; i < Cells; i++) grid[i] = rng.Pick(FreeWeights, FreeTotal);
+
+                        winning = new bool[Cells];
+                        total += Evaluate(grid, winning);
+                        int multiplier = Levels[level];
+
+                        result.Frames.Add(new SlotFrame
+                        {
+                            Grid = (int[])grid.Clone(), Winning = winning, RunningPct = total, Drop = true,
+                            FreeSpinsLeft = left, Multiplier = level > 0 ? multiplier : 0, Seconds = 1.6f,
+                        });
+
+                        int castaways = Count(grid, Castaway);
+                        if (castaways == 0) continue;
+
+                        // The catch: every castaway reels in every fish.
+                        long catchPct = Collect(grid) * castaways * multiplier;
+                        if (catchPct > 0)
+                        {
+                            total += catchPct;
+                            var reeled = new bool[Cells];
+                            for (int i = 0; i < Cells; i++) reeled[i] = grid[i] == Castaway || IsFish(grid[i]);
+
+                            result.Frames.Add(new SlotFrame
+                            {
+                                Grid = (int[])grid.Clone(), Winning = reeled, RunningPct = total, FreeSpinsLeft = left,
+                                Multiplier = level > 0 ? multiplier : 0, Seconds = 1.4f,
+                            });
+                        }
+
+                        // Every fourth castaway: ten more spins, and the next level from the next one.
+                        int before = caught / PerLevel;
+                        caught += castaways;
+                        int gained = Math.Min(caught / PerLevel, Levels.Length - 1) - Math.Min(before, Levels.Length - 1);
+                        if (gained > 0)
+                        {
+                            level += gained;
+                            left += gained * LevelSpins;
+                            result.FreeSpins += gained * LevelSpins;
+                        }
+                    }
+                }
+
+                result.WinPct = total;
+            }
+
+            /// <summary>Every fish on the grid, in hundredths of the bet. What one castaway at x1 catches.</summary>
+            public static long Collect(int[] grid)
+            {
+                long pct = 0;
+                foreach (int s in grid) if (IsFish(s)) pct += FishValues[s - Fish] * 100L;
+                return pct;
+            }
+
+            /// <summary>Line pays, the castaway standing in for anything but a hook. Five castaways pay as boats.</summary>
+            public static long Evaluate(int[] grid, bool[] winning)
+            {
+                long pct = 0;
+
+                foreach (int[] line in Lines)
+                {
+                    int paying = -1, run = 0;
+
+                    for (; run < Cols; run++)
+                    {
+                        int s = grid[run * Rows + line[run]];
+                        if (s == Hook) break;
+                        if (s == Castaway) continue;
+
+                        int kind = IsFish(s) ? Fish : s;
+                        if (paying < 0) paying = kind;
+                        else if (kind != paying) break;
+                    }
+
+                    if (run < 3) continue;
+                    if (paying < 0) paying = Boat;
+
+                    pct += Pays[paying][run - 3];
+                    if (winning != null)
+                        for (int c = 0; c < run; c++) winning[c * Rows + line[c]] = true;
+                }
+
+                return pct;
+            }
         }
 
         // ================================================================ Reef Rush

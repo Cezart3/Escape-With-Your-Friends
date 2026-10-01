@@ -78,7 +78,7 @@ namespace EscapeWithYourFriends.Casino
             {
                 SlotMachine machine = slots.FirstOrDefault(m => m.Kind == kind);
                 Check($"a {SlotMath.Title(kind)} cabinet", machine != null);
-                if (machine != null) games.Add((machine.Title, machine.transform, kind is SlotKind.Volcano or SlotKind.Reef));
+                if (machine != null) games.Add((machine.Title, machine.transform, kind is SlotKind.Volcano or SlotKind.Reef or SlotKind.Lagoon));
             }
 
             int cages = FindObjectsByType<Cashier>(FindObjectsSortMode.None).Count(c => c.IsSpawned);

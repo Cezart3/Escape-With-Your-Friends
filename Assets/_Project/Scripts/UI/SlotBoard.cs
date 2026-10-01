@@ -77,7 +77,8 @@ namespace EscapeWithYourFriends.UI
 
             _title.text = Title(machine);
             _title.color = machine.Animating && machine.Showing != null && machine.Showing.FreeSpinsLeft >= 0 ? Hot : Quiet;
-            _line.text = Line(machine, wallet != null ? wallet.Chips : 0, localId);
+            _line.text = Line(machine, wallet != null ? wallet.Chips : 0, localId)
+                         + (machine.AutoLeft > 0 ? $"  ·  AUTO {machine.AutoLeft} ({machine.AutoOwnerName})" : "");
         }
 
         static int LocalId()

@@ -15,6 +15,7 @@ namespace EscapeWithYourFriends.Casino
         Volcano,
         Reef,
         Fruit,
+        Lagoon,
     }
 
     /// <summary>
@@ -33,7 +34,7 @@ namespace EscapeWithYourFriends.Casino
     public static class CasinoDays
     {
         /// <summary>The day each <see cref="CasinoGame"/> opens, 0 being the first.</summary>
-        static readonly int[] Opens = { 0, 1, 2, 5, 4, 3 };
+        static readonly int[] Opens = { 0, 1, 2, 5, 4, 3, 6 };
 
         /// <summary>Past this day the chips stop growing: 1.5^10 is 57 times the opening stakes.</summary>
         public const int TopDay = 10;
@@ -48,9 +49,16 @@ namespace EscapeWithYourFriends.Casino
 
         /// <summary>
         /// Every game open whatever the day, and the VIP door free: <c>-casinoAll</c>, for a test pass
-        /// of the whole floor, and the harnesses that test the games themselves.
+        /// of the whole floor, and the harnesses that test the games themselves. In the Editor, the
+        /// menu item <c>EWYF/Casino: open everything</c> sets it instead.
         /// </summary>
-        internal static bool AllOpen = CommandLine.HasFlag("-casinoAll");
+        internal static bool AllOpen = CommandLine.HasFlag("-casinoAll")
+#if UNITY_EDITOR
+                                       || UnityEditor.EditorPrefs.GetBool(AllOpenPref)
+#endif
+            ;
+
+        public const string AllOpenPref = "EWYF.CasinoAll";
 
         /// <summary>Days the run has lived, the saved ones included. 0 is the first.</summary>
         public static int Day
@@ -88,6 +96,7 @@ namespace EscapeWithYourFriends.Casino
             SlotKind.Volcano => CasinoGame.Volcano,
             SlotKind.Reef => CasinoGame.Reef,
             SlotKind.Fruit => CasinoGame.Fruit,
+            SlotKind.Lagoon => CasinoGame.Lagoon,
             _ => CasinoGame.Sevens,
         };
     }

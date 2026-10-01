@@ -200,6 +200,17 @@ MonoBehaviour:
     PadRaise: 0
     MaxSlope: 0.3
     AllowUnderwater: 0
+  - Id: casino.slots.lagoon
+    PrefabPath: Assets/_Project/Prefabs/Stations/SlotLagoon.prefab
+    Position: {x: -251.81221, y: -30.445986}
+    Yaw: 97
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 0
+    PadFalloff: 0
+    PadRaise: 0
+    MaxSlope: 0.3
+    AllowUnderwater: 0
   - Id: casino.vip.door
     PrefabPath: Assets/_Project/Prefabs/Stations/VipDoor.prefab
     Position: {x: -244.48212, y: -27.701517}

@@ -37,6 +37,7 @@ namespace EscapeWithYourFriends.EditorTools
         internal const string VolcanoPath = PrefabDir + "/SlotVolcano.prefab";
         internal const string ReefPath = PrefabDir + "/SlotReef.prefab";
         internal const string FruitPath = PrefabDir + "/SlotFruit.prefab";
+        internal const string LagoonPath = PrefabDir + "/SlotLagoon.prefab";
 
         const int AtlasSize = 8;
 
@@ -114,6 +115,27 @@ namespace EscapeWithYourFriends.EditorTools
             new("FruitCoconutBomb", Shape.Sphere, new Color(0.30f, 0.18f, 0.10f), 0.88f),
         };
 
+        static readonly Look[] LagoonLooks =
+        {
+            new("LagoonShell", Shape.Disc, new Color(0.92f, 0.80f, 0.66f), 0.62f),
+            new("LagoonStarfish", Shape.Starfish, new Color(0.95f, 0.36f, 0.30f), 0.66f),
+            new("LagoonCrab", Shape.Sphere, new Color(0.85f, 0.25f, 0.12f), 0.7f),
+            new("LagoonBobber", Shape.Sphere, new Color(0.98f, 0.42f, 0.10f), 0.66f),
+            new("LagoonTackle", Shape.Cube, new Color(0.20f, 0.45f, 0.30f), 0.72f),
+            new("LagoonRod", Shape.Pod, new Color(0.55f, 0.36f, 0.18f), 0.85f),
+            new("LagoonBoat", Shape.Drum, new Color(0.15f, 0.35f, 0.70f), 0.9f),
+
+            // The fish grow and warm up with their value, so a golden marlin reads across the room.
+            new("LagoonMinnow", Shape.Fish, new Color(0.62f, 0.78f, 0.86f), 0.6f),
+            new("LagoonSnapper", Shape.Fish, new Color(0.95f, 0.45f, 0.40f), 0.7f),
+            new("LagoonGrouper", Shape.Fish, new Color(0.40f, 0.55f, 0.30f), 0.8f),
+            new("LagoonMarlin", Shape.Fish, new Color(0.20f, 0.30f, 0.65f), 0.9f),
+            new("LagoonGoldenMarlin", Shape.Fish, new Color(1.00f, 0.80f, 0.16f), 0.95f),
+
+            new("LagoonCastaway", Shape.Card, new Color(0.95f, 0.72f, 0.50f), 0.92f),
+            new("LagoonHook", Shape.Diamond, new Color(1.00f, 0.86f, 0.18f), 0.92f),
+        };
+
         static readonly Look SpotMarked = new("SpotMarked", Shape.Disc, new Color(0.30f, 0.78f, 0.80f), 1f);
         static readonly Look SpotHot = new("SpotHot", Shape.Disc, new Color(1.00f, 0.28f, 0.62f), 1f);
         static readonly Look CardBack = new("CardBack", Shape.Card, new Color(0.20f, 0.30f, 0.72f), 1f);
@@ -138,6 +160,7 @@ namespace EscapeWithYourFriends.EditorTools
             all.AddRange(VolcanoLooks);
             all.AddRange(ReefLooks);
             all.AddRange(FruitLooks);
+            all.AddRange(LagoonLooks);
             all.AddRange(new[] { SpotMarked, SpotHot, CardBack, CardRed, CardBlack, Screen });
 
             foreach (Look look in all)
@@ -151,6 +174,7 @@ namespace EscapeWithYourFriends.EditorTools
             if (Cabinet(SlotKind.Volcano, VolcanoPath, VolcanoLooks, material, new Color(0.13f, 0.14f, 0.17f))) built++;
             if (Cabinet(SlotKind.Reef, ReefPath, ReefLooks, material, new Color(0.32f, 0.38f, 0.48f))) built++;
             if (Cabinet(SlotKind.Fruit, FruitPath, FruitLooks, material, new Color(0.98f, 0.62f, 0.66f))) built++;
+            if (Cabinet(SlotKind.Lagoon, LagoonPath, LagoonLooks, material, new Color(0.15f, 0.35f, 0.70f))) built++;
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -361,7 +385,7 @@ namespace EscapeWithYourFriends.EditorTools
             int rows = SlotMath.Rows(kind);
 
             const float width = 0.8f;
-            float height = kind == SlotKind.Sevens ? 0.5f : kind is SlotKind.Volcano or SlotKind.Fruit ? 0.66f : 0.8f;
+            float height = kind is SlotKind.Sevens or SlotKind.Lagoon ? 0.5f : kind is SlotKind.Volcano or SlotKind.Fruit ? 0.66f : 0.8f;
             float cell = Mathf.Min(width / cols, height / rows);
             float screenY = 1.5f;
 
@@ -445,6 +469,10 @@ namespace EscapeWithYourFriends.EditorTools
                 // The ante, between the buy and the stake, in the stake's gold.
                 if (SlotMath.HasAnte(kind))
                     Button(root.transform, SlotAction.Ante, new Vector3(-0.15f, 0.97f, 0.2f), new Color(0.83f, 0.68f, 0.24f), 0.7f);
+
+                // Autoplay sits where the ante would, in the spin button's green.
+                if (SlotMath.HasAutoplay(kind))
+                    Button(root.transform, SlotAction.Auto, new Vector3(-0.15f, 0.97f, 0.2f), new Color(0.25f, 0.70f, 0.30f), 0.7f);
             }
 
             GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, path, out bool success);
