@@ -132,8 +132,9 @@ namespace EscapeWithYourFriends.Casino
 
                 // He is in the room rather than out on the sand. The building is placed by the
                 // greybox builder and the barman by the POI catalogue, which is the same pair of
-                // systems that have never met that #65's table check exists for.
-                Check($"the barman is inside the casino ({toTable:0.0}m from the table)", toTable < 6f);
+                // systems that have never met that #65's table check exists for. The floor is 20m wide
+                // since #254, so the bar is 8m from the table and anything past 10m is outside.
+                Check($"the barman is inside the casino ({toTable:0.0}m from the table)", toTable < 10f);
             }
 
             // ---------------------------------------------------------------- he takes money

@@ -177,7 +177,7 @@ namespace EscapeWithYourFriends.Casino
             Vector3 local = casino.transform.InverseTransformPoint(table.transform.position);
 
             Check($"the table is inside the room (local {local.x:0.0}, {local.z:0.0})",
-                  Mathf.Abs(local.x) < 4.2f && local.z > -3.8f && local.z < 1.8f);
+                  Mathf.Abs(local.x) < 9.8f && local.z > -2.3f && local.z < 8.8f);
 
             Check($"and standing on the floor, not in it ({local.y:0.00}m)",
                   Mathf.Abs(local.y) < 0.4f);
@@ -185,7 +185,7 @@ namespace EscapeWithYourFriends.Casino
             // From the table's edge, not its middle. A gap measured to the origin of a 3.4m table
             // reads almost two metres wider than the one a player actually walks through.
             const float HalfTable = 1.7f;
-            float toWall = 4.25f - Mathf.Abs(local.x) - HalfTable;
+            float toWall = 9.85f - Mathf.Abs(local.x) - HalfTable;
 
             Check($"with room to walk round it ({toWall:0.0}m from its edge to the side wall)",
                   toWall > 1f);

@@ -148,106 +148,114 @@ namespace EscapeWithYourFriends.EditorTools
         ///
         /// The lighting is the load-bearing part of "reads as a casino built by people stranded on an
         /// island". Every other room in the game is lit and left alone; see <see cref="TackyLights"/>.
+        ///
+        /// #254 made it big: the shack's room is now the front of a 20 by 19 metre floor with every
+        /// game on it, and a VIP room behind glass at the back.
         /// </summary>
         static GameObject BuildCasino()
         {
-            GameObject root = Root("Casino", "The Shack",
-                                   "Roulette, terrible decisions, and a man who will sell you a drink.",
-                                   radius: 12f, hostile: false);
+            GameObject root = Root("Casino", "The Casino",
+                                   "Roulette, blackjack, slots, a bar, and a VIP room for whoever can prove they belong.",
+                                   radius: 14f, hostile: false);
 
-            // A floor, because a casino with sand underfoot is a shack. Flat on the pad, so the
-            // table the POI drops here stands on the same ground the player walks in on.
-            Box(root, "Floor", "Wood", new Vector3(0f, 0.03f, -1f), new Vector3(9f, 0.06f, 6.2f),
-                solid: false);
+            // One building, two rooms (#254). The floor is z -2.5 to 9, door at the front (+z); the
+            // VIP room is z -10 to -2.5 behind a partition that is glass in the middle, so the games a
+            // player cannot afford yet are always in view. POIFactory places every game by these
+            // numbers; CasinoTest and CasinoFloorTest check that they still agree.
+            Box(root, "Floor", "Wood", new Vector3(0f, 0.03f, -0.5f), new Vector3(20f, 0.06f, 19f), solid: false);
 
             for (int i = 0; i < 5; i++)
                 Box(root, $"Floor.Plank{i}", "Canvas",
-                    new Vector3(-3.4f + i * 1.7f, 0.07f, -1f), new Vector3(0.5f, 0.04f, 6f),
-                    solid: false);
+                    new Vector3(-8f + i * 4f, 0.07f, 3.2f), new Vector3(0.5f, 0.04f, 11f), solid: false);
 
-            // Three walls and a front with a doorway in it. The gap is two metres, which is wide
-            // enough that four people arriving at once do not wedge.
-            Box(root, "Wall.Back", "Wood", new Vector3(0f, 1.6f, -4f), new Vector3(9f, 3.2f, 0.3f));
-            Box(root, "Wall.Left", "Wood", new Vector3(-4.4f, 1.6f, -1f), new Vector3(0.3f, 3.2f, 6.2f));
-            Box(root, "Wall.Right", "Wood", new Vector3(4.4f, 1.6f, -1f), new Vector3(0.3f, 3.2f, 6.2f));
-            Box(root, "Wall.FrontLeft", "Wood", new Vector3(-3.1f, 1.6f, 2.0f), new Vector3(2.9f, 3.2f, 0.3f));
-            Box(root, "Wall.FrontRight", "Wood", new Vector3(3.1f, 1.6f, 2.0f), new Vector3(2.9f, 3.2f, 0.3f));
-            Box(root, "Door.Lintel", "Wood", new Vector3(0f, 2.9f, 2.0f), new Vector3(3.4f, 0.6f, 0.3f),
+            Box(root, "Vip.Carpet", "Accent", new Vector3(0f, 0.07f, -6.25f), new Vector3(19.4f, 0.02f, 7.2f),
                 solid: false);
-            Roof(root, "Roof", "Canvas", new Vector3(0f, 3.2f, -1f), 9.6f, 7f, 2f);
 
-            // The doorway is a real gap between the two front walls, so it needs no recess - only the
-            // windows either side of it do.
-            Opening(root, "Window.L", new Vector3(3.1f, 2.1f, 2.16f), new Vector3(1.4f, 1f, 0.1f));
-            Opening(root, "Window.R", new Vector3(-3.1f, 2.1f, 2.16f), new Vector3(1.4f, 1f, 0.1f));
+            Box(root, "Wall.Back", "Wood", new Vector3(0f, 2f, -10f), new Vector3(20f, 4f, 0.3f));
+            Box(root, "Wall.Left", "Wood", new Vector3(-10f, 2f, -0.5f), new Vector3(0.3f, 4f, 19f));
+            Box(root, "Wall.Right", "Wood", new Vector3(10f, 2f, -0.5f), new Vector3(0.3f, 4f, 19f));
 
-            // The sign, nailed over the door at an angle somebody could not be bothered to fix.
-            GameObject sign = Box(root, "Sign", "Canvas", new Vector3(0f, 3.5f, 2.2f),
-                                  new Vector3(4.2f, 0.9f, 0.12f), solid: false);
+            // The front, with a three-metre doorway: four players arrive at once.
+            Box(root, "Wall.FrontLeft", "Wood", new Vector3(-5.75f, 2f, 9f), new Vector3(8.5f, 4f, 0.3f));
+            Box(root, "Wall.FrontRight", "Wood", new Vector3(5.75f, 2f, 9f), new Vector3(8.5f, 4f, 0.3f));
+            Box(root, "Door.Lintel", "Wood", new Vector3(0f, 3.5f, 9f), new Vector3(3f, 1f, 0.3f), solid: false);
+            Opening(root, "Window.L", new Vector3(-5.75f, 2.4f, 9.16f), new Vector3(2.5f, 1.2f, 0.1f));
+            Opening(root, "Window.R", new Vector3(5.75f, 2.4f, 9.16f), new Vector3(2.5f, 1.2f, 0.1f));
+
+            // The partition: solid at the ends, glass either side of the VIP door, a header over both.
+            // The door itself is a POI of its own (VipDoor), dropped into the gap at x -0.8..0.8.
+            Box(root, "Wall.VipLeft", "Wood", new Vector3(-7f, 2f, -2.5f), new Vector3(6f, 4f, 0.3f));
+            Box(root, "Wall.VipRight", "Wood", new Vector3(7f, 2f, -2.5f), new Vector3(6f, 4f, 0.3f));
+            Box(root, "Wall.VipHeader", "Wood", new Vector3(0f, 3.3f, -2.5f), new Vector3(8f, 1.4f, 0.3f));
+
+            foreach ((string side, float x) in new[] { ("L", -2.4f), ("R", 2.4f) })
+            {
+                // Glass is a collider with nothing drawn: the frame is what says there is a pane.
+                GameObject pane = Box(root, $"Glass.{side}", "Metal", new Vector3(x, 1.3f, -2.5f),
+                                      new Vector3(3.2f, 2.6f, 0.05f));
+                Object.DestroyImmediate(pane.GetComponent<MeshRenderer>());
+                Object.DestroyImmediate(pane.GetComponent<MeshFilter>());
+
+                Box(root, $"Glass.{side}.Top", "Metal", new Vector3(x, 2.6f, -2.5f), new Vector3(3.2f, 0.08f, 0.12f), solid: false);
+                Box(root, $"Glass.{side}.Sill", "Metal", new Vector3(x, 0.08f, -2.5f), new Vector3(3.2f, 0.12f, 0.12f), solid: false);
+                Box(root, $"Glass.{side}.Mullion", "Metal", new Vector3(x, 1.3f, -2.5f), new Vector3(0.06f, 2.6f, 0.08f), solid: false);
+            }
+
+            Roof(root, "Roof", "Canvas", new Vector3(0f, 4f, -0.5f), 20.6f, 19.6f, 3f);
+
+            GameObject sign = Box(root, "Sign", "Canvas", new Vector3(0f, 4.6f, 9.2f),
+                                  new Vector3(5.2f, 1f, 0.12f), solid: false);
             sign.transform.localRotation = Quaternion.Euler(0f, 0f, -4f);
-            Box(root, "Sign.Letters", "Accent", new Vector3(0f, 3.5f, 2.29f),
-                new Vector3(3.4f, 0.35f, 0.06f), solid: false);
+            Box(root, "Sign.Letters", "Accent", new Vector3(0f, 4.6f, 9.29f),
+                new Vector3(4.2f, 0.4f, 0.06f), solid: false);
 
-            // The bar, along the back wall, with bottles on it. Pulled forward from the wall in #66
-            // to leave the barman somewhere to stand: the gap behind it is where the POI drops him,
-            // and at the blockout's 0.2m he was standing inside the plank.
-            Box(root, "Bar", "Wood", new Vector3(-2.6f, 1f, -3.05f), new Vector3(3f, 0.2f, 0.8f));
-            Box(root, "Bar.Front", "Wood", new Vector3(-2.6f, 0.5f, -2.75f), new Vector3(3f, 1f, 0.15f));
+            // The bar, back left of the floor, against the partition. The gap behind it is where the
+            // POI drops the barman (BarNpcStand).
+            Box(root, "Bar", "Wood", new Vector3(-6.5f, 1f, -1.35f), new Vector3(3f, 0.2f, 0.8f));
+            Box(root, "Bar.Front", "Wood", new Vector3(-6.5f, 0.5f, -1.05f), new Vector3(3f, 1f, 0.15f));
 
             for (int i = 0; i < 6; i++)
                 Box(root, $"Bar.Bottle{i}", "Metal",
-                    new Vector3(-3.9f + i * 0.5f, 1.25f, -3.15f), new Vector3(0.12f, 0.3f, 0.12f),
-                    solid: false);
+                    new Vector3(-7.75f + i * 0.5f, 1.25f, -1.45f), new Vector3(0.12f, 0.3f, 0.12f), solid: false);
 
-            // Crates to sit on, round the table the POI puts at the origin. Not chairs: nobody
-            // stranded on an island builds a chair before they build a bar.
-            (float x, float z)[] stools = { (2.9f, 1.5f), (2.9f, -1.5f), (0.4f, -1.9f), (-2.6f, 1.6f) };
-
-            for (int i = 0; i < stools.Length; i++)
+            for (int i = 0; i < 4; i++)
             {
-                Box(root, $"Stool{i}", "Wood",
-                    new Vector3(stools[i].x, 0.3f, stools[i].z), new Vector3(0.6f, 0.55f, 0.6f));
-                Box(root, $"Stool{i}.Cushion", "Accent",
-                    new Vector3(stools[i].x, 0.6f, stools[i].z), new Vector3(0.62f, 0.08f, 0.62f),
-                    solid: false);
+                var at = new Vector3(-7.7f + i * 0.8f, 0.3f, -0.4f);
+                Box(root, $"Stool{i}", "Wood", at, new Vector3(0.6f, 0.55f, 0.6f));
+                Box(root, $"Stool{i}.Cushion", "Accent", at + new Vector3(0f, 0.3f, 0f),
+                    new Vector3(0.62f, 0.08f, 0.62f), solid: false);
             }
 
-            // A chandelier of bottles on a line, because somebody had bottles and a line.
-            Box(root, "Chandelier.Line", "Metal", new Vector3(0f, 3.15f, -1f), new Vector3(7f, 0.04f, 0.04f),
+            Box(root, "Chandelier.Line", "Metal", new Vector3(0f, 3.9f, 3f), new Vector3(14f, 0.04f, 0.04f),
                 solid: false);
 
             for (int i = 0; i < 7; i++)
                 Box(root, $"Chandelier.Bottle{i}", "Metal",
-                    new Vector3(-3f + i, 2.95f, -1f), new Vector3(0.1f, 0.34f, 0.1f), solid: false);
+                    new Vector3(-6f + i * 2f, 3.7f, 3f), new Vector3(0.1f, 0.34f, 0.1f), solid: false);
 
-            // Five lamps, no two the same, none of them where a lighting designer would put one.
             var lamps = new[]
             {
-                Lamp(root, "Lamp.Table", new Vector3(0f, 2.7f, -0.2f), new Color(1f, 0.35f, 0.75f), 4.5f, 8f),
-                Lamp(root, "Lamp.Bar", new Vector3(-2.9f, 2.4f, -3f), new Color(0.3f, 0.9f, 1f), 3f, 6f),
-                Lamp(root, "Lamp.Door", new Vector3(0f, 2.6f, 1.8f), new Color(1f, 0.8f, 0.25f), 2.5f, 6f),
-                Lamp(root, "Lamp.Left", new Vector3(-3.6f, 2.8f, 0.6f), new Color(0.55f, 1f, 0.4f), 2f, 5f),
-                Lamp(root, "Lamp.Right", new Vector3(3.6f, 2.8f, 0.6f), new Color(0.8f, 0.4f, 1f), 2f, 5f),
+                Lamp(root, "Lamp.Table", new Vector3(0f, 3.4f, 3f), new Color(1f, 0.35f, 0.75f), 4.5f, 10f),
+                Lamp(root, "Lamp.Bar", new Vector3(-6.5f, 3.2f, -1.2f), new Color(0.3f, 0.9f, 1f), 3f, 8f),
+                Lamp(root, "Lamp.Door", new Vector3(0f, 3.3f, 8.4f), new Color(1f, 0.8f, 0.25f), 2.5f, 8f),
+                Lamp(root, "Lamp.Left", new Vector3(-8.4f, 3.5f, 5f), new Color(0.55f, 1f, 0.4f), 2.5f, 8f),
+                Lamp(root, "Lamp.Right", new Vector3(8.4f, 3.5f, 2f), new Color(0.8f, 0.4f, 1f), 2.5f, 8f),
+                Lamp(root, "Lamp.VipL", new Vector3(-4f, 3.4f, -6.5f), new Color(1f, 0.25f, 0.2f), 3f, 9f),
+                Lamp(root, "Lamp.VipR", new Vector3(4f, 3.4f, -6.5f), new Color(1f, 0.85f, 0.45f), 3f, 9f),
             };
 
             root.AddComponent<TackyLights>().Configure(lamps);
 
-            Empty(root, "TableSeat", new Vector3(0f, 0f, 1.6f));
-            Empty(root, "BarNpcStand", new Vector3(-2.6f, 0f, -3.62f));
+            Empty(root, "TableSeat", new Vector3(0f, 0f, 4.6f));
+            Empty(root, "BarNpcStand", new Vector3(-6.5f, 0f, -2.05f));
 
             DressCasino(root);
             return root;
         }
 
         /// <summary>
-        /// The art pass on the shack (docs/ART-PLAN.md §4). It runs after the blockout rather than
-        /// instead of it, so every box above is still the layout: CasinoTest still finds a floor, a
-        /// roof, three walls and a doorway it can measure, and the NavMesh still bakes from the same
-        /// colliders. What changes is what you see - plank floors and walls, a thatched roof, a real
-        /// bar with real stools, a string of coloured bulbs where the bottle chandelier hung.
-        ///
-        /// When the kits have not been extracted yet, every call below logs what is missing and
-        /// leaves that box as it was, so a greybox build still works on a machine without the art.
+        /// The casino in Kenney's survival and furniture kits, every piece fitted to the box it
+        /// replaces (ArtDress). The boxes keep their colliders; only their looks go.
         /// </summary>
         static void DressCasino(GameObject root)
         {
@@ -258,18 +266,16 @@ namespace EscapeWithYourFriends.EditorTools
 
             // One floor tile, stood on its edge, is a plank wall. ArtDress turns it to face the wall.
             foreach (string wall in new[] { "Wall.Back", "Wall.Left", "Wall.Right", "Wall.FrontLeft",
-                                            "Wall.FrontRight", "Door.Lintel" })
+                                            "Wall.FrontRight", "Door.Lintel", "Wall.VipLeft",
+                                            "Wall.VipRight", "Wall.VipHeader" })
                 ArtDress.Tile(Child(t, wall), "Floor", 1.6f);
 
-            // The pitched slabs keep their colliders and lose their looks under a thatch fitted over
-            // the whole footprint. The thatch's own corner posts land just inside the wall corners.
             Transform roof = t.Find("Roof");
-            if (roof != null && ArtDress.FitBox(t, new Bounds(new Vector3(0f, 2.7f, -1f), new Vector3(10f, 5.4f, 7.4f)),
+            if (roof != null && ArtDress.FitBox(t, new Bounds(new Vector3(0f, 3.5f, -0.5f), new Vector3(21f, 7f, 20f)),
                                                 "ThatchRoof", false, "Roof.Art"))
                 foreach (Transform slab in roof) ArtDress.Strip(slab.gameObject);
 
-            // The counter replaces the plank and its front as one run of three.
-            if (ArtDress.TileBox(t, new Bounds(new Vector3(-2.6f, 0.55f, -3.06f), new Vector3(3f, 1.1f, 0.78f)),
+            if (ArtDress.TileBox(t, new Bounds(new Vector3(-6.5f, 0.55f, -1.36f), new Vector3(3f, 1.1f, 0.78f)),
                                  "BarCounter", 1f, "Counter.Art"))
             {
                 ArtDress.Strip(Child(t, "Bar"));
@@ -284,22 +290,20 @@ namespace EscapeWithYourFriends.EditorTools
                     ArtDress.Strip(Child(t, $"Stool{i}.Cushion"));
             }
 
-            if (ArtDress.TileBox(t, new Bounds(new Vector3(0f, 3f, -1f), new Vector3(7f, 0.35f, 0.1f)),
+            if (ArtDress.TileBox(t, new Bounds(new Vector3(0f, 3.8f, 3f), new Vector3(14f, 0.35f, 0.1f)),
                                  "StringLights", 2.4f, "Lights.Art"))
                 ArtDress.Strip(Child(t, "Chandelier.Line"));
 
             for (int i = 0; i < 7; i++) ArtDress.Fit(Child(t, $"Chandelier.Bottle{i}"), "Bottle", keepShape: true);
 
-            // The board over the door, still crooked: the angle is the piece's, the planks are new.
             ArtDress.Tile(Child(t, "Sign"), "FloorOld", 10f);
 
-            // Clutter, with no collider and nothing a test counts: a crate of bottles past the end of
-            // the bar and a lamp either side of the door.
-            ArtDress.FitBox(t, new Bounds(new Vector3(-0.4f, 0.55f, -3.3f), new Vector3(1.1f, 1.1f, 1.3f)),
+            // Clutter, with no collider and nothing a test counts.
+            ArtDress.FitBox(t, new Bounds(new Vector3(-4.4f, 0.55f, -1.6f), new Vector3(1.1f, 1.1f, 1.3f)),
                             "CrateBottles", true, "Decor.Crate");
-            ArtDress.FitBox(t, new Bounds(new Vector3(2.1f, 0.9f, 2.6f), new Vector3(0.6f, 1.8f, 0.6f)),
+            ArtDress.FitBox(t, new Bounds(new Vector3(2.1f, 0.9f, 9.6f), new Vector3(0.6f, 1.8f, 0.6f)),
                             "Lantern", true, "Decor.LanternR");
-            ArtDress.FitBox(t, new Bounds(new Vector3(-2.1f, 0.9f, 2.6f), new Vector3(0.6f, 1.8f, 0.6f)),
+            ArtDress.FitBox(t, new Bounds(new Vector3(-2.1f, 0.9f, 9.6f), new Vector3(0.6f, 1.8f, 0.6f)),
                             "Lantern", true, "Decor.LanternL");
         }
 

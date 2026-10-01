@@ -389,7 +389,7 @@ namespace EscapeWithYourFriends.Casino
 
         void Wiring(SlotMachine[] machines)
         {
-            Check("one cabinet of each game", machines.Select(m => m.Kind).Distinct().Count() == 3);
+            Check("one cabinet of each game", machines.Select(m => m.Kind).Distinct().Count() == System.Enum.GetValues(typeof(SlotKind)).Length);
 
             foreach (SlotMachine machine in machines)
             {

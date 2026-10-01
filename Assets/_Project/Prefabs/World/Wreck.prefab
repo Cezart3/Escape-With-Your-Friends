@@ -29,7 +29,7 @@ Transform:
   m_LocalScale: {x: 1.2, y: 0.6, z: 1.2}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 8595811645198181142}
+  - {fileID: 7967465337474691544}
   m_Father: {fileID: 3606287310993571604}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &491204550395175558
@@ -43,7 +43,6 @@ GameObject:
   - component: {fileID: 3606287310993571604}
   - component: {fileID: 6864973059503036892}
   - component: {fileID: 5641124555604686759}
-  - component: {fileID: -2430928480649952058}
   m_Layer: 0
   m_Name: Wreck
   m_TagString: Untagged
@@ -103,23 +102,22 @@ MonoBehaviour:
   _spectatorInterpolation: 2
   _enableTeleport: 0
   _teleportThreshold: 1
-  <PrefabId>k__BackingField: 0
+  <PrefabId>k__BackingField: 65535
   <SpawnableCollectionId>k__BackingField: 0
   <AssetPathHash>k__BackingField: 350985685119684112
   SceneId: 0
   SerializedTransformProperties:
     Position: {x: 0, y: 0, z: 0}
-    Rotation: {x: 0, y: 0, z: 0, w: 1}
-    Scale: {x: 1, y: 1, z: 1}
-    IsValid: 1
+    Rotation: {x: 0, y: 0, z: 0, w: 0}
+    Scale: {x: 0, y: 0, z: 0}
+    IsValid: 0
   <IsNested>k__BackingField: 0
   WasActiveDuringEdit: 0
   WasActiveDuringEdit_Set1: 1
   <ComponentIndex>k__BackingField: 0
   <PredictedSpawn>k__BackingField: {fileID: 0}
   <PredictedOwner>k__BackingField: {fileID: 0}
-  NetworkBehaviours:
-  - {fileID: -2430928480649952058}
+  NetworkBehaviours: []
   InitializedParentNetworkBehaviour: {fileID: 0}
   InitializedNestedNetworkObjects: []
   RuntimeParentNetworkBehaviour: {fileID: 0}
@@ -130,7 +128,7 @@ MonoBehaviour:
   _initializeOrder: 0
   _preventDespawnOnDisconnect: 0
   _defaultDespawnType: 0
-  _initializedTimestamp: -8584110512115340723
+  _initializedTimestamp: 0
 --- !u!114 &5641124555604686759
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -148,21 +146,6 @@ MonoBehaviour:
   Purpose: What you arrived on. Scrap, rope, and the first parts of a boat.
   Radius: 14
   Hostile: 0
---- !u!114 &-2430928480649952058
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 491204550395175558}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8a6a39c46bf52104ba8efe3100bce3f7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: FishNet.Runtime::FishNet.Object.EmptyNetworkBehaviour
-  _componentIndexCache: 0
-  _addedNetworkObject: {fileID: 0}
-  _networkObjectCache: {fileID: 6864973059503036892}
 --- !u!1 &695716512614524838
 GameObject:
   m_ObjectHideFlags: 0
@@ -194,74 +177,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 3606287310993571604}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1766033114537190218
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 3733503692565840795}
-  - component: {fileID: 6582591548294308529}
-  - component: {fileID: 3098466480526117830}
-  m_Layer: 0
-  m_Name: Art
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &3733503692565840795
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1766033114537190218}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 0.00000008634361, y: -0.049132347, z: 0.1091877}
-  m_LocalScale: {x: 0.060640205, y: 0.28298768, z: 0.18865846}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 784895561884860358}
-  m_Father: {fileID: 3152387419720871096}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &6582591548294308529
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1766033114537190218}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9d0cf6ce430d42fdb059d883ff6e865f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.ArtVisual
-  Id: Wreck
-  Category: 7
-  Upright: 0
---- !u!205 &3098466480526117830
-LODGroup:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1766033114537190218}
-  serializedVersion: 2
-  m_LocalReferencePoint: {x: 1.8005834, y: 4.128606, z: 0}
-  m_Size: 15.43296
-  m_FadeMode: 0
-  m_AnimateCrossFading: 0
-  m_LastLODIsBillboard: 0
-  m_LODs:
-  - screenRelativeHeight: 0.005
-    fadeTransitionWidth: 0
-    renderers:
-    - renderer: {fileID: 1922947458404615337}
-  m_Enabled: 1
 --- !u!1 &3090643006003119155
 GameObject:
   m_ObjectHideFlags: 0
@@ -291,7 +206,7 @@ Transform:
   m_LocalScale: {x: 1.2, y: 0.6, z: 1.2}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 5432906803984204532}
+  - {fileID: 6768649527243877356}
   m_Father: {fileID: 3606287310993571604}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &3118104469216177877
@@ -320,13 +235,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3118104469216177877}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.49999997, z: 0}
-  m_LocalScale: {x: 0.64935064, y: 1.2987013, z: 0.64935064}
+  m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: 0.00000008634361, y: -0.049132347, z: 0.1091877}
+  m_LocalScale: {x: 0.060640205, y: 0.28298768, z: 0.18865846}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 7991852268058160554}
-  m_Father: {fileID: 1144456527760594339}
+  - {fileID: 784895561884860358}
+  m_Father: {fileID: 3152387419720871096}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &592318052972070773
 MonoBehaviour:
@@ -340,9 +255,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9d0cf6ce430d42fdb059d883ff6e865f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.ArtVisual
-  Id: Crate
-  Category: 5
+  Id: Wreck
+  Category: 7
   Upright: 0
+  Trunk: {x: NaN, y: NaN}
 --- !u!205 &5190284673426335035
 LODGroup:
   m_ObjectHideFlags: 0
@@ -351,76 +267,8 @@ LODGroup:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3118104469216177877}
   serializedVersion: 2
-  m_LocalReferencePoint: {x: 0.00000047683716, y: 0.385, z: 0}
-  m_Size: 1.3089999
-  m_FadeMode: 0
-  m_AnimateCrossFading: 0
-  m_LastLODIsBillboard: 0
-  m_LODs:
-  - screenRelativeHeight: 0.015
-    fadeTransitionWidth: 0
-    renderers:
-    - renderer: {fileID: 9125400702391047877}
-  m_Enabled: 1
---- !u!1 &3501237902311740374
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 5432906803984204532}
-  - component: {fileID: 1329627843336227457}
-  - component: {fileID: 8249307994910727923}
-  m_Layer: 0
-  m_Name: Art
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &5432906803984204532
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3501237902311740374}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.058281932, y: -0.49540097, z: 0.000000022785825}
-  m_LocalScale: {x: 0.19420856, y: 0.38841712, z: 0.19420856}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 3972551861820882688}
-  m_Father: {fileID: 7131880044921264645}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1329627843336227457
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3501237902311740374}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9d0cf6ce430d42fdb059d883ff6e865f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.ArtVisual
-  Id: RowBoat
-  Category: 7
-  Upright: 0
---- !u!205 &8249307994910727923
-LODGroup:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3501237902311740374}
-  serializedVersion: 2
-  m_LocalReferencePoint: {x: 0.30009985, y: 0.98420644, z: -0.00000011920929}
-  m_Size: 5.149105
+  m_LocalReferencePoint: {x: 1.8005834, y: 4.128606, z: 0}
+  m_Size: 15.43296
   m_FadeMode: 0
   m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
@@ -428,75 +276,7 @@ LODGroup:
   - screenRelativeHeight: 0.005
     fadeTransitionWidth: 0
     renderers:
-    - renderer: {fileID: 2840216665155273839}
-  m_Enabled: 1
---- !u!1 &4464532951376380836
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 8595811645198181142}
-  - component: {fileID: 71434401398454125}
-  - component: {fileID: 891506076984736259}
-  m_Layer: 0
-  m_Name: Art
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &8595811645198181142
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4464532951376380836}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.49999997, z: 0}
-  m_LocalScale: {x: 0.64935064, y: 1.2987013, z: 0.64935064}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 1642108057870896749}
-  m_Father: {fileID: 2086456342210405061}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &71434401398454125
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4464532951376380836}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9d0cf6ce430d42fdb059d883ff6e865f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.ArtVisual
-  Id: Crate
-  Category: 5
-  Upright: 0
---- !u!205 &891506076984736259
-LODGroup:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4464532951376380836}
-  serializedVersion: 2
-  m_LocalReferencePoint: {x: -0.0000009536743, y: 0.385, z: 0}
-  m_Size: 1.3089999
-  m_FadeMode: 0
-  m_AnimateCrossFading: 0
-  m_LastLODIsBillboard: 0
-  m_LODs:
-  - screenRelativeHeight: 0.015
-    fadeTransitionWidth: 0
-    renderers:
-    - renderer: {fileID: 469179516152739074}
+    - renderer: {fileID: 1922947458404615337}
   m_Enabled: 1
 --- !u!1 &4898150158788053188
 GameObject:
@@ -528,7 +308,7 @@ Transform:
   m_LocalScale: {x: 4.5, y: 3, z: 14}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 3733503692565840795}
+  - {fileID: 2705843709703918272}
   m_Father: {fileID: 3606287310993571604}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!65 &2477992697119939426
@@ -552,7 +332,7 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!1 &6276954033140801150
+--- !u!1 &5685902319587350857
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -560,9 +340,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 5645642863518787439}
-  - component: {fileID: 8514090661332644621}
-  - component: {fileID: 5349172432727654155}
+  - component: {fileID: 6768649527243877356}
+  - component: {fileID: 1551897755588606368}
+  - component: {fileID: 8379168598347104220}
   m_Layer: 0
   m_Name: Art
   m_TagString: Untagged
@@ -570,47 +350,117 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &5645642863518787439
+--- !u!4 &6768649527243877356
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6276954033140801150}
+  m_GameObject: {fileID: 5685902319587350857}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.5019315, z: 0.000000029917448}
-  m_LocalScale: {x: 0.7576784, y: 1.5153568, z: 0.7576784}
+  m_LocalPosition: {x: -0.058281932, y: -0.49540097, z: 0.000000022785825}
+  m_LocalScale: {x: 0.19420856, y: 0.38841712, z: 0.19420856}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 6634871554945394144}
-  m_Father: {fileID: 2249908650150088587}
+  - {fileID: 3972551861820882688}
+  m_Father: {fileID: 7131880044921264645}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &8514090661332644621
+--- !u!114 &1551897755588606368
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6276954033140801150}
+  m_GameObject: {fileID: 5685902319587350857}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9d0cf6ce430d42fdb059d883ff6e865f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.ArtVisual
-  Id: PirateBarrel
-  Category: 5
+  Id: RowBoat
+  Category: 7
   Upright: 0
---- !u!205 &5349172432727654155
+  Trunk: {x: NaN, y: NaN}
+--- !u!205 &8379168598347104220
 LODGroup:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6276954033140801150}
+  m_GameObject: {fileID: 5685902319587350857}
   serializedVersion: 2
-  m_LocalReferencePoint: {x: 0, y: 0.33122987, z: -0.000000059604645}
-  m_Size: 0.71468985
+  m_LocalReferencePoint: {x: 0.30009985, y: 0.98420644, z: -0.00000011920929}
+  m_Size: 5.149105
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
+  m_LastLODIsBillboard: 0
+  m_LODs:
+  - screenRelativeHeight: 0.005
+    fadeTransitionWidth: 0
+    renderers:
+    - renderer: {fileID: 2840216665155273839}
+  m_Enabled: 1
+--- !u!1 &6329557615537025278
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1856256809012169600}
+  - component: {fileID: 5688859196929482348}
+  - component: {fileID: 8503158893562430141}
+  m_Layer: 0
+  m_Name: Art
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1856256809012169600
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6329557615537025278}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: -0.49999997, z: 0}
+  m_LocalScale: {x: 0.64935064, y: 1.2987013, z: 0.64935064}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 2720234220607288306}
+  m_Father: {fileID: 1144456527760594339}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5688859196929482348
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6329557615537025278}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d0cf6ce430d42fdb059d883ff6e865f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.ArtVisual
+  Id: Crate
+  Category: 5
+  Upright: 0
+  Trunk: {x: NaN, y: NaN}
+--- !u!205 &8503158893562430141
+LODGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6329557615537025278}
+  serializedVersion: 2
+  m_LocalReferencePoint: {x: 0.00000047683716, y: 0.385, z: 0}
+  m_Size: 1.3089999
   m_FadeMode: 0
   m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
@@ -618,7 +468,76 @@ LODGroup:
   - screenRelativeHeight: 0.015
     fadeTransitionWidth: 0
     renderers:
-    - renderer: {fileID: 5501393622500826767}
+    - renderer: {fileID: 3858206371530360989}
+  m_Enabled: 1
+--- !u!1 &6341583535957370095
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7967465337474691544}
+  - component: {fileID: 475371246622524545}
+  - component: {fileID: 3264739639628349287}
+  m_Layer: 0
+  m_Name: Art
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7967465337474691544
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6341583535957370095}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: -0.49999997, z: 0}
+  m_LocalScale: {x: 0.64935064, y: 1.2987013, z: 0.64935064}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1642108057870896749}
+  m_Father: {fileID: 2086456342210405061}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &475371246622524545
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6341583535957370095}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d0cf6ce430d42fdb059d883ff6e865f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.ArtVisual
+  Id: Crate
+  Category: 5
+  Upright: 0
+  Trunk: {x: NaN, y: NaN}
+--- !u!205 &3264739639628349287
+LODGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6341583535957370095}
+  serializedVersion: 2
+  m_LocalReferencePoint: {x: -0.0000009536743, y: 0.385, z: 0}
+  m_Size: 1.3089999
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
+  m_LastLODIsBillboard: 0
+  m_LODs:
+  - screenRelativeHeight: 0.015
+    fadeTransitionWidth: 0
+    renderers:
+    - renderer: {fileID: 469179516152739074}
   m_Enabled: 1
 --- !u!1 &6634259353301285783
 GameObject:
@@ -650,7 +569,7 @@ Transform:
   m_LocalScale: {x: 0.5, y: 0.5, z: 11}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 9005027779355328837}
+  - {fileID: 4597231261642753085}
   m_Father: {fileID: 3606287310993571604}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!65 &8658091574391311230
@@ -703,10 +622,10 @@ Transform:
   m_LocalScale: {x: 1.2, y: 0.6, z: 1.2}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 2705843709703918272}
+  - {fileID: 1856256809012169600}
   m_Father: {fileID: 3606287310993571604}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &8825518062686414838
+--- !u!1 &7500013935186856756
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -714,9 +633,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 9005027779355328837}
-  - component: {fileID: 5936934946601709389}
-  - component: {fileID: 5531159456055145740}
+  - component: {fileID: 4597231261642753085}
+  - component: {fileID: 8027856954101389551}
+  - component: {fileID: 1324423192783724029}
   m_Layer: 0
   m_Name: Art
   m_TagString: Untagged
@@ -724,13 +643,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &9005027779355328837
+--- !u!4 &4597231261642753085
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8825518062686414838}
+  m_GameObject: {fileID: 7500013935186856756}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0.010668318, y: -0.11876204, z: 0}
@@ -740,13 +659,13 @@ Transform:
   - {fileID: 6454757469836717275}
   m_Father: {fileID: 6951263651709457042}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &5936934946601709389
+--- !u!114 &8027856954101389551
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8825518062686414838}
+  m_GameObject: {fileID: 7500013935186856756}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9d0cf6ce430d42fdb059d883ff6e865f, type: 3}
@@ -755,13 +674,14 @@ MonoBehaviour:
   Id: Log
   Category: 3
   Upright: 0
---- !u!205 &5531159456055145740
+  Trunk: {x: NaN, y: NaN}
+--- !u!205 &1324423192783724029
 LODGroup:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8825518062686414838}
+  m_GameObject: {fileID: 7500013935186856756}
   serializedVersion: 2
   m_LocalReferencePoint: {x: -0.0026616082, y: 0.032913342, z: -0.000000059604645}
   m_Size: 0.9999999
@@ -773,6 +693,75 @@ LODGroup:
     fadeTransitionWidth: 0
     renderers:
     - renderer: {fileID: 5321226594272237492}
+  m_Enabled: 1
+--- !u!1 &7506018507179759448
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1556200477230460357}
+  - component: {fileID: 8784978585770267848}
+  - component: {fileID: 5541806173528050759}
+  m_Layer: 0
+  m_Name: Art
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1556200477230460357
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7506018507179759448}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: -0.5019315, z: 0.000000029917448}
+  m_LocalScale: {x: 0.7576784, y: 1.5153568, z: 0.7576784}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 6634871554945394144}
+  m_Father: {fileID: 2249908650150088587}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8784978585770267848
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7506018507179759448}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d0cf6ce430d42fdb059d883ff6e865f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.ArtVisual
+  Id: PirateBarrel
+  Category: 5
+  Upright: 0
+  Trunk: {x: NaN, y: NaN}
+--- !u!205 &5541806173528050759
+LODGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7506018507179759448}
+  serializedVersion: 2
+  m_LocalReferencePoint: {x: 0, y: 0.33122987, z: -0.000000059604645}
+  m_Size: 0.71468985
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
+  m_LastLODIsBillboard: 0
+  m_LODs:
+  - screenRelativeHeight: 0.015
+    fadeTransitionWidth: 0
+    renderers:
+    - renderer: {fileID: 5501393622500826767}
   m_Enabled: 1
 --- !u!1 &9104457082429091202
 GameObject:
@@ -803,7 +792,7 @@ Transform:
   m_LocalScale: {x: 1.2, y: 0.6, z: 1.2}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 5645642863518787439}
+  - {fileID: 1556200477230460357}
   m_Father: {fileID: 3606287310993571604}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &967776011327379501
@@ -812,7 +801,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 3733503692565840795}
+    m_TransformParent: {fileID: 2705843709703918272}
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: b6730e89473bbba4ca85e6d12cd41a22, type: 3}
       propertyPath: m_LocalPosition.x
@@ -879,7 +868,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 8595811645198181142}
+    m_TransformParent: {fileID: 7967465337474691544}
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
       propertyPath: m_LocalPosition.x
@@ -940,13 +929,80 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
   m_PrefabInstance: {fileID: 1243919189015456134}
   m_PrefabAsset: {fileID: 0}
+--- !u!1001 &2470945542223811609
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1856256809012169600}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
+      propertyPath: m_Name
+      value: crate
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
+--- !u!4 &2720234220607288306 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
+  m_PrefabInstance: {fileID: 2470945542223811609}
+  m_PrefabAsset: {fileID: 0}
+--- !u!23 &3858206371530360989 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: -7511558181221131132, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
+  m_PrefabInstance: {fileID: 2470945542223811609}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &3507160220631242987
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 5432906803984204532}
+    m_TransformParent: {fileID: 6768649527243877356}
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: d7951d2ccc0dd0f48943169bf19d0592, type: 3}
       propertyPath: m_LocalPosition.x
@@ -1013,7 +1069,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 5645642863518787439}
+    m_TransformParent: {fileID: 1556200477230460357}
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 20fef708dc005cc48b61728dbce5deba, type: 3}
       propertyPath: m_LocalPosition.x
@@ -1080,7 +1136,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 9005027779355328837}
+    m_TransformParent: {fileID: 4597231261642753085}
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 5b07545462cf5ea48b9b95b2caf16f49, type: 3}
       propertyPath: m_LocalPosition.x
@@ -1140,71 +1196,4 @@ MeshRenderer:
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 5b07545462cf5ea48b9b95b2caf16f49, type: 3}
   m_PrefabInstance: {fileID: 6780554914894957360}
-  m_PrefabAsset: {fileID: 0}
---- !u!1001 &7593766298102581825
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 2705843709703918272}
-    m_Modifications:
-    - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 919132149155446097, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
-      propertyPath: m_Name
-      value: crate
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
---- !u!4 &7991852268058160554 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
-  m_PrefabInstance: {fileID: 7593766298102581825}
-  m_PrefabAsset: {fileID: 0}
---- !u!23 &9125400702391047877 stripped
-MeshRenderer:
-  m_CorrespondingSourceObject: {fileID: -7511558181221131132, guid: 012b1eefd3b124b41b3fac372268bb7b, type: 3}
-  m_PrefabInstance: {fileID: 7593766298102581825}
   m_PrefabAsset: {fileID: 0}

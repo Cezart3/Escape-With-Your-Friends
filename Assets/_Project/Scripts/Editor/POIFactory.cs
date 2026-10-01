@@ -249,7 +249,7 @@ namespace EscapeWithYourFriends.EditorTools
             {
                 WantedHeight = 6f, MinHeight = 2f, MaxHeight = 20f, Reference = camp,
                 MinFromReference = 90f, MaxFromReference = 210f,
-                FlatWeight = 0.7f, Separation = 60f, FootprintRadius = 10f
+                FlatWeight = 0.7f, Separation = 60f, FootprintRadius = 14f
             }, "casino");
 
             float casinoFacing = Facing(casino, camp);
@@ -367,8 +367,12 @@ namespace EscapeWithYourFriends.EditorTools
                 Entry("shop.counter", ShopFactory.CounterPath, shop + Offset(shopFacing, 5f),
                       shopFacing + 180f, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
 
+                // #254's building: the floor at the front, the VIP room behind glass at the back. Every
+                // casino entry below is in its local frame - Offset(casinoFacing, z) toward the door,
+                // Offset(casinoFacing + 90f, x) to the right - and exact, so the numbers match
+                // GreyboxBuilder.BuildCasino to the centimetre.
                 Entry("casino", GreyboxDir + "/Casino.prefab", casino, casinoFacing,
-                      pad: 14f, falloff: 12f, raise: 0.4f, maxSlope: 0.3f),
+                      pad: 18f, falloff: 12f, raise: 0.4f, maxSlope: 0.3f),
 
                 // #63's cage. Two windows side by side on the way in, three metres apart so the
                 // crosshair picks one without ambiguity: chips on the left, cash on the right. They
@@ -376,43 +380,52 @@ namespace EscapeWithYourFriends.EditorTools
                 // resolves an interaction to the first IInteractable on a NetworkObject, and
                 // aiming is a thing players already know how to do.
                 Entry("casino.chips", CasinoFactory.BuyWindowPath,
-                      casino + Offset(casinoFacing, 7f) + Offset(casinoFacing + 90f, -1.6f),
+                      casino + Offset(casinoFacing, 12f) + Offset(casinoFacing + 90f, -1.6f),
                       casinoFacing + 180f, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
 
                 Entry("casino.cash", CasinoFactory.CashWindowPath,
-                      casino + Offset(casinoFacing, 7f) + Offset(casinoFacing + 90f, 1.6f),
+                      casino + Offset(casinoFacing, 12f) + Offset(casinoFacing + 90f, 1.6f),
                       casinoFacing + 180f, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
 
                 // The table, inside the shell. #65 builds the room around it.
-                Entry("casino.table", CasinoFactory.TablePath, casino, casinoFacing + 180f,
-                      pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f),
+                Entry("casino.table", CasinoFactory.TablePath, casino + Offset(casinoFacing, 3f), casinoFacing + 180f,
+                      pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f, exact: true),
 
                 // #66's barman, in the gap the greybox leaves between the bar and the back wall, at
                 // the room's own BarNpcStand. Placed exactly rather than on the metre grid every
                 // other entry uses: that gap is 40cm, and half a metre of rounding puts him inside
                 // a wall.
                 Entry("casino.bar", CasinoFactory.BarmanPath,
-                      casino + Offset(casinoFacing, -3.62f) + Offset(casinoFacing + 90f, -2.6f),
+                      casino + Offset(casinoFacing, -2.05f) + Offset(casinoFacing + 90f, -6.5f),
                       casinoFacing, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f, exact: true),
 
-                // The three slot cabinets, backs to the back wall right of the crate of bottles,
-                // facing the door. Exact for the barman's reason: the gap to the wall is under 10cm.
+                // The floor's slots, backs to the right wall, facing into the room. The gap to the wall
+                // is under 10cm.
                 Entry("casino.slots.sevens", SlotFactory.SevensPath,
-                      casino + Offset(casinoFacing, -3.45f) + Offset(casinoFacing + 90f, 1.1f),
-                      casinoFacing, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f, exact: true),
+                      casino + Offset(casinoFacing, 1f) + Offset(casinoFacing + 90f, 9.45f),
+                      casinoFacing - 90f, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f, exact: true),
 
+                Entry("casino.slots.fruit", SlotFactory.FruitPath,
+                      casino + Offset(casinoFacing, 2.3f) + Offset(casinoFacing + 90f, 9.45f),
+                      casinoFacing - 90f, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f, exact: true),
+
+                // The VIP room's: backs to the back wall, facing the glass.
                 Entry("casino.slots.volcano", SlotFactory.VolcanoPath,
-                      casino + Offset(casinoFacing, -3.45f) + Offset(casinoFacing + 90f, 2.2f),
+                      casino + Offset(casinoFacing, -9.45f) + Offset(casinoFacing + 90f, -1.2f),
                       casinoFacing, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f, exact: true),
 
                 Entry("casino.slots.reef", SlotFactory.ReefPath,
-                      casino + Offset(casinoFacing, -3.45f) + Offset(casinoFacing + 90f, 3.3f),
+                      casino + Offset(casinoFacing, -9.45f) + Offset(casinoFacing + 90f, 1.2f),
+                      casinoFacing, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f, exact: true),
+
+                // The door between them, in the gap the partition leaves for it, its front to the floor.
+                Entry("casino.vip.door", CasinoFactory.VipDoorPath, casino + Offset(casinoFacing, -2.5f),
                       casinoFacing, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f, exact: true),
 
                 // The blackjack table along the left wall, dealer's side to the wall and the four
                 // seats facing the roulette table. Exact: the walkway between the two is under a metre.
                 Entry("casino.blackjack", BlackjackFactory.TablePath,
-                      casino + Offset(casinoFacing, -0.5f) + Offset(casinoFacing + 90f, -3.35f),
+                      casino + Offset(casinoFacing, 3f) + Offset(casinoFacing + 90f, -8.95f),
                       casinoFacing + 90f, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f, exact: true),
 
                 Entry("village", GreyboxDir + "/NativeVillage.prefab", village, villageFacing,
