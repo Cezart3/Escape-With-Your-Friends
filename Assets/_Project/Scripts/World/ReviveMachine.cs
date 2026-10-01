@@ -210,7 +210,10 @@ namespace EscapeWithYourFriends.World
             // Deaths is already incremented by the time a corpse is lying here, so the first death
             // costs exactly the base price.
             int previous = Mathf.Max(0, body.Deaths - 1);
-            return _baseCost + _costPerDeath * previous;
+
+            // Scaled with the stage, as drops are: at stage 3 a flat 250 would be pocket change.
+            float stage = Economy.GameStage.Multiplier(Economy.GameStage.Stage);
+            return Mathf.RoundToInt((_baseCost + _costPerDeath * previous) * stage);
         }
 
         /// <summary>
