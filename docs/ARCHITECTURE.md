@@ -8919,6 +8919,104 @@ VSync off and the 144 cap. It then clears every key.
 **Not added:** particle and water quality options. Nothing reads them yet; they arrive with #251 and
 #247.
 
+## The perf route and beauty shots (#239)
+
+`World/LookRoute.cs` is the look epic's instrument: one fixed route of camera spots round the
+island, flown by a camera of its own. Hooked in `NetworkBootstrap` beside `ShotTest`. It needs a
+window (no `-nographics`) and a host, so it is not a headless harness. It measures and shoots, and a
+person reads the result.
+
+- **The route.** Spawn beach, wreck, jungle by the cave, village, trader, the casino floor, the
+  slot row with every cabinet spinning, the island's highest point looking at its middle, and the
+  plane. Each spot comes off a `Landmark`, so a moved POI moves its spot. A missing landmark is
+  logged and skipped, so Island2 still runs a shorter route.
+- **`-perfRoute <file.md>`** holds each spot 1.5 s to settle, then 5 s, with VSync and the cap off
+  and the clock frozen at noon. It appends one markdown table: p50, p95 and worst frame time, then
+  batches, SetPass calls, triangles and shadow casters off the render `ProfilerRecorder` counters.
+  The counters exist in development builds only. `-commit <hash>` is written into the header,
+  because a build has no git.
+- **`-beautyShots <folder>`** shoots every spot at noon, dusk and night, at the monitor's native
+  resolution, into `<folder>/<preset>`. The 1280x720 playthrough shots looked pixelated fullscreen;
+  that was the capture size, not the game.
+- **The camera.** A copy of the player's camera, tagged `MainCamera` so whatever follows the camera
+  follows it. The player's camera is switched off, so the numbers are one camera's. Canvases are
+  hidden so the shots are the world. Every slot machine is spun from the host's wallet, topped up
+  for it, because that is the casino's worst case.
+- **Two things fight the camera.** `PlayerCameraRig` puts a live `CinemachineBrain` on whatever
+  `Camera.main` is, every frame, and a brain flies its camera to the player's eye; the route camera
+  carries a disabled one so the rig leaves it alone. The first-person gun hangs off `Camera.main`
+  too; the host's `CharacterSkin.ForceCarry` puts it away. Story beats stay quiet while a route
+  runs (`LookRoute.Running`), or the title card lands in a shot.
+- **`tools/perf-route.sh`** runs the route on every tier on both GPUs of the dev laptop: Medium,
+  High and Ultra on the RTX 4060, and Low, Medium and High on the Radeon 760M, the min-spec proxy.
+  It appends to `docs/PERF.md`. The iGPU run uses a copy of the build pinned to the power-saving GPU
+  by a per-exe Windows GPU preference. A run whose log does not name the GPU it was meant for is
+  failed, since Windows ignores the preference silently.
+- **`-quality High` means the preset.** It used to pick Unity level 3, named "High", which is the
+  Medium preset's URP asset. `GraphicsBoot.ByName` tries the preset names first.
+
+**Baseline** (commit 9d12636, before the look pass): every tier meets its target. The 4060 is
+CPU-bound at about 4 ms on Low and Medium. High's cost is batches and triangles at range: the
+overlook and the plane draw 8 500-10 700 batches and 19-20 M triangles against Medium's 2 100 and
+4.5 M. A look PR that makes Medium on the 760M worse by more than 1 ms at p95 says why.
+
+The baseline shots show two things for later passes. From the overlook at dusk the sea is a flat
+square with a hard edge and black beyond it (#247). The slot cabinets are flat colour with no glow,
+lit or not (#252).
+
+## Wind and ambient life (#244)
+
+A world where nothing moves reads as dead. This is the cheapest fix: vertex maths in the shader
+everything already wears, and three particle systems round the camera.
+
+- **`EWYF/Stylized` sways behind a `_WIND` keyword** (`shader_feature_local_vertex`, so materials
+  without it pay nothing). `ApplyWind` works in world space and runs in all four passes, so the
+  shadow and the depth follow the leaf. The mask is height above the model's own pivot: the foot of
+  a trunk stays put and the crown moves most, with no vertex colours painted. The bend grows with
+  the square of that height, times the material's `_WindSway`. The phase comes from where the tree
+  stands, so a grove does not sway in step. Leaf flutter (`_WindFlutter`) is a fast small wobble on
+  top.
+- **`World/Wind.cs`** sets the one wind as globals every frame. `_WindParams` packs direction xy,
+  strength z and gust w, and `_WindDetail` turns flutter off when the grass option is at its lowest.
+  The direction wanders 30 degrees either side of north-east over minutes. Gusts are slow noise,
+  squared, so most of the time is calm and a gust is an event. `Wind.Strength` is the knob a storm
+  turns. Nothing is networked: nobody can tell two palms on two screens apart.
+- **Only flora sways, through "_Wind" twins.** The kits share materials across categories: the pirate
+  atlas dresses both the palms and the wreck, and a wreck that bent in the wind would be a ghost
+  ship. So `ArtLibrary.EnsureFloraPrefab` swaps every Tree and Plant renderer onto a copy of its
+  material, `StyleLook.WindTwin`, saved next to the original with "_Wind" on its name. `StyleLook.Wear`
+  turns the keyword on for those and off for everything else. Trees bend at sway 1. Plants are
+  short, so they get sway 8. Leaves and flowers flutter fully, bark and palm trunks at 0.4.
+  `FloraFactory.Bake` regenerates the twins and the prototypes. The twins add seven materials: the
+  island has 38, against a budget of 48.
+- **Terrain trees and their far LOD** wear the same twins, so they sway with no other work. The
+  terrain's grass already waves through the terrain's own grass settings (`TerrainGenerator`); the
+  grass pass, #246, owns that.
+- **`World/AmbientLife.cs`** keeps three particle systems in boxes round `Camera.main`, so their cost
+  does not grow with the island:
+  - Leaves fall under canopy.
+  - Sand blows along the beach, within two metres of the tide line, only in a gust.
+  - Fireflies come out under trees at night.
+
+  How much canopy is overhead comes from the terrain's tree list, binned once per scene into 10 m
+  cells. The amount follows the grass option: 25% on Low, 60% on Medium, all of it above. Each
+  particle is a soft dot generated at start; without a texture the particle shader draws white
+  squares. The fireflies' material colour is over-bright, so bloom puts a halo on them.
+- **Not done:** butterflies, which want a mesh and a flight path rather than a particle, and gulls,
+  which the shore already has as animals.
+
+**Harness.** `-lookTest` checks the materials, since wind and particles only exist with a GPU. Every
+Tree and Plant terrain prototype must wear `_WIND`, and no renderer outside a Tree or Plant
+`ArtVisual` may. The second check is the ghost ship. 14 passed.
+
+**Cost** (`tools/perf-route.sh`, against the #239 baseline): on Medium on the 760M, the mean change in
+p95 across the route is -0.1 ms and the worst spot is +0.1 ms, against a target of +0.5 ms. On High
+on the 4060, the plane's p95 is 6.8 ms against the 7.1 ms target. Only the CPU-bound 4060 at Medium
+shows the particles, at about +0.3 ms.
+
+**The user's eye:** a 10 s clip at the jungle edge should show motion everywhere. Strength, sway
+amounts and particle rates are first guesses.
+
 ---
 
 ## Data-driven content

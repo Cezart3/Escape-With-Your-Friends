@@ -166,6 +166,14 @@ PrefabInstance:
       propertyPath: m_ReceiveShadows
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: c700cb5722b20f44fb72caca29066881, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 27ab65b40a764084bb22f2437ca11aae, type: 2}
+    - target: {fileID: -7511558181221131132, guid: c700cb5722b20f44fb72caca29066881, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: fd47fe81a14d8224b943f3db38fae057, type: 2}
     - target: {fileID: 919132149155446097, guid: c700cb5722b20f44fb72caca29066881, type: 3}
       propertyPath: m_Name
       value: BroadleafSmall_LOD1
@@ -245,6 +253,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: c700cb5722b20f44fb72caca29066881, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 27ab65b40a764084bb22f2437ca11aae, type: 2}
+    - target: {fileID: -7511558181221131132, guid: c700cb5722b20f44fb72caca29066881, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: fd47fe81a14d8224b943f3db38fae057, type: 2}
     - target: {fileID: 919132149155446097, guid: c700cb5722b20f44fb72caca29066881, type: 3}
       propertyPath: m_Name
       value: BroadleafSmall_LOD0

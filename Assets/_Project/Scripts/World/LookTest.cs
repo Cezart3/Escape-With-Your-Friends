@@ -75,6 +75,7 @@ namespace EscapeWithYourFriends.World
             var materials = new HashSet<Material>();
             var blank = new List<string>();
             var broken = new List<string>();
+            var ghosts = new List<string>();
             var worn_by = new Dictionary<Material, int>();
 
             foreach (Renderer renderer in renderers)
@@ -104,8 +105,17 @@ namespace EscapeWithYourFriends.World
 
                     if (renderer is MeshRenderer)
                         worn_by[material] = worn_by.TryGetValue(material, out int seen) ? seen + 1 : 1;
+
+                    // Only flora sways (#244). The kits share materials across categories, and a wreck
+                    // bending in the wind would be a ghost ship.
+                    var art = renderer.GetComponentInParent<ArtVisual>();
+                    if (material.IsKeywordEnabled("_WIND")
+                        && (art == null || (art.Category != ArtCategory.Tree && art.Category != ArtCategory.Plant)))
+                        ghosts.Add($"{renderer.name}:{material.name}");
                 }
             }
+
+            Check($"only trees and plants sway ({string.Join(", ", ghosts.Take(5))})", ghosts.Count == 0);
 
             // The terrain draws its trees without a Renderer anywhere, so a forest of stray materials
             // used to be invisible to the loop above. Its prototypes are prefabs; read them directly.
@@ -182,6 +192,7 @@ namespace EscapeWithYourFriends.World
             var unmarked = new List<string>();
             var heavy = new List<string>();
             var lying = new List<string>();
+            var still = new List<string>();
             int prototypes = 0;
 
             foreach (Terrain terrain in terrains)
@@ -200,6 +211,9 @@ namespace EscapeWithYourFriends.World
                         materials.Add(material);
                         if (material.shader == null || material.shader.name.Contains("InternalErrorShader"))
                             broken.Add($"{prefab.name}:{material.name}");
+                        var kind = prefab.GetComponent<ArtVisual>();
+                        bool flora = kind != null && (kind.Category == ArtCategory.Tree || kind.Category == ArtCategory.Plant);
+                        if (flora && !material.IsKeywordEnabled("_WIND")) still.Add($"{prefab.name}:{material.name}");
                     }
 
                     var visual = prefab.GetComponent<ArtVisual>();
@@ -235,6 +249,7 @@ namespace EscapeWithYourFriends.World
                   unmarked.Count == 0);
             Check($"no tree is over its triangle cap ({string.Join(", ", heavy.Take(5))})", heavy.Count == 0);
             Check($"and every tree is standing up ({string.Join(", ", lying.Take(5))})", lying.Count == 0);
+            Check($"and every tree and plant among them sways in the wind ({string.Join(", ", still.Take(5))})", still.Count == 0);
         }
 
         /// <summary>

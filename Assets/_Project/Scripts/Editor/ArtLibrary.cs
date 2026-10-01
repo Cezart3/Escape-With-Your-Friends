@@ -107,6 +107,26 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
+        /// Puts a tree or a plant on the swaying copies of its materials (#244). Leaves flutter on top
+        /// of the sway; bark and the palms' atlas only bend. A plant is short, so it bends harder per
+        /// metre to move at all - the shader's bend grows with the square of the height.
+        /// </summary>
+        static void Sway(Renderer renderer, ArtCategory category)
+        {
+            if (category != ArtCategory.Tree && category != ArtCategory.Plant) return;
+
+            Material[] materials = renderer.sharedMaterials;
+            for (int i = 0; i < materials.Length; i++)
+            {
+                if (materials[i] == null) continue;
+                bool leaves = materials[i].name.Contains("Leaves") || materials[i].name.Contains("Flowers");
+                float sway = category == ArtCategory.Plant ? 8f : 1f;
+                materials[i] = StyleLook.WindTwin(materials[i], sway, leaves ? 1f : 0.4f);
+            }
+            renderer.sharedMaterials = materials;
+        }
+
+        /// <summary>
         /// A terrain tree prototype: the model at its catalogue size, in a two-level LOD group, with
         /// its collider. Rebuilt on every call and saved over the same path, which keeps the GUID the
         /// terrain holds - so a size changed in the catalogue reaches the island on the next bake
@@ -149,6 +169,8 @@ namespace EscapeWithYourFriends.EditorTools
 
                 foreach (Renderer worn in renderers)
                 {
+                    Sway(worn, model.Category);
+
                     // The far level is the near level minus its shadow. What costs money on a weak GPU
                     // is fifteen thousand plants each drawing into the shadow map, not their triangles.
                     worn.shadowCastingMode = detail == 0 ? ShadowCastingMode.On : ShadowCastingMode.Off;
