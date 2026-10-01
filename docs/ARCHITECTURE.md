@@ -8964,6 +8964,59 @@ The baseline shots show two things for later passes. From the overlook at dusk t
 square with a hard edge and black beyond it (#247). The slot cabinets are flat colour with no glow,
 lit or not (#252).
 
+## Wind and ambient life (#244)
+
+A world where nothing moves reads as dead. This is the cheapest fix: vertex maths in the shader
+everything already wears, and three particle systems round the camera.
+
+- **`EWYF/Stylized` sways behind a `_WIND` keyword** (`shader_feature_local_vertex`, so materials
+  without it pay nothing). `ApplyWind` works in world space and runs in all four passes, so the
+  shadow and the depth follow the leaf. The mask is height above the model's own pivot: the foot of
+  a trunk stays put and the crown moves most, with no vertex colours painted. The bend grows with
+  the square of that height, times the material's `_WindSway`. The phase comes from where the tree
+  stands, so a grove does not sway in step. Leaf flutter (`_WindFlutter`) is a fast small wobble on
+  top.
+- **`World/Wind.cs`** sets the one wind as globals every frame. `_WindParams` packs direction xy,
+  strength z and gust w, and `_WindDetail` turns flutter off when the grass option is at its lowest.
+  The direction wanders 30 degrees either side of north-east over minutes. Gusts are slow noise,
+  squared, so most of the time is calm and a gust is an event. `Wind.Strength` is the knob a storm
+  turns. Nothing is networked: nobody can tell two palms on two screens apart.
+- **Only flora sways, through "_Wind" twins.** The kits share materials across categories: the pirate
+  atlas dresses both the palms and the wreck, and a wreck that bent in the wind would be a ghost
+  ship. So `ArtLibrary.EnsureFloraPrefab` swaps every Tree and Plant renderer onto a copy of its
+  material, `StyleLook.WindTwin`, saved next to the original with "_Wind" on its name. `StyleLook.Wear`
+  turns the keyword on for those and off for everything else. Trees bend at sway 1. Plants are
+  short, so they get sway 8. Leaves and flowers flutter fully, bark and palm trunks at 0.4.
+  `FloraFactory.Bake` regenerates the twins and the prototypes. The twins add seven materials: the
+  island has 38, against a budget of 48.
+- **Terrain trees and their far LOD** wear the same twins, so they sway with no other work. The
+  terrain's grass already waves through the terrain's own grass settings (`TerrainGenerator`); the
+  grass pass, #246, owns that.
+- **`World/AmbientLife.cs`** keeps three particle systems in boxes round `Camera.main`, so their cost
+  does not grow with the island:
+  - Leaves fall under canopy.
+  - Sand blows along the beach, within two metres of the tide line, only in a gust.
+  - Fireflies come out under trees at night.
+
+  How much canopy is overhead comes from the terrain's tree list, binned once per scene into 10 m
+  cells. The amount follows the grass option: 25% on Low, 60% on Medium, all of it above. Each
+  particle is a soft dot generated at start; without a texture the particle shader draws white
+  squares. The fireflies' material colour is over-bright, so bloom puts a halo on them.
+- **Not done:** butterflies, which want a mesh and a flight path rather than a particle, and gulls,
+  which the shore already has as animals.
+
+**Harness.** `-lookTest` checks the materials, since wind and particles only exist with a GPU. Every
+Tree and Plant terrain prototype must wear `_WIND`, and no renderer outside a Tree or Plant
+`ArtVisual` may. The second check is the ghost ship. 14 passed.
+
+**Cost** (`tools/perf-route.sh`, against the #239 baseline): on Medium on the 760M, the mean change in
+p95 across the route is -0.1 ms and the worst spot is +0.1 ms, against a target of +0.5 ms. On High
+on the 4060, the plane's p95 is 6.8 ms against the 7.1 ms target. Only the CPU-bound 4060 at Medium
+shows the particles, at about +0.3 ms.
+
+**The user's eye:** a 10 s clip at the jungle edge should show motion everywhere. Strength, sway
+amounts and particle rates are first guesses.
+
 ---
 
 ## Data-driven content
