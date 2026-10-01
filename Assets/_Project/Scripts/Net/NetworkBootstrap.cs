@@ -320,6 +320,7 @@ namespace EscapeWithYourFriends.Net
             Economy.GunsmithTest.Begin();
             Economy.StageTest.Begin();
             Casino.CasinoDaysTest.Begin();
+            Casino.CasinoFloorTest.Begin();
             AI.AnimalTest.Begin();
             World.TreeTest.Begin();
             Core.QualityTest.Begin();

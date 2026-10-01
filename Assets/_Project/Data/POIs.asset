@@ -103,19 +103,19 @@ MonoBehaviour:
     AllowUnderwater: 0
   - Id: casino
     PrefabPath: Assets/_Project/Prefabs/World/Casino.prefab
-    Position: {x: -270, y: -74}
-    Yaw: 82
+    Position: {x: -242, y: -28}
+    Yaw: 97
     YOffset: 0
     SnapToGround: 1
-    PadRadius: 14
+    PadRadius: 18
     PadFalloff: 12
     PadRaise: 0.4
     MaxSlope: 0.3
     AllowUnderwater: 0
   - Id: casino.chips
     PrefabPath: Assets/_Project/Prefabs/Stations/ChipWindow.prefab
-    Position: {x: -263, y: -71}
-    Yaw: 262
+    Position: {x: -230, y: -28}
+    Yaw: 277
     YOffset: 0
     SnapToGround: 1
     PadRadius: 0
@@ -125,8 +125,8 @@ MonoBehaviour:
     AllowUnderwater: 0
   - Id: casino.cash
     PrefabPath: Assets/_Project/Prefabs/Stations/CashWindow.prefab
-    Position: {x: -263, y: -75}
-    Yaw: 262
+    Position: {x: -230, y: -31}
+    Yaw: 277
     YOffset: 0
     SnapToGround: 1
     PadRadius: 0
@@ -136,8 +136,8 @@ MonoBehaviour:
     AllowUnderwater: 0
   - Id: casino.table
     PrefabPath: Assets/_Project/Prefabs/Stations/RouletteTable.prefab
-    Position: {x: -270, y: -74}
-    Yaw: 262
+    Position: {x: -239.02145, y: -28.35818}
+    Yaw: 277
     YOffset: 0
     SnapToGround: 1
     PadRadius: 0
@@ -147,8 +147,8 @@ MonoBehaviour:
     AllowUnderwater: 0
   - Id: casino.bar
     PrefabPath: Assets/_Project/Prefabs/Stations/Barman.prefab
-    Position: {x: -273.95596, y: -71.94701}
-    Yaw: 82
+    Position: {x: -243.25928, y: -21.301739}
+    Yaw: 97
     YOffset: 0
     SnapToGround: 1
     PadRadius: 0
@@ -158,8 +158,19 @@ MonoBehaviour:
     AllowUnderwater: 0
   - Id: casino.slots.sevens
     PrefabPath: Assets/_Project/Prefabs/Stations/SlotSevens.prefab
-    Position: {x: -273.2562, y: -75.584206}
-    Yaw: 82
+    Position: {x: -242.13542, y: -37.501797}
+    Yaw: 7
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 0
+    PadFalloff: 0
+    PadRaise: 0
+    MaxSlope: 0.3
+    AllowUnderwater: 0
+  - Id: casino.slots.fruit
+    PrefabPath: Assets/_Project/Prefabs/Stations/SlotFruit.prefab
+    Position: {x: -240.84471, y: -37.65701}
+    Yaw: 7
     YOffset: 0
     SnapToGround: 1
     PadRadius: 0
@@ -169,8 +180,8 @@ MonoBehaviour:
     AllowUnderwater: 0
   - Id: casino.slots.volcano
     PrefabPath: Assets/_Project/Prefabs/Stations/SlotVolcano.prefab
-    Position: {x: -273.09818, y: -76.67279}
-    Yaw: 82
+    Position: {x: -251.23914, y: -25.68032}
+    Yaw: 97
     YOffset: 0
     SnapToGround: 1
     PadRadius: 0
@@ -180,8 +191,19 @@ MonoBehaviour:
     AllowUnderwater: 0
   - Id: casino.slots.reef
     PrefabPath: Assets/_Project/Prefabs/Stations/SlotReef.prefab
-    Position: {x: -272.94016, y: -77.76138}
-    Yaw: 82
+    Position: {x: -251.52567, y: -28.063152}
+    Yaw: 97
+    YOffset: 0
+    SnapToGround: 1
+    PadRadius: 0
+    PadFalloff: 0
+    PadRaise: 0
+    MaxSlope: 0.3
+    AllowUnderwater: 0
+  - Id: casino.vip.door
+    PrefabPath: Assets/_Project/Prefabs/Stations/VipDoor.prefab
+    Position: {x: -244.48212, y: -27.701517}
+    Yaw: 97
     YOffset: 0
     SnapToGround: 1
     PadRadius: 0
@@ -191,8 +213,8 @@ MonoBehaviour:
     AllowUnderwater: 0
   - Id: casino.blackjack
     PrefabPath: Assets/_Project/Prefabs/Stations/BlackjackTable.prefab
-    Position: {x: -270.97604, y: -70.75658}
-    Yaw: 172
+    Position: {x: -237.95288, y: -19.472198}
+    Yaw: 187
     YOffset: 0
     SnapToGround: 1
     PadRadius: 0
@@ -279,8 +301,8 @@ MonoBehaviour:
     AllowUnderwater: 1
   - Id: plane
     PrefabPath: Assets/_Project/Prefabs/Plane.prefab
-    Position: {x: -214, y: -47}
-    Yaw: 270
+    Position: {x: -261, y: -74}
+    Yaw: 261
     YOffset: 0
     SnapToGround: 1
     PadRadius: 30

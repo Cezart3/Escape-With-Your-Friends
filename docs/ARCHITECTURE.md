@@ -8666,6 +8666,73 @@ There are also behaviour checks read off the pictures of 2,000 bought features:
 `-casinoDaysTest` is 18 checks. It now finds the last opening day from the enum, so it no longer
 hard-codes the number of games.
 
+## The big casino and the VIP room (#254)
+
+The shack is gone. The casino is now one 20 x 19 m building in two rooms, with every game in it.
+
+```
+ z  9  ┌──────────── front wall, 3 m doorway ────────────┐
+       │  blackjack        roulette          Sevens      │   the floor
+       │  (x -9)           (0, 3)            Fruit (x 9) │
+ z -2.5├── bar ──── glass ─ VIP DOOR ─ glass ────────────┤   the partition
+       │                                                 │   the VIP room
+ z -10 └─────────── Volcano (x -1.2)  Reef (x 1.2) ──────┘
+```
+
+- **The floor** (z -2.5 to 9) holds roulette, blackjack, Coconut Sevens, Fruit Tumble, the bar and
+  the two cage windows.
+- **The VIP room** (z -10 to -2.5) holds Wrath of the Volcano and Reef Rush. Lagoon Catch (#257)
+  will go there too.
+- **The partition** is solid at its ends and glass either side of the door. A player who cannot
+  afford the VIP games yet can always see them. The glass is a collider with nothing drawn: only its
+  frame says there is a pane.
+
+`GreyboxBuilder.BuildCasino` builds the room and `POIFactory` places each game. Both work from the
+same numbers, and `CasinoTest` and `CasinoFloorTest` check that they still agree.
+
+### The VIP door
+
+`VipDoor` is a `NetworkBehaviour` and an `IInteractable`. It does not open. A door that opened for
+one player would let in whoever stood behind them, so it teleports instead:
+
+| Where you press it | What happens |
+|---|---|
+| On the floor, holding at least `Minimum` chips | You land 1.4 m inside the VIP room |
+| On the floor, below the minimum | Nothing. The prompt says "VIP: hold 11,200 chips to enter (you have 9,800)" |
+| In the VIP room | You land back on the floor, whatever you hold |
+
+- `Minimum` is `CasinoDays.Scaled(5000)`. It grows with the day like every other stake: 5,000 on
+  day 1, 11,200 on day 3.
+- The chips are checked only at the door. Losing them inside does not throw anyone out.
+- "Inside" means behind the door's front plane.
+
+### Playtesting: `-casinoAll`
+
+`-casinoAll` sets `CasinoDays.AllOpen`. Every game opens on day 1 and the VIP door is free, so
+every gambling mechanic can be reached in a fresh game without grinding days.
+
+### Deferred
+
+The issue asked for high-limit VIP roulette and blackjack tables. They are not in this change.
+`CasinoTest`, `BlackjackTest` and others find "the" table with `FindObjectsByType(...).First`, so a
+second table needs those tests reworked first.
+
+### Harness
+
+`-casinoFloorTest` runs solo on `-scene island` and makes 36 checks:
+- every game exists: each `SlotKind` cabinet, the roulette, the blackjack table and both cage windows;
+- each game is inside the building, on the side of the glass it belongs to;
+- each game can be reached: a clear line runs from 1.3 m in front of it to the middle of its room;
+- the VIP minimum is 5,000 on day 1 and grows with the days;
+- one chip short, the door refuses, prompts with the minimum, and leaves the player on the floor;
+- at the minimum, the door lets the player in;
+- broke and inside, the player can still leave;
+- `-casinoAll` makes the door free and opens every game on day 1.
+
+Two older checks assumed the shack:
+- `SlotTest` now expects one cabinet for each `SlotKind`, not three;
+- `DrunkTest` lets the barman stand up to 10 m from the table, not 6. The bar is now 8 m away.
+
 ---
 
 ## Data-driven content

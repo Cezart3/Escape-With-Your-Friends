@@ -33,6 +33,7 @@ namespace EscapeWithYourFriends.EditorTools
         internal const string CashWindowPath = PrefabDir + "/CashWindow.prefab";
         internal const string TablePath = PrefabDir + "/RouletteTable.prefab";
         internal const string BarmanPath = PrefabDir + "/Barman.prefab";
+        internal const string VipDoorPath = PrefabDir + "/VipDoor.prefab";
 
         const string BarShopPath = "Assets/_Project/Data/Bar.asset";
         const string ItemFolder = "Assets/_Project/Data/Items";
@@ -68,6 +69,7 @@ namespace EscapeWithYourFriends.EditorTools
                     "Counter", "Top"));
 
             if (Barman(EnsureBar())) built++;
+            if (Door()) built++;
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -111,6 +113,37 @@ namespace EscapeWithYourFriends.EditorTools
             RegisterSpawnable(saved.GetComponent<NetworkObject>(), path);
             Debug.Log($"[CasinoFactory] Built {path} ({direction}).");
 
+            return true;
+        }
+
+        /// <summary>
+        /// The VIP room's door (#254): a gold slab you press, never one that opens. See
+        /// <see cref="VipDoor"/>. Rebuilt every run, like the slot cabinets: nothing on it is dressed
+        /// by hand, and the POI places it by path.
+        /// </summary>
+        static bool Door()
+        {
+            Directory.CreateDirectory(PrefabDir);
+
+            var root = new GameObject("VipDoor");
+            Block(root.transform, "Slab", new Vector3(0f, 1.2f, 0f), new Vector3(1.6f, 2.4f, 0.15f),
+                  new Color(0.85f, 0.70f, 0.25f), solid: true);
+            Block(root.transform, "Sign", new Vector3(0f, 2.75f, 0.1f), new Vector3(1.2f, 0.35f, 0.06f),
+                  new Color(0.55f, 0.12f, 0.30f), solid: false);
+
+            root.AddComponent<NetworkObject>();
+            root.AddComponent<VipDoor>();
+
+            GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, VipDoorPath, out bool success);
+            Object.DestroyImmediate(root);
+
+            if (!success || saved == null)
+            {
+                Debug.LogError($"[CasinoFactory] Failed to save {VipDoorPath}.");
+                return false;
+            }
+
+            RegisterSpawnable(saved.GetComponent<NetworkObject>(), VipDoorPath);
             return true;
         }
 
