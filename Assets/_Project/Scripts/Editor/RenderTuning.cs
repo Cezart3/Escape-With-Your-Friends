@@ -11,6 +11,11 @@ namespace EscapeWithYourFriends.EditorTools
     /// The three URP assets, tuned for the three machines this game expects to meet, plus the check
     /// that the world's draw distance and its fog still agree with each other.
     ///
+    /// Since #241 these are the floors, not the final word: what cannot change at run time (HDR,
+    /// soft shadows, the extra lights, which SSAO the renderer carries). Render scale, MSAA, the
+    /// shadow map and whether SSAO runs are written over them by VideoSettings from the player's
+    /// preset, before the first frame.
+    ///
     /// Written as a batchmode command rather than done by hand in the inspector for the usual reason:
     /// a renderer setting somebody clicked once is a setting nobody can review. Every number below is
     /// in a diff, next to the sentence explaining it.
@@ -58,6 +63,10 @@ namespace EscapeWithYourFriends.EditorTools
                 Path = LowPath, Hdr = false, Msaa = 1, RenderScale = 1f,
                 ShadowResolution = 512, ShadowDistance = 35f, Cascades = 1,
                 SoftShadows = false, ExtraLightShadows = false, LightsPerObject = 2,
+
+                // The cheap SSAO, which the Low preset switches off at run time. It is here so the
+                // AO option has something to switch on for a player who wants it.
+                Occlusion = 1,
             },
 
             // A laptop with a real GPU, an older desktop card, or the Radeon 760M when its owner asks
@@ -77,10 +86,11 @@ namespace EscapeWithYourFriends.EditorTools
             },
 
             // Anything current. The shadow distance is 150 rather than more because the fog closes at
-            // about 700 metres and shadows past that are invisible by definition.
+            // about 700 metres and shadows past that are invisible by definition. No MSAA: High's
+            // preset is SMAA alone, and Ultra, which shares this asset, asks for 4x at run time.
             new()
             {
-                Path = HighPath, Hdr = true, Msaa = 2, RenderScale = 1f,
+                Path = HighPath, Hdr = true, Msaa = 1, RenderScale = 1f,
                 ShadowResolution = 2048, ShadowDistance = 150f, Cascades = 4,
                 SoftShadows = true, ExtraLightShadows = true, LightsPerObject = 8, Occlusion = 2,
             },

@@ -69,6 +69,7 @@ namespace EscapeWithYourFriends.Net
 
             _manager.ServerManager.OnServerConnectionState += OnServerConnectionState;
             _manager.ClientManager.OnClientConnectionState += OnClientConnectionState;
+            Core.VideoSettings.TakeFrameRate(_manager);
 
             // Once, here, rather than per body: an unlock is addressed to a connection. #92.
             _manager.ClientManager.RegisterBroadcast<AchievementUnlock>(Achievements.OnUnlock);

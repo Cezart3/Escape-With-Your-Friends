@@ -22,7 +22,8 @@ namespace EscapeWithYourFriends.Core
         public const string PreferenceKey = "ewyf.quality";
 
         // Unity's six built-in levels, mapped onto the three URP assets in Assets/_Project/Settings:
-        // 0-1 use URP_Low, 2-3 URP_Medium, 4-5 URP_High. These are the three worth choosing between.
+        // 0-1 use URP_Low, 2-3 URP_Medium, 4-5 URP_High. The guess picks one of these three; Ultra
+        // (5) is only ever the player's choice - see VideoSettings.
         const int Low = 1;
         const int Medium = 2;
         const int High = 4;
@@ -33,9 +34,9 @@ namespace EscapeWithYourFriends.Core
             int chosen = Choose(out string why, out bool asked);
 
             // A headless build renders nothing, so guessing at a level there only makes the smoke-test
-            // logs harder to read. An explicit -quality still applies, because that is the only way to
-            // test this code path at all without a screen.
-            if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null && !asked)
+            // logs harder to read. An explicit -quality or a stored choice still applies, because
+            // that is the only way to test this code path at all without a screen.
+            if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null && !asked && !PlayerPrefs.HasKey(PreferenceKey))
             {
                 StartProbe();
                 return;
@@ -47,14 +48,13 @@ namespace EscapeWithYourFriends.Core
             // textures and shadow maps costs nothing anyone can see.
             QualitySettings.SetQualityLevel(chosen, applyExpensiveChanges: true);
 
-            // Every texture sharp at a glancing angle, which is how the ground is always seen. Most of
-            // ours import with aniso 1, so "per texture" meant none, and the beach smeared into a
-            // blur a few metres out. Costs next to nothing on anything Medium runs on.
-            if (chosen >= Medium) QualitySettings.anisotropicFiltering = AnisotropicFiltering.ForceEnable;
-
             Debug.Log($"[GraphicsBoot] Quality '{QualitySettings.names[chosen]}' ({chosen}) - {why}. "
                       + $"{SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize}MB video, "
                       + $"{SystemInfo.systemMemorySize}MB system, {SystemInfo.processorCount} cores.");
+
+            // The preset's values over the level's URP asset, and the frame cap. A forced level
+            // brings its own preset; otherwise whatever this machine stored, or the level's preset.
+            VideoSettings.Boot(forced: asked);
 
             StartProbe();
         }
@@ -114,7 +114,7 @@ namespace EscapeWithYourFriends.Core
         /// memory figure gets wrong: an iGPU reports a slice of system RAM, which can look like a
         /// respectable amount of video memory while being a fraction of the bandwidth.
         /// </summary>
-        static int Guess(out string why)
+        internal static int Guess(out string why)
         {
             string device = SystemInfo.graphicsDeviceName ?? "";
 

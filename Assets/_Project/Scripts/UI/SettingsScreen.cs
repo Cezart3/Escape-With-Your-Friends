@@ -19,15 +19,20 @@ namespace EscapeWithYourFriends.UI
     /// preference on the same line. An apply button is a second source of truth and a way to lose
     /// twenty minutes of somebody's rebinds to a misplaced click.
     ///
-    /// **One widget for three jobs.** Toggles, the quality cycler and the rebind rows are all
+    /// **One widget for three jobs.** Toggles, the graphics cyclers and the rebind rows are all
     /// <see cref="HudFactory.Button"/> with a caption that redraws itself. A toggle and a dropdown
     /// would be two more widgets to build out of uGUI primitives for no gain a player could name.
+    ///
+    /// **Graphics get the right-hand column** (#241): the preset first, then every option it is made
+    /// of. Any one of them changed turns the preset into "Custom", so after each click the whole
+    /// column redraws.
     /// </summary>
     public class SettingsScreen
     {
         const int RowHeight = 44;
         const int RowGap = 10;
-        const int PanelWidth = 720;
+        const int ColumnWidth = 720;
+        const int PanelWidth = ColumnWidth * 2;
         const int LabelWidth = 250;
 
         /// <summary>The actions offered for rebinding. Not all of them: these are the ones people ask about.</summary>
@@ -37,7 +42,8 @@ namespace EscapeWithYourFriends.UI
         RectTransform _root;
         RectTransform _rows;
 
-        Text _quality;
+        readonly System.Collections.Generic.List<(Text text, System.Func<string> shown)> _video = new();
+        int _column;
         Text _resolution;
         Text _fullscreen;
         Text _colourblind;
@@ -82,7 +88,7 @@ namespace EscapeWithYourFriends.UI
 
             Image panel = HudFactory.Block(_root, "Panel", new Color(0.10f, 0.11f, 0.14f, 0.97f));
             HudFactory.Anchor(panel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                              Vector2.zero, new Vector2(PanelWidth, 760f));
+                              Vector2.zero, new Vector2(PanelWidth, 940f));
 
             Text title = HudFactory.Label(panel.transform, "Title", 34, TextAnchor.UpperCenter);
             HudFactory.Anchor(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
@@ -91,7 +97,7 @@ namespace EscapeWithYourFriends.UI
 
             _rows = HudFactory.Rect(panel.transform, "Rows");
             HudFactory.Anchor(_rows, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                              new Vector2(0f, -84f), new Vector2(PanelWidth - 40f, 640f));
+                              new Vector2(0f, -84f), new Vector2(PanelWidth - 40f, 830f));
 
             BuildRows();
 
@@ -134,13 +140,6 @@ namespace EscapeWithYourFriends.UI
                                  },
                                  Percent(GameSettings.VoiceVolume));
 
-            _quality = Button("Quality", QualityName(), () =>
-            {
-                int count = Mathf.Max(1, QualitySettings.names.Length);
-                GameSettings.Quality = (GameSettings.Quality + 1) % count;
-                _quality.text = QualityName();
-            });
-
             _resolution = Button("Resolution", SizeName(), () =>
             {
                 Vector2Int[] sizes = Sizes();
@@ -176,7 +175,65 @@ namespace EscapeWithYourFriends.UI
                 GameSettings.Reset();
                 Redraw();
             });
+
+            _column = 1;
+            _next = 0;
+            BuildVideoRows();
         }
+
+        void BuildVideoRows()
+        {
+            // From "Custom", the preset of the level the options stand on; from a preset, the next one.
+            Video("Graphics preset", () => VideoSettings.PresetName, () => VideoSettings.Choose(
+                VideoSettings.Matching is { } preset
+                    ? (VideoSettings.Preset)(((int)preset + 1) % 4)
+                    : VideoSettings.ForLevel(QualitySettings.GetQualityLevel())));
+
+            Video("Render scale", () => $"{VideoSettings.RenderScales[VideoSettings.Current.Scale] * 100f:0}%",
+                  v => { v.Scale = Next(v.Scale, VideoSettings.RenderScales.Length); return v; });
+            Video("Upscaling", () => VideoSettings.Current.Fsr ? "FSR 1" : "Bilinear",
+                  v => { v.Fsr = !v.Fsr; return v; });
+            Video("Anti-aliasing", () => VideoSettings.AaNames[VideoSettings.Current.Aa],
+                  v => { v.Aa = Next(v.Aa, VideoSettings.AaNames.Length); return v; });
+            Video("Shadows", () => VideoSettings.ShadowNames[VideoSettings.Current.Shadows],
+                  v => { v.Shadows = Next(v.Shadows, VideoSettings.ShadowNames.Length); return v; });
+            Video("Ambient occlusion", () => OnOff(VideoSettings.Current.Ao),
+                  v => { v.Ao = !v.Ao; return v; });
+            Video("Grass", () => VideoSettings.TierNames[VideoSettings.Current.Grass],
+                  v => { v.Grass = Next(v.Grass, VideoSettings.TierNames.Length); return v; });
+            Video("View distance", () => VideoSettings.TierNames[VideoSettings.Current.View],
+                  v => { v.View = Next(v.View, VideoSettings.TierNames.Length); return v; });
+            Video("Bloom", () => OnOff(VideoSettings.Current.Bloom),
+                  v => { v.Bloom = !v.Bloom; return v; });
+
+            Video("VSync", () => OnOff(VideoSettings.VSync), () => VideoSettings.VSync = !VideoSettings.VSync);
+            Video("Frame cap", () => VideoSettings.FrameCap > 0 ? $"{VideoSettings.FrameCap} fps" : "None", () =>
+            {
+                int at = System.Array.IndexOf(VideoSettings.FrameCaps, VideoSettings.FrameCap);
+                VideoSettings.FrameCap = VideoSettings.FrameCaps[Next(at, VideoSettings.FrameCaps.Length)];
+            });
+        }
+
+        void Video(string caption, System.Func<string> shown,
+                   System.Func<VideoSettings.Values, VideoSettings.Values> change)
+            => Video(caption, shown, () => VideoSettings.Set(change(VideoSettings.Current)));
+
+        void Video(string caption, System.Func<string> shown, UnityEngine.Events.UnityAction click)
+        {
+            Text text = Button(caption, shown(), () =>
+            {
+                click();
+                RedrawVideo();
+            });
+            _video.Add((text, shown));
+        }
+
+        void RedrawVideo()
+        {
+            foreach (var (text, shown) in _video) text.text = shown();
+        }
+
+        static int Next(int at, int count) => (Mathf.Max(at, -1) + 1) % count;
 
         // ---------------------------------------------------------------- rows
 
@@ -214,8 +271,8 @@ namespace EscapeWithYourFriends.UI
         {
             RectTransform row = HudFactory.Rect(_rows, string.IsNullOrEmpty(caption) ? "Row" : caption);
             HudFactory.Anchor(row, new Vector2(0f, 1f), new Vector2(0f, 1f),
-                              new Vector2(0f, -_next * (RowHeight + RowGap)),
-                              new Vector2(PanelWidth - 40f, RowHeight));
+                              new Vector2(_column * ColumnWidth, -_next * (RowHeight + RowGap)),
+                              new Vector2(ColumnWidth - 40f, RowHeight));
             _next++;
 
             if (string.IsNullOrEmpty(caption)) return row;
@@ -286,7 +343,7 @@ namespace EscapeWithYourFriends.UI
             _fovValue.text = $"{GameSettings.Fov:0}°";
             _masterValue.text = Percent(GameSettings.MasterVolume);
             _voiceValue.text = Percent(GameSettings.VoiceVolume);
-            _quality.text = QualityName();
+            RedrawVideo();
             _resolution.text = SizeName();
             _fullscreen.text = OnOff(GameSettings.Fullscreen);
             _colourblind.text = OnOff(GameSettings.Colourblind);
@@ -325,14 +382,6 @@ namespace EscapeWithYourFriends.UI
 
             seen.Sort((a, b) => b.x * b.y - a.x * a.y);
             return seen.ToArray();
-        }
-
-        static string QualityName()
-        {
-            string[] names = QualitySettings.names;
-            int level = GameSettings.Quality;
-
-            return level >= 0 && level < names.Length ? names[level] : level.ToString();
         }
     }
 }

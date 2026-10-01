@@ -18,26 +18,6 @@ namespace EscapeWithYourFriends.World
     /// </summary>
     public class TerrainQuality : MonoBehaviour
     {
-        /// <summary>
-        /// One row per URP tier. Index is the quality level clamped into range; the six built-in
-        /// levels collapse onto three because that is how many renderer assets there are.
-        /// </summary>
-        struct Tier
-        {
-            public float Trees;
-            public float Grass;
-            public float Density;
-            public float PixelError;   // Absolute, not a multiplier: it is already a tolerance.
-            public string Name;
-        }
-
-        static readonly Tier[] Tiers =
-        {
-            new() { Name = "low", Trees = 0.6f, Grass = 0.5f, Density = 0.6f, PixelError = 10f },
-            new() { Name = "medium", Trees = 0.85f, Grass = 0.8f, Density = 0.85f, PixelError = 7f },
-            new() { Name = "high", Trees = 1f, Grass = 1f, Density = 1f, PixelError = 5f },
-        };
-
         [Tooltip("The terrain to scale. Found in this scene when left empty.")]
         [SerializeField] Terrain _terrain;
 
@@ -50,18 +30,19 @@ namespace EscapeWithYourFriends.World
 
         void Start() => Apply();
 
-        /// <summary>Called again when the player changes quality in the settings menu (#84).</summary>
+        /// <summary>Called again when the player changes the grass or view distance option (#241).</summary>
         public void Apply()
         {
             if (_terrain == null) _terrain = FindAnyObjectByType<Terrain>();
             if (_terrain == null) return;
 
-            Tier tier = For(QualitySettings.GetQualityLevel());
+            // The pixel error is absolute, not a multiplier: it is already a tolerance.
+            var (grass, density, trees, pixelError) = Core.VideoSettings.Terrain;
 
-            _terrain.treeDistance = _treeDistance * tier.Trees;
-            _terrain.detailObjectDistance = _detailDistance * tier.Grass;
-            _terrain.detailObjectDensity = _detailDensity * tier.Density;
-            _terrain.heightmapPixelError = tier.PixelError;
+            _terrain.treeDistance = _treeDistance * trees;
+            _terrain.detailObjectDistance = _detailDistance * grass;
+            _terrain.detailObjectDensity = Mathf.Min(1f, _detailDensity * density);
+            _terrain.heightmapPixelError = pixelError;
 
             // Billboards past the mesh distance are the cheap half of the tree budget, so they keep
             // their share: pulling them in with everything else would make the island look bald from
@@ -71,16 +52,9 @@ namespace EscapeWithYourFriends.World
             // player changed quality.
             _terrain.treeBillboardDistance = Mathf.Min(_billboardDistance, _terrain.treeDistance * 0.35f);
 
-            Debug.Log($"[TerrainQuality] {tier.Name}: trees {_terrain.treeDistance:F0}m, "
+            Debug.Log($"[TerrainQuality] trees {_terrain.treeDistance:F0}m, "
                           + $"grass {_terrain.detailObjectDistance:F0}m at {_terrain.detailObjectDensity:F2} "
                           + $"density, terrain error {_terrain.heightmapPixelError:F0}px.");
-        }
-
-        static Tier For(int qualityLevel)
-        {
-            // 0-1 low, 2-3 medium, 4-5 high; the same split GraphicsBoot and the URP assets use.
-            int tier = Mathf.Clamp(qualityLevel / 2, 0, Tiers.Length - 1);
-            return Tiers[tier];
         }
 
         /// <summary>Bake time. The profile's numbers are copied in so nothing has to load it later.</summary>
