@@ -8553,6 +8553,27 @@ player with chips, stakes x2.25 on day 3, the cap, and the save round trip. `-sl
 
 ---
 
+## Image clarity, part 1 (#240)
+
+The user saw the image as blurry and old. Three causes were in our code:
+
+- **No anti-aliasing at any tier.** `PostProcess` now sets SMAA (high) on the main camera from
+  Medium up, alongside the post-processing flag it already set. Low keeps none; FSR with RCAS
+  sharpening is its planned answer (#240, part 2).
+- **No anisotropic filtering.** Most imported textures say aniso 1, so "per texture" meant none and
+  the ground smeared a few metres out. `GraphicsBoot` forces it on from Medium up.
+- **Every integrated GPU got Low**, including the Radeon 760M that ART-PLAN.md targets at Medium.
+  Low means no HDR (half the grade and all of the bloom gone), a 512 shadow map and LOD bias 0.4.
+  `GraphicsBoot.IsCurrentIntegrated` now sends RDNA 2/3 parts (Radeon 6xxM to 8xxM) and Intel Arc
+  to Medium. Older iGPUs stay on Low.
+
+Two more causes were not the game's. Playthrough shots are captured at 1280x720, and the Editor's
+Game view blurs at a scale above 1x. `docs/PLAYING.md` now says so, along with how to keep a
+hybrid-GPU laptop on its discrete card. The user's laptop runs the build on its RTX 4060 at
+Very High.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**

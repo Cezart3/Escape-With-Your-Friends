@@ -127,6 +127,17 @@ nothing else in the game?** If it is not, no amount of content later fixes that.
 
 ---
 
+## If it looks blurry
+
+- **On a laptop with two GPUs**, Windows may run the game (or Unity itself) on the integrated
+  one. Open Windows Settings > System > Display > Graphics, add `EscapeWithYourFriends.exe` and
+  `D:\Unity\Editors\6000.3.23f1\Editor\Unity.exe`, and set both to *High performance*. The
+  first log line from `[GraphicsBoot]` names the GPU in use.
+- **In the Editor's Game view**, keep *Scale* at 1x, untick *Low Resolution Aspect Ratios*, and
+  pick a fixed 1920x1080 instead of Free Aspect.
+- **Playthrough bot shots** are taken at 1280x720 unless the run says otherwise, so fullscreen
+  they look soft. That is the capture size, not the game.
+
 ## If it does not start
 
 - **Compile errors in the console** — run the batchmode compile and read the log rather than
