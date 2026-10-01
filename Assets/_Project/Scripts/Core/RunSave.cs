@@ -68,6 +68,9 @@ namespace EscapeWithYourFriends.Core
 
         /// <summary>How far up the gun ladder the squad got. See <see cref="GameStage"/>.</summary>
         public int stage;
+
+        /// <summary>Days the run has lived. See <see cref="Casino.CasinoDays"/>.</summary>
+        public int day;
         public List<SavedPlayer> players = new();
         public List<SavedVehicle> vehicles = new();
     }
@@ -297,6 +300,7 @@ namespace EscapeWithYourFriends.Core
 
             _run.planeOwned |= PlaneAssembly.Owned;
             _run.stage = GameStage.Stage;
+            _run.day = Casino.CasinoDays.Day;
 
             PlaneAssembly plane = PlaneAssembly.Instance;
             if (plane != null)

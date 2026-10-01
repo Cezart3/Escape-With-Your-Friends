@@ -251,6 +251,7 @@ namespace EscapeWithYourFriends.Net
         {
             Debug.Log($"[NetworkBootstrap] Starting server on port {port}.");
             Economy.GameStage.NewSession();
+            Casino.CasinoDays.NewSession();
 
             // StartConnection(port) sets the port on every transport under Multipass and starts them
             // all. A transport that cannot start, Steam on a machine with no Steam client for one,
@@ -318,6 +319,7 @@ namespace EscapeWithYourFriends.Net
             Economy.UpgradeTest.Begin();
             Economy.GunsmithTest.Begin();
             Economy.StageTest.Begin();
+            Casino.CasinoDaysTest.Begin();
             AI.AnimalTest.Begin();
             World.TreeTest.Begin();
             Core.QualityTest.Begin();

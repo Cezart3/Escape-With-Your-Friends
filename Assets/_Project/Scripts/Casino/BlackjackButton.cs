@@ -50,6 +50,8 @@ namespace EscapeWithYourFriends.Casino
                     ? ClientManager.Connection.FirstObject
                     : null;
                 Wallet wallet = local != null ? local.GetComponent<Wallet>() : null;
+                if (!CasinoDays.IsOpen(CasinoGame.Blackjack))
+                    return _press == BlackjackPress.Bet ? CasinoDays.Closed("Blackjack", CasinoGame.Blackjack) : string.Empty;
                 if (Table == null || wallet == null || !Allows(local.ObjectId, wallet.Chips)) return string.Empty;
 
                 switch (_press)
@@ -76,7 +78,8 @@ namespace EscapeWithYourFriends.Casino
         public bool ServerCanInteract(NetworkObject actor)
         {
             Wallet wallet = actor != null ? actor.GetComponent<Wallet>() : null;
-            return Table != null && wallet != null && Allows(actor.ObjectId, wallet.Chips);
+            return Table != null && wallet != null && CasinoDays.IsOpen(CasinoGame.Blackjack)
+                   && Allows(actor.ObjectId, wallet.Chips);
         }
 
         public void ServerInteract(NetworkObject actor)

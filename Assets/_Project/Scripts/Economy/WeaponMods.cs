@@ -105,7 +105,7 @@ namespace EscapeWithYourFriends.Economy
         }
 
         /// <summary>Three significant figures: 62,500 and 1,250,000 rather than 62,487.</summary>
-        static int Nice(float value)
+        internal static int Nice(float value)
         {
             if (value < 100f) return Mathf.Max(1, Mathf.RoundToInt(value));
             float unit = Mathf.Pow(10f, Mathf.Floor(Mathf.Log10(value)) - 2f);

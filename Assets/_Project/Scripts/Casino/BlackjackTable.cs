@@ -46,10 +46,10 @@ namespace EscapeWithYourFriends.Casino
     public class BlackjackTable : NetworkBehaviour
     {
         /// <summary>Chips per press of a bet button.</summary>
-        public const int Chunk = 50;
+        public static int Chunk => CasinoDays.Scaled(50);
 
         /// <summary>Most a seat may put on one hand before doubles and splits.</summary>
-        public const int MaxBet = 500;
+        public static int MaxBet => Chunk * 10;
 
         /// <summary>Cards drawn per hand on the felt. A ninth card still counts; it just is not drawn.</summary>
         public const int CardsShown = 8;
