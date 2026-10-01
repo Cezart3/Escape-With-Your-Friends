@@ -41,6 +41,7 @@ namespace EscapeWithYourFriends.Casino
             (SlotKind.Sevens, 1909820),
             (SlotKind.Volcano, 1996820),
             (SlotKind.Reef, 2131545),
+            (SlotKind.Fruit, 2170385),
         };
 
         /// <summary>The same seeds bought: what each feature won over <see cref="GoldenSpins"/> buys, under .NET.</summary>
@@ -48,12 +49,14 @@ namespace EscapeWithYourFriends.Casino
         {
             (SlotKind.Volcano, 195264855),
             (SlotKind.Reef, 226769845),
+            (SlotKind.Fruit, 190986010),
         };
 
         /// <summary>The same seeds with the ante on, under Mono.</summary>
         static readonly (SlotKind Kind, long Won)[] GoldenAnte =
         {
             (SlotKind.Volcano, 2197430),
+            (SlotKind.Fruit, 2297590),
         };
 
         /// <summary>Spins per game for the return-to-player check.</summary>
@@ -329,8 +332,11 @@ namespace EscapeWithYourFriends.Casino
                 Check($"{kind}: a bought spin ignores the ante", !SlotMath.Spin(kind, 13, 100, buy: true, ante: true).Ante);
             }
 
-            Check("only the Volcano has an ante", SlotMath.HasAnte(SlotKind.Volcano)
+            Check("the Volcano and Fruit Tumble have an ante, the others do not",
+                  SlotMath.HasAnte(SlotKind.Volcano) && SlotMath.HasAnte(SlotKind.Fruit)
                   && !SlotMath.HasAnte(SlotKind.Sevens) && !SlotMath.HasAnte(SlotKind.Reef));
+
+            yield return Bombs();
             Check($"the ante stakes a quarter more ({SlotMath.AnteStake(100)} on 100)", SlotMath.AnteStake(100) == 125);
             Check($"orbs run to x{SlotMath.Volcano.OrbValues[^1]}", SlotMath.Volcano.OrbValues[^1] == 500);
         }
@@ -345,6 +351,8 @@ namespace EscapeWithYourFriends.Casino
                 (SlotKind.Volcano, false, 0.88, 1.03),
                 (SlotKind.Volcano, true, 0.88, 1.03),
                 (SlotKind.Reef, false, 0.88, 1.03),
+                (SlotKind.Fruit, false, 0.88, 1.03),
+                (SlotKind.Fruit, true, 0.88, 1.03),
             };
 
             foreach ((SlotKind kind, bool ante, double low, double high) in bands)
@@ -475,6 +483,45 @@ namespace EscapeWithYourFriends.Casino
             Check($"and pays what its seed says ({result.Win}), replayed with the buy",
                   wallet.Chips == before - cost + result.Win + volcano.LastJackpot
                   && SlotMath.Spin(volcano.Kind, volcano.LastSeed, volcano.LastBet, buy: true).Win == result.Win);
+        }
+
+        /// <summary>
+        /// Fruit Tumble's bombs against the Volcano's orbs, read off the pictures of bought features.
+        /// A free spin's first picture shows the multiplier it starts with: always 0 on Fruit, where
+        /// a bomb multiplies its own sequence and is gone, and the carried total on the Volcano.
+        /// </summary>
+        IEnumerator Bombs()
+        {
+            bool fruitCarried = false, fruitMultiplied = false, volcanoCarried = false, baseBomb = false;
+
+            for (int i = 0; i < 2000; i++)
+            {
+                if (i % 200 == 199) yield return null;
+                int seed = i * 7919 + 13;
+
+                foreach (SlotFrame f in SlotMath.Spin(SlotKind.Fruit, seed, 100, buy: true).Frames)
+                {
+                    if (f.FreeSpinsLeft >= 0 && f.Drop && f.Multiplier > 0) fruitCarried = true;
+                    if (f.FreeSpinsLeft >= 0 && !f.Drop && f.Multiplier > 0) fruitMultiplied = true;
+                }
+
+                foreach (SlotFrame f in SlotMath.Spin(SlotKind.Volcano, seed, 100, buy: true).Frames)
+                    if (f.FreeSpinsLeft >= 0 && f.Drop && f.Multiplier > 0) volcanoCarried = true;
+
+                foreach (SlotFrame f in SlotMath.Spin(SlotKind.Fruit, seed, 100).Frames)
+                    if (f.FreeSpinsLeft < 0 && System.Array.IndexOf(f.Grid, SlotMath.Fruit.Bomb) >= 0) baseBomb = true;
+            }
+
+            Check("Fruit: bombs multiply a free spin's sequence", fruitMultiplied);
+            Check("Fruit: and never carry into the next free spin", !fruitCarried);
+            Check("Volcano: its orbs do carry", volcanoCarried);
+            Check("Fruit: no bomb ever lands in the base game", !baseBomb);
+
+            // Eight berries pay the same table whatever the game's rules carry.
+            var grid = new int[SlotMath.Volcano.Cells];
+            for (int c = 0; c < grid.Length; c++) grid[c] = c < 8 ? 0 : 1 + c % 8;
+            Check($"Fruit: eight berries pay its own table ({SlotMath.Fruit.Evaluate(grid, null)})",
+                  SlotMath.Fruit.Evaluate(grid, null) == SlotMath.Fruit.Pays[0][0]);
         }
 
         IEnumerator Anteing(SlotMachine volcano, Wallet wallet, NetworkObject actor)

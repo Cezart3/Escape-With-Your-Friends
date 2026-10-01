@@ -8619,6 +8619,53 @@ a spin.
 - the ante button's stake, refusing the buy, paying the seed, and turning off again;
 - four buttons on the Volcano.
 
+## Fruit Tumble: the sweet pay-anywhere game (#256)
+
+A fourth cabinet, `SlotKind.Fruit`, on the genre's other big pay-anywhere concept. Same 6x5 grid,
+8+ anywhere and tumbles as the Volcano, but the multipliers work the other way round:
+
+| | Wrath of the Volcano | Fruit Tumble |
+|---|---|---|
+| Base-game multipliers | lava orbs, 14 per mille of cells | **none** |
+| Feature | 4+ volcanoes: 15 free spins | 4+ suns: **10** free spins |
+| Free-spin multipliers | orbs x2-x500, **added up for the whole feature** | coconut bombs x2-x100, **each sequence its own, then gone** |
+| Retrigger | 3 volcanoes: +5 | 3 suns: +5 |
+| Ante / buy | 1.25x / 100x | 1.25x / 100x |
+| Return (3M spins, Mono) | 95.3% / ante 95.9% / buy 97.6% | 95.5% / ante 96.3% / buy 95.2% |
+
+Without base-game multipliers the pays had to carry the base game, so Fruit's table is about 3.3
+times the Volcano's. The free-spin bomb rate (62 per mille) then tunes the feature to ~95x.
+
+**One engine, two rule sets.** The tumble code in `SlotMath.Volcano` now takes a `TumbleRules`:
+pays, scatter pays, free spins, the three sets of reel weights, multiplier rates and values, and
+`Carry`. That last field is the whole difference in the free spins. With `Carry` on, a paying
+sequence adds its orbs to a running multiplier that lasts the feature; with it off, the sequence is
+multiplied by its own bombs only. The refactor kept the Volcano's RNG order, and its golden totals
+are unchanged.
+
+**The schedule** (`CasinoDays.Opens`) is still one game a day, now over six days: roulette,
+blackjack, Coconut Sevens, Fruit Tumble, Reef Rush, then Wrath of the Volcano on day 6. The
+Volcano moved back two days because it is going to the VIP room.
+
+**Where it stands.** `SlotFactory` builds `SlotFruit.prefab` on the shared atlas, with fruit looks
+prefixed `Fruit` because a look's name keys its mesh. The atlas now holds 44 of 64 colours. The
+shack has no room for a fourth cabinet, so the cabinet goes on the floor with the big casino (#254).
+
+### Harness
+
+`-slotTest`, a pair, is now 108 + 5 checks. The new checks:
+- Fruit's golden totals for base, bought and ante play;
+- its return bands with and without the ante;
+- eight berries paying Fruit's own table.
+
+There are also behaviour checks read off the pictures of 2,000 bought features:
+- a Fruit free spin always starts at multiplier 0, so its bombs never carry;
+- a Volcano free spin does carry;
+- no bomb ever lands in Fruit's base game.
+
+`-casinoDaysTest` is 18 checks. It now finds the last opening day from the enum, so it no longer
+hard-codes the number of games.
+
 ---
 
 ## Data-driven content

@@ -36,6 +36,7 @@ namespace EscapeWithYourFriends.EditorTools
         internal const string SevensPath = PrefabDir + "/SlotSevens.prefab";
         internal const string VolcanoPath = PrefabDir + "/SlotVolcano.prefab";
         internal const string ReefPath = PrefabDir + "/SlotReef.prefab";
+        internal const string FruitPath = PrefabDir + "/SlotFruit.prefab";
 
         const int AtlasSize = 8;
 
@@ -97,6 +98,22 @@ namespace EscapeWithYourFriends.EditorTools
             new("Chest", Shape.Cube, new Color(0.86f, 0.64f, 0.18f), 0.8f),
         };
 
+        // Names carry a prefix: a look's name keys its mesh, and Sevens already has a pineapple.
+        static readonly Look[] FruitLooks =
+        {
+            new("FruitBerry", Shape.Sphere, new Color(0.62f, 0.10f, 0.32f), 0.6f),
+            new("FruitLychee", Shape.Sphere, new Color(0.98f, 0.62f, 0.66f), 0.66f),
+            new("FruitKiwi", Shape.Disc, new Color(0.48f, 0.70f, 0.18f), 0.7f),
+            new("FruitStarfruit", Shape.Starfish, new Color(0.98f, 0.90f, 0.36f), 0.75f),
+            new("FruitGuava", Shape.Pod, new Color(0.70f, 0.86f, 0.46f), 0.75f),
+            new("FruitBanana", Shape.Pod, new Color(1.00f, 0.84f, 0.10f), 0.85f),
+            new("FruitDragonfruit", Shape.Pod, new Color(0.94f, 0.18f, 0.56f), 0.88f),
+            new("FruitPassionfruit", Shape.Sphere, new Color(0.40f, 0.18f, 0.48f), 0.85f),
+            new("FruitGoldenPineapple", Shape.Crown, new Color(1.00f, 0.72f, 0.06f), 0.92f),
+            new("FruitSun", Shape.Disc, new Color(1.00f, 0.56f, 0.10f), 0.95f),
+            new("FruitCoconutBomb", Shape.Sphere, new Color(0.30f, 0.18f, 0.10f), 0.88f),
+        };
+
         static readonly Look SpotMarked = new("SpotMarked", Shape.Disc, new Color(0.30f, 0.78f, 0.80f), 1f);
         static readonly Look SpotHot = new("SpotHot", Shape.Disc, new Color(1.00f, 0.28f, 0.62f), 1f);
         static readonly Look CardBack = new("CardBack", Shape.Card, new Color(0.20f, 0.30f, 0.72f), 1f);
@@ -120,6 +137,7 @@ namespace EscapeWithYourFriends.EditorTools
             all.AddRange(SevensLooks);
             all.AddRange(VolcanoLooks);
             all.AddRange(ReefLooks);
+            all.AddRange(FruitLooks);
             all.AddRange(new[] { SpotMarked, SpotHot, CardBack, CardRed, CardBlack, Screen });
 
             foreach (Look look in all)
@@ -132,11 +150,12 @@ namespace EscapeWithYourFriends.EditorTools
             if (Cabinet(SlotKind.Sevens, SevensPath, SevensLooks, material, new Color(0.72f, 0.28f, 0.22f))) built++;
             if (Cabinet(SlotKind.Volcano, VolcanoPath, VolcanoLooks, material, new Color(0.13f, 0.14f, 0.17f))) built++;
             if (Cabinet(SlotKind.Reef, ReefPath, ReefLooks, material, new Color(0.32f, 0.38f, 0.48f))) built++;
+            if (Cabinet(SlotKind.Fruit, FruitPath, FruitLooks, material, new Color(0.98f, 0.62f, 0.66f))) built++;
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
-            Debug.Log($"[SlotFactory] {built} of 3 cabinets built, {Meshes.Count} symbol meshes on one "
+            Debug.Log($"[SlotFactory] {built} of {System.Enum.GetValues(typeof(SlotKind)).Length} cabinets built, {Meshes.Count} symbol meshes on one "
                       + $"{AtlasSize}x{AtlasSize} atlas of {Colours.Count} colours.");
 
             if (Application.isBatchMode) EditorApplication.Exit(0);
@@ -342,7 +361,7 @@ namespace EscapeWithYourFriends.EditorTools
             int rows = SlotMath.Rows(kind);
 
             const float width = 0.8f;
-            float height = kind == SlotKind.Sevens ? 0.5f : kind == SlotKind.Volcano ? 0.66f : 0.8f;
+            float height = kind == SlotKind.Sevens ? 0.5f : kind is SlotKind.Volcano or SlotKind.Fruit ? 0.66f : 0.8f;
             float cell = Mathf.Min(width / cols, height / rows);
             float screenY = 1.5f;
 

@@ -14,6 +14,7 @@ namespace EscapeWithYourFriends.Casino
         Sevens,
         Volcano,
         Reef,
+        Fruit,
     }
 
     /// <summary>
@@ -32,7 +33,7 @@ namespace EscapeWithYourFriends.Casino
     public static class CasinoDays
     {
         /// <summary>The day each <see cref="CasinoGame"/> opens, 0 being the first.</summary>
-        static readonly int[] Opens = { 0, 1, 2, 3, 4 };
+        static readonly int[] Opens = { 0, 1, 2, 5, 4, 3 };
 
         /// <summary>Past this day the chips stop growing: 1.5^10 is 57 times the opening stakes.</summary>
         public const int TopDay = 10;
@@ -83,6 +84,7 @@ namespace EscapeWithYourFriends.Casino
         {
             SlotKind.Volcano => CasinoGame.Volcano,
             SlotKind.Reef => CasinoGame.Reef,
+            SlotKind.Fruit => CasinoGame.Fruit,
             _ => CasinoGame.Sevens,
         };
     }

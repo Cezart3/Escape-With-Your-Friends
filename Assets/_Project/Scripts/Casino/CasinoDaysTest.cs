@@ -80,9 +80,11 @@ namespace EscapeWithYourFriends.Casino
             CasinoDays.TestDay = 2;
             Check("day 3: the sevens cabinet spins", spin.ServerCanInteract(actor));
 
-            CasinoDays.TestDay = 4;
-            Check("day 5: every game is open",
-                  System.Enum.GetValues(typeof(CasinoGame)).Cast<CasinoGame>().All(CasinoDays.IsOpen));
+            CasinoGame[] games = System.Enum.GetValues(typeof(CasinoGame)).Cast<CasinoGame>().ToArray();
+            CasinoDays.TestDay = games.Max(CasinoDays.OpensOn);
+            Check($"day {CasinoDays.Day + 1}: every game is open", games.All(CasinoDays.IsOpen));
+            CasinoDays.TestDay--;
+            Check("and not the day before", !games.All(CasinoDays.IsOpen));
 
             // ------------------------------------------------------------ bigger chips every day
 
