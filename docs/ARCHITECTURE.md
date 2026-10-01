@@ -8469,6 +8469,25 @@ origin.
 
 ---
 
+## A wipe is not free
+
+A design review found the cheapest way to revive one dead friend: the other three die too. `WipeGuard`
+got everyone up at their spawn for free eight seconds after a full wipe, bags and all, while the
+Revive Machine charges `250 + 200 x (deaths - 1)`. Solo players never paid for a death at all.
+
+- **A wipe bills everyone.** Each body pays its own Revive Machine price from its own wallet, or
+  everything it has if that is less. Nobody goes negative, so a broke squad still gets up.
+- **The price follows the stage.** `ReviveMachine.PriceFor` is multiplied by
+  `GameStage.Multiplier`, the same x1.5 per stage that drops sell at. At stage 3 a flat 250 was
+  pocket change.
+
+`-wipeTest` now checks the charge too: 500 in the wallet, 250 out, back up at the spawn (7/0).
+
+ponytail: a friendly-fire death still raises the victim's own price. That needs the killer on the
+damage record; add it if griefing shows up in public lobbies.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**
