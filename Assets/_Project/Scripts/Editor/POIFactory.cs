@@ -418,6 +418,10 @@ namespace EscapeWithYourFriends.EditorTools
                       casino + Offset(casinoFacing, -9.45f) + Offset(casinoFacing + 90f, 1.2f),
                       casinoFacing, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f, exact: true),
 
+                Entry("casino.slots.lagoon", SlotFactory.LagoonPath,
+                      casino + Offset(casinoFacing, -9.45f) + Offset(casinoFacing + 90f, 3.6f),
+                      casinoFacing, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f, exact: true),
+
                 // The door between them, in the gap the partition leaves for it, its front to the floor.
                 Entry("casino.vip.door", CasinoFactory.VipDoorPath, casino + Offset(casinoFacing, -2.5f),
                       casinoFacing, pad: 0f, falloff: 0f, raise: 0f, maxSlope: 0.3f, exact: true),
