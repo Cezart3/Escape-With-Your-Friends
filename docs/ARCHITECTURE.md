@@ -8816,6 +8816,109 @@ In the world, with queued seeds:
 
 `-casinoFloorTest` (now 40 checks) expects Lagoon in the VIP room.
 
+## Graphics presets and options (#241)
+
+Escape > the right-hand column. One **Graphics preset** row — Low, Medium, High, Ultra — then every
+option a preset is made of, each settable on its own. Change any one and the preset reads **Custom**.
+The label is worked out from the values each time, never stored, so it cannot disagree with them.
+
+### What a preset is
+
+A preset is a quality level plus one row of `VideoSettings.Values`.
+
+- **The level** picks the URP asset. That asset carries what URP will not change at run time: HDR,
+  soft shadows, extra-light shadows, and which SSAO the renderer has.
+- **The values** are written over that asset when they are applied:
+
+| | Low | Medium | High | Ultra |
+|---|---|---|---|---|
+| Quality level | 1 (URP_Low) | 2 (URP_Medium) | 4 (URP_High) | 5 (URP_High) |
+| Render scale | 77%, FSR 1 | 100% | 100% | 100% |
+| Anti-aliasing | off | SMAA | SMAA | MSAA 4x + SMAA |
+| Shadows | 1024², 40 m, 1 cascade | 2048², 80 m, 2 | 2048², 150 m, 4 | 4096², 250 m, 4 |
+| Ambient occlusion | off | cheap | full | full |
+| Grass (distance, density) | 0.5×, 0.6× | 0.8×, 0.85× | 1× | 1.25× |
+| View (trees, terrain error) | 0.6×, 10 px | 0.85×, 7 px | 1×, 5 px | 1.25×, 3 px |
+| Bloom | off | on | on | on |
+
+Notes on the table:
+- **Low** now uses FSR from 77% rather than full resolution. Bilinear from 80% was the blur in #201;
+  FSR at a lower scale is sharper. This was the last open item of #240.
+- **High** drops the MSAA 2x it had under SMAA. On flat-shaded geometry the second pass bought almost
+  nothing, and High has to hold 140 fps at 1080p on a 4060 laptop.
+- **Ultra** is for streamers and capture. The guess never picks it: `GraphicsBoot.Guess` tops out at
+  High, and the harness checks that.
+
+### Where each option is read
+
+- **URP asset:** render scale, the upscaler, MSAA, and the shadow distance, resolution and cascades.
+  Shadows "Off" is a zero distance, which is how URP itself turns a camera's shadows off.
+- **The renderer's SSAO feature:** `SetActive` from the AO option. URP_Low's renderer now carries the
+  cheap SSAO too, so the option has something to switch on there. The Low preset leaves it off.
+- **Camera:** SMAA, set by `PostProcess.Refresh`, which also switches bloom.
+- **Terrain:** `TerrainQuality` takes its multipliers from `VideoSettings.Terrain`. It no longer uses
+  the quality level.
+- **Not presets:** VSync and the frame cap are about the monitor, not the GPU. They are stored on
+  their own and reapplied after every `SetQualityLevel`, which would otherwise restore the level's own
+  `vSyncCount`. Anisotropic filtering moved here from `GraphicsBoot` for the same reason.
+
+### Storage and boot
+
+- **Storage:** the values go into one `PlayerPrefs` key as JSON (`ewyf.video`). The level stays in
+  `GraphicsBoot.PreferenceKey`. `GameSettings.Quality` is gone; its only callers were the old
+  quality cycler and the harness.
+- **Boot:** `GraphicsBoot` sets the level, then calls `VideoSettings.Boot`.
+  - A forced `-quality` brings that level's preset, so `-quality High` means High whatever the
+    machine stored.
+  - Otherwise the stored values are used, or the level's preset on a first run.
+  - A headless run now also applies a *stored* choice, not only a forced one. Without that, the
+    persistence half of the harness could not see it.
+
+### Writes and caveats
+
+- **Writes in the Editor:** the URP assets are edited in place. In a build nothing saves them. In
+  the Editor the edits would outlive play mode, so the first write to each asset or feature takes an
+  `EditorJsonUtility` snapshot, and leaving play mode restores it.
+- **Soft or hard shadows** follow the level's asset, because URP keeps that setter internal. Medium
+  shadows picked on Low are therefore hard.
+- **Bloom on Low** does nothing visible. URP_Low has no HDR, so nothing crosses the 1.05 threshold.
+
+### A bug the harness found
+
+FishNet sets `Application.targetFrameRate` to its own 500 every time a server or client starts. The
+player's frame cap was undone the moment they hosted.
+
+- `VideoSettings.TakeFrameRate` sets both managers' rate to 0, which tells FishNet to leave the
+  frame rate alone. It runs from `NetworkBootstrap.Awake` and from every apply.
+- It only acts once `VideoSettings` has applied something. A headless harness with nothing stored
+  keeps FishNet's 500 rather than spinning flat out.
+
+### Harness
+
+`-settingsTest write` / `read` grew from 13 + 8 to 23 + 10 checks.
+
+The write half:
+- Low, High and Ultra each set their level, read as themselves, and reach the URP asset, the SSAO
+  feature and SMAA.
+- One changed option reads Custom.
+- An index off the end is clamped.
+- VSync off and a 144 cap reach Unity.
+- Everything reads back from `PlayerPrefs`.
+
+The read half, in a new process, finds Custom on Ultra's level already applied to the asset, with
+VSync off and the 144 cap. It then clears every key.
+
+```
+[SettingsTest] write: 23 passed, 0 failed.
+[SettingsTest] read: 10 passed, 0 failed.
+[QualityTest] 13 passed, 0 failed.
+```
+
+**Not checked by any harness:** whether the menu column looks right. Headless builds no canvas.
+
+**Not added:** particle and water quality options. Nothing reads them yet; they arrive with #251 and
+#247.
+
 ---
 
 ## Data-driven content

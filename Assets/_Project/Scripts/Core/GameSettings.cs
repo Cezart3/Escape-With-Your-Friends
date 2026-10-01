@@ -18,11 +18,8 @@ namespace EscapeWithYourFriends.Core
     /// fresh run does not want to re-do their keybinds. <see cref="World.RunSave"/> is for what the
     /// four of you earned; this is for how one of you likes to sit.
     ///
-    /// **Quality is not stored here.** <see cref="GraphicsBoot"/> already owns that preference, picks
-    /// a tier by guessing at the GPU on a first run, and applies it before the first scene loads.
-    /// Duplicating the key would give two owners to one number and they would disagree the first time
-    /// somebody passed <c>-quality</c>; so <see cref="Quality"/> is a window onto
-    /// <see cref="GraphicsBoot.PreferenceKey"/>, not a second copy of it.
+    /// **Graphics are not stored here.** <see cref="GraphicsBoot"/> owns the quality level and
+    /// <see cref="VideoSettings"/> the presets and options on top of it (#241).
     ///
     /// **Nothing here is networked and nothing here should be.** How loud your game is and which key
     /// crouches is not something the other three need told, and a setting that replicated would be a
@@ -154,23 +151,6 @@ namespace EscapeWithYourFriends.Core
             }
         }
 
-        /// <summary>
-        /// The quality tier, as an index into <see cref="QualitySettings.names"/>. A window onto
-        /// <see cref="GraphicsBoot"/>'s preference rather than a copy of it - see the class remarks.
-        /// </summary>
-        public static int Quality
-        {
-            get => Mathf.Clamp(PlayerPrefs.GetInt(GraphicsBoot.PreferenceKey, QualitySettings.GetQualityLevel()),
-                               0, Mathf.Max(0, QualitySettings.names.Length - 1));
-            set
-            {
-                int level = Mathf.Clamp(value, 0, Mathf.Max(0, QualitySettings.names.Length - 1));
-                PlayerPrefs.SetInt(GraphicsBoot.PreferenceKey, level);
-                QualitySettings.SetQualityLevel(level, applyExpensiveChanges: true);
-                Save();
-            }
-        }
-
         /// <summary>True when the game is running full screen. Stored, because a window is a choice.</summary>
         public static bool Fullscreen
         {
@@ -276,7 +256,7 @@ namespace EscapeWithYourFriends.Core
         /// <summary>One line for the log and for the harness.</summary>
         public static string Describe()
             => $"fov {Fov:0}, sensitivity {Sensitivity:0.00}x, volume {MasterVolume:0.00}/"
-               + $"{VoiceVolume:0.00}, quality {Quality}, colourblind {Colourblind}, "
+               + $"{VoiceVolume:0.00}, graphics {VideoSettings.PresetName}, colourblind {Colourblind}, "
                + $"{(string.IsNullOrEmpty(Rebinds) ? "stock keys" : "rebound keys")}";
     }
 }

@@ -3,6 +3,7 @@ using System.Linq;
 using EscapeWithYourFriends.Player;
 using FishNet;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 namespace EscapeWithYourFriends.Core
 {
@@ -137,9 +138,7 @@ namespace EscapeWithYourFriends.Core
                 Check($"and this player's colour actually changed ({was} -> {identity.Color})",
                       identity.Color != was);
 
-            GameSettings.Quality = 0;
-            Check($"the quality tier is applied, not just stored ({QualitySettings.GetQualityLevel()})",
-                  QualitySettings.GetQualityLevel() == 0);
+            Presets();
 
             string overrides = reader.Rebind(RebindAction, RebindPath);
             GameSettings.Rebinds = overrides;
@@ -168,8 +167,16 @@ namespace EscapeWithYourFriends.Core
             Check($"the listener was turned down before the game started ({AudioListener.volume:0.00})",
                   Mathf.Approximately(AudioListener.volume, Master));
 
-            Check($"the quality tier came back ({QualitySettings.GetQualityLevel()})",
-                  QualitySettings.GetQualityLevel() == 0);
+            // Custom on Ultra's level, as the write half left it, and applied by the boot hook.
+            UniversalRenderPipelineAsset urp = Urp();
+            Check($"the graphics came back: level {QualitySettings.GetQualityLevel()}, {VideoSettings.PresetName}, "
+                  + $"{VideoSettings.Current}",
+                  QualitySettings.GetQualityLevel() == 5 && VideoSettings.Matching == null
+                  && VideoSettings.Current.Shadows == 2 && VideoSettings.Current.Aa == 4);
+            Check($"and were applied before the game started (shadows {urp?.shadowDistance}m, MSAA {urp?.msaaSampleCount}x)",
+                  urp != null && Mathf.Approximately(urp.shadowDistance, 80f) && urp.msaaSampleCount == 4);
+            Check($"and so were VSync and the cap ({QualitySettings.vSyncCount}, {Application.targetFrameRate})",
+                  QualitySettings.vSyncCount == 0 && Application.targetFrameRate == 144);
 
             Check("the colourblind palette is still the live one",
                   GameSettings.Colourblind && PlayerIdentity.Active == PlayerIdentity.ColourblindPalette);
@@ -187,13 +194,87 @@ namespace EscapeWithYourFriends.Core
             // an afternoon debugging the wrong thing.
             GameSettings.Reset();
             PlayerPrefs.DeleteKey(GraphicsBoot.PreferenceKey);
-            PlayerPrefs.Save();
+            VideoSettings.Clear();
 
             Check($"and a reset puts it all back ({GameSettings.Describe()})",
                   Mathf.Approximately(GameSettings.Sensitivity, 1f)
                   && Mathf.Approximately(GameSettings.MasterVolume, 1f)
                   && string.IsNullOrEmpty(GameSettings.Rebinds)
                   && !GameSettings.Colourblind);
+        }
+
+        /// <summary>
+        /// #241. Each preset sets its level and its values, and the values reach the URP asset, the
+        /// renderer's SSAO and the camera's SMAA. One option changed reads Custom. The write half
+        /// leaves Ultra with medium shadows, VSync off and a 144 cap for the read half to find.
+        /// </summary>
+        void Presets()
+        {
+            Check($"the guess never lands on Ultra ({GraphicsBoot.Guess(out _)})", GraphicsBoot.Guess(out _) < 5);
+
+            VideoSettings.Choose(VideoSettings.Preset.Low);
+            UniversalRenderPipelineAsset urp = Urp();
+            Check($"Low: level {QualitySettings.GetQualityLevel()}, reads {VideoSettings.PresetName}",
+                  QualitySettings.GetQualityLevel() == 1 && VideoSettings.Matching == VideoSettings.Preset.Low);
+            Check($"Low renders at 77% with FSR ({urp?.renderScale}, {urp?.upscalingFilter})",
+                  urp != null && Mathf.Approximately(urp.renderScale, 0.77f)
+                  && urp.upscalingFilter == UpscalingFilterSelection.FSR);
+            Check($"Low: 40m of shadow, no AO, no SMAA ({urp?.shadowDistance}m, AO {Occlusion(urp)})",
+                  urp != null && Mathf.Approximately(urp.shadowDistance, 40f) && Occlusion(urp) == false
+                  && !VideoSettings.Smaa);
+
+            VideoSettings.Choose(VideoSettings.Preset.High);
+            urp = Urp();
+            Check($"High: level {QualitySettings.GetQualityLevel()}, reads {VideoSettings.PresetName}",
+                  QualitySettings.GetQualityLevel() == 4 && VideoSettings.Matching == VideoSettings.Preset.High);
+            Check($"High: full scale, SMAA without MSAA, 150m in 4 cascades, AO on ({urp?.renderScale}, "
+                  + $"MSAA {urp?.msaaSampleCount}x, {urp?.shadowDistance}m, {urp?.shadowCascadeCount}, AO {Occlusion(urp)})",
+                  urp != null && Mathf.Approximately(urp.renderScale, 1f) && VideoSettings.Smaa
+                  && urp.msaaSampleCount == 1 && Mathf.Approximately(urp.shadowDistance, 150f)
+                  && urp.shadowCascadeCount == 4 && Occlusion(urp) == true);
+
+            VideoSettings.Choose(VideoSettings.Preset.Ultra);
+            urp = Urp();
+            Check($"Ultra: level {QualitySettings.GetQualityLevel()}, MSAA {urp?.msaaSampleCount}x with SMAA, "
+                  + $"{urp?.mainLightShadowmapResolution} shadows over {urp?.shadowDistance}m",
+                  QualitySettings.GetQualityLevel() == 5 && VideoSettings.Matching == VideoSettings.Preset.Ultra
+                  && urp != null && urp.msaaSampleCount == 4 && VideoSettings.Smaa
+                  && urp.mainLightShadowmapResolution == 4096 && Mathf.Approximately(urp.shadowDistance, 250f));
+
+            VideoSettings.Values custom = VideoSettings.Current;
+            custom.Shadows = 2;
+            VideoSettings.Set(custom);
+            Check($"one option changed reads Custom ({VideoSettings.PresetName}, {urp?.shadowDistance}m, level "
+                  + $"{QualitySettings.GetQualityLevel()})",
+                  VideoSettings.PresetName == "Custom" && Mathf.Approximately(urp.shadowDistance, 80f)
+                  && QualitySettings.GetQualityLevel() == 5);
+
+            custom.Scale = 99;
+            VideoSettings.Set(custom);
+            Check($"and an index off the end is clamped ({VideoSettings.Current.Scale})",
+                  VideoSettings.Current.Scale == VideoSettings.RenderScales.Length - 1);
+
+            VideoSettings.VSync = false;
+            VideoSettings.FrameCap = 144;
+            Check($"VSync off and a 144 cap reach Unity ({QualitySettings.vSyncCount}, {Application.targetFrameRate})",
+                  QualitySettings.vSyncCount == 0 && Application.targetFrameRate == 144);
+
+            VideoSettings.Forget();
+            Check($"and it all reads back off PlayerPrefs ({VideoSettings.Current})",
+                  VideoSettings.Matching == null && VideoSettings.Current.Shadows == 2 && VideoSettings.Current.Aa == 4);
+        }
+
+        static UniversalRenderPipelineAsset Urp() => QualitySettings.renderPipeline as UniversalRenderPipelineAsset;
+
+        /// <summary>Whether the active renderer's SSAO is on, or null when it has none.</summary>
+        static bool? Occlusion(UniversalRenderPipelineAsset urp)
+        {
+            if (urp == null) return null;
+            foreach (var data in urp.rendererDataList)
+                if (data != null)
+                    foreach (var feature in data.rendererFeatures)
+                        if (feature is ScreenSpaceAmbientOcclusion) return feature.isActive;
+            return null;
         }
 
         // ---------------------------------------------------------------- bookkeeping

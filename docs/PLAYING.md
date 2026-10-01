@@ -135,6 +135,8 @@ nothing else in the game?** If it is not, no amount of content later fixes that.
   first log line from `[GraphicsBoot]` names the GPU in use.
 - **In the Editor's Game view**, keep *Scale* at 1x, untick *Low Resolution Aspect Ratios*, and
   pick a fixed 1920x1080 instead of Free Aspect.
+- **On the Low preset** the game renders at 77% and upscales with FSR. Escape > Render scale >
+  100% if you would rather pay for the sharpness.
 - **Playthrough bot shots** are taken at 1280x720 unless the run says otherwise, so fullscreen
   they look soft. That is the capture size, not the game.
 

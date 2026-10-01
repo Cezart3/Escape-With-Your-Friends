@@ -26,6 +26,7 @@ namespace EscapeWithYourFriends.World
     public static class PostProcess
     {
         static bool _started;
+        static Bloom _bloom;
 
         /// <summary>Everything here is off on a headless build, which has no camera to grade.</summary>
         internal static void Begin()
@@ -58,10 +59,18 @@ namespace EscapeWithYourFriends.World
             // camera is built in code by SceneBootstrap, which never asked. Until this line the only
             // thing that asked was DrunkVision - so the grade above appeared the moment somebody got
             // drunk and not before. Every scene load, in case a scene ever brings its own camera.
-            EnableOnCamera();
+            Refresh();
             SceneManager.sceneLoaded += (_, _) => EnableOnCamera();
 
             Debug.Log("[PostProcess] Global look on: ACES, graded, bloom, vignette.");
+        }
+
+        /// <summary>The two options that live here, bloom and SMAA, read again. Called by VideoSettings.</summary>
+        internal static void Refresh()
+        {
+            if (!_started) return;
+            _bloom.active = VideoSettings.Current.Bloom;
+            EnableOnCamera();
         }
 
         static void EnableOnCamera()
@@ -73,11 +82,9 @@ namespace EscapeWithYourFriends.World
             if (data == null) return;
             data.renderPostProcessing = true;
 
-            // Edges. SMAA rather than FXAA, which blurs the whole frame to soften the stairs, and
-            // rather than MSAA, which the URP assets leave off for cost. Low keeps none: it is the
-            // tier for parts that cannot spare the millisecond.
-            bool low = QualitySettings.GetQualityLevel() < 2;
-            data.antialiasing = low ? AntialiasingMode.None : AntialiasingMode.SubpixelMorphologicalAntiAliasing;
+            // Edges. SMAA rather than FXAA, which blurs the whole frame to soften the stairs. Whether
+            // at all is the AA option (#241); MSAA, the other half of it, is on the URP asset.
+            data.antialiasing = VideoSettings.Smaa ? AntialiasingMode.SubpixelMorphologicalAntiAliasing : AntialiasingMode.None;
             data.antialiasingQuality = AntialiasingQuality.High;
         }
 
@@ -136,7 +143,7 @@ namespace EscapeWithYourFriends.World
         /// </summary>
         static void Glow(VolumeProfile profile)
         {
-            var bloom = profile.Add<Bloom>(true);
+            var bloom = _bloom = profile.Add<Bloom>(true);
 
             bloom.threshold.overrideState = true;
             bloom.threshold.value = 1.05f;
