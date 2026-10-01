@@ -49,9 +49,16 @@ namespace EscapeWithYourFriends.Casino
 
         /// <summary>
         /// Every game open whatever the day, and the VIP door free: <c>-casinoAll</c>, for a test pass
-        /// of the whole floor, and the harnesses that test the games themselves.
+        /// of the whole floor, and the harnesses that test the games themselves. In the Editor, the
+        /// menu item <c>EWYF/Casino: open everything</c> sets it instead.
         /// </summary>
-        internal static bool AllOpen = CommandLine.HasFlag("-casinoAll");
+        internal static bool AllOpen = CommandLine.HasFlag("-casinoAll")
+#if UNITY_EDITOR
+                                       || UnityEditor.EditorPrefs.GetBool(AllOpenPref)
+#endif
+            ;
+
+        public const string AllOpenPref = "EWYF.CasinoAll";
 
         /// <summary>Days the run has lived, the saved ones included. 0 is the first.</summary>
         public static int Day

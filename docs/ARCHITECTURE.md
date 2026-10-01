@@ -8711,6 +8711,8 @@ one player would let in whoever stood behind them, so it teleports instead:
 `-casinoAll` sets `CasinoDays.AllOpen`. Every game opens on day 1 and the VIP door is free, so
 every gambling mechanic can be reached in a fresh game without grinding days.
 
+Play mode has no command line, so the Editor has the same switch as a menu item: `EWYF/Casino: open everything` (`CasinoAllMenu`). It is kept in `EditorPrefs` and read by `CasinoDays.AllOpen` under `UNITY_EDITOR`, so it holds until unticked and never reaches a build.
+
 ### Deferred
 
 The issue asked for high-limit VIP roulette and blackjack tables. They are not in this change.
