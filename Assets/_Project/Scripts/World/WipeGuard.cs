@@ -15,10 +15,11 @@ namespace EscapeWithYourFriends.World
     /// playthrough bot found it. After a few seconds of everybody dead, everybody gets up at their
     /// spawn on half health. What they carried stays with them.
     ///
-    /// ponytail: no penalty beyond the walk back; add one (cash, the bag on the corpse) if dying
-    /// turns out to be cheap in a playtest.
+    /// Each of them pays their own Revive Machine price for it, or all they have if that is less.
+    /// A free wipe made dying together cheaper than reviving one friend: three players killing
+    /// themselves beat paying 650 for the fourth.
     ///
-    /// <c>-wipeTest</c> kills the host's player and checks they are back up at the spawn.
+    /// <c>-wipeTest</c> kills the host's player and checks they are back up at the spawn, charged.
     /// </summary>
     public class WipeGuard : MonoBehaviour
     {
@@ -49,11 +50,16 @@ namespace EscapeWithYourFriends.World
             if (Time.time - _allDeadSince < Delay) return;
             _allDeadSince = -1f;
 
-            foreach (Health health in players) Respawn(health);
+            var machine = FindAnyObjectByType<ReviveMachine>();
+            foreach (Health health in players) Respawn(health, machine);
         }
 
-        static void Respawn(Health health)
+        static void Respawn(Health health, ReviveMachine machine)
         {
+            var wallet = health.GetComponent<Economy.Wallet>();
+            if (machine != null && wallet != null)
+                wallet.ServerTrySpend(Mathf.Min(machine.PriceFor(health), wallet.Balance), "wipe");
+
             // Same order as the Revive Machine: alive first, then the skeleton and the capsule home.
             var motor = health.GetComponent<PlayerMotor>();
             Vector3 position = Vector3.up * 2f;
@@ -82,7 +88,10 @@ namespace EscapeWithYourFriends.World
             PlayerMotor motor = FindAnyObjectByType<PlayerMotor>();
             Health health = motor != null ? motor.GetComponent<Health>() : null;
             Check("there is a player", health != null);
-            if (health != null)
+            var machine = FindAnyObjectByType<ReviveMachine>();
+            var wallet = health != null ? health.GetComponent<Economy.Wallet>() : null;
+            Check("there is a Revive Machine and a wallet", machine != null && wallet != null);
+            if (health != null && machine != null && wallet != null)
             {
                 motor.ServerTeleport(motor.transform.position + new Vector3(30f, 5f, 30f), 0f);
                 yield return new WaitForSeconds(1f);
@@ -91,8 +100,11 @@ namespace EscapeWithYourFriends.World
                 Check("they are dead", health.IsDead);
                 yield return new WaitForSeconds(Delay - 3f);
                 Check("and still dead just before the delay", health.IsDead);
+                int before = wallet.Balance, price = machine.PriceFor(health);
                 yield return new WaitForSeconds(4f);
                 Check("then up again", health.IsAlive);
+                Check($"charged their revive price ({before} - {price} = {wallet.Balance})",
+                      wallet.Balance == Mathf.Max(0, before - price));
 
                 Vector3 spawn = Vector3.zero;
                 PlayerSpawner.Instance?.GetSpawn(health.OwnerId, out spawn, out _);
