@@ -59,7 +59,7 @@ namespace EscapeWithYourFriends.Economy
 
             Check("a pistol earns nothing", GameStage.StageFor(300) == 0);
             Check("the shotgun is stage 1, the rifle 3, the sniper 5",
-                  GameStage.StageFor(2500) == 1 && GameStage.StageFor(25000) == 3 && GameStage.StageFor(250000) == 5);
+                  GameStage.StageFor(550) == 1 && GameStage.StageFor(6500) == 3 && GameStage.StageFor(70000) == 5);
             Check("each stage pays half again", Mathf.Approximately(GameStage.Multiplier(0), 1f)
                                                  && Mathf.Approximately(GameStage.Multiplier(2), 2.25f));
 

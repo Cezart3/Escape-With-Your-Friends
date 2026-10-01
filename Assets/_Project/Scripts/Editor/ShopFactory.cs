@@ -68,17 +68,18 @@ namespace EscapeWithYourFriends.EditorTools
             ("fishing_rod", 80, 1),
             ("hatchet", 90, 1),
 
-            // #51's guns, and the late-game ladder above them. The pistol is within the $500 you land
-            // with; every rung after it is roughly three to four times the last, up to the 250,000
-            // sniper that is the run's real ceiling. One of each: a gun that costs this much is a
-            // decision four players make together. Rounds are unlimited and cheap; the guns are
-            // where the money goes.
+            // #51's guns, on How to Fish's ladder: the pistol is within the $500 you land with, the
+            // shotgun three pistols away so the first upgrade comes in the first half hour, then
+            // three to four times per rung up to the 70,000 sniper. The rifle lands about when the
+            // boat does, the last two are island 2's answer to the village. One of each: a gun that
+            // costs this much is a decision four players make together. Rounds are unlimited and
+            // cheap; the guns are where the money goes.
             ("pistol", 180, 2),
-            ("shotgun", 2500, 1),
-            ("smg", 8000, 1),
-            ("rifle", 25000, 1),
-            ("machinegun", 90000, 1),
-            ("sniper", 250000, 1),
+            ("shotgun", 550, 1),
+            ("smg", 2300, 1),
+            ("rifle", 6500, 1),
+            ("machinegun", 20000, 1),
+            ("sniper", 70000, 1),
             ("pistol_ammo", 3, -1),
             ("shotgun_shell", 8, -1),
             ("rifle_ammo", 14, -1),
