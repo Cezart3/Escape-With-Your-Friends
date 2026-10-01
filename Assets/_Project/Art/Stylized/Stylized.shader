@@ -35,6 +35,11 @@ Shader "EWYF/Stylized"
         _Cutoff ("Alpha cutoff", Range(0, 1)) = 0.5
         [Toggle(_ALPHATEST_ON)] _AlphaClip ("Alpha clip", Float) = 0
         [Enum(UnityEngine.Rendering.CullMode)] _Cull ("Cull", Float) = 2
+
+        [Header(Wind)]
+        [Toggle(_WIND)] _Wind ("Sways in the wind", Float) = 0
+        _WindSway ("Sway (bend by height above the pivot)", Range(0, 8)) = 1
+        _WindFlutter ("Leaf flutter", Range(0, 1)) = 0
     }
 
     SubShader
@@ -68,7 +73,40 @@ Shader "EWYF/Stylized"
             half _Cutoff;
             half _AlphaClip;
             half _Cull;
+            half _Wind;
+            half _WindSway;
+            half _WindFlutter;
         CBUFFER_END
+
+        // Set every frame by Wind.cs, for every material at once (#244). xy: direction on the ground,
+        // z: strength, w: gust 0-1. _WindDetail is 0 on the lowest grass tier: trunks still sway,
+        // leaves stop fluttering.
+        float4 _WindParams;
+        float _WindDetail;
+
+        // The wind, in world space, so all four passes move a vertex the same way and the shadow
+        // follows the leaf. Height above the model's own pivot is the mask: a trunk's foot stays put
+        // and its crown moves most, without anybody painting vertex colours. The phase comes from
+        // where the tree stands, so a grove does not sway in step.
+        float3 ApplyWind(float3 positionWS)
+        {
+            #if defined(_WIND)
+                float3 origin = GetObjectToWorldMatrix()._m03_m13_m23;
+                float h = max(0, positionWS.y - origin.y);
+                float phase = dot(origin.xz, float2(0.37, 0.21));
+                float t = _Time.y;
+
+                float strength = _WindParams.z;
+                float gust = _WindParams.w;
+                float sway = (sin(t * 1.3 + phase) * 0.6 + sin(t * 2.3 + phase * 1.7) * 0.25 + gust * 0.6) * strength;
+                positionWS.xz += _WindParams.xy * sway * (h * h * 0.004 * _WindSway);
+
+                float flutter = sin(t * 9.0 + dot(positionWS, float3(1.7, 2.3, 1.1)))
+                              * 0.05 * _WindFlutter * _WindDetail * strength * (1 + gust) * saturate(h * 0.3);
+                positionWS += float3(flutter, flutter * 0.6, -flutter);
+            #endif
+            return positionWS;
+        }
 
         half4 BaseSample(float2 uv)
         {
@@ -96,6 +134,7 @@ Shader "EWYF/Stylized"
             #pragma target 3.0
 
             #pragma shader_feature_local _ALPHATEST_ON
+            #pragma shader_feature_local_vertex _WIND
             #pragma shader_feature_local_fragment _DETAIL_SOFTEN
             #pragma shader_feature_local_fragment _EMISSION
 
@@ -139,12 +178,12 @@ Shader "EWYF/Stylized"
                 UNITY_TRANSFER_INSTANCE_ID(input, output);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
-                VertexPositionInputs position = GetVertexPositionInputs(input.positionOS.xyz);
-                output.positionCS = position.positionCS;
-                output.positionWS = position.positionWS;
+                float3 positionWS = ApplyWind(TransformObjectToWorld(input.positionOS.xyz));
+                output.positionCS = TransformWorldToHClip(positionWS);
+                output.positionWS = positionWS;
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 output.uv = TRANSFORM_TEX(input.uv, _BaseMap);
-                output.fogFactor = ComputeFogFactor(position.positionCS.z);
+                output.fogFactor = ComputeFogFactor(output.positionCS.z);
                 return output;
             }
 
@@ -213,6 +252,7 @@ Shader "EWYF/Stylized"
             #pragma target 3.0
 
             #pragma shader_feature_local _ALPHATEST_ON
+            #pragma shader_feature_local_vertex _WIND
             #pragma multi_compile_vertex _ _CASTING_PUNCTUAL_LIGHT_SHADOW
             #pragma multi_compile_instancing
 
@@ -242,7 +282,7 @@ Shader "EWYF/Stylized"
                 UNITY_SETUP_INSTANCE_ID(input);
                 UNITY_TRANSFER_INSTANCE_ID(input, output);
 
-                float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
+                float3 positionWS = ApplyWind(TransformObjectToWorld(input.positionOS.xyz));
                 float3 normalWS = TransformObjectToWorldNormal(input.normalOS);
 
                 #if defined(_CASTING_PUNCTUAL_LIGHT_SHADOW)
@@ -287,6 +327,7 @@ Shader "EWYF/Stylized"
             #pragma target 3.0
 
             #pragma shader_feature_local _ALPHATEST_ON
+            #pragma shader_feature_local_vertex _WIND
             #pragma multi_compile_instancing
 
             struct Attributes
@@ -310,7 +351,7 @@ Shader "EWYF/Stylized"
                 UNITY_SETUP_INSTANCE_ID(input);
                 UNITY_TRANSFER_INSTANCE_ID(input, output);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
-                output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
+                output.positionCS = TransformWorldToHClip(ApplyWind(TransformObjectToWorld(input.positionOS.xyz)));
                 output.uv = TRANSFORM_TEX(input.uv, _BaseMap);
                 return output;
             }
@@ -339,6 +380,7 @@ Shader "EWYF/Stylized"
             #pragma target 3.0
 
             #pragma shader_feature_local _ALPHATEST_ON
+            #pragma shader_feature_local_vertex _WIND
             #pragma multi_compile_instancing
 
             struct Attributes
@@ -364,7 +406,7 @@ Shader "EWYF/Stylized"
                 UNITY_SETUP_INSTANCE_ID(input);
                 UNITY_TRANSFER_INSTANCE_ID(input, output);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
-                output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
+                output.positionCS = TransformWorldToHClip(ApplyWind(TransformObjectToWorld(input.positionOS.xyz)));
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 output.uv = TRANSFORM_TEX(input.uv, _BaseMap);
                 return output;

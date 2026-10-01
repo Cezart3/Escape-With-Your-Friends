@@ -102,6 +102,36 @@ namespace EscapeWithYourFriends.EditorTools
             EditorUtility.SetDirty(material);
         }
 
+        /// <summary>
+        /// The swaying copy of a kit material, for flora only (#244). A copy rather than the keyword on
+        /// the original because the kits share materials across categories: the pirate atlas dresses
+        /// the palms and the wreck alike, and a wreck that bent in the wind would be a ghost ship.
+        /// Same folder, the original's name plus "_Wind", so the kit table above still matches it.
+        /// </summary>
+        internal static Material WindTwin(Material source, float sway, float flutter)
+        {
+            if (source == null || source.name.EndsWith(WindSuffix)) return source;
+
+            string path = $"{System.IO.Path.GetDirectoryName(AssetDatabase.GetAssetPath(source))}/{source.name}{WindSuffix}.mat"
+                .Replace('\\', '/');
+            var twin = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (twin == null)
+            {
+                twin = new Material(source) { name = source.name + WindSuffix };
+                AssetDatabase.CreateAsset(twin, path);
+            }
+            else twin.CopyPropertiesFromMaterial(source);
+
+            twin.SetFloat("_Wind", 1f);
+            twin.SetFloat("_WindSway", sway);
+            twin.SetFloat("_WindFlutter", flutter);
+            Wear(twin);
+            EditorUtility.SetDirty(twin); // A fresh twin's floats are lost on save without it.
+            return twin;
+        }
+
+        const string WindSuffix = "_Wind";
+
         /// <summary>Switches one material to the shared shader and writes the look into it.</summary>
         internal static void Wear(Material material)
         {
@@ -158,6 +188,9 @@ namespace EscapeWithYourFriends.EditorTools
             // A material carried over from URP/Lit has the float right and the keyword possibly not.
             if (material.GetFloat("_AlphaClip") > 0.5f) material.EnableKeyword("_ALPHATEST_ON");
             else material.DisableKeyword("_ALPHATEST_ON");
+
+            if (material.name.EndsWith(WindSuffix)) material.EnableKeyword("_WIND");
+            else { material.DisableKeyword("_WIND"); material.SetFloat("_Wind", 0f); }
         }
 
         /// <summary>Every kit material and every palette entry, re-shaded. Batchmode entry.</summary>
