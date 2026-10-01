@@ -250,6 +250,7 @@ namespace EscapeWithYourFriends.Net
         void StartServer(ushort port)
         {
             Debug.Log($"[NetworkBootstrap] Starting server on port {port}.");
+            Economy.GameStage.NewSession();
 
             // StartConnection(port) sets the port on every transport under Multipass and starts them
             // all. A transport that cannot start, Steam on a machine with no Steam client for one,

@@ -8428,6 +8428,8 @@ time anybody holds a gun whose shop price reaches a threshold, the stage rises a
   `GameStage.Observe`, priced at the highest counter that sells it. `ShopCounter` mirrors the
   stage in a SyncVar, so the shop header shows `stage N: drops xM` to clients. The sell path
   prices through `GameStage.SellPrice`.
+- **Per session in memory.** `NetworkBootstrap.StartServer` calls `GameStage.NewSession`, so
+  leaving to the menu and hosting a fresh run does not carry the last run's stage over.
 - **Saved with the run** as `SavedRun.stage`. `Stage` is the max of the session and the save, so a
   reload cannot lose it.
 
@@ -8435,10 +8437,14 @@ time anybody holds a gun whose shop price reaches a threshold, the stage rises a
 from the base camp: a 10 m grid over the island, above +3 m, slope under 20 degrees. On Island it
 sits 408 m from camp, and on Island2 235 m. Two species live only there:
 
-- **jaguar**: aggressive, 150 hp, runs 7.4 (faster than a sprint). Drops a pelt (600), 1-2 fangs
-  (80 each) and meat. Worth 743 a kill, ten boars.
-- **stag**: skittish, senses at 55 m, runs 8.5. Drops 1-2 antlers (360 each), hide and meat.
-  Worth 635. It is meant to need a rifle and a scope.
+- **jaguar**: aggressive, 150 hp, runs 7.4 (faster than a sprint). Drops a pelt (450), 1-2 fangs
+  (80 each) and meat. Worth 593 a kill, eight boars.
+- **stag**: skittish, senses at 55 m, runs 8.5. Drops 1-2 antlers (270 each), hide and meat.
+  Worth 500. It is meant to need a rifle and a scope.
+
+The pelt and antler prices were cut from 600 and 360 after an economy review. At the old
+prices, four players hunting at stage 3 and 4 went from the rifle to the sniper in about 2.6 hours,
+fast for the last gun; the new prices make it about 3.5 to 4.
 
 `AnimalDef.Wild` marks them. It is set every bake like the loot, from `AnimalFactory.WildSpecies`.
 The early-game hunting rate in `EconomyModel.Hunting` and AnimalTest's "a sprint catches prey"
