@@ -142,6 +142,14 @@ PrefabInstance:
       propertyPath: m_ReceiveShadows
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: 0679c15e419219c41a9556db33249e90, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 73f0a4c5f32f93741b14f52a36498972, type: 2}
+    - target: {fileID: -7511558181221131132, guid: 0679c15e419219c41a9556db33249e90, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: bac71007bc187584fb8d597541f1c2a3, type: 2}
     - target: {fileID: 919132149155446097, guid: 0679c15e419219c41a9556db33249e90, type: 3}
       propertyPath: m_Name
       value: Flowers_LOD1
@@ -221,6 +229,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: 0679c15e419219c41a9556db33249e90, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 73f0a4c5f32f93741b14f52a36498972, type: 2}
+    - target: {fileID: -7511558181221131132, guid: 0679c15e419219c41a9556db33249e90, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: bac71007bc187584fb8d597541f1c2a3, type: 2}
     - target: {fileID: 919132149155446097, guid: 0679c15e419219c41a9556db33249e90, type: 3}
       propertyPath: m_Name
       value: Flowers_LOD0
