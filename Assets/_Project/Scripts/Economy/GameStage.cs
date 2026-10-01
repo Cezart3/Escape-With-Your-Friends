@@ -54,6 +54,12 @@ namespace EscapeWithYourFriends.Economy
             Debug.Log($"[GameStage] {who} raised the stage to {earned}: drops now sell at x{Multiplier(earned):0.##}.");
         }
 
+        /// <summary>
+        /// A new server in the same process (leave to the menu, host again): the session's stage
+        /// starts over, and the save, if any, supplies the rest through <see cref="Stage"/>.
+        /// </summary>
+        internal static void NewSession() => _stage = 0;
+
         /// <summary>Tests only: back to a fresh run.</summary>
         internal static void Reset()
         {

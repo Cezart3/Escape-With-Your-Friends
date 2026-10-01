@@ -23,4 +23,4 @@ MonoBehaviour:
   _effect: {fileID: 0}
   _useSeconds: 1.5
   _leavesBehind: {fileID: 0}
-  _value: 600
+  _value: 450
