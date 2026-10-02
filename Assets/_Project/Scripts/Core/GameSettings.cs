@@ -87,6 +87,13 @@ namespace EscapeWithYourFriends.Core
             }
         }
 
+        /// <summary>
+        /// Silent whatever the slider says: <c>-mute</c>, and every bot that runs in a window, which
+        /// otherwise plays the island's loops at whoever is at the desk doing something else.
+        /// </summary>
+        static bool Muted => CommandLine.HasFlag("-mute") || CommandLine.HasFlag("-playthrough")
+                             || CommandLine.HasFlag("-beautyShots") || CommandLine.HasFlag("-perfRoute");
+
         /// <summary>Everything the game plays, 0 to 1. Drives <see cref="AudioListener.volume"/>.</summary>
         public static float MasterVolume
         {
@@ -96,7 +103,7 @@ namespace EscapeWithYourFriends.Core
                 Load();
                 _masterVolume = Mathf.Clamp01(value);
                 PlayerPrefs.SetFloat(MasterVolumeKey, _masterVolume);
-                AudioListener.volume = _masterVolume;
+                AudioListener.volume = Muted ? 0f : _masterVolume;
                 Save();
             }
         }
@@ -196,7 +203,7 @@ namespace EscapeWithYourFriends.Core
         {
             Load();
 
-            AudioListener.volume = _masterVolume;
+            AudioListener.volume = Muted ? 0f : _masterVolume;
             ApplyScreen();
 
             Debug.Log($"[GameSettings] fov {_fov:0}, sensitivity {_sensitivity:0.00}x, "

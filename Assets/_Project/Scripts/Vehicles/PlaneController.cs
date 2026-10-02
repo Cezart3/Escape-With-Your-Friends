@@ -179,7 +179,39 @@ namespace EscapeWithYourFriends.Vehicles
             _body = GetComponent<Rigidbody>();
             _vehicle = GetComponent<Vehicle>();
             _assembly = GetComponent<PlaneAssembly>();
+            _propeller = transform.Find("Fitted.propeller");
         }
+
+        // ---------------------------------------------------------------- propeller
+
+        /// <summary>Revolutions per second at idle and at the top. Capped low on purpose: a two-blade
+        /// propeller past about 15 rev/s strobes at 60 fps and looks stopped or backwards.</summary>
+        const float PropIdle = 5f, PropTop = 14f, PropSpool = 6f;
+
+        Transform _propeller;
+        Vector3 _lastPosition;
+        float _propSpin;
+
+        /// <summary>
+        /// Every machine, visual only. Throttle lives on the host, so this reads what every client
+        /// already has: whether the pilot's seat is taken, whether the plane is whole, and how fast it
+        /// is going, from its own movement because a client's body is kinematic.
+        /// </summary>
+        void LateUpdate()
+        {
+            if (_propeller == null || Time.deltaTime <= 0f) return;
+
+            float speed = (transform.position - _lastPosition).magnitude / Time.deltaTime;
+            _lastPosition = transform.position;
+
+            bool running = Flyable && _vehicle != null && _vehicle.Driver != null;
+            float wanted = running ? Mathf.Min(PropTop, PropIdle + speed * 0.3f) : 0f;
+            _propSpin = Mathf.MoveTowards(_propSpin, wanted, PropSpool * Time.deltaTime);
+            _propeller.Rotate(0f, 0f, _propSpin * 360f * Time.deltaTime, Space.Self);
+        }
+
+        /// <summary>Revolutions per second the propeller is turning at. For the harness.</summary>
+        internal float PropellerSpin => _propSpin;
 
         public override void OnStartNetwork()
         {

@@ -168,8 +168,48 @@ namespace EscapeWithYourFriends.World
             Check($"and everything that repeats can batch ({string.Join(", ", uninstanced.Take(5))})",
                   uninstanced.Length == 0);
 
+            Sky();
+
             Debug.Log($"[LookTest] {_passed} passed, {_failed} failed.");
             if (_failed > 0) Debug.LogError($"[LookTest] {_failed} check(s) failed.");
+        }
+
+        /// <summary>
+        /// The sky and the air (#243): the sky shader, a light that never grazes the ground, and the
+        /// height fog. The colours are for the eye; these are the parts a refactor can break unseen.
+        /// </summary>
+        void Sky()
+        {
+            var cycle = FindAnyObjectByType<DayNightCycle>();
+            if (cycle == null || cycle.Profile == null) { Check("there is a day-night cycle", false); return; }
+
+            Material sky = RenderSettings.skybox;
+            Check($"the sky wears EWYF/Sky ({(sky != null && sky.shader != null ? sky.shader.name : "none")})",
+                  sky != null && sky.shader != null && sky.shader.name == "EWYF/Sky");
+
+            DayNightProfile profile = cycle.Profile;
+            float lowest = 90f;
+            for (float t = 0f; t < 1f; t += 0.005f)
+            {
+                Vector3 forward = profile.LightRotation(t) * Vector3.forward;
+                lowest = Mathf.Min(lowest, Mathf.Abs(Mathf.Asin(Mathf.Clamp(forward.y, -1f, 1f)) * Mathf.Rad2Deg));
+            }
+            Check($"the light never grazes the ground (lowest {lowest:F1} deg, floor {profile.MinLightElevation:F0})",
+                  lowest >= profile.MinLightElevation - 0.5f);
+
+            Vector4 fog = Shader.GetGlobalVector("_HeightFog");
+            Check($"the sea has a mist on it (height fog {fog.x:F4}/m, thinning {fog.z:F2}/m)", fog.x > 0f && fog.z > 0f);
+
+            // The shaders light their shade from the ambient probe, not from the trilight colours, so
+            // the probe has to follow the clock or dusk and night keep noon's fill (or none at all).
+            float now = WorldClock.Normalized;
+            cycle.Apply(0.5f, true);
+            float noon = RenderSettings.ambientProbe[1, 0];
+            cycle.Apply(0.0f, true);
+            float night = RenderSettings.ambientProbe[1, 0];
+            cycle.Apply(now, true);
+            Check($"the ambient probe follows the clock (green DC noon {noon:F3}, night {night:F3}, sky {profile.AmbientSky.Evaluate(0f).g:F3})",
+                  noon > 0.2f && night > 0.02f && night < noon * 0.5f);
         }
 
         static bool ThirdParty(string name)

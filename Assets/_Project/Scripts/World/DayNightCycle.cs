@@ -18,10 +18,17 @@ namespace EscapeWithYourFriends.World
     [ExecuteAlways]
     public class DayNightCycle : MonoBehaviour
     {
-        static readonly int SkyTintId = Shader.PropertyToID("_SkyTint");
-        static readonly int GroundColorId = Shader.PropertyToID("_GroundColor");
-        static readonly int ExposureId = Shader.PropertyToID("_Exposure");
-        static readonly int AtmosphereId = Shader.PropertyToID("_AtmosphereThickness");
+        static readonly int SkyTopId = Shader.PropertyToID("_SkyTop");
+        static readonly int SkyHorizonId = Shader.PropertyToID("_SkyHorizon");
+        static readonly int SkyGroundId = Shader.PropertyToID("_SkyGround");
+        static readonly int SunColourId = Shader.PropertyToID("_SunColour");
+        static readonly int SunDirId = Shader.PropertyToID("_SunDir");
+        static readonly int MoonColourId = Shader.PropertyToID("_MoonColour");
+        static readonly int CloudLitId = Shader.PropertyToID("_CloudLit");
+        static readonly int CloudShadeId = Shader.PropertyToID("_CloudShade");
+        static readonly int CloudCoverId = Shader.PropertyToID("_CloudCover");
+        static readonly int StarsId = Shader.PropertyToID("_Stars");
+        static readonly int HeightFogId = Shader.PropertyToID("_HeightFog");
 
         [Tooltip("Where every colour and every number comes from.")]
         public DayNightProfile Profile;
@@ -111,7 +118,7 @@ namespace EscapeWithYourFriends.World
 
             if (Sun != null)
             {
-                Quaternion rotation = Profile.SunRotation(timeOfDay);
+                Quaternion rotation = Profile.LightRotation(timeOfDay);
 
                 // Under the horizon the light is turned around to come from where the moon would be.
                 // It is the same object, so nothing has to hand over shadow cascades mid-frame.
@@ -139,10 +146,14 @@ namespace EscapeWithYourFriends.World
             RenderSettings.fogDensity =
                 Mathf.Max(0f, Profile.FogDensity.Evaluate(timeOfDay) * Mathf.Max(0.01f, FogScale));
 
-            ApplySky(timeOfDay);
+            Shader.SetGlobalVector(HeightFogId, new Vector4(
+                Mathf.Max(0f, Profile.HeightFogDensity.Evaluate(timeOfDay) * Mathf.Max(0.01f, FogScale)),
+                IslandShape.SeaLevel, Mathf.Max(0.001f, Profile.HeightFogFalloff), 0f));
+
+            ApplySky(timeOfDay, sunlight, moonlight);
         }
 
-        void ApplySky(float timeOfDay)
+        void ApplySky(float timeOfDay, float sunlight, float moonlight)
         {
             if (Sky == null) return;
 
@@ -155,14 +166,27 @@ namespace EscapeWithYourFriends.World
                 _skyInstance.hideFlags = HideFlags.HideAndDontSave;
             }
 
-            Color tint = Profile.SkyTint.Evaluate(timeOfDay);
-            if (_skyInstance.HasProperty(SkyTintId)) _skyInstance.SetColor(SkyTintId, tint);
-            if (_skyInstance.HasProperty(GroundColorId))
-                _skyInstance.SetColor(GroundColorId, Profile.AmbientGround.Evaluate(timeOfDay));
-            if (_skyInstance.HasProperty(ExposureId))
-                _skyInstance.SetFloat(ExposureId, Mathf.Max(0f, Profile.SkyExposure.Evaluate(timeOfDay)));
-            if (_skyInstance.HasProperty(AtmosphereId))
-                _skyInstance.SetFloat(AtmosphereId, Mathf.Clamp(Profile.AtmosphereThickness.Evaluate(timeOfDay), 0f, 5f));
+            // The horizon is the fog, so the fogged world and the sky meet without a seam. Below it is
+            // the fog too: the far sea is fully fogged, and anything else drew the edge of the water
+            // plane as a slab against a darker band (the first #243 overlook shots).
+            Color fog = Profile.FogColour.Evaluate(timeOfDay);
+            Color sun = Profile.SunColour.Evaluate(timeOfDay);
+            Color ambient = Profile.AmbientSky.Evaluate(timeOfDay);
+            float night = 1f - Mathf.Clamp01(sunlight / Handover);
+
+            _skyInstance.SetColor(SkyTopId, Profile.SkyTint.Evaluate(timeOfDay));
+            _skyInstance.SetColor(SkyHorizonId, fog);
+            _skyInstance.SetColor(SkyGroundId, fog);
+            _skyInstance.SetColor(SunColourId, sun * Mathf.Clamp01(sunlight * 1.5f));
+            _skyInstance.SetVector(SunDirId, -(Profile.SunRotation(timeOfDay) * Vector3.forward));
+            _skyInstance.SetColor(MoonColourId, Profile.MoonColour * (0.6f + moonlight * 3f));
+            _skyInstance.SetFloat(StarsId, night);
+            _skyInstance.SetFloat(CloudCoverId, Profile.CloudCover);
+
+            // Clouds are lit by the sun on top and by the sky underneath, so they go gold at dusk and
+            // slate at night without a colour table of their own.
+            _skyInstance.SetColor(CloudLitId, sun * Mathf.Min(1.1f, sunlight * 0.85f) + ambient * 1.2f + fog * 0.25f);
+            _skyInstance.SetColor(CloudShadeId, ambient * 1.1f + fog * 0.45f);
 
             RenderSettings.skybox = _skyInstance;
             RenderSettings.sun = Sun;

@@ -9017,6 +9017,102 @@ shows the particles, at about +0.3 ms.
 **The user's eye:** a 10 s clip at the jungle edge should show motion everywhere. Strength, sway
 amounts and particle rates are first guesses.
 
+
+## Lighting, sky and fog (#243)
+
+The island looked flat at noon, muddy at dusk and black at night. This pass changes the sky, the fog
+and the day's numbers. The toon ramp itself (`StylizedLighting.hlsl`) is unchanged.
+
+- **`EWYF/Sky`** (`Art/Sky/StylizedSky.shader`) replaces Unity's procedural skybox. `Sky.mat` keeps
+  its path and GUID, so no scene changes. It is one pass with no textures:
+  - A zenith-to-horizon gradient, with a square root so most of the dome is the deep colour.
+  - A warm wash and a halo round the sun, and an HDR sun disk that bloom catches.
+  - A moon opposite the sun, and stars from a hash grid that twinkle.
+  - Two layers of value-noise cloud on a flat ceiling. They drift with `Wind`'s `_WindParams`. They
+    are bright where thin, shaded where thick, and silver near the sun.
+
+  **The horizon is the fog colour, and so is everything below it.** The fogged far sea and the sky
+  meet with no seam. The first version painted a darker "ground" below the horizon, and the edge of
+  the water plane showed as a slab against it.
+- **Height fog** (`Art/Stylized/StylizedFog.hlsl`). `StylizedFog` replaces `MixFog` in `Stylized`,
+  `StylizedTerrain` and `Water`. It runs Unity's distance fog, then adds a mist that lies on the sea
+  and thins upward. The mist is integrated along the view ray in closed form, so a hilltop seen
+  across a misty valley is fogged by the valley. It reads the global `_HeightFog`: x is the density
+  at sea level, y is the base height, z is the falloff per metre. `DayNightCycle` sets it each frame.
+  It is a few ALU per pixel and only runs when Unity fog is on.
+- **The light never grazes the ground.** `DayNightProfile.LightRotation` clamps the sun, and the moon
+  by night, to at least `MinLightElevation` (12 degrees) off the horizon. `SunRotation` still drives
+  the sky disk, so the sun you see sets. A light at two degrees turned every pebble into a
+  forty-metre shadow streak.
+- **The day's numbers** (`SkyFactory.EnsureProfile`; regenerate with
+  `-executeMethod EscapeWithYourFriends.EditorTools.SkyFactory.Bake -rebuildSky`):
+  - Dusk keeps its sun until 0.77.
+  - The moon is at 0.45.
+  - Fog colour runs pale blue, then peach, then deep blue.
+  - Dusk fog is thinner than the first pass, which was an orange wall.
+  - Ambient trilight is lifted at dusk and at night.
+- **Ambient colours are sRGB, and Unity lights in linear.** A night sky ambient of 0.1 reaches the
+  probe as about 0.01, a black screen. The first night values put the probe's green DC term at
+  0.006; it is now 0.026, against 0.27 at noon. Author ambient by eye in sRGB, and check the probe,
+  not the colour.
+- **Unity's `Gradient` holds at most 8 colour keys.** With more, it logs an error and stays white,
+  which painted the fog white at every hour. `SkyFactory.Gradient` now throws instead.
+
+**Harness.** `-lookTest` adds four checks:
+- the skybox wears `EWYF/Sky`;
+- the light's lowest elevation over a whole day is at least the floor;
+- `_HeightFog` is set;
+- the ambient probe follows the clock: noon's DC term is above 0.2, night's is above 0.02 and below
+  half of noon's.
+
+18 passed.
+
+**Cost:**
+
+Nothing measurable. An A/B on the 4060 at High, `main` against this branch, two runs of each, interleaved:
+the mean change in p95 over the nine spots is -0.1 ms, and every spot is within ±0.3 ms, apart from the
+village at -0.9 ms, which is noise. A first single run showed +0.6 ms everywhere, including spots with no
+sky. The machine was hot from the builds, so a lone run against an old baseline is not a measurement.
+The clouds lost a third of their noise in the process (a one-octave second layer, no lookup toward the
+sun). That made no difference either.
+
+**The user's eye:** dusk grass in shade is still dark green under a violet fill. That is a choice
+between mood and readability, and it is the user's.
+
+
+## Cinematic story beats, a turning propeller, quiet bots
+
+Three small things that came out of watching the playthrough bot at 1920x1080.
+
+- **Story beats are two shots now** (`World/StoryBeat.cs`, #197). The first version circled the
+  subject from 4.5 m up and 11 m out: a security camera, not a film. The user called the "Found them"
+  beat on the beach embarrassing. A beat is now six seconds:
+  1. A low wide (13 m out, 2.2 m up, 42 degrees) drifts ten degrees, smoothstepped like a dolly. It
+     starts on the clear heading `ClearAngle` finds, so it does not film the inside of a palm.
+  2. A few frames through black at 36%, so the jump reads as an edit.
+  3. An eye-level two-shot: side-on to the line between the player and the subject, the subject on
+     the near third. It creeps 12% closer over the shot. A Gaussian depth of field softens
+     everything from two metres behind the subject. If the player is too close or too far to share
+     the frame, or both sides are blocked, it is a three-quarter close-up of the subject alone.
+
+  The beat's own global `Volume` (priority 50, weighted by the letterbox) adds a heavier vignette and
+  a little grain. The bars are 2.39:1. The title is tracked-out capitals in the lower left, the way a
+  film puts a name, and it plays only in the second shot. Still one hand-moved `CinemachineCamera`:
+  it has no body or aim, so moving its transform is a cut, and the brain's blend does the way in and
+  out. Headless still only keeps the bookkeeping, so no harness sees the shots; the playthrough's
+  `beat_*.png` frames and the user's eye are the test.
+- **The propeller turns** (`PlaneController.LateUpdate`, toward #249). It runs on every machine and is
+  visual only. Throttle lives on the host, so it reads what every client already has: a driver in
+  seat 0, a whole plane, and the plane's speed from its own movement, since a client's body is
+  kinematic. It idles at 5 rev/s and is capped at 14. A two-blade propeller past about 15 rev/s
+  strobes at 60 fps and looks stopped. `-flightTest` checks it is still on an unfinished plane and
+  turning past 5 rev/s in the air (35 passed).
+- **The windowed bots are silent and save nothing** (`GameSettings`, `RunSave`). `-playthrough`,
+  `-beautyShots` and `-perfRoute` imply `-mute`, which is also a flag of its own, and never arm the
+  run save. The playthrough had loaded the user's real `run.json`, with a finished plane, so the
+  "Airworthy" beat never played and the bot failed "the story beats played". It would also have
+  written over that save on the way out.
+
 ---
 
 ## Data-driven content

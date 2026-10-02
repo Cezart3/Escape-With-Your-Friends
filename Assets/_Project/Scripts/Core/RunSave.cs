@@ -142,7 +142,11 @@ namespace EscapeWithYourFriends.Core
             if (_driver != null || Demo.On) return;
 
             bool headless = SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null;
-            bool wanted = !CommandLine.HasFlag("-noSave")
+            // The windowed bots are not the player's run: the playthrough loaded the user's real save
+            // (a finished plane, so no "Airworthy" beat) and would have written over it on the way out.
+            bool bot = CommandLine.HasFlag("-playthrough") || CommandLine.HasFlag("-beautyShots")
+                       || CommandLine.HasFlag("-perfRoute");
+            bool wanted = !CommandLine.HasFlag("-noSave") && !bot
                           && (!headless || CommandLine.HasFlag("-save"));
 
             if (!wanted) return;

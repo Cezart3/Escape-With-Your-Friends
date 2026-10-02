@@ -151,6 +151,7 @@ Shader "EWYF/Stylized"
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "StylizedLighting.hlsl"
+            #include "StylizedFog.hlsl"
 
             struct Attributes
             {
@@ -230,7 +231,7 @@ Shader "EWYF/Stylized"
                 #if defined(_EMISSION)
                     colour += _EmissionColor.rgb;
                 #endif
-                colour = MixFog(colour, input.fogFactor);
+                colour = StylizedFog(colour, input.fogFactor, input.positionWS);
                 return half4(colour, 1);
             }
             ENDHLSL
