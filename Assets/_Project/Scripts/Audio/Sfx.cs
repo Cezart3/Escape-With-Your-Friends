@@ -14,7 +14,6 @@ namespace EscapeWithYourFriends.Audio
         Shot,
         DryFire,
         Reload,
-        Step,
         Pickup,
         Coin,
         Spin,
@@ -182,10 +181,6 @@ namespace EscapeWithYourFriends.Audio
                     return Synth.Clip("reload", 0.30f, t =>
                         Synth.White() * 0.45f
                         * (Synth.Decay(t, 0.12f, 16f) + 0.8f * Synth.Decay(Mathf.Max(0f, t - 0.16f), 0.12f, 16f)));
-
-                case Sound.Step:
-                    return Synth.Clip("step", 0.12f, t =>
-                        Synth.White() * 0.30f * Synth.Decay(t, 0.12f, 14f));
 
                 case Sound.Pickup:
                     return Synth.Clip("pickup", 0.14f, t =>

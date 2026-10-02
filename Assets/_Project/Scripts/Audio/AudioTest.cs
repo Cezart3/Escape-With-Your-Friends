@@ -85,6 +85,11 @@ namespace EscapeWithYourFriends.Audio
             Sfx.Play(Sound.Punch, Vector3.zero);
             Sfx.Play2D(Sound.Click);
             Check("playing a sound with no audio device is harmless", Sfx.Played == before + 2);
+
+            // Recorded steps, five takes for each ground: a missing one is a silent beach.
+            AudioClip[] steps = Resources.LoadAll<AudioClip>("Footsteps");
+            foreach (string ground in new[] { "grass", "snow", "concrete", "wood" })
+                Check($"footsteps on {ground}", System.Array.FindAll(steps, c => c.name.Contains(ground)).Length >= 5);
         }
 
         void Soundtrack()
