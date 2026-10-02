@@ -9196,6 +9196,27 @@ with `-beautyShots`.
 The native village is not part of this change. Its palisade huts and thatch are meant to look
 primitive. A dedicated thatch would help them more than the town kit would.
 
+## Footsteps: recorded, by surface, quieter
+
+A playtest called running "horrible, it does not sound like steps, extremely annoying". The step
+was a synthesised burst of white noise, so every stride was a hiss. It played at half volume
+through the shared twelve-voice SFX pool.
+
+`Footsteps` now plays recorded takes from Kenney's Impact Sounds (CC0), stored in
+`Resources/Footsteps`. Each surface has five takes:
+
+- grass on grass and dirt;
+- the kit's snow on sand, because it is the same soft crunch;
+- concrete on rock;
+- wood on anything that is not the terrain: decks, floors, the casino.
+
+A short ray under the body finds the ground. On terrain, the strongest splat layer at that point
+picks the sound (`IslandSplat`). Each body has its own `AudioSource`, so steps never steal a voice
+from a gunshot. The same take never plays twice in a row, and the pitch varies a little.
+
+Your own steps play at 0.22 and other players' at 0.35, against 0.5 before. The synthesised
+`Sound.Step` is deleted. `-audioTest` checks that all four surfaces have their five takes (60/0).
+
 ---
 
 ## Data-driven content
