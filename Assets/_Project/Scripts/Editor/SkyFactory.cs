@@ -53,82 +53,88 @@ namespace EscapeWithYourFriends.EditorTools
                 (0.75f, new Color(1.00f, 0.46f, 0.22f)),
                 (1.00f, new Color(0.16f, 0.20f, 0.35f)));
 
+            // Dusk keeps more light than it used to (#243): the old curve had the island near black
+            // half an hour before sunset, and a dusk you cannot see is not a mood, it is a fault.
             profile.SunIntensity = Curve(
-                (0.00f, 0f), (0.23f, 0f), (0.27f, 0.35f), (0.34f, 1.00f),
-                (0.50f, 1.25f), (0.66f, 1.00f), (0.73f, 0.35f), (0.77f, 0f), (1.00f, 0f));
+                (0.00f, 0f), (0.23f, 0f), (0.26f, 0.45f), (0.30f, 0.90f), (0.36f, 1.15f),
+                (0.50f, 1.30f), (0.64f, 1.15f), (0.70f, 0.90f), (0.74f, 0.50f), (0.77f, 0.15f),
+                (0.79f, 0f), (1.00f, 0f));
 
-            profile.MoonColour = new Color(0.52f, 0.64f, 0.95f);
+            profile.MoonColour = new Color(0.55f, 0.66f, 0.98f);
 
             // Night has to be dark enough that a flashlight is worth carrying, and no darker: a
-            // black screen is not tense, it is a bug report. 0.14 is enough to make out a treeline.
-            profile.MoonIntensity = 0.14f;
+            // black screen is not tense, it is a bug report. The first pass at 0.14 was that black
+            // screen at the jungle edge; 0.28 makes out the treeline and the paths.
+            profile.MoonIntensity = 0.45f;
             profile.MoonShadowStrength = 0.35f;
 
+            // These are sRGB colours and Unity lights in linear, so 0.1 here is 0.01 of light: the
+            // first #243 values had the night probe at 0.006, a black screen. Author by eye in sRGB.
             // Ambient is the real lever on how dark night feels. Direct light only touches what it
-            // hits; ambient is what fills every shadow, and a night with bright ambient looks like an
-            // overcast afternoon with a blue filter no matter what the sun is doing.
+            // hits; ambient is what fills every shadow. The night is blue rather than black, dusk is
+            // violet in the shade against an orange key, and noon fills shade with sky blue.
             profile.AmbientSky = Gradient(
-                (0.00f, new Color(0.020f, 0.026f, 0.048f)),
-                (0.22f, new Color(0.045f, 0.055f, 0.090f)),
-                (0.28f, new Color(0.32f, 0.30f, 0.34f)),
-                (0.50f, new Color(0.46f, 0.60f, 0.80f)),
-                (0.70f, new Color(0.42f, 0.46f, 0.60f)),
-                (0.76f, new Color(0.30f, 0.24f, 0.28f)),
-                (0.83f, new Color(0.045f, 0.055f, 0.090f)),
-                (1.00f, new Color(0.020f, 0.026f, 0.048f)));
+                (0.00f, new Color(0.20f, 0.26f, 0.42f)),
+                (0.22f, new Color(0.24f, 0.26f, 0.42f)),
+                (0.28f, new Color(0.52f, 0.48f, 0.56f)),
+                (0.50f, new Color(0.50f, 0.64f, 0.86f)),
+                (0.70f, new Color(0.66f, 0.64f, 0.74f)),
+                (0.76f, new Color(0.64f, 0.56f, 0.70f)),
+                (0.83f, new Color(0.24f, 0.26f, 0.42f)),
+                (1.00f, new Color(0.20f, 0.26f, 0.42f)));
 
             profile.AmbientEquator = Gradient(
-                (0.00f, new Color(0.016f, 0.020f, 0.036f)),
-                (0.26f, new Color(0.26f, 0.20f, 0.20f)),
-                (0.50f, new Color(0.52f, 0.54f, 0.52f)),
-                (0.74f, new Color(0.30f, 0.20f, 0.18f)),
-                (1.00f, new Color(0.016f, 0.020f, 0.036f)));
+                (0.00f, new Color(0.14f, 0.17f, 0.28f)),
+                (0.26f, new Color(0.48f, 0.38f, 0.38f)),
+                (0.50f, new Color(0.56f, 0.58f, 0.55f)),
+                (0.74f, new Color(0.72f, 0.58f, 0.52f)),
+                (1.00f, new Color(0.14f, 0.17f, 0.28f)));
 
+            // Warm sand bounce under everything by day.
             profile.AmbientGround = Gradient(
-                (0.00f, new Color(0.010f, 0.012f, 0.018f)),
-                (0.30f, new Color(0.16f, 0.15f, 0.12f)),
-                (0.50f, new Color(0.26f, 0.24f, 0.19f)),
-                (0.72f, new Color(0.16f, 0.14f, 0.11f)),
-                (1.00f, new Color(0.010f, 0.012f, 0.018f)));
+                (0.00f, new Color(0.020f, 0.025f, 0.035f)),
+                (0.30f, new Color(0.20f, 0.18f, 0.14f)),
+                (0.50f, new Color(0.32f, 0.29f, 0.22f)),
+                (0.72f, new Color(0.24f, 0.18f, 0.13f)),
+                (1.00f, new Color(0.020f, 0.025f, 0.035f)));
 
-            // Fog is matched to the sky at every hour, because the horizon is where the two meet and
-            // a mismatch there draws a hard line across the sea.
+            // The fog is also the sky's horizon (EWYF/Sky), so this is the colour of the air at every
+            // hour: pale blue at noon, peach at dusk, deep blue at night.
             profile.FogColour = Gradient(
-                (0.00f, new Color(0.035f, 0.045f, 0.075f)),
-                (0.24f, new Color(0.30f, 0.26f, 0.32f)),
-                (0.30f, new Color(0.72f, 0.64f, 0.58f)),
-                (0.50f, new Color(0.68f, 0.78f, 0.88f)),
-                (0.70f, new Color(0.72f, 0.66f, 0.60f)),
-                (0.78f, new Color(0.26f, 0.20f, 0.26f)),
-                (1.00f, new Color(0.035f, 0.045f, 0.075f)));
+                (0.00f, new Color(0.07f, 0.09f, 0.16f)),
+                (0.25f, new Color(0.62f, 0.44f, 0.44f)),
+                (0.31f, new Color(0.80f, 0.74f, 0.70f)),
+                (0.50f, new Color(0.70f, 0.82f, 0.94f)),
+                (0.72f, new Color(0.86f, 0.72f, 0.62f)),
+                (0.76f, new Color(0.78f, 0.56f, 0.54f)),
+                (0.80f, new Color(0.30f, 0.22f, 0.32f)),
+                (1.00f, new Color(0.07f, 0.09f, 0.16f)));
 
             // Thicker at the edges of the day and at night. It hides the draw distance, it is free,
             // and it is the oldest trick in the book for making a small island feel large.
             profile.FogDensity = Curve(
-                (0.00f, 0.0060f), (0.25f, 0.0075f), (0.40f, 0.0035f),
-                (0.60f, 0.0035f), (0.76f, 0.0075f), (1.00f, 0.0060f));
+                (0.00f, 0.0050f), (0.25f, 0.0055f), (0.40f, 0.0032f),
+                (0.60f, 0.0032f), (0.76f, 0.0036f), (1.00f, 0.0050f));
 
+            // Mist on the sea and in the valleys, thickest at dawn.
+            profile.HeightFogDensity = Curve(
+                (0.00f, 0.0045f), (0.26f, 0.0070f), (0.40f, 0.0030f),
+                (0.62f, 0.0030f), (0.76f, 0.0045f), (1.00f, 0.0045f));
+            profile.HeightFogFalloff = 0.08f;
+
+            // The zenith. Deep tropical blue at noon, violet at dusk, near black at night.
             profile.SkyTint = Gradient(
-                (0.00f, new Color(0.06f, 0.08f, 0.16f)),
-                (0.25f, new Color(0.42f, 0.30f, 0.34f)),
-                (0.34f, new Color(0.52f, 0.58f, 0.72f)),
-                (0.50f, new Color(0.54f, 0.66f, 0.86f)),
-                (0.70f, new Color(0.52f, 0.56f, 0.70f)),
-                (0.77f, new Color(0.44f, 0.26f, 0.28f)),
-                (1.00f, new Color(0.06f, 0.08f, 0.16f)));
+                (0.00f, new Color(0.015f, 0.020f, 0.050f)),
+                (0.24f, new Color(0.18f, 0.20f, 0.36f)),
+                (0.32f, new Color(0.30f, 0.48f, 0.80f)),
+                (0.50f, new Color(0.20f, 0.44f, 0.86f)),
+                (0.68f, new Color(0.26f, 0.44f, 0.78f)),
+                (0.75f, new Color(0.26f, 0.26f, 0.52f)),
+                (0.80f, new Color(0.06f, 0.07f, 0.16f)),
+                (1.00f, new Color(0.015f, 0.020f, 0.050f)));
 
-            // Exposure is what actually makes night dark rather than merely blue. The procedural sky
-            // is lit by the sun's elevation, so at midnight it is already dim; this takes it the rest
-            // of the way without touching the day.
-            profile.SkyExposure = Curve(
-                (0.00f, 0.16f), (0.22f, 0.22f), (0.30f, 1.05f),
-                (0.50f, 1.30f), (0.70f, 1.05f), (0.80f, 0.24f), (1.00f, 0.16f));
-
-            // Thick air at the horizons is what scatters sunrise red. Thin at night so the sky goes
-            // properly black instead of navy.
-            profile.AtmosphereThickness = Curve(
-                (0.00f, 0.55f), (0.24f, 1.85f), (0.30f, 1.30f),
-                (0.50f, 0.95f), (0.72f, 1.35f), (0.78f, 1.85f), (1.00f, 0.55f));
+            profile.CloudCover = 0.42f;
+            profile.MinLightElevation = 12f;
 
             if (fresh)
             {
@@ -146,37 +152,46 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
-        /// The skybox material. Unity's own procedural sky: it takes a tint, an exposure and an
-        /// atmosphere thickness, works out the rest from where the sun is pointing, and costs one
-        /// full-screen pass of arithmetic with no cubemap to load. Nothing hand-painted here would
-        /// look better on an integrated GPU.
+        /// The skybox material, on EWYF/Sky (#243). Kept at the same path and GUID when it moves off
+        /// Unity's procedural sky, so the scenes that reference it need no rebuild. DayNightCycle writes
+        /// every colour at runtime; the numbers here are only what the editor shows.
         /// </summary>
         public static Material EnsureSkyMaterial()
         {
-            var existing = AssetDatabase.LoadAssetAtPath<Material>(SkyMaterialPath);
-            if (existing != null) return existing;
-
-            Shader shader = Shader.Find("Skybox/Procedural");
+            Shader shader = Shader.Find("EWYF/Sky");
             if (shader == null)
             {
-                Debug.LogError("[SkyFactory] Shader 'Skybox/Procedural' not found; the scene will keep the default sky.");
+                Debug.LogError("[SkyFactory] Shader 'EWYF/Sky' not found; the scene will keep the default sky.");
                 return null;
             }
 
-            Directory.CreateDirectory(SkyFolder);
+            var material = AssetDatabase.LoadAssetAtPath<Material>(SkyMaterialPath);
+            if (material == null)
+            {
+                Directory.CreateDirectory(SkyFolder);
+                material = new Material(shader) { name = "Sky" };
+                AssetDatabase.CreateAsset(material, SkyMaterialPath);
+                Debug.Log($"[SkyFactory] Generated {SkyMaterialPath}.");
+            }
+            else if (material.shader != shader)
+            {
+                material.shader = shader;
+                EditorUtility.SetDirty(material);
+                Debug.Log($"[SkyFactory] {SkyMaterialPath} moved to EWYF/Sky.");
+            }
 
-            var material = new Material(shader) { name = "Sky" };
-            material.SetFloat("_SunDisk", 2f);          // high quality: a disk with a bloom around it
-            material.SetFloat("_SunSize", 0.035f);
-            material.SetFloat("_SunSizeConvergence", 6f);
-            material.SetColor("_SkyTint", new Color(0.54f, 0.66f, 0.86f));
-            material.SetColor("_GroundColor", new Color(0.26f, 0.24f, 0.19f));
-            material.SetFloat("_AtmosphereThickness", 0.95f);
-            material.SetFloat("_Exposure", 1.3f);
-
-            AssetDatabase.CreateAsset(material, SkyMaterialPath);
-            Debug.Log($"[SkyFactory] Generated {SkyMaterialPath}.");
             return material;
+        }
+
+        /// <summary>
+        /// Batchmode entry: the sky material and the profile, islands untouched. Pass -rebuildSky to
+        /// regenerate the profile from the numbers above.
+        /// </summary>
+        public static void Bake()
+        {
+            EnsureSkyMaterial();
+            EditorUtility.SetDirty(EnsureProfile());
+            AssetDatabase.SaveAssets();
         }
 
         /// <summary>
@@ -232,6 +247,10 @@ namespace EscapeWithYourFriends.EditorTools
 
         static Gradient Gradient(params (float time, Color colour)[] keys)
         {
+            // Unity keeps eight keys at most and, given more, logs and leaves the gradient white. A
+            // white fog at midnight is a long way from that log line, so fail here instead.
+            if (keys.Length > 8) throw new System.ArgumentException($"A Gradient takes 8 keys, not {keys.Length}.");
+
             var gradient = new Gradient();
             var colours = new GradientColorKey[keys.Length];
             for (int i = 0; i < keys.Length; i++)

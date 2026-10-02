@@ -62,14 +62,20 @@ namespace EscapeWithYourFriends.World
         [Tooltip("Fog density over the day. Thicker at dawn and at night, which hides the draw distance and costs nothing.")]
         public AnimationCurve FogDensity = AnimationCurve.Linear(0f, 0.004f, 1f, 0.004f);
 
-        [Tooltip("Skybox tint over the day.")]
+        [Tooltip("Height fog density at sea level, per metre, over the day. It thins upward, so the jungle fades into air and the cliff top stays clear.")]
+        public AnimationCurve HeightFogDensity = AnimationCurve.Linear(0f, 0.004f, 1f, 0.004f);
+
+        [Tooltip("How fast the height fog thins, per metre of height. 0.08 halves it every nine metres.")]
+        public float HeightFogFalloff = 0.08f;
+
+        [Tooltip("The sky's zenith colour over the day. The horizon is the fog colour, so the two never show a seam.")]
         public Gradient SkyTint = new Gradient();
 
-        [Tooltip("Skybox exposure over the day. This is what actually makes the night dark, rather than merely blue.")]
-        public AnimationCurve SkyExposure = AnimationCurve.Linear(0f, 0.15f, 1f, 0.15f);
+        [Tooltip("How much of the sky is cloud, 0-1.")]
+        [Range(0f, 1f)] public float CloudCover = 0.42f;
 
-        [Tooltip("Atmosphere thickness over the day. High at the horizons scatters the light red.")]
-        public AnimationCurve AtmosphereThickness = AnimationCurve.Linear(0f, 1f, 1f, 1f);
+        [Tooltip("The lowest the light itself goes, in degrees, though the sun in the sky keeps setting. Below about ten degrees every bump in the ground throws a shadow across the island.")]
+        public float MinLightElevation = 12f;
 
         /// <summary>Seconds in a full cycle. Clamped so a zero in the asset cannot divide by zero.</summary>
         public float CycleSeconds => Mathf.Max(10f, CycleMinutes * 60f);
@@ -78,12 +84,22 @@ namespace EscapeWithYourFriends.World
         /// Where the sun is at this time of day. Noon points it straight down the tilt; midnight has
         /// it under the world, which is the cue for the moon to take over.
         /// </summary>
-        public Quaternion SunRotation(float timeOfDay)
+        public Quaternion SunRotation(float timeOfDay) => Rotation((timeOfDay - 0.25f) * 360f);
+
+        /// <summary>
+        /// The light's rotation: the sun's, kept at least <see cref="MinLightElevation"/> off the
+        /// horizon, by day and (turned round, for the moon) by night.
+        /// </summary>
+        public Quaternion LightRotation(float timeOfDay)
         {
-            // -90 at midnight, 0 at sunrise, 90 at noon, 180 at sunset.
-            float elevation = (timeOfDay - 0.25f) * 360f;
-            return Quaternion.Euler(elevation, SunAzimuth, 0f) * Quaternion.Euler(0f, 0f, SunTilt);
+            // -90 at midnight, 0 at sunrise, 90 at noon, 180 at sunset; past 180 is the night.
+            float elevation = Mathf.Repeat((timeOfDay - 0.25f) * 360f + 180f, 360f) - 180f;
+            float low = MinLightElevation;
+            elevation = elevation >= 0f ? Mathf.Clamp(elevation, low, 180f - low) : Mathf.Clamp(elevation, -180f + low, -low);
+            return Rotation(elevation);
         }
+
+        Quaternion Rotation(float elevation) => Quaternion.Euler(elevation, SunAzimuth, 0f) * Quaternion.Euler(0f, 0f, SunTilt);
 
         /// <summary>How far above the horizon the sun is, -1 to 1. Negative is night.</summary>
         public float SunHeight(float timeOfDay) => Mathf.Sin((timeOfDay - 0.25f) * Mathf.PI * 2f);

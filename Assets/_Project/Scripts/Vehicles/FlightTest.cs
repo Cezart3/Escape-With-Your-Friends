@@ -184,6 +184,7 @@ namespace EscapeWithYourFriends.Vehicles
             Check($"and goes nowhere ({Vector3.Distance(plane.transform.position, was):0.0}m)",
                   Vector3.Distance(plane.transform.position, was) < 2f);
             Check("still on its wheels", !plane.IsAirborne);
+            Check($"with its propeller still ({plane.PropellerSpin:0.0} rev/s)", plane.PropellerSpin < 0.01f);
 
             plane.ServerDrive(0f, 0f, power: false, brake: true);
 
@@ -280,6 +281,7 @@ namespace EscapeWithYourFriends.Vehicles
             Check("holding the throttle got it moving", rotated);
             Check($"and two rules got it off the ground ({best:0}m up in {run:0}m)", best >= Airborne);
             Check("with nothing under the wheels", plane.IsAirborne);
+            Check($"and the propeller turning ({plane.PropellerSpin:0.0} rev/s)", plane.PropellerSpin > 5f);
             Check($"pointing more or less where it is going ({plane.Slip:0}deg of slip)",
                   plane.Slip < 25f);
 

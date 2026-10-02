@@ -78,6 +78,7 @@ Shader "EWYF/Water"
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "../Stylized/StylizedFog.hlsl"
 
             // Global, not per-material: the C# that floats boats and this shader have to be reading
             // the same instant, and a global float is the only way that stays true if a second water
@@ -244,7 +245,7 @@ Shader "EWYF/Water"
                 // out, the surf line sits a little offshore and the sand under it shows through.
                 alpha *= smoothstep(0.0, saturate(_EdgeFade / max(0.01, _ShoreDepth)), mask);
 
-                colour = MixFog(colour, IN.fogFactor);
+                colour = StylizedFog(colour, IN.fogFactor, IN.positionWS);
                 return half4(colour, alpha);
             }
             ENDHLSL

@@ -89,6 +89,7 @@ Shader "EWYF/StylizedTerrain"
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "StylizedLighting.hlsl"
+            #include "StylizedFog.hlsl"
 
             struct Varyings
             {
@@ -125,7 +126,7 @@ Shader "EWYF/StylizedTerrain"
                              + weights.a * SAMPLE_TEXTURE2D(_Splat3, sampler_Splat3, TRANSFORM_TEX(input.uv, _Splat3)).rgb;
 
                 half3 colour = StylizedLighting(albedo, input.positionWS, normalize(input.normalWS), input.positionCS);
-                return half4(MixFog(colour, input.fogFactor), 1);
+                return half4(StylizedFog(colour, input.fogFactor, input.positionWS), 1);
             }
             ENDHLSL
         }
