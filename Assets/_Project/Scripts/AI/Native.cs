@@ -993,7 +993,7 @@ namespace EscapeWithYourFriends.AI
         /// </summary>
         void Land(Health victim, Vector3 direction, Vector3 contact, DamageType type)
         {
-            var info = new DamageInfo(_def.AttackDamage, type, direction * _def.AttackKnockback,
+            var info = new DamageInfo(victim.AiBlow(_def.AttackDamage), type, direction * _def.AttackKnockback,
                                       contact, _def.AttackStun, ObjectId);
 
             bool wasStanding = victim.IsAlive;

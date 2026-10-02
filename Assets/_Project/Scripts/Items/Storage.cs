@@ -335,13 +335,10 @@ namespace EscapeWithYourFriends.Items
         {
             get
             {
-                Inventory bag = LocalBag();
-                ItemStack held = bag != null ? bag.Selected : ItemStack.Empty;
-
-                if (!held.IsEmpty) return $"Store {held}";
-
-                int last = LastUsedSlot();
-                return last < 0 ? $"Empty {_label}" : $"Take {this[last]}";
+                // E opens the chest's screen now (PlayerInteractor); the quick store and take below are
+                // still the server's answer to an interact, which the harnesses and bots use.
+                int used = UsedSlots;
+                return used == 0 ? $"Open {_label} (empty)" : $"Open {_label} ({used} item{(used == 1 ? "" : "s")})";
             }
         }
 

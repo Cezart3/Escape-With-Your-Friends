@@ -455,8 +455,11 @@ namespace EscapeWithYourFriends.World
                     yield return Walk("trader", counter.transform.position, 3f);
                     Look(counter.transform.position + Vector3.up);
                     yield return new WaitForSeconds(0.3f);
-                    _input.BotPress("inventory");
+                    if (trip == 1) { UI.WorldMap.Open = true; yield return Shot("map"); UI.WorldMap.Open = false; }
+                    // E, as a player would: it opens the shop now (playtest), Tab still does too.
+                    _input.BotPress("interact");
                     yield return new WaitForSeconds(0.8f);
+                    if (trip == 1) Check("E at the counter opens the shop", UI.HudRoot.InventoryOpen);
                     if (trip == 1) yield return Shot("shop_open");
 
                     // The gunsmith rows for the gun in hand: buy one of each, for the screenshot.

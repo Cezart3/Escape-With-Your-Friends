@@ -54,6 +54,72 @@ namespace EscapeWithYourFriends.Player
         {
             _stun = GetComponent<StunState>();
             _health = GetComponent<Health>();
+            _rider = GetComponent<Vehicles.VehicleRider>();
+        }
+
+        Vehicles.VehicleRider _rider;
+        string _prompt, _controls;
+        GUIStyle _promptStyle, _controlsStyle;
+
+        // The key to press, under the crosshair, and the controls while seated. Nothing on screen
+        // used to say either: the user stood at the trader pressing nothing, and sat in the plane
+        // not knowing Shift was the throttle. Cached here, drawn in OnGUI, which runs twice a frame.
+        void Update()
+        {
+            _prompt = _controls = null;
+            if (!IsOwner || UI.HudRoot.InventoryOpen) return;
+            if (_health != null && _health.IsIncapacitated) return;
+
+            if (_rider != null && _rider.IsSeated)
+            {
+                _controls = !_rider.IsDriving
+                    ? "V  camera\nE  get out"
+                    : _rider.Vehicle.GetComponent<Vehicles.PlaneController>() != null
+                        ? "Shift  throttle\nW / S  nose up / down\nA / D  bank to turn\nCtrl  brake\nV  camera\nE  get out"
+                        : "W / S  forward / reverse\nA / D  steer\nCtrl  brake\nV  camera\nE  get out";
+                return;
+            }
+
+            IInteractable aimed = Aimed;
+            if (aimed != null) _prompt = $"[E]  {aimed.Prompt}";
+        }
+
+        void OnGUI()
+        {
+            if (_prompt == null && _controls == null) return;
+            float scale = Screen.height / 1080f;
+
+            if (_promptStyle == null)
+            {
+                // A label on a dark plate: the skin's box is grey on grey and was hard to read on sand.
+                _promptStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold, wordWrap = false };
+                _controlsStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperLeft, wordWrap = false };
+                _promptStyle.normal.textColor = _controlsStyle.normal.textColor = Color.white;
+            }
+            _promptStyle.fontSize = _controlsStyle.fontSize = Mathf.RoundToInt(22f * scale);
+            _controlsStyle.padding = new RectOffset(Mathf.RoundToInt(14f * scale), Mathf.RoundToInt(14f * scale),
+                                                    Mathf.RoundToInt(10f * scale), Mathf.RoundToInt(10f * scale));
+
+            if (_prompt != null)
+            {
+                Vector2 size = _promptStyle.CalcSize(new GUIContent(_prompt)) + new Vector2(24f, 10f) * scale;
+                Plate(new Rect((Screen.width - size.x) * 0.5f, Screen.height * 0.5f + 60f * scale, size.x, size.y),
+                      _prompt, _promptStyle);
+            }
+            else
+            {
+                Vector2 size = _controlsStyle.CalcSize(new GUIContent(_controls));
+                Plate(new Rect(24f * scale, Screen.height * 0.5f - size.y * 0.5f, size.x, size.y), _controls, _controlsStyle);
+            }
+        }
+
+        static void Plate(Rect rect, string text, GUIStyle style)
+        {
+            Color was = GUI.color;
+            GUI.color = new Color(0f, 0f, 0f, 0.65f);
+            GUI.DrawTexture(rect, Texture2D.whiteTexture);
+            GUI.color = was;
+            GUI.Label(rect, text, style);
         }
 
         /// <summary>
@@ -69,7 +135,17 @@ namespace EscapeWithYourFriends.Player
             if (_health != null && _health.IsIncapacitated) return false;
             if (_stun != null && _stun.IsStunned) return false;
 
-            if (FindTarget(out NetworkObject target) == null) return false;
+            IInteractable aimed = FindTarget(out NetworkObject target);
+            if (aimed == null) return false;
+
+            // A trader and a chest are screens, not actions: E opens the bag with them beside it.
+            // They used to want Tab, which nothing said, and the user stood at the counter pressing E
+            // with nothing happening.
+            if (aimed is Economy.ShopCounter || aimed is Items.Storage)
+            {
+                GetComponent<PlayerInputReader>()?.QueueInventory();
+                return true;
+            }
 
             ServerInteract(target);
             return true;

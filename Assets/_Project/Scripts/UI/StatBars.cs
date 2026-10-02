@@ -5,7 +5,10 @@ using UnityEngine.UI;
 namespace EscapeWithYourFriends.UI
 {
     /// <summary>
-    /// Four bars in the bottom-left: food, water, stamina, warmth.
+    /// Five bars in the bottom-left: health, food, water, warmth, stamina.
+    ///
+    /// Health was missing until a playtest: the user was knocked down "in one hit" by a boar while
+    /// "at full health" - the four survival bars were full, the health nobody could see was not.
     ///
     /// Bottom-left rather than around the crosshair, because these are things you check between
     /// fights rather than during one, and a ring of meters in the middle of the screen turns every
@@ -38,6 +41,7 @@ namespace EscapeWithYourFriends.UI
         readonly Bar _water = new();
         readonly Bar _stamina = new();
         readonly Bar _warmth = new();
+        readonly Bar _health = new();
 
         RectTransform _root;
         SurvivalStats _stats;
@@ -48,7 +52,7 @@ namespace EscapeWithYourFriends.UI
             _root = HudFactory.Rect(parent, "Stats");
             HudFactory.Anchor(_root, new Vector2(0f, 0f), new Vector2(0f, 0f),
                               new Vector2(Margin, Margin),
-                              new Vector2(Width, (Height + Gap) * 4f));
+                              new Vector2(Width, (Height + Gap) * 5f));
 
             // Bottom to top, so the order reads upward as stamina, warmth, water, food - the two you
             // check constantly nearest the bottom edge where the eye already is.
@@ -56,6 +60,7 @@ namespace EscapeWithYourFriends.UI
             Make(_warmth, 1, "warmth", new Color(0.80f, 0.55f, 0.30f), new Color(0.45f, 0.70f, 1.00f));
             Make(_water, 2, "water", new Color(0.35f, 0.65f, 0.90f), new Color(1.00f, 0.65f, 0.25f));
             Make(_food, 3, "food", new Color(0.65f, 0.75f, 0.40f), new Color(1.00f, 0.45f, 0.35f));
+            Make(_health, 4, "health", new Color(0.85f, 0.18f, 0.18f), new Color(0.85f, 0.18f, 0.18f));
 
             // One line above the bars for whatever is currently affecting you. Text rather than icons
             // because there is no icon art yet and a row of blank squares says less than four words.
@@ -113,6 +118,16 @@ namespace EscapeWithYourFriends.UI
             Draw(_water, stats.ThirstFraction, low, alarmOnlyWhenLow: true);
             Draw(_warmth, stats.WarmthFraction, low, alarmOnlyWhenLow: true);
             Draw(_stamina, stats.StaminaFraction, 1f, alarmOnlyWhenLow: false);
+
+            // Always solid and always numbered, unlike the survival bars: it is the one you watch in
+            // a fight, and how much is left is the whole question.
+            var health = stats.GetComponent<Combat.Health>();
+            if (health != null)
+            {
+                Draw(_health, health.Normalized, 1f, alarmOnlyWhenLow: false);
+                _health.Label.enabled = true;
+                _health.Label.text = $"{Mathf.CeilToInt(health.Current)}";
+            }
 
             DrawBuffs(stats.GetComponent<Player.BuffState>());
         }
