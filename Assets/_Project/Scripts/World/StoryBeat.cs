@@ -68,8 +68,10 @@ namespace EscapeWithYourFriends.World
         float _size, _wideRadius, _wideHeight;
         CinemachineCamera _camera;
 
-        // The close shot, worked out once at the cut so it does not wander as the subject moves.
+        // The close shot. The camera is placed once at the cut; the aim pans after a subject that
+        // moves (the castaway gets up and follows), as an operator would, instead of losing them.
         Vector3 _closeFrom, _closeAim;
+        float _closeShare;
 
         Volume _volume;
         VolumeProfile _profile;
@@ -162,6 +164,7 @@ namespace EscapeWithYourFriends.World
 
             if (!_framed) FrameClose();
 
+            _closeAim = Vector3.Lerp(_player, _focusAt, _closeShare) + (_closeShare < 1f ? Vector3.up * AimHeight : _aimOffset);
             float v = Mathf.SmoothStep(0f, 1f, (t - CutAt) / (1f - CutAt));
             Vector3 from = Vector3.Lerp(_closeFrom, _closeAim, Creep * v);
             Aim(from, _closeAim, CloseFov);
@@ -196,7 +199,8 @@ namespace EscapeWithYourFriends.World
             {
                 Vector3 along = between / apart;
                 Vector3 side = Vector3.Cross(Vector3.up, along);
-                Vector3 middle = Vector3.Lerp(_player, _focusAt, 0.6f);
+                _closeShare = 0.6f;
+                Vector3 middle = Vector3.Lerp(_player, _focusAt, _closeShare);
                 _closeAim = middle + Vector3.up * AimHeight;
                 float back = Mathf.Max(4.5f, apart * 0.9f + 2.5f);
 
@@ -214,6 +218,7 @@ namespace EscapeWithYourFriends.World
 
             // Alone: three-quarters on from the side the wide found clear, or the nearest clear heading
             // round from there, at a distance that fits the subject in the frame.
+            _closeShare = 1f;
             _closeAim = _focusAt + _aimOffset;
             float distance = Mathf.Max(5f, _size * 1.8f + 3f);
             float height = Mathf.Max(EyeHeight, _aimOffset.y);

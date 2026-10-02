@@ -9113,6 +9113,44 @@ Three small things that came out of watching the playthrough bot at 1920x1080.
   "Airworthy" beat never played and the bot failed "the story beats played". It would also have
   written over that save on the way out.
 
+
+## Playtest fixes: a map, key prompts, fairer AI hits
+
+From one playtest: lost on the island, downed by a boar "at full health", and stuck at the trader
+pressing E while the shop wanted Tab.
+
+- **The map on M** (`UI/WorldMap.cs`). `HudRoot` adds it, so a headless peer has none. On first open
+  it bakes the terrain into a 512 x 512 picture: sea by depth, sand, grass and rock by height, rock
+  wherever it is steep, and a hillshade off the terrain normals. It shows a square cut to the land
+  plus a band of sea (`LandView`), not the whole mostly-sea terrain. Over that it draws every
+  `Landmark` by name, hostile ones in red, each name in the first free slot of above, below, right or
+  left (the camp's buildings are 30 m apart); the squad as coloured dots; you as an arrow along the
+  camera; and the objective as a gold ring. M or Esc closes it. It is IMGUI: one texture and a few
+  labels, drawn only while open.
+- **The key prompt.** `PlayerInteractor` caches `[E]  <Prompt>` for whatever is aimed at and draws it
+  under the crosshair. While seated it draws the vehicle's controls instead, at the left edge: car
+  and boat, plane (Shift throttle, W/S nose, A/D bank), or passenger. Nothing on screen used to name
+  either key.
+- **E opens the trader and the chest.** `RequestInteract` sends neither to the server. It queues the
+  same toggle as Tab (`PlayerInputReader.QueueInventory`), and the bag opens with the shop or chest
+  beside it, and E closes it again. The chest's prompt is now "Open chest (n items)". `Storage.ServerInteract`'s quick
+  store and take stay, because `StorageTest` and the bots use them.
+- **Health is on screen.** `StatBars` grew a red health row on top. The user had no health bar, so a
+  boar pack wore them down unseen and the last 10 points looked like a one-shot. `PlayerCameraRig`
+  adds a red edge pulse per hit and a steady dim one below 35%.
+- **AI blows are softer on players.** `Health.AiBlow` scales an animal's or a native's blow on a
+  downable body by 0.7. From above half health, no single blow downs you. It is applied at the two AI
+  hit sites (`Animal.Strike`, `Native.Land`), not in `TakeDamage`, so guns, falls and harness hits
+  are untouched. `Struck` still reports the def's damage, which `-nativeTest` checks. An animal also
+  hits the same victim at most once per 0.8 s (`Animal.VictimGap`), so a five-boar pack is five
+  blows over four seconds, not five in one frame.
+
+**Harness.** `-lookTest` adds two checks: the baked map has both sea and land, and every landmark
+falls on it (20 passed). The playthrough presses E, not Tab, at the counter. It checks the shop
+opened, and screenshots the map. `-animalTest` 141/0, `-nativeTest` 169/0, `-chestTest` 29/0 and
+`-shopTest` 72/0 are unchanged. The prompt, the controls panel and the map are IMGUI, and headless
+draws nothing, so the windowed playthrough is their only test.
+
 ---
 
 ## Data-driven content

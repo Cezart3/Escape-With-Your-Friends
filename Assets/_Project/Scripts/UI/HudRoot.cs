@@ -50,6 +50,9 @@ namespace EscapeWithYourFriends.UI
         readonly EndingPanel _ending = new();
         readonly SettingsScreen _settings = new();
 
+        /// <summary>The local bag screen is up. For the windowed playthrough's checks.</summary>
+        internal static bool InventoryOpen;
+
         Canvas _canvas;
         Camera _camera;
 
@@ -95,6 +98,7 @@ namespace EscapeWithYourFriends.UI
             // over the whole screen is a good way to eat a mouse click the game wanted.
 
             var root = (RectTransform)go.transform;
+            gameObject.AddComponent<WorldMap>();
             _panel.Build(root);
             _markers.Build(root);
             _objective.Build(root);
@@ -139,6 +143,7 @@ namespace EscapeWithYourFriends.UI
                 _hotbar.Refresh(local.Bag);
                 _purse.Refresh(local.Purse);
                 _inventory.Refresh(local);
+                InventoryOpen = _inventory.IsOpen;
                 _settings.Refresh(local);
 
                 // Off the camera rather than the body: it is what the player is actually looking

@@ -201,6 +201,24 @@ namespace EscapeWithYourFriends.Combat
             return buffs != null ? buffs.DamageTakenMultiplier : 1f;
         }
 
+        /// <summary>
+        /// What an animal's or a native's blow takes from this body. On a player it is softened, and
+        /// from above half health no single blow puts them down: the user went from "full" to the
+        /// floor under a boar pack and never saw it coming. Anything else (a boar on a deer) takes
+        /// the blow as aimed. Applied at the two AI hit sites, not in <see cref="TakeDamage"/>, so a
+        /// gun, a fall or a harness's scripted hit is untouched.
+        /// </summary>
+        public float AiBlow(float amount)
+        {
+            if (!_canBeDowned) return amount;
+
+            amount *= AiToPlayer;
+            if (Normalized > 0.5f) amount = Mathf.Min(amount, _current.Value - 1f);
+            return Mathf.Max(0f, amount);
+        }
+
+        const float AiToPlayer = 0.7f;
+
         /// <summary>Server only. Heals without exceeding <see cref="Max"/>. Does not pick anyone up.</summary>
         public void Heal(float amount)
         {

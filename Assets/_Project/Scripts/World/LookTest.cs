@@ -121,6 +121,7 @@ namespace EscapeWithYourFriends.World
             // used to be invisible to the loop above. Its prototypes are prefabs; read them directly.
             Trees(materials, broken);
             Visuals();
+            Map();
 
             Check($"nothing is wearing a missing shader ({string.Join(", ", broken.Take(5))})",
                   broken.Count == 0);
@@ -365,6 +366,27 @@ namespace EscapeWithYourFriends.World
             }
 
             return bounds;
+        }
+
+        /// <summary>The M map's picture has both sea and land, and every landmark is in its view.</summary>
+        void Map()
+        {
+            Terrain terrain = Terrain.activeTerrain;
+            Texture2D picture = UI.WorldMap.Bake(terrain, 64);
+            if (picture == null) { Check("the map has a terrain to draw", false); return; }
+
+            int sea = 0, land = 0;
+            foreach (Color32 pixel in picture.GetPixels32())
+                if (pixel.b > pixel.r + 30) sea++; else land++;
+            Destroy(picture);
+            Check($"the map shows sea and land ({sea} sea, {land} land of 4096)", sea > 400 && land > 400);
+
+            // On the zoomed view, not just the terrain: the zoom is cut to the land.
+            Rect view = UI.WorldMap.LandView(terrain);
+            var off = Landmark.All.Where(l => !view.Contains(UI.WorldMap.ToMap(terrain, l.transform.position)))
+                                  .Select(l => l.Id).ToList();
+            Check($"every landmark is on the map ({Landmark.All.Count}; off: {string.Join(", ", off)})",
+                  Landmark.All.Count > 3 && off.Count == 0);
         }
 
         void Check(string what, bool passed)

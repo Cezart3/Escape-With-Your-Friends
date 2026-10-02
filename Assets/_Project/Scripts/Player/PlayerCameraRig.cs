@@ -289,9 +289,9 @@ namespace EscapeWithYourFriends.Player
                 var keys = UnityEngine.InputSystem.Keyboard.current;
                 if (IsOwner && keys != null && keys.vKey.wasPressedThisFrame) _chaseView = !_chaseView;
 
-                // The greybox plane has no cockpit: from the seat the high wing filled two thirds of
-                // the screen. It keeps the chase view until #203 gives it one.
-                bool chase = _chaseView != vehicle.TryGetComponent(out PlaneController _);
+                // The plane too, since #203 dressed it: the user asked for every vehicle in first
+                // person, and from the seat the propeller now turns in front of you.
+                bool chase = _chaseView;
                 if (chase) eye = ChaseEye(vehicle, look);
                 else eye = SeatEye(vehicle, ref look);
                 _followed = eye;
@@ -489,7 +489,14 @@ namespace EscapeWithYourFriends.Player
 
             _healthEvents++;
             AddShake(lost / _health.Max * _hitShake);
+
+            // A shake alone did not say "you are being hurt": a pack of boars took a full bar in three
+            // seconds and the user read it as one instant knockdown. The red says it, and how much.
+            _hurtAt = Time.time;
+            _hurt = Mathf.Clamp01(_hurt + 0.35f + lost / _health.Max * 2f);
         }
+
+        float _hurt, _hurtAt;
 
         /// <summary>
         /// A kick for a hit you landed, scaled by the weapon's knockback so a bat feels like a bat and
@@ -604,15 +611,44 @@ namespace EscapeWithYourFriends.Player
             if (_flashlight != null) _flashlight.enabled = lit;
         }
 
-        /// <summary>The red dot, while aiming a gun that has one. A dot is all it is.</summary>
+        /// <summary>The red dot, while aiming a gun that has one; and the red edge when hurt.</summary>
         void OnGUI()
         {
+            if (_hurt > 0f || (_health != null && _health.IsAlive && _health.Normalized < 0.35f))
+                HurtEdge();
+
             WeaponDef weapon = _weapon != null ? _weapon.Equipped : null;
             if (_zoom <= 1f || _mods == null || !_mods.Has(weapon, Economy.ModTrack.RedDot)) return;
 
             Color was = GUI.color;
             GUI.color = new Color(1f, 0.1f, 0.1f);
             GUI.DrawTexture(new Rect(Screen.width * 0.5f - 3f, Screen.height * 0.5f - 3f, 6f, 6f), Texture2D.whiteTexture);
+            GUI.color = was;
+        }
+
+        /// <summary>
+        /// Red bars at the screen's edges: a pulse per hit that fades in a second, and a dim steady
+        /// one under a third of health, so how close you are to going down is never a surprise.
+        /// </summary>
+        void HurtEdge()
+        {
+            _hurt = Mathf.Max(0f, _hurt - Time.unscaledDeltaTime * 1.2f);
+            float low = _health != null && _health.IsAlive ? Mathf.Clamp01((0.35f - _health.Normalized) / 0.35f) * 0.45f : 0f;
+            float alpha = Mathf.Max(_hurt * 0.6f, low * (0.75f + 0.25f * Mathf.Sin(Time.time * 4f)));
+            if (alpha <= 0.01f) return;
+
+            Color was = GUI.color;
+            float w = Screen.width, h = Screen.height, edge = Mathf.Min(w, h) * 0.09f;
+            for (int i = 0; i < 4; i++)
+            {
+                // Four steps fading inward, cheaper than a texture and enough to read as a vignette.
+                GUI.color = new Color(0.75f, 0f, 0f, alpha * (1f - i * 0.25f));
+                float d = edge * i * 0.25f, t = edge * 0.25f;
+                GUI.DrawTexture(new Rect(0, d, w, t), Texture2D.whiteTexture);
+                GUI.DrawTexture(new Rect(0, h - d - t, w, t), Texture2D.whiteTexture);
+                GUI.DrawTexture(new Rect(d, 0, t, h), Texture2D.whiteTexture);
+                GUI.DrawTexture(new Rect(w - d - t, 0, t, h), Texture2D.whiteTexture);
+            }
             GUI.color = was;
         }
 

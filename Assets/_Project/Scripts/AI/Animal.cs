@@ -103,6 +103,10 @@ namespace EscapeWithYourFriends.AI
         float _stateUntil;
         float _nextSense;
         float _nextAttack;
+
+        /// <summary>Seconds between animal blows on one victim, whoever lands them.</summary>
+        const float VictimGap = 0.8f;
+        static readonly System.Collections.Generic.Dictionary<Health, float> _lastHitOn = new();
         float _alarmedUntil;
         float _despawnAt;
 
@@ -513,6 +517,12 @@ namespace EscapeWithYourFriends.AI
             if (Time.time < _nextAttack) return;
             _nextAttack = Time.time + _def.AttackInterval;
 
+            // A pack takes turns. Five boars at the camp each hitting on their own clock took a full
+            // bar in three seconds; one animal blow per victim per VictimGap keeps a pack dangerous
+            // without making it a knockdown you never saw coming.
+            if (_lastHitOn.TryGetValue(_target, out float last) && Time.time - last < VictimGap) return;
+            _lastHitOn[_target] = Time.time;
+
             Strike(_target, toTarget);
         }
 
@@ -528,7 +538,7 @@ namespace EscapeWithYourFriends.AI
             Vector3 contact = transform.position + direction * (_def.BodySize.z * 0.5f)
                               + Vector3.up * (_def.BodyHeight * 0.6f);
 
-            var info = new DamageInfo(_def.AttackDamage, DamageType.Animal,
+            var info = new DamageInfo(victim.AiBlow(_def.AttackDamage), DamageType.Animal,
                                       direction * _def.AttackKnockback, contact,
                                       _def.AttackStun, ObjectId);
 

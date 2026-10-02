@@ -369,6 +369,9 @@ namespace EscapeWithYourFriends.Player
 
             if (UiOpen)
             {
+                // E opened the trader or the chest, so E closes it too.
+                if (UI.HudRoot.InventoryOpen && _interact.WasPressedThisFrame()) _toggleInventoryQueued = true;
+
                 Move = Vector2.zero;
                 Sprint = Crouch = false;
                 InteractHeld = DropHeld = AttackHeld = AltAttackHeld = false;
@@ -497,6 +500,9 @@ namespace EscapeWithYourFriends.Player
         bool _flashlightQueued;
 
         public bool ConsumeToggleInventory() => Consume(ref _toggleInventoryQueued);
+
+        /// <summary>E at a trader or a chest: the same as Tab, from the interactor.</summary>
+        internal void QueueInventory() => _toggleInventoryQueued = true;
 
         public bool ConsumeToggleSettings() => Consume(ref _toggleSettingsQueued);
 

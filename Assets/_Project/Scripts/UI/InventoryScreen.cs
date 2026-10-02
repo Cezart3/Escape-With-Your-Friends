@@ -183,7 +183,7 @@ namespace EscapeWithYourFriends.UI
                               new Vector2(0.5f, 1f),
                               new Vector2(0f, -(Mathf.Max(bagHeight, shopHeight) + PanelPad * 2f + HeaderHeight) * 0.5f - 14f),
                               new Vector2(900f, 20f));
-            _hint.text = "drag to move  -  shift-drag for half  -  right-click to store or sell  -  tab to close";
+            _hint.text = "drag to move  -  shift-drag for half  -  right-click to store or sell  -  E or Tab to close";
 
             // One line under the hint for whatever the server just said no to. Shown for a few
             // seconds and then gone: a refusal is news, not state.
