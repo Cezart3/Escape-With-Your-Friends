@@ -102,6 +102,18 @@ namespace EscapeWithYourFriends.EditorTools
             ArtDress.DressPrefab(CounterPath, "Art", counter => ArtDress.ReplaceTiled(counter, "BarCounter", "Art", 1f,
                 "Counter", "Top"));
 
+            // A market stall's red awning over it, in place of the greybox posts, shelf and sign.
+            ArtDress.DressPrefab(CounterPath, "Stall", counter =>
+            {
+                if (!ArtDress.FitBox(counter, new Bounds(new Vector3(0f, 1.3f, -0.1f), new Vector3(3f, 2.6f, 1.4f)),
+                                     "TownStall", false, "Stall", 1))
+                    return false;
+
+                foreach (string block in new[] { "Post", "PostRight", "Shelf", "Sign" })
+                    ArtDress.Strip(counter.Find(block)?.gameObject);
+                return true;
+            });
+
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
