@@ -124,7 +124,8 @@ namespace EscapeWithYourFriends.EditorTools
             Box(root, "Counter", "Wood", new Vector3(0f, 1f, 0.6f), new Vector3(5f, 0.2f, 0.9f));
             Box(root, "Counter.Front", "Wood", new Vector3(0f, 0.5f, 1f), new Vector3(5f, 1f, 0.15f));
 
-            Box(root, "Sign", "Accent", new Vector3(0f, 3.5f, 0.6f), new Vector3(2.4f, 0.9f, 0.12f), solid: false);
+            // Under the front eave: higher up, it stood through the roof.
+            Box(root, "Sign", "Accent", new Vector3(0f, 2.5f, 0.95f), new Vector3(2.4f, 0.55f, 0.1f), solid: false);
 
             // A rack of things for sale, so it reads as a shop from a distance and not as a hut.
             for (int i = 0; i < 3; i++)
@@ -261,19 +262,44 @@ namespace EscapeWithYourFriends.EditorTools
         {
             Transform t = root.transform;
 
-            if (ArtDress.Tile(Child(t, "Floor"), "Floor", 2.2f))
+            // Over the floor box rather than in place of it: the deck has gaps, and grass showed through.
+            if (ArtDress.TileBox(t, new Bounds(new Vector3(0f, 0.045f, -0.5f), new Vector3(20f, 0.06f, 19f)),
+                                 "TownPlanks", 2f, "Floor.Art"))
                 for (int i = 0; i < 5; i++) ArtDress.Strip(Child(t, $"Floor.Plank{i}"));
 
-            // One floor tile, stood on its edge, is a plank wall. ArtDress turns it to face the wall.
-            foreach (string wall in new[] { "Wall.Back", "Wall.Left", "Wall.Right", "Wall.FrontLeft",
-                                            "Wall.FrontRight", "Door.Lintel", "Wall.VipLeft",
-                                            "Wall.VipRight", "Wall.VipHeader" })
-                ArtDress.Tile(Child(t, wall), "Floor", 1.6f);
+            // Town-kit walls: stone with shuttered windows below, timber frame above, the way the
+            // kit's own sample town is built. The floor tiles stood on edge read as a pallet fence.
+            string Stone(int i, int row) => row == 0 ? (i % 2 == 1 ? "StoneWindow" : "StoneWall")
+                                                     : (i % 2 == 0 ? "TownCross" : "TownWall");
+            string Timber(int i, int row) => row == 1 && i % 2 == 0 ? "TownCross" : "TownWall";
 
-            Transform roof = t.Find("Roof");
-            if (roof != null && ArtDress.FitBox(t, new Bounds(new Vector3(0f, 3.5f, -0.5f), new Vector3(21f, 7f, 20f)),
-                                                "ThatchRoof", false, "Roof.Art"))
-                foreach (Transform slab in roof) ArtDress.Strip(slab.gameObject);
+            DressWall(t, "Wall.Back", Vector3.back, 2, Stone);
+            DressWall(t, "Wall.Left", Vector3.left, 2, Stone);
+            DressWall(t, "Wall.Right", Vector3.right, 2, Stone);
+            DressWall(t, "Wall.FrontLeft", Vector3.forward, 2, Stone);
+            DressWall(t, "Wall.FrontRight", Vector3.forward, 2, Stone);
+            DressWall(t, "Door.Lintel", Vector3.forward, 1, (_, _) => "TownWall");
+            DressWall(t, "Wall.VipLeft", Vector3.forward, 2, Timber);
+            DressWall(t, "Wall.VipRight", Vector3.forward, 2, Timber);
+            DressWall(t, "Wall.VipHeader", Vector3.forward, 1, (_, _) => "TownWall");
+
+            // The kit's windows are the windows now; the dark insets would sit in front of them.
+            ArtDress.Strip(Child(t, "Window.L"));
+            ArtDress.Strip(Child(t, "Window.R"));
+
+            // A kit roof a little above the canvas slabs, which stay as the ceiling seen from inside.
+            ArtDress.Gable(t, new Bounds(new Vector3(0f, 5.85f, -0.5f), new Vector3(21f, 3.4f, 20.4f)),
+                           "TownRoof", 3f, "Roof.Art");
+
+            // Red banners either side of the door and a post at each jamb.
+            ArtDress.Wall(t, new Bounds(new Vector3(-2.6f, 2.2f, 9.2f), new Vector3(1f, 1.8f, 0.08f)),
+                          Vector3.forward, 1, (_, _) => "TownBanner", "Decor.BannerL");
+            ArtDress.Wall(t, new Bounds(new Vector3(2.6f, 2.2f, 9.2f), new Vector3(1f, 1.8f, 0.08f)),
+                          Vector3.forward, 1, (_, _) => "TownBanner", "Decor.BannerR");
+            ArtDress.FitBox(t, new Bounds(new Vector3(-1.55f, 1.5f, 9.15f), new Vector3(0.3f, 3f, 0.3f)),
+                            "TownPost", false, "Decor.JambL");
+            ArtDress.FitBox(t, new Bounds(new Vector3(1.55f, 1.5f, 9.15f), new Vector3(0.3f, 3f, 0.3f)),
+                            "TownPost", false, "Decor.JambR");
 
             if (ArtDress.TileBox(t, new Bounds(new Vector3(-6.5f, 0.55f, -1.36f), new Vector3(3f, 1.1f, 0.78f)),
                                  "BarCounter", 1f, "Counter.Art"))
@@ -346,26 +372,45 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
-        /// The trader's stall: plank walls on three sides and open at the front, because the trader
-        /// stands inside the hut's box and a fourth wall would hide him. Thatch over it, a run of
-        /// counters in front, stock on the shelf.
+        /// The trader's house: timber walls on three sides with a door and shuttered windows, open at
+        /// the front, because the trader stands inside the hut's box and a fourth wall would hide
+        /// him. A kit gable roof over it on two posts, a plank floor, a run of counters in front.
         /// </summary>
         static void DressShop(GameObject root)
         {
             Transform t = root.transform;
 
-            bool walls = ArtDress.TileBox(t, new Bounds(new Vector3(0f, 1.4f, -3.1f), new Vector3(6f, 2.8f, 0.2f)),
-                                          "Floor", 1.6f, "Hut.Back");
-            walls &= ArtDress.TileBox(t, new Bounds(new Vector3(-2.9f, 1.4f, -1.6f), new Vector3(0.2f, 2.8f, 3.2f)),
-                                      "Floor", 1.6f, "Hut.Left");
-            walls &= ArtDress.TileBox(t, new Bounds(new Vector3(2.9f, 1.4f, -1.6f), new Vector3(0.2f, 2.8f, 3.2f)),
-                                      "Floor", 1.6f, "Hut.Right");
-            if (walls) ArtDress.Strip(Child(t, "Hut"));
+            bool walls = ArtDress.Wall(t, new Bounds(new Vector3(0f, 1.4f, -3.1f), new Vector3(6f, 2.8f, 0.25f)),
+                                       Vector3.back, 1, (i, _) => i == 1 ? "TownDoor" : "TownWindow", "Hut.Back", along: 3);
+            walls &= ArtDress.Wall(t, new Bounds(new Vector3(-2.9f, 1.4f, -1.6f), new Vector3(0.25f, 2.8f, 3.2f)),
+                                   Vector3.left, 1, (_, _) => "TownWindow", "Hut.Left");
+            walls &= ArtDress.Wall(t, new Bounds(new Vector3(2.9f, 1.4f, -1.6f), new Vector3(0.25f, 2.8f, 3.2f)),
+                                   Vector3.right, 1, (_, _) => "TownWindow", "Hut.Right");
+            if (walls)
+            {
+                ArtDress.Strip(Child(t, "Hut"));
+                foreach (string opening in new[] { "Door", "Window.L", "Window.R" }) ArtDress.Strip(Child(t, opening));
+            }
 
-            Transform roof = t.Find("Roof");
-            if (roof != null && ArtDress.FitBox(t, new Bounds(new Vector3(0f, 2.15f, -1.4f), new Vector3(7.4f, 4.3f, 4.8f)),
-                                                "ThatchRoof", false, "Roof.Art"))
-                foreach (Transform slab in roof) ArtDress.Strip(slab.gameObject);
+            // Above the canvas slabs, which stay as the ceiling the counter looks up at.
+            ArtDress.Gable(t, new Bounds(new Vector3(0f, 3.75f, -1.4f), new Vector3(7.4f, 1.6f, 5f)),
+                           "TownRoof", 2.5f, "Roof.Art");
+            ArtDress.FitBox(t, new Bounds(new Vector3(-3.3f, 1.45f, 0.85f), new Vector3(0.25f, 2.9f, 0.25f)),
+                            "TownPost", false, "Post.L");
+            ArtDress.FitBox(t, new Bounds(new Vector3(3.3f, 1.45f, 0.85f), new Vector3(0.25f, 2.9f, 0.25f)),
+                            "TownPost", false, "Post.R");
+            ArtDress.TileBox(t, new Bounds(new Vector3(0f, 0.03f, -1.6f), new Vector3(6f, 0.06f, 3.2f)),
+                             "TownPlanks", 1.5f, "Deck");
+
+            // A banner on each side wall and a lamp either end of the counter.
+            ArtDress.Wall(t, new Bounds(new Vector3(-3.05f, 1.6f, -1.6f), new Vector3(0.06f, 1.6f, 0.9f)),
+                          Vector3.left, 1, (_, _) => "TownBanner", "Banner.L");
+            ArtDress.Wall(t, new Bounds(new Vector3(3.05f, 1.6f, -1.6f), new Vector3(0.06f, 1.6f, 0.9f)),
+                          Vector3.right, 1, (_, _) => "TownBanner", "Banner.R");
+            ArtDress.FitBox(t, new Bounds(new Vector3(-2.9f, 1f, 1.5f), new Vector3(0.4f, 2f, 0.4f)),
+                            "TownLantern", true, "Lamp.L");
+            ArtDress.FitBox(t, new Bounds(new Vector3(2.9f, 1f, 1.5f), new Vector3(0.4f, 2f, 0.4f)),
+                            "TownLantern", true, "Lamp.R");
 
             if (ArtDress.TileBox(t, new Bounds(new Vector3(0f, 0.55f, 0.64f), new Vector3(5f, 1.1f, 0.9f)),
                                  "BarCounter", 1f, "Counter.Art"))
@@ -603,6 +648,19 @@ namespace EscapeWithYourFriends.EditorTools
             landmark.Hostile = hostile;
 
             return root;
+        }
+
+        /// <summary>
+        /// <see cref="ArtDress.Wall"/> over a named wall box, which loses its look once the modules
+        /// are in. The box is an unrotated cube, so its transform is its bounds.
+        /// </summary>
+        static void DressWall(Transform t, string name, Vector3 outward, int rows, System.Func<int, int, string> module)
+        {
+            GameObject wall = Child(t, name);
+            if (wall == null) return;
+
+            var box = new Bounds(wall.transform.localPosition, wall.transform.localScale);
+            if (ArtDress.Wall(t, box, outward, rows, module, $"{name}.Art")) ArtDress.Strip(wall);
         }
 
         static GameObject Box(GameObject root, string name, string material, Vector3 position,

@@ -9151,6 +9151,51 @@ opened, and screenshots the map. `-animalTest` 141/0, `-nativeTest` 169/0, `-che
 `-shopTest` 72/0 are unchanged. The prompt, the controls panel and the map are IMGUI, and headless
 draws nothing, so the windowed playthrough is their only test.
 
+## Buildings from a modular kit: the trader, the casino
+
+The trader and the casino were walls made of Kenney's survival floor tile stood on its edge and a
+roof made of one thatch model stretched over the whole footprint. From ten metres they read as a
+pallet fence under a blob. A playtest called them embarrassing.
+
+They are now built from Kenney's Fantasy Town Kit (CC0, pack `Town` in `ArtCatalog`): timber and
+stone wall modules with doors and shuttered windows, gable roofs, wooden posts, plank decking,
+banners, lanterns and a market stall. The greybox stays the authority, as everywhere in the art
+pass: every wall box keeps its name and collider, so `CasinoTest`, `CasinoFloorTest`, the NavMesh
+bake and the POI numbers see what they saw before.
+
+Two helpers in `ArtDress` do the building:
+
+- `Wall(parent, box, outward, rows, module, name, along)` cuts a wall box into square cells,
+  `rows` high, and fits one module per cell. `module(i, row)` picks the model, so a wall can carry
+  a window every other cell. The kit draws each module as a panel on one edge of its cell, with
+  its shutters, door trim and banners facing the middle of the cell. That side is the outside.
+  `Wall` reads it off the imported bounds rather than assuming it, because the FBX importer may
+  mirror the kit's x. It then turns the module by quarter turns until that side faces `outward`.
+- `Gable(parent, box, id, cell, name)` repeats a gable module along the box's longer side, one per
+  `cell` metres. A single module stretched twenty metres would turn its eave trim into a plank.
+
+The casino's outer walls have stone with shutters on the ground row and timber cross-frame above,
+which is how the kit's own sample town is built. The VIP partition is timber only. There are red
+banners and posts at the door, and a teal gable roof. The kit's floor deck has gaps, so the floor
+box keeps its look underneath it. Grass used to show through.
+
+Both roofs sit a little above the old canvas slabs. The slabs stay, so the ceiling seen from inside
+the room is still a ceiling.
+
+The trader has a timber house with a door, two windows and a window in each side wall. The front
+is open because the trader stands inside. It has a gable roof on two posts, a deck, banners and
+lanterns. The shop's sign moved under the front eave; it used to stand through the roof. The
+networked `ShopCounter` gets a red market-stall awning in place of its greybox posts, shelf and
+sign. `ShopFactory.Build` adds it in place under the marker `Stall`, so the prefab's GUID is kept.
+
+Regenerate with `ArtExtract.Run -artZips <folder>`, `ArtLibrary.BuildAll`,
+`GreyboxBuilder.BuildAll` and `ShopFactory.Build`. Checked by `-lookTest` (20/0), `-casinoTest`
+(26/0), `-casinoFloorTest` (40/0) and `-shopTest` as a pair (72/0). The look itself is checked
+with `-beautyShots`.
+
+The native village is not part of this change. Its palisade huts and thatch are meant to look
+primitive. A dedicated thatch would help them more than the town kit would.
+
 ---
 
 ## Data-driven content

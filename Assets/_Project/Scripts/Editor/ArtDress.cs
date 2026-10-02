@@ -105,6 +105,75 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
+        /// A wall of town-kit modules over a wall box: <paramref name="rows"/> cells high and as many
+        /// along as keeps each cell square, each module's outside turned to <paramref name="outward"/>.
+        /// <paramref name="module"/>(i, row) names each cell's model, so a wall can carry a window
+        /// every other cell, and <paramref name="along"/> overrides the count along. The box keeps
+        /// its collider; this is only the look.
+        /// </summary>
+        public static bool Wall(Transform parent, Bounds box, Vector3 outward, int rows,
+                                System.Func<int, int, string> module, string name, int along = 0)
+        {
+            bool alongX = box.size.x >= box.size.z;
+            float length = alongX ? box.size.x : box.size.z;
+            float cellY = box.size.y / rows;
+            int count = along > 0 ? along : Mathf.Max(1, Mathf.RoundToInt(length / cellY));
+            float cell = length / count;
+
+            bool any = false;
+            for (int row = 0; row < rows; row++)
+            for (int i = 0; i < count; i++)
+            {
+                string id = module(i, row);
+                GameObject source = ArtLibrary.Source(id);
+                if (source == null) continue;
+
+                // A module is a panel on one edge of its cell with its shutters and banners on the
+                // side facing the cell's middle, so that side is the outside. Read off the bounds
+                // rather than assumed, because the FBX importer may have mirrored the kit's x.
+                Vector3 kitOut = ArtLibrary.NativeBounds(source).center.x > 0f ? Vector3.left : Vector3.right;
+                int turns = Mathf.RoundToInt(Vector3.SignedAngle(kitOut, outward, Vector3.up) / 90f);
+
+                Vector3 centre = box.center;
+                float offset = -length * 0.5f + cell * (i + 0.5f);
+                if (alongX) centre.x += offset; else centre.z += offset;
+                centre.y = box.min.y + cellY * (row + 0.5f);
+
+                Vector3 size = alongX ? new Vector3(cell, cellY, box.size.z) : new Vector3(box.size.x, cellY, cell);
+                any |= FitBox(parent, new Bounds(centre, size), id, false, $"{name}.{row}.{i}", turns);
+            }
+
+            return any;
+        }
+
+        /// <summary>
+        /// A gable roof of town-kit modules over a box, the ridge along the box's longer side and one
+        /// module per <paramref name="cell"/> metres of it, so the trim stays a trim on a long roof.
+        /// </summary>
+        public static bool Gable(Transform parent, Bounds box, string id, float cell, string name)
+        {
+            bool alongX = box.size.x >= box.size.z;
+            float length = alongX ? box.size.x : box.size.z;
+            int count = Mathf.Max(1, Mathf.RoundToInt(length / cell));
+            float step = length / count;
+
+            bool any = false;
+            for (int i = 0; i < count; i++)
+            {
+                Vector3 centre = box.center;
+                float along = -length * 0.5f + step * (i + 0.5f);
+                if (alongX) centre.x += along; else centre.z += along;
+
+                Vector3 size = alongX ? new Vector3(step, box.size.y, box.size.z) : new Vector3(box.size.x, box.size.y, step);
+
+                // The kit draws its ridge along x.
+                any |= FitBox(parent, new Bounds(centre, size), id, false, $"{name}.{i}", alongX ? 0 : 1);
+            }
+
+            return any;
+        }
+
+        /// <summary>
         /// One model over several greybox blocks that are together one thing: a chest's body, lid,
         /// bands and latch are one chest. The blocks are direct children of <paramref name="root"/>
         /// and keep their names and colliders; their looks go once the model is in.

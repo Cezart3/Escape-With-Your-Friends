@@ -127,6 +127,10 @@ namespace EscapeWithYourFriends.EditorTools
             // The one kit still on flat colours: wood, carpet, metal, woodDark. See ArtLibrary.Remap.
             new("Kenney", "Furniture", "furniture", "https://kenney.nl/assets/furniture-kit", false),
 
+            // The buildings: timber walls, windows, doors and gable roofs on a one-unit grid, so a
+            // wall is built from modules rather than a floor tile stood on its edge.
+            new("Kenney", "Town", "fantasy-town", "https://kenney.nl/assets/fantasy-town-kit", true),
+
             // P6 V1: the island's trees, bushes and rocks. The free Standard edition, CC0 (its
             // License_Standard.txt). No palms in it, so the palms stay Kenney's.
             new("Quaternius", "Nature", "Nature MegaKit",
@@ -224,6 +228,23 @@ namespace EscapeWithYourFriends.EditorTools
             new("StringLights", "Holiday", "lights-colored", Prop),
             new("Lantern", "Holiday", "lantern", Small, upright: true),
             new("Table", "Furniture", "table", Prop),
+
+            // --- the buildings' walls and roofs (GreyboxBuilder.Walls, .Gable) --------------------
+            // Each wall module is a panel on the +x edge of a one-unit cell, its outside facing +x;
+            // each roof has its ridge along z.
+            new("TownWall", "Town", "wall-wood", Structure),
+            new("TownWindow", "Town", "wall-wood-window-shutters", Structure),
+            new("TownCross", "Town", "wall-wood-detail-cross", Structure),
+            new("TownDoor", "Town", "wall-wood-door", Structure),
+            new("StoneWall", "Town", "wall", Structure),
+            new("StoneWindow", "Town", "wall-window-shutters", Structure),
+            new("TownRoof", "Town", "roof-gable", Structure),
+            new("TownRoofHigh", "Town", "roof-high-gable", Structure),
+            new("TownPost", "Town", "pillar-wood", Structure),
+            new("TownPlanks", "Town", "planks", Structure),
+            new("TownBanner", "Town", "banner-red", Prop),
+            new("TownStall", "Town", "stall-red", Prop),
+            new("TownLantern", "Town", "lantern", Prop, upright: true),
 
             // --- the other landmarks, and the stations of P2 (extracted now so the zips open once) ---
             new("Canvas", "Survival", "structure-canvas", Structure),
