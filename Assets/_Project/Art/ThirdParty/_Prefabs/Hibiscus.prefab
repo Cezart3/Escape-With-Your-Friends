@@ -1,0 +1,258 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &2735880004797816731
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2294962310667690399}
+  - component: {fileID: 8020724524554269056}
+  - component: {fileID: 5376764991265851024}
+  m_Layer: 0
+  m_Name: Hibiscus
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2294962310667690399
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2735880004797816731}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 3965667058634668518}
+  - {fileID: 35412546191692598}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!205 &8020724524554269056
+LODGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2735880004797816731}
+  serializedVersion: 2
+  m_LocalReferencePoint: {x: 0.029865026, y: 0.59421045, z: 0.07593763}
+  m_Size: 2
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
+  m_LastLODIsBillboard: 0
+  m_LODs:
+  - screenRelativeHeight: 0.22
+    fadeTransitionWidth: 0
+    renderers:
+    - renderer: {fileID: 2112355328630430425}
+  - screenRelativeHeight: 0.02
+    fadeTransitionWidth: 0
+    renderers:
+    - renderer: {fileID: 3936783692964577666}
+  m_Enabled: 1
+--- !u!114 &5376764991265851024
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2735880004797816731}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d0cf6ce430d42fdb059d883ff6e865f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.World.ArtVisual
+  Id: Hibiscus
+  Category: 1
+  Upright: 0
+  Trunk: {x: NaN, y: NaN}
+--- !u!1001 &574058287501440221
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2294962310667690399}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.0420767
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.0420767
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.0420767
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.016471002
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_Name
+      value: Hibiscus_LOD1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3554805831135409503, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_CastShadows
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3554805831135409503, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_ReceiveShadows
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3554805831135409503, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 6d0c834353fe57e47b0da262d9d7f082, type: 2}
+    - target: {fileID: 7759215139200925381, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+--- !u!4 &35412546191692598 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+  m_PrefabInstance: {fileID: 574058287501440221}
+  m_PrefabAsset: {fileID: 0}
+--- !u!23 &3936783692964577666 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 3554805831135409503, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+  m_PrefabInstance: {fileID: 574058287501440221}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &3495453364531912205
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2294962310667690399}
+    m_Modifications:
+    - target: {fileID: -8870861195581988068, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.0420767
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.0420767
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.0420767
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.016471002
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -5921442229046098732, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 6d0c834353fe57e47b0da262d9d7f082, type: 2}
+    - target: {fileID: 919132149155446097, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: m_Name
+      value: Hibiscus_LOD0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+--- !u!23 &2112355328630430425 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: -5921442229046098732, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+  m_PrefabInstance: {fileID: 3495453364531912205}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &3965667058634668518 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+  m_PrefabInstance: {fileID: 3495453364531912205}
+  m_PrefabAsset: {fileID: 0}

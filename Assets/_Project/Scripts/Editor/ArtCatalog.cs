@@ -164,6 +164,12 @@ namespace EscapeWithYourFriends.EditorTools
             // #248, rocks, fallen logs and stumps, from tools/art/rocks.py.
             new(Own, "Rocks", "", "tools/art/rocks.py", false, textured: true),
 
+            // #246, the undergrowth and the flowers, from tools/art/plants.py: one material, "Leaves".
+            new(Own, "Plants", "", "tools/art/plants.py", false, textured: true),
+
+            // #248, the highland pines, from tools/art/pines.py: bark and a two-sided needle material.
+            new(Own, "Pines", "", "tools/art/pines.py", false, textured: true),
+
             // P4, the animals (T13). Quaternius's CC0 Deer and Pig from poly.pizza, converted from
             // glTF to FBX with Blender; each zip carries the CC0 text as License.txt. The deer is flat
             // colours, the pig one atlas. No CC0 propeller plane was found, so T14 keeps the greybox.
@@ -222,21 +228,32 @@ namespace EscapeWithYourFriends.EditorTools
             new("TreeYoung", "Trees", "Tree_Young", Tree, Height, 6f, true),
             new("TreeOld", "Trees", "Tree_Old", Tree, Height, 13f, true),
 
-            // Quaternius's pines. Only the ones under 6 500 triangles: the jungle and the highland are
-            // the densest things on the island.
             new("JunglePalm", "Palms", "Palm_Fan", Tree, Height, 8.5f, true),
             new("JungleClump", "Palms", "Palm_Clump", Tree, Height, 7.5f, true),
 
-            new("Pine", "Nature", "Pine_1", Tree, Height, 9f, true),
-            new("PineWide", "Nature", "Pine_2", Tree, Height, 8.5f, true),
-            new("PineTall", "Nature", "Pine_4", Tree, Height, 12f, true),
-            new("PineSparse", "Nature", "Pine_5", Tree, Height, 10f, true),
+            // Our highland pines (tools/art/pines.py), 2 200 to 3 900 triangles near and a seventh of that far.
+            new("Pine", "Pines", "Pine_Classic", Tree, Height, 9.5f, true),
+            new("PineWide", "Pines", "Pine_Wide", Tree, Height, 9f, true),
+            new("PineTall", "Pines", "Pine_Tall", Tree, Height, 12.5f, true),
+            new("PineSparse", "Pines", "Pine_Sparse", Tree, Height, 10.5f, true),
+            new("PineYoung", "Pines", "Pine_Young", Tree, Height, 5.5f, true),
 
-            // Ground plants are wider than they are tall, so they are sized across.
-            new("Bush", "Nature", "Bush_Common", Plant, Width, 2.2f),
-            new("Fern", "Nature", "Fern_1", Plant, Width, 1.8f),
-            new("Leafy", "Nature", "Plant_1_Big", Plant, Width, 1.8f),
-            new("Flowers", "Nature", "Flower_3_Group", Plant, Width, 1.2f),
+            // Our undergrowth. Most of it is wider than tall, so sized across; the heliconia, the bird of
+            // paradise, the lupins and the grass stand up, and the heliconia teaches the pack its axis.
+            new("Bush", "Plants", "Plant_Bush", Plant, Width, 2f),
+            new("Fern", "Plants", "Plant_Fern", Plant, Width, 1.8f),
+            new("Leafy", "Plants", "Plant_ElephantEar", Plant, Width, 1.9f),
+            new("Flowers", "Plants", "Flowers_Wild", Plant, Width, 1.1f),
+            new("FernTall", "Plants", "Plant_FernTall", Plant, Width, 1.5f),
+            new("Hibiscus", "Plants", "Plant_Hibiscus", Plant, Width, 2f),
+            new("Croton", "Plants", "Plant_Croton", Plant, Width, 1.4f),
+            new("Bromeliad", "Plants", "Plant_Bromeliad", Plant, Width, 1.1f),
+            new("Heliconia", "Plants", "Plant_Heliconia", Plant, Height, 2.2f, true),
+            new("Strelitzia", "Plants", "Plant_Strelitzia", Plant, Height, 1.4f, true),
+            new("FlowersDaisy", "Plants", "Flowers_Daisy", Plant, Width, 1f),
+            new("FlowersLily", "Plants", "Flowers_Lily", Plant, Width, 1.1f),
+            new("FlowersSpike", "Plants", "Flowers_Spike", Plant, Height, 0.9f, true),
+            new("GrassTuft", "Plants", "Plant_Grass", Plant, Height, 0.9f, true),
 
             // Our rocks and wood. The tall rock is the pack's one upright model and teaches the rest its
             // axis. "Rocks" is the greybox's lintel (GreyboxBuilder), "Log" and "Stump" its totem.

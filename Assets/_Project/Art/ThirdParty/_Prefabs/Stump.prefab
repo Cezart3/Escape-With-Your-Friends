@@ -33,7 +33,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 9076999791477822282}
-  - {fileID: 1643866009100500006}
+  - {fileID: 1250476848530021326}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!205 &3851853290965877864
@@ -57,7 +57,7 @@ LODGroup:
   - screenRelativeHeight: 0.02
     fadeTransitionWidth: 0
     renderers:
-    - renderer: {fileID: 2849730032920392758}
+    - renderer: {fileID: 5413656037256641714}
   m_Enabled: 1
 --- !u!136 &8965304793471608819
 CapsuleCollider:
@@ -179,12 +179,12 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 524391bfb16e08943a3d91a014da6f7d, type: 3}
---- !u!4 &1643866009100500006 stripped
+--- !u!4 &1250476848530021326 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 524391bfb16e08943a3d91a014da6f7d, type: 3}
   m_PrefabInstance: {fileID: 1643866009100500005}
   m_PrefabAsset: {fileID: 0}
---- !u!23 &2849730032920392758 stripped
+--- !u!23 &5413656037256641714 stripped
 MeshRenderer:
   m_CorrespondingSourceObject: {fileID: -2454175823665397609, guid: 524391bfb16e08943a3d91a014da6f7d, type: 3}
   m_PrefabInstance: {fileID: 1643866009100500005}

@@ -9329,9 +9329,57 @@ the column-ramp sheets of the palms) and two materials (`EWYF_Rocks_Wood`, `EWYF
 - Every part draws from its own `random.Random(rng.random())`, so near and far LOD agree.
 
 Catalogue rows keep their names (`Boulder`, `Log`, `Stump`, ...) so the greybox builder and the
-terrain keep working; four new rows (`RockTall`, `RockMossy`, `RockCluster`, `RockSand`, plus
+terrain keep working; six new rows (`RockTall`, `RockMossy`, `RockCluster`, `RockSand`, plus
 `LogMossy`, `StumpBroken`) widen the ground slot to eleven. `ArtVisual` caps rise to 1 000 for a
 rock (the cluster is 960) and 700 for a log. `-treeTest` passes on both islands.
+
+
+## Undergrowth and flowers modelled in Blender (#246)
+
+`tools/art/plants.py` replaces the four Quaternius plants of the bush slot with fourteen of our own
+in `Art/Models/Plants`, all on one material, `Leaves` (two-sided, fluttering), painted from one
+16-column ramp sheet (`Textures/Leaves.png`): three greens, two broad-leaf columns with painted veins,
+the bromeliad's green-to-red and magenta, the croton's red-to-gold, six petal colours, the heliconia
+bract and a stem.
+
+| Id | Model | What it is |
+|---|---|---|
+| Bush, Hibiscus, Croton | Plant_Bush, _Hibiscus, _Croton | trees.py's canopy, small: dark hulls under diamond leaves; red flowers; red-gold leaves |
+| Fern, FernTall | Plant_Fern, _FernTall | arching fronds of paired leaflets, fiddleheads in the middle |
+| Leafy | Plant_ElephantEar | heart-shaped blades on long petioles |
+| Bromeliad | Plant_Bromeliad | channelled strap leaves, magenta heart, a flower cone |
+| Heliconia, Strelitzia | Plant_Heliconia, _Strelitzia | paddle leaves on stalks; lobster-claw bracts; orange and blue crane flowers |
+| Flowers, FlowersDaisy, FlowersLily, FlowersSpike | Flowers_Wild, _Daisy, _Lily, _Spike | flower clumps over grass blades: mixed, white, trumpet lilies, lupins |
+| GrassTuft | Plant_Grass | tall blades and seed heads |
+
+Two primitives make almost everything: `strap`, a leaf along a drooping arc whose midrib is raised or
+sunk by `fold`, and `diamond`, two triangles on a spine, which is a leaflet, a petal or a bract.
+Normals are bent off one point low in each plant, as the tree canopies are, so a fern shades as a
+mound. The bush borrows `trees.hull` and `trees.leaves` by pointing their UV and slot globals at
+this sheet.
+
+Near meshes are 200 to 770 triangles, far meshes 35 to 225. The Quaternius plants had no far mesh
+(900/900, 288/288, 360/360, 755/755), and the island scatters about nine thousand five hundred of
+them, so past the LOD distance the undergrowth now costs a fifth of what it did. All fourteen stay
+non-solid (radius 0).
+
+
+## Highland pines modelled in Blender (#248)
+
+`tools/art/pines.py` replaces Quaternius's four pines with five of ours in `Art/Models/Pines`
+(`Pine_Classic`, `_Wide`, `_Tall`, `_Sparse`, `_Young`; catalogue ids `Pine` ... `PineYoung`, the
+last one new in the highland slot). Two materials: `PineBark` (plated bark, three columns) and
+`PineLeaves` (two-sided, fluttering: five needle ramps and two cone shades).
+
+A pine is a tapering trunk and whorls of boughs up it. Each bough is `plants.strap` with every other
+row pulled in, so one strip of triangles has the jagged edge of needle tufts; every other bough gets
+a shorter, lighter one laid over it. Inside each whorl a dark cone fills what would otherwise be sky.
+Normals point out of the trunk axis and up, so the tree shades as one cone. The lowest boughs' sag is
+clamped so they sweep down to the ground and not through it. The sparse pine skips whorls (bare
+stubs) and browns one in fourteen.
+
+2 200 to 3 900 triangles near, 300 to 540 far; the Quaternius pines were 1 600 to 3 900 with no far
+mesh at all.
 
 ---
 

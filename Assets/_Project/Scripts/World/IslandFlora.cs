@@ -71,7 +71,7 @@ namespace EscapeWithYourFriends.World
         /// <summary>
         /// The models each species can be, in <see cref="SpeciesNames"/> order.
         ///
-        /// Placement stays five rules; rendering gets thirty-four prototypes. That split is the whole
+        /// Placement stays five rules; rendering gets forty-five prototypes. That split is the whole
         /// trick: the rules are the expensive thing to tune - which ground a palm accepts, where the
         /// pines stop - and variety is free once they are right, because a variant is a second
         /// prefab in the same slot rather than a second rule.
@@ -95,12 +95,18 @@ namespace EscapeWithYourFriends.World
                     new FloraModel("JunglePalm", 0.30f), new FloraModel("JungleClump", 0.30f) },
 
             new[] { new FloraModel("Pine", 0.36f), new FloraModel("PineWide", 0.36f),
-                    new FloraModel("PineTall", 0.36f), new FloraModel("PineSparse", 0.34f) },
+                    new FloraModel("PineTall", 0.36f), new FloraModel("PineSparse", 0.34f),
+                    new FloraModel("PineYoung", 0.3f) },
 
             // Nothing here is solid. A bush that blocks you is infuriating; a bush you walk through
             // is free cover, and a fern that stops a car is a bug report.
             new[] { new FloraModel("Bush", 0f), new FloraModel("Fern", 0f),
-                    new FloraModel("Leafy", 0f), new FloraModel("Flowers", 0f) },
+                    new FloraModel("Leafy", 0f), new FloraModel("Flowers", 0f),
+                    new FloraModel("FernTall", 0f), new FloraModel("Hibiscus", 0f),
+                    new FloraModel("Croton", 0f), new FloraModel("Bromeliad", 0f),
+                    new FloraModel("Heliconia", 0f), new FloraModel("Strelitzia", 0f),
+                    new FloraModel("FlowersDaisy", 0f), new FloraModel("FlowersLily", 0f),
+                    new FloraModel("FlowersSpike", 0f), new FloraModel("GrassTuft", 0f) },
 
             // Our rocks and wood (tools/art/rocks.py).
             new[] { new FloraModel("Boulder", -1f), new FloraModel("BoulderSmall", -1f),
