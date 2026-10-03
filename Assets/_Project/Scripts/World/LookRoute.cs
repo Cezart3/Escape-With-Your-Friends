@@ -194,6 +194,12 @@ namespace EscapeWithYourFriends.World
             Overlook(spots);
             Around(spots, "plane", "the plane", 18f, 5f);
 
+            // #246. The ground's detail layer at a walker's height: the grass, the tide line, the rock.
+            Vector3 from = player != null ? player.transform.position : Vector3.zero;
+            Ground(spots, "ground grass", from, 1, 0.85f, 0.5f, 60f);
+            Ground(spots, "ground beach", from, 0, 0.9f, 0.15f, 0.7f);
+            Ground(spots, "ground rock", from, 2, 0.8f, 1f, 60f);
+
             return spots;
         }
 
@@ -215,6 +221,40 @@ namespace EscapeWithYourFriends.World
             Terrain terrain = Terrain.activeTerrain;
             if (terrain != null) eye.y = Mathf.Max(eye.y, terrain.SampleHeight(eye) + terrain.transform.position.y + 1.7f);
             spots.Add(new Spot { Name = name, Eye = eye, Target = p + Vector3.up * 1.5f });
+        }
+
+        /// <summary>
+        /// The nearest point to <paramref name="from"/> where the splat layer is at least
+        /// <paramref name="weight"/> and the ground between those heights, seen from four metres off at
+        /// eye height. Splat layers are IslandSplat's: sand 0, grass 1, rock 2.
+        /// </summary>
+        static void Ground(List<Spot> spots, string name, Vector3 from, int layer, float weight, float low, float high)
+        {
+            Terrain terrain = Terrain.activeTerrain;
+            if (terrain == null || terrain.terrainData.alphamapLayers <= layer) return;
+
+            TerrainData data = terrain.terrainData;
+            int res = data.alphamapResolution;
+            float[,,] maps = data.GetAlphamaps(0, 0, res, res);
+            Vector3 origin = terrain.transform.position;
+            Vector3 best = Vector3.zero;
+            float nearest = float.MaxValue;
+            for (int z = 0; z < res; z += 2)
+            for (int x = 0; x < res; x += 2)
+            {
+                if (maps[z, x, layer] < weight) continue;
+                var p = new Vector3(origin.x + data.size.x * x / res, 0f, origin.z + data.size.z * z / res);
+                p.y = terrain.SampleHeight(p) + origin.y;
+                if (p.y < low || p.y > high) continue;
+                float d = (p - from).sqrMagnitude;
+                if (d < nearest) (nearest, best) = (d, p);
+            }
+            if (nearest == float.MaxValue) { Debug.Log($"[LookRoute] no ground for '{name}'; skipped."); return; }
+
+            Vector3 back = new Vector3(from.x - best.x, 0f, from.z - best.z).normalized * 4f;
+            Vector3 eye = best + back;
+            eye.y = terrain.SampleHeight(eye) + origin.y + 1.6f;
+            spots.Add(new Spot { Name = name, Eye = eye, Target = best - back * 0.5f });
         }
 
         /// <summary>The highest point on the terrain, looking back at the island's middle.</summary>

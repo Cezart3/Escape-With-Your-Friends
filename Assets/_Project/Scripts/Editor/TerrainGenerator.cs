@@ -965,35 +965,102 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
-        /// Grass, as a detail layer. One billboard prototype and one density map: the terrain draws
-        /// them in patches and drops whole patches past <see cref="IslandProfile.DetailDistance"/>,
-        /// which is the single knob that decides whether the island runs on an integrated GPU.
+        /// What the detail layer draws (#246), from tools/art/plants.py: the catalogue id, whether it
+        /// sways, how far it tilts to the slope (1 lies flat on it), and its size range. Grass first.
+        /// </summary>
+        static readonly (string Id, bool Wind, float Align, float Min, float Max)[] Details =
+        {
+            ("DetailGrass", true, 0.3f, 0.9f, 1.5f),
+            ("DetailGrassTall", true, 0.2f, 0.8f, 1.3f),
+            ("DetailFlowers", true, 0.2f, 0.8f, 1.2f),
+            ("DetailShell", false, 1f, 0.8f, 1.3f),
+            ("DetailStarfish", false, 1f, 0.8f, 1.4f),
+            ("DetailDriftwood", false, 1f, 0.7f, 1.3f),
+            ("DetailSeaweed", false, 1f, 0.8f, 1.3f),
+            ("DetailPebbles", false, 1f, 0.8f, 1.5f),
+        };
+
+        const int DetailGrass = 0, DetailTall = 1, DetailFlowers = 2, DetailShell = 3, DetailStar = 4,
+                  DetailDrift = 5, DetailWeed = 6, DetailPebble = 7;
+
+        const string DetailFolder = "Assets/_Project/Prefabs/Details";
+
+        /// <summary>
+        /// One detail as a prefab the terrain can instance: the mesh and its material on one object, no
+        /// collider, no shadow. Saved over the same path, so the terrain keeps its reference.
+        /// </summary>
+        static GameObject DetailPrefab(string id, bool wind)
+        {
+            GameObject source = ArtLibrary.Source(id);
+            MeshFilter filter = source != null ? source.GetComponentInChildren<MeshFilter>() : null;
+            if (filter == null) return null;
+
+            var go = new GameObject(id);
+            go.AddComponent<MeshFilter>().sharedMesh = filter.sharedMesh;
+            var renderer = go.AddComponent<MeshRenderer>();
+            renderer.sharedMaterials = filter.GetComponent<MeshRenderer>().sharedMaterials;
+            if (wind) ArtLibrary.Sway(renderer, ArtCategory.Plant);
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+            Directory.CreateDirectory(DetailFolder);
+            GameObject saved = PrefabUtility.SaveAsPrefabAsset(go, $"{DetailFolder}/{id}.prefab");
+            UnityEngine.Object.DestroyImmediate(go);
+            return saved;
+        }
+
+        /// <summary>A stable 0..1 per detail cell and purpose, so a rebake scatters the same clutter.</summary>
+        static float CellRandom(int x, int z, int salt)
+        {
+            uint h = (uint)(x * 73856093) ^ (uint)(z * 19349663) ^ (uint)(salt * 83492791);
+            h ^= h >> 13; h *= 0x5bd1e995; h ^= h >> 15;
+            return (h & 0xFFFFFF) / (float)0x1000000;
+        }
+
+        /// <summary>
+        /// The ground's detail layer, drawn instanced (#246). Grass in three clumps where the splatmap is
+        /// green, with flowers among the thickest of it; shells and starfish on the sand, driftwood and
+        /// kelp along the tide line, pebbles on the rock. The terrain drops whole patches past
+        /// <see cref="IslandProfile.DetailDistance"/>, which TerrainQuality scales per tier.
         ///
-        /// Density follows the grass weight of the splatmap, so the grass grows exactly where the
+        /// Grass density follows the grass weight of the splatmap, so the grass grows exactly where the
         /// ground is already painted green rather than in its own unrelated pattern.
         /// </summary>
         static void WriteDetail(IslandProfile profile, TerrainData data)
         {
-            Texture2D blades = FloraFactory.EnsureGrassTexture();
-
-            data.detailPrototypes = new[]
+            var prototypes = new DetailPrototype[Details.Length];
+            for (int i = 0; i < Details.Length; i++)
             {
-                new DetailPrototype
+                var d = Details[i];
+                GameObject prefab = DetailPrefab(d.Id, d.Wind);
+                if (prefab == null)
                 {
-                    prototypeTexture = blades,
-                    renderMode = DetailRenderMode.GrassBillboard,
-                    usePrototypeMesh = false,
-                    healthyColor = new Color(0.55f, 0.72f, 0.38f),
-                    dryColor = new Color(0.66f, 0.66f, 0.36f),
-                    minWidth = 0.7f,
-                    maxWidth = 1.5f,
-                    minHeight = 0.6f,
-                    maxHeight = 1.2f,
-                    noiseSpread = 0.4f
+                    Debug.LogError($"[TerrainGenerator] No {d.Id} model: run tools/art/plants.py. The ground stays bare.");
+                    return;
                 }
-            };
 
-            // Resolution before the layer, for the same reason the alphamap resolution comes before
+                prototypes[i] = new DetailPrototype
+                {
+                    prototype = prefab,
+                    usePrototypeMesh = true,
+                    renderMode = DetailRenderMode.VertexLit,
+                    useInstancing = true,
+                    healthyColor = Color.white,
+                    dryColor = Color.white,
+                    minWidth = d.Min,
+                    maxWidth = d.Max,
+                    minHeight = d.Min,
+                    maxHeight = d.Max,
+                    noiseSpread = 0.3f,
+                    alignToGround = d.Align,
+                    positionJitter = 1f,
+                    useDensityScaling = true
+                };
+            }
+
+            data.detailPrototypes = prototypes;
+            data.SetDetailScatterMode(DetailScatterMode.InstanceCountMode);
+
+            // Resolution before the layers, for the same reason the alphamap resolution comes before
             // the alphamap: changing it throws the maps away.
             int resolution = Mathf.Max(8, profile.DetailResolution);
             data.SetDetailResolution(resolution, Mathf.Max(8, profile.DetailPerPatch));
@@ -1005,10 +1072,17 @@ namespace EscapeWithYourFriends.EditorTools
             // Detail maps are indexed [z, x], the same way alphamaps are. Verified against the
             // terrain rather than assumed: a transposed grass map mirrors the island diagonally and
             // looks almost right, which is the worst kind of wrong.
-            var layer = new int[resolution, resolution];
+            var layers = new int[Details.Length][,];
+            for (int i = 0; i < layers.Length; i++) layers[i] = new int[resolution, resolution];
+            var placed = new int[Details.Length];
             float half = profile.Size * 0.5f;
             float step = profile.Size / resolution;
-            int cells = 0;
+
+            void Put(int layer, int z, int x, int count)
+            {
+                layers[layer][z, x] = count;
+                placed[layer] += count;
+            }
 
             for (int z = 0; z < resolution; z++)
             {
@@ -1018,33 +1092,70 @@ namespace EscapeWithYourFriends.EditorTools
                     float worldX = -half + (x + 0.5f) * step;
 
                     float height = shape.HeightAt(worldX, worldZ);
-                    if (height <= profile.FloraMinHeight) continue;
+                    if (height <= 0.1f) continue;
 
                     splat.Weights(height, shape.SlopeAt(worldX, worldZ), worldX, worldZ, weights);
+
+                    // Clutter by what the ground is, one in so many cells.
+                    float roll = CellRandom(x, z, 1);
+                    if (weights[IslandSplat.Sand] > 0.5f)
+                    {
+                        bool tide = height < 0.8f;
+                        if (tide && roll < 0.03f) Put(DetailDrift, z, x, 1);
+                        else if (tide && roll < 0.13f) Put(DetailWeed, z, x, 1);
+                        else if (roll < 0.19f) Put(DetailShell, z, x, 1);
+                        else if (roll < (tide ? 0.23f : 0.21f)) Put(DetailStar, z, x, 1);
+                    }
+                    if (weights[IslandSplat.Rock] > 0.5f && roll < 0.2f) Put(DetailPebble, z, x, 1);
+
+                    if (height <= profile.FloraMinHeight) continue;
                     float grass = weights[IslandSplat.Grass];
                     if (grass < profile.GrassThreshold) continue;
 
                     // Linear from the threshold up, so the edge of a grass patch thins out instead of
                     // ending on a line you can see from across the bay.
+                    // Twice the profile's count: a meshed tuft covers less ground than the billboard did.
                     float t = (grass - profile.GrassThreshold) / Mathf.Max(0.01f, 1f - profile.GrassThreshold);
-                    int count = Mathf.RoundToInt(Mathf.Lerp(1f, profile.GrassPerCell, t));
+                    int count = Mathf.RoundToInt(Mathf.Lerp(2f, profile.GrassPerCell * 2f, t));
                     if (count <= 0) continue;
 
-                    layer[z, x] = count;
-                    cells++;
+                    Put(DetailGrass, z, x, count);
+                    if (t > 0.4f) Put(DetailTall, z, x, Mathf.Max(1, count / 3));
+                    if (CellRandom(x, z, 2) < 0.18f * t) Put(DetailFlowers, z, x, 1);
                 }
             }
 
-            data.SetDetailLayer(0, 0, 0, layer);
-            data.wavingGrassStrength = 0.35f;
-            data.wavingGrassSpeed = 0.4f;
-            data.wavingGrassAmount = 0.3f;
-            data.wavingGrassTint = new Color(0.7f, 0.75f, 0.6f);
+            for (int i = 0; i < layers.Length; i++) data.SetDetailLayer(0, 0, i, layers[i]);
 
             EditorUtility.SetDirty(data);
-            Debug.Log($"[TerrainGenerator] Grass on {cells} of {resolution * resolution} detail cells "
-                      + $"({cells * 100f / (resolution * resolution):F1}%), up to {profile.GrassPerCell} per cell, "
-                      + $"drawn to {profile.DetailDistance}m at density {profile.DetailDensity}.");
+            var line = new StringBuilder($"[TerrainGenerator] Detail layer, {resolution}^2 cells, drawn to "
+                                         + $"{profile.DetailDistance}m at density {profile.DetailDensity}:");
+            for (int i = 0; i < Details.Length; i++)
+            {
+                Mesh mesh = Details[i].Id != null ? prototypes[i].prototype.GetComponent<MeshFilter>().sharedMesh : null;
+                line.Append($" {Details[i].Id} {placed[i]} ({(mesh != null ? mesh.triangles.Length / 3 : 0)} tris, "
+                            + $"{(mesh != null ? mesh.bounds.size.y : 0f):F2}m tall)");
+            }
+            Debug.Log(line.ToString());
+        }
+
+        /// <summary>
+        /// Re-scatters both islands' detail layers from the current models without touching a height, a
+        /// splat or a tree: the ground clutter can change without a full bake. One island at a time.
+        /// </summary>
+        [MenuItem("EWYF/Refresh Terrain Detail")]
+        public static void RefreshDetail()
+        {
+            foreach (string id in new[] { FirstIsland, SecondIsland })
+            {
+                _id = id;
+                var profile = AssetDatabase.LoadAssetAtPath<IslandProfile>(ProfilePath);
+                var data = AssetDatabase.LoadAssetAtPath<TerrainData>(TerrainDataPath);
+                if (profile == null || data == null) { Debug.LogError($"[TerrainGenerator] No {id} to refresh."); continue; }
+                WriteDetail(profile, data);
+            }
+            _id = FirstIsland;
+            AssetDatabase.SaveAssets();
         }
 
         /// <summary>

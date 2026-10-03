@@ -33,9 +33,9 @@ TAU, UP, GOLDEN, lerp = P.TAU, P.UP, P.GOLDEN, P.lerp
 
 # ------------------------------------------------------------------------------------- textures
 
-COLUMNS = 16
+COLUMNS = 20
 (FERN, FERN_LIGHT, LEAF_DARK, LEAF_BIG, PADDLE, BROM, BROM_HEART, CROTON,
- RED, WHITE, YELLOW, PURPLE, PINK, ORANGE, BRACT, STEM) = range(16)
+ RED, WHITE, YELLOW, PURPLE, PINK, ORANGE, BRACT, STEM, SHELL, WOOD, STONE, KELP) = range(20)
 
 RAMPS = {
     FERN: [(0, "1C3612"), (0.5, "3A6A22"), (1, "6E9E34")],
@@ -54,6 +54,11 @@ RAMPS = {
     ORANGE: [(0, "A8300A"), (0.5, "F06A18"), (1, "FFB244")],
     BRACT: [(0, "8A0E0E"), (0.6, "DE2618"), (0.82, "F09C1E"), (1, "F2D446")],
     STEM: [(0, "24361A"), (1, "62803A")],
+    # The ground clutter's (#246): shells, sun-bleached driftwood, pebbles, and kelp gone brown.
+    SHELL: [(0, "A08870"), (0.5, "E8D8C0"), (1, "FFF4E6")],
+    WOOD: [(0, "5A4E44"), (0.5, "9A8C7C"), (1, "C8BCAC")],
+    STONE: [(0, "4A4A48"), (0.5, "7E7C76"), (1, "AAA69C")],
+    KELP: [(0, "2A2410"), (0.5, "5A5220"), (1, "8A7A34")],
 }
 
 
@@ -87,7 +92,7 @@ def paint_textures(folder):
             cols[c] = veined(s, 7, 1.2)
         elif c in (FERN, FERN_LIGHT, LEAF_DARK, BROM, BROM_HEART):
             cols[c] = P.leaflet_paint(s)
-        elif c == STEM:
+        elif c in (STEM, WOOD, STONE, KELP):
             cols[c] = P.ramp_paint(s, 700 + c, 0.05)
         else:
             cols[c] = petal(s, 700 + c)
@@ -537,6 +542,95 @@ def grass(m, spec, rng, far):
                 heading(h, 0), vb=0.0, vt=0.35, lift=0.2)
 
 
+# ------------------------------------------------------------------------------- terrain detail
+# #246: the terrain's detail layer, drawn instanced by the thousand, so every one is a few dozen
+# triangles and has no far mesh. Grass is dark at the root and light at the tip (the ramp, v0 to 1).
+
+
+def tuft(m, spec, rng, far):
+    """A clump of grass, and sometimes a few small flowers in it."""
+    nfn = softener(Vector((0, 0, 0.05)))
+    for i in range(spec["blades"]):
+        r = random.Random(rng.random())
+        h = r.uniform(0, TAU)
+        pts = arc(Vector((math.cos(h), math.sin(h), 0)) * r.uniform(0, 0.12),
+                  heading(h, math.radians(r.uniform(50, 82))), spec["length"] * r.uniform(0.6, 1.1),
+                  r.uniform(0.15, 0.45), 3)
+        W = spec.get("width", 0.03)
+        strap(m, pts, [W, W * 0.7, 0.0], r.choice(spec.get("cols", (FERN, FERN_LIGHT, FERN_LIGHT))), nfn,
+              fold=0.25, cols=0, v0=0.3)
+    for i in range(spec.get("flowers", 0)):
+        h = rng.uniform(0, TAU)
+        top = Vector((math.cos(h) * 0.1, math.sin(h) * 0.1, spec["length"] * rng.uniform(0.8, 1.05)))
+        strap(m, [Vector((0, 0, 0)), top * 0.5, top], [0.006, 0.005, 0.004], STEM, nfn, cols=0, v0=0.3, v1=0.9)
+        bloom(m, top, Vector((0, 0, 1)) + top * 0.4, 0.045, 5, rng.choice(spec["colours"]), 0.2, rng, nfn,
+              heart=YELLOW)
+
+
+def shell(m, spec, rng, far):
+    """A scallop lying open-side down: ribs fanned out of the hinge, and a whelk beside it."""
+    nfn = lambda p, n: n
+    hinge = Vector((-0.05, 0, 0.004))
+    for k in range(7):
+        a = math.radians(-60 + k * 20)
+        tip = hinge + Vector((math.cos(a), math.sin(a), 0)) * 0.11 + Vector((0, 0, 0.012))
+        diamond(m, hinge, tip, 0.04, SHELL, nfn, Vector((0, 0, 1)), mid=0.7, vb=0.1, vt=1.0, lift=0.12)
+    pts = [Vector((0.08 + 0.05 * t, 0.04 * math.sin(t * 3), 0.022 * (1 - t) + 0.006)) for t in (0, 0.35, 0.7, 1.0)]
+    T.tube(m, pts, [0.026, 0.02, 0.012, 0.004], 5, SHELL, 0.2, 1.0, tip=False)
+
+
+def starfish(m, spec, rng, far):
+    nfn = lambda p, n: (n + UP).normalized()
+    c = Vector((0, 0, 0.012))
+    spin = rng.uniform(0, TAU)
+    for k in range(5):
+        a = spin + k * TAU / 5
+        d = Vector((math.cos(a), math.sin(a), 0))
+        diamond(m, c, c + d * 0.1 * rng.uniform(0.9, 1.1) - Vector((0, 0, 0.01)), 0.05, spec["col"], nfn, UP,
+                mid=0.2, vb=0.3, vt=1.0, lift=0.18)
+
+
+def driftwood(m, spec, rng, far):
+    """A bleached branch lying on the tide line, a stub of a side branch, the ends sunk in the sand."""
+    L = spec["length"]
+    pts = [Vector((-L / 2 + L * t, 0.08 * math.sin(t * 5 + 1), 0.05 - 0.03 * abs(t - 0.5))) for t in (0, 0.3, 0.65, 1)]
+    T.tube(m, pts, [0.05, 0.06, 0.05, 0.03], 5, WOOD, 0.2, 1.0, tip=True)
+    T.tube(m, [pts[1], pts[1] + Vector((0.12, 0.22, 0.03))], [0.03, 0.015], 4, WOOD, 0.4, 0.9, tip=True)
+
+
+def seaweed(m, spec, rng, far):
+    """Kelp washed up flat: a few wavy straps, the colour of the tide line."""
+    nfn = lambda p, n: (n + UP).normalized()
+    for i in range(spec["straps"]):
+        r = random.Random(rng.random())
+        h = r.uniform(0, TAU)
+        d, side = Vector((math.cos(h), math.sin(h), 0)), Vector((-math.sin(h), math.cos(h), 0))
+        L = r.uniform(0.35, 0.6)
+        pts = [d * L * t + side * 0.05 * math.sin(t * 9 + i) + Vector((0, 0, 0.018 + 0.012 * math.sin(t * 7 + i))) for t in (0, 0.25, 0.5, 0.75, 1)]
+        strap(m, pts, [0.035, 0.05, 0.045, 0.03, 0.0], KELP, nfn, cols=0, v0=0.2)
+
+
+def pebbles(m, spec, rng, far):
+    """A scatter of small stones, each a five-sided cap sunk into the ground."""
+    for i in range(spec["count"]):
+        c = Vector((rng.uniform(-0.25, 0.25), rng.uniform(-0.25, 0.25), 0))
+        r, h = rng.uniform(0.035, 0.08), rng.uniform(0.025, 0.05)
+        ring = [c + Vector((math.cos(k * TAU / 5 + i) * r * rng.uniform(0.8, 1.15),
+                            math.sin(k * TAU / 5 + i) * r * rng.uniform(0.8, 1.15), h * 0.45)) for k in range(5)]
+        base = [q + Vector((0, 0, -h * 0.45 - 0.01)) + (q - c) * 0.15 for q in ring]
+        top = c + Vector((0, 0, h))
+        ids = [m.v(q) for q in ring]
+        low = [m.v(q) for q in base]
+        apex = m.v(top)
+        for k in range(5):
+            j = (k + 1) % 5
+            n = (ring[k] + ring[j]) / 2 - c
+            m.f([ids[k], ids[j], apex], [UV(STONE, 0, 0.5), UV(STONE, 1, 0.5), UV(STONE, 0.5, 1)], 0,
+                facing=(n + UP * 2).normalized())
+            m.f([low[k], low[j], ids[j], ids[k]], [UV(STONE, 0, 0.1), UV(STONE, 1, 0.1), UV(STONE, 1, 0.5),
+                UV(STONE, 0, 0.5)], 0, facing=n.normalized())
+
+
 # ------------------------------------------------------------------------------------- variants
 
 BUSH = dict(puffs=6, spread=0.6, puff=0.4, rise=0.3, flat=0.75, hull=LEAF_DARK, far_hull=FERN_LIGHT,
@@ -566,6 +660,15 @@ VARIANTS = [
     ("Flowers_Spike", flowerbed, 64, dict(BLOOMS, kind="spike", count=9, height=0.6,
                                           colours=(PURPLE, PURPLE, PINK, WHITE))),
     ("Plant_Grass", grass, 65, dict(blades=36, length=0.6, seeds=6)),
+    # The terrain's detail layer (#246), near meshes only.
+    ("Detail_Grass", tuft, 71, dict(blades=16, length=0.3)),
+    ("Detail_GrassTall", tuft, 72, dict(blades=8, length=0.55, width=0.026, cols=(FERN, FERN_LIGHT, STEM))),
+    ("Detail_Flowers", tuft, 73, dict(blades=6, length=0.3, flowers=3, colours=(PINK, WHITE, YELLOW, PURPLE))),
+    ("Detail_Shell", shell, 74, {}),
+    ("Detail_Starfish", starfish, 75, dict(col=ORANGE)),
+    ("Detail_Driftwood", driftwood, 76, dict(length=1.1)),
+    ("Detail_Seaweed", seaweed, 77, dict(straps=4)),
+    ("Detail_Pebbles", pebbles, 78, dict(count=6)),
 ]
 
 # --------------------------------------------------------------------------------------- driver
@@ -596,7 +699,7 @@ def main(out_dir=None, only=None):
         if only and name not in only:
             continue
         built = []
-        for far in (False, True):
+        for far in ((False,) if name.startswith("Detail_") else (False, True)):
             m = T.Mesh()
             maker(m, spec, random.Random(seed), far)
             obj = m.build(name + ("_Far" if far else ""))

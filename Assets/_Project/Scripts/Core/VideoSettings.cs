@@ -216,8 +216,9 @@ namespace EscapeWithYourFriends.Core
             get
             {
                 Values v = Current;
-                float[] grass = { 0.5f, 0.8f, 1f, 1.25f };
-                float[] density = { 0.6f, 0.85f, 1f, 1f };
+                // Of the island's 85 m: about 40, 70, 120 and 150 m of meshed grass and clutter (#246).
+                float[] grass = { 0.47f, 0.82f, 1.41f, 1.75f };
+                float[] density = { 0.3f, 0.6f, 1f, 1f };
                 float[] trees = { 0.6f, 0.85f, 1f, 1.25f };
                 float[] error = { 10f, 7f, 5f, 3f };
                 return (grass[v.Grass], density[v.Grass], trees[v.View], error[v.View]);

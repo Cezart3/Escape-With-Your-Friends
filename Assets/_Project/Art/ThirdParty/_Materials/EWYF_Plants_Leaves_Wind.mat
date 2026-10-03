@@ -28,6 +28,10 @@ Material:
         m_Texture: {fileID: 2800000, guid: dfdd704f5a556744982fbbbe3ae25021, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _RoomCube:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
     - _AlphaClip: 0
@@ -37,15 +41,20 @@ Material:
     - _Detail: 1
     - _RampCentre: 0.05
     - _RampSoftness: 0.08
+    - _Reflect: 0
     - _RimStrength: 0.2
     - _Saturation: 1
+    - _SelfLit: 0
     - _Smoothness: 0.1
     - _Wind: 1
     - _WindFlutter: 1
     - _WindSway: 8
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
+    - _BoxMax: {r: 1, g: 1, b: 1, a: 0}
+    - _BoxMin: {r: -1, g: 0, b: -1, a: 0}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
+    - _ProbeAt: {r: 0, g: 0.5, b: 0, a: 0}
     - _ShadowTint: {r: 0.86, g: 0.9, b: 1.05, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
