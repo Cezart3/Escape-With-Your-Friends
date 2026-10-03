@@ -53,6 +53,9 @@ namespace EscapeWithYourFriends.World
 
             /// <summary>Someone who walks about: the camera finds them where they are at the shot.</summary>
             public Transform Subject;
+
+            /// <summary>An animal's longest side, which frames it instead of a person's height. 0 for a person.</summary>
+            public float Size;
         }
 
         internal static void Begin()
@@ -176,6 +179,15 @@ namespace EscapeWithYourFriends.World
                     .OrderBy(n => Vector3.Distance(n.transform.position, village.transform.position))
                     .FirstOrDefault()?.transform);
 
+            // #287. One of each species alive, from the front quarter, framed by its body box.
+            foreach (Data.AnimalDef def in AI.Animal.Live.Where(a => a != null && a.Def != null)
+                         .Select(a => a.Def).Distinct())
+            {
+                AI.Animal one = AI.Animal.Live.First(a => a != null && a.Def == def);
+                spots.Add(new Spot { Name = "a " + def.Id, Subject = one.transform,
+                                     Size = Mathf.Max(def.BodySize.y, def.BodySize.z) });
+            }
+
             Overlook(spots);
             Around(spots, "plane", "the plane", 18f, 5f);
 
@@ -270,7 +282,12 @@ namespace EscapeWithYourFriends.World
 
         void Place(Spot spot)
         {
-            if (spot.Subject != null)
+            if (spot.Subject != null && spot.Size > 0f)
+            {
+                spot.Eye = spot.Subject.TransformPoint(new Vector3(0.8f, 0.55f, 1.5f) * spot.Size);
+                spot.Target = spot.Subject.position + Vector3.up * (0.4f * spot.Size);
+            }
+            else if (spot.Subject != null)
             {
                 spot.Eye = spot.Subject.TransformPoint(0.6f, 1.7f, 2.6f);
                 spot.Target = spot.Subject.position + Vector3.up * 1.2f;
@@ -348,6 +365,8 @@ namespace EscapeWithYourFriends.World
                 {
                     Place(spots[i]);
                     yield return new WaitForSeconds(0.6f);
+                    // Again: an animal walks a metre in that time, and a gull flies out of frame.
+                    Place(spots[i]);
                     yield return new WaitForEndOfFrame();
                     string file = Path.Combine(folder, $"{i:00}_{spots[i].Name.Split(',')[0].Replace(' ', '_')}_{name}.png");
                     ScreenCapture.CaptureScreenshot(file);

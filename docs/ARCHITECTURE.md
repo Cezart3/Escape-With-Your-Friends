@@ -9875,6 +9875,78 @@ Tests:
 
 ---
 
+## Animals modelled in Blender (#287)
+
+The boar and the deer were Quaternius models, and the gull, the jaguar and the stag were still grey
+boxes. All five are now modelled, rigged and animated by `tools/art/animals.py`:
+
+```
+blender -b --factory-startup -P tools/art/animals.py -- <abs>/Assets/_Project/Art/Models/Animals
+```
+
+The script writes `Animal_<Name>.fbx` and `Textures/Animals.png`, which is the characters' ramp
+sheet under the material's name. Run without a folder, it lays the animals side by side in the open
+Blender instead. `main(pose=("Walk", 0.25))` leaves every animal posed at that point of a clip.
+
+**Bodies.** Each animal is built like the people (characters.py), and `finish()` now takes its
+skeleton and height from the frame object. Each part is drawn on a list of bones, weighted to the
+nearest of them, and outlined with the inverted hull. Each animal is modelled at the size of its
+species' body box in AnimalFactory, nose to +z.
+
+- The boar: low, heavy at the shoulder, a jagged black bristle ridge, tusks, and a dark snout disc.
+- The deer: long legs, big ears, pale belly, throat and rump.
+- The stag: the deer, darker and bulkier, with a shaggy neck and antlers of three tines a side.
+- The jaguar: long and low with a broad flat head. Its rosettes are broken rings, two short
+  `smear()` strokes each with gaps between, which is what tells a jaguar from a cheetah. The legs
+  have plain dots and the tail has dark bands.
+- The gull: white, with grey wings and black tips, a yellow bill with a red spot, and orange legs.
+
+Triangles, outline included: gull 1 296, deer 1 980, boar 2 124, stag 2 308, jaguar 2 932. The
+Animal cap of 3 000 stands.
+
+**Clips.** The rig is the animal's own, so it imports as Generic and every clip lives in the
+animal's FBX: Idle, Walk, Run and Death (the gull flies instead of running). A clip is a function of
+time in [0, 1] keyed on every frame, so a loop's last frame is its first. Each bone's rotation is
+written in the armature's axes, relative to its parent, and turned into the bone's own frame with
+`M^T R M`.
+
+- **Walk** is a lateral-sequence gait: hind left, front left, hind right, front right, a quarter
+  cycle apart. Each leg swings on a cosine and folds its lower joints only while coming forward.
+- **Run** is a bound for the deer, a rotary gallop with a flexing spine for the jaguar, and a
+  shorter gallop for the boar.
+- **Idle**:
+  - The deer and stag graze, chewing with the head down.
+  - The boar roots.
+  - The jaguar swishes its tail and looks round.
+  - The gull snaps its head side to side and ruffles a wing.
+- **Fly** lifts the gull 22 cm off the ground, unfolds the wings and beats them twice a cycle.
+  Unfolding is a quarter roll and a yaw: a wing folded flat against the body is a vertical blade,
+  and it has to turn flat to fly.
+- **Death** rolls the animal onto its side, drops it to its belly half-height, and lets the head
+  and tail fall.
+
+**Unity side.** ArtCatalog has an `EWYF/Animals` pack and a row per species. AnimalArt is unchanged
+apart from its comments: it already found clips by name and built a controller per species, so the
+three new species got controllers with no new code. The Quaternius Animals and FarmAnimals packs,
+and their materials, are gone from the repo.
+
+**Bind-pose bounds.** A skinned renderer's bounds are the importer's, grown to hold every clip in
+the file. Measured that way, the deer was 15 cm taller than its mesh, because it dies on its side,
+and FitBox stood it 8 cm off the ground. `ArtLibrary.NativeBounds` now measures a skinned mesh from
+its mesh in the bind pose.
+
+**LookRoute.** `-beautyShots` adds one close-up per species alive, framed by its body box from the
+front quarter. Every shot that follows a subject now places the camera again just before the
+capture: in the 0.6 s the shot waits, a gull walks out of frame and only its shadow is left.
+
+Tests:
+
+- `-animalTest` 142/0. Every species has a model in the prefab, and every live animal wears its
+  model.
+- `-lookTest` 21/0.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**

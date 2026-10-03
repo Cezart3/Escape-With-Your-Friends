@@ -73,7 +73,7 @@ namespace EscapeWithYourFriends.World
             ArtCategory.Vehicle => 8000,
             // 16000, not the plan's 15000: Quaternius's female base body measures 15060 (ART-PLAN §1).
             ArtCategory.Character => 16000,
-            // Measured on Quaternius's Deer (2 176) and Pig (2 821), both skinned and animated.
+            // Ours (tools/art/animals.py), outline included: the gull 1 296, the jaguar 2 932.
             ArtCategory.Animal => 3000,
             ArtCategory.Weapon => 2000,
             _ => 800,

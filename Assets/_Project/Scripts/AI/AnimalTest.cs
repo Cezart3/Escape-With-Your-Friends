@@ -198,7 +198,10 @@ namespace EscapeWithYourFriends.AI
             Debug.Log($"[AnimalTest] {modelled} of {Animal.Live.Count} live animals wear a model, {animated} "
                       + $"animated ({skins} species modelled in the prefab).");
             Check("every animal draws one look: its model or its boxes", oneLook);
-            if (skins > 0) Check("the modelled species wear their models", modelled > 0);
+            // #287: every species is modelled now, so no animal is left in boxes.
+            Check($"every species has a model in the prefab ({skins}/{animals.Animals.Count})",
+                  skins == animals.Animals.Count);
+            Check($"every live animal wears its model ({modelled}/{Animal.Live.Count})", modelled == Animal.Live.Count);
             if (modelled > 0) Check($"every model has a controller ({animated}/{modelled})", animated == modelled);
 
             // ---------------------------------------------------------------- the behaviour

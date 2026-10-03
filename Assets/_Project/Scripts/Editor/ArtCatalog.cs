@@ -170,12 +170,9 @@ namespace EscapeWithYourFriends.EditorTools
             // #248, the highland pines, from tools/art/pines.py: bark and a two-sided needle material.
             new(Own, "Pines", "", "tools/art/pines.py", false, textured: true),
 
-            // P4, the animals (T13). Quaternius's CC0 Deer and Pig from poly.pizza, converted from
-            // glTF to FBX with Blender; each zip carries the CC0 text as License.txt. The deer is flat
-            // colours, the pig one atlas. No CC0 propeller plane was found, so T14 keeps the greybox.
-            new("Quaternius", "Animals", "quaternius-animals", "https://poly.pizza/m/T6Cs7tmMHJ", false),
-            new("Quaternius", "FarmAnimals", "quaternius-farm", "https://poly.pizza/m/u35l6uP5vj", false,
-                textured: true),
+            // #287, the animals: modelled, rigged and animated by tools/art/animals.py, every clip in
+            // the animal's own file (AnimalArt). Painted from the characters' ramp sheet.
+            new(Own, "Animals", "", "tools/art/animals.py", false, textured: true),
 
             // The people's moves (T9; the bodies are our own since #76). No entries in Models, so
             // ArtExtract passes over it: its file names were never seen, and CharacterArt extracts it
@@ -323,9 +320,11 @@ namespace EscapeWithYourFriends.EditorTools
 
             // --- the animals (AnimalArt) ----------------------------------------------------------
             // An animal's id is its species id with a capital; a species with no row keeps its boxes.
-            // The gull has none: no Quaternius bird was found to name.
-            new("Deer", "Animals", "Deer", ArtCategory.Animal),
-            new("Boar", "FarmAnimals", "Pig", ArtCategory.Animal),
+            new("Boar", "Animals", "Animal_Boar", ArtCategory.Animal),
+            new("Deer", "Animals", "Animal_Deer", ArtCategory.Animal),
+            new("Stag", "Animals", "Animal_Stag", ArtCategory.Animal),
+            new("Jaguar", "Animals", "Animal_Jaguar", ArtCategory.Animal),
+            new("Gull", "Animals", "Animal_Gull", ArtCategory.Animal),
 
             // --- items lying on the ground (ItemArtFactory, #206) --------------------------------
             new("MeatRaw", "Food", "meat-raw", Small),
