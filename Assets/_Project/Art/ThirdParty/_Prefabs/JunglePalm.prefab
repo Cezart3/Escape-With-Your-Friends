@@ -162,6 +162,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: JunglePalm_LOD0
       objectReference: {fileID: 0}
+    - target: {fileID: 3933054208000406947, guid: d35c5ca910423ab4dbb662213f66bcbd, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: d5b0bc318f7fdd94eb03c293e3cc6fb3, type: 2}
+    - target: {fileID: 3933054208000406947, guid: d35c5ca910423ab4dbb662213f66bcbd, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 84296cb57dc9a47418ed849df65832c7, type: 2}
     - target: {fileID: 6591182823572884613, guid: d35c5ca910423ab4dbb662213f66bcbd, type: 3}
       propertyPath: m_IsActive
       value: 0
@@ -270,6 +278,14 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 2100000, guid: d5b0bc318f7fdd94eb03c293e3cc6fb3, type: 2}
     - target: {fileID: 3933054208000406947, guid: d35c5ca910423ab4dbb662213f66bcbd, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 84296cb57dc9a47418ed849df65832c7, type: 2}
+    - target: {fileID: 6849862742902838059, guid: d35c5ca910423ab4dbb662213f66bcbd, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: d5b0bc318f7fdd94eb03c293e3cc6fb3, type: 2}
+    - target: {fileID: 6849862742902838059, guid: d35c5ca910423ab4dbb662213f66bcbd, type: 3}
       propertyPath: 'm_Materials.Array.data[1]'
       value: 
       objectReference: {fileID: 2100000, guid: 84296cb57dc9a47418ed849df65832c7, type: 2}

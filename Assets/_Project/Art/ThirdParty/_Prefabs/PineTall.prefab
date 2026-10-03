@@ -158,6 +158,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -6730862583629794715, guid: 69133f7f4be74e14d979e07258c6c7c7, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 59df9956cc2a6dc438e931e22e94f695, type: 2}
+    - target: {fileID: -6730862583629794715, guid: 69133f7f4be74e14d979e07258c6c7c7, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: cf857e5e0bca0b540a3031527054616c, type: 2}
     - target: {fileID: 919132149155446097, guid: 69133f7f4be74e14d979e07258c6c7c7, type: 3}
       propertyPath: m_Name
       value: PineTall_LOD1
@@ -273,6 +281,14 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4491091564957749266, guid: 69133f7f4be74e14d979e07258c6c7c7, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 59df9956cc2a6dc438e931e22e94f695, type: 2}
+    - target: {fileID: 4491091564957749266, guid: 69133f7f4be74e14d979e07258c6c7c7, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: cf857e5e0bca0b540a3031527054616c, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

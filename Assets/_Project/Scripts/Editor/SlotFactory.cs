@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using EscapeWithYourFriends.Casino;
 using FishNet.Managing.Object;
 using FishNet.Object;
@@ -10,16 +11,18 @@ using UnityEngine.Rendering;
 namespace EscapeWithYourFriends.EditorTools
 {
     /// <summary>
-    /// The three slot cabinets along the casino's back wall.
+    /// The slot cabinets of the casino floor and the VIP room.
     ///
     ///   Unity.exe -quit -batchmode -nographics -projectPath .
     ///     -executeMethod EscapeWithYourFriends.EditorTools.SlotFactory.Build
     ///
-    /// **Every symbol is a mesh on one atlas.** Thirty-odd symbols in thirty colours would be thirty
-    /// materials, and <c>LookTest</c> holds the scene to a budget of 48. So the factory paints one
-    /// small texture with every colour on it, and bakes each symbol as a copy of a primitive (or a
-    /// few, combined) whose UVs all point at its own texel. One material for the whole casino
-    /// floor; a symbol changing is a mesh swap.
+    /// **Everything is modelled in Blender** by <c>tools/art/slots.py</c> (#252): every reel symbol in
+    /// <c>SlotSymbols.fbx</c>, every cabinet and its three bulb groups in <c>SlotCabinets.fbx</c>, all
+    /// painted from one ramp sheet. So the whole slot floor is one material, as before, plus the
+    /// bulbs' glow; <c>LookTest</c> holds the scene to 48. A symbol changing is a mesh swap.
+    ///
+    /// The cabinet's body is the model; what the player walks into and presses is still boxes:
+    /// colliders without renderers for the body, and the buttons, each its own NetworkObject.
     ///
     /// Unlike the other casino factories this one always rebuilds: nothing here is dressed by hand
     /// or by <c>ArtDress</c>, and a saved-over prefab keeps its GUID and its spawnable entry.
@@ -28,10 +31,12 @@ namespace EscapeWithYourFriends.EditorTools
     {
         const string PrefabDir = "Assets/_Project/Prefabs/Stations";
         const string ArtDir = "Assets/_Project/Art/Casino";
+        const string ModelDir = ArtDir + "/Models";
         const string PrefabObjectsPath = "Assets/DefaultPrefabObjects.asset";
-        const string AtlasPath = ArtDir + "/SlotAtlas.png";
+        const string SymbolsPath = ModelDir + "/SlotSymbols.fbx";
+        const string CabinetsPath = ModelDir + "/SlotCabinets.fbx";
+        const string TexturePath = ModelDir + "/Textures/Symbols.png";
         const string MaterialPath = ArtDir + "/SlotAtlas.mat";
-        const string MeshesPath = ArtDir + "/SlotMeshes.asset";
 
         internal const string SevensPath = PrefabDir + "/SlotSevens.prefab";
         internal const string VolcanoPath = PrefabDir + "/SlotVolcano.prefab";
@@ -39,175 +44,146 @@ namespace EscapeWithYourFriends.EditorTools
         internal const string FruitPath = PrefabDir + "/SlotFruit.prefab";
         internal const string LagoonPath = PrefabDir + "/SlotLagoon.prefab";
 
-        const int AtlasSize = 8;
+        /// <summary>The reel window's height per game; slots.py's WINDOW less the bezel's lip.</summary>
+        static float Window(SlotKind kind) => kind is SlotKind.Sevens or SlotKind.Lagoon ? 0.5f
+                                              : kind is SlotKind.Volcano or SlotKind.Fruit ? 0.66f : 0.8f;
 
-        enum Shape { Slab, Sphere, Cube, Drum, Pod, Diamond, Disc, Seven, Crown, Peak, Starfish, Fish, Card }
+        const float Width = 0.8f;
 
-        /// <summary>A symbol: what it is called, how it is shaped, its colour, its size in cells.</summary>
-        readonly struct Look
+        /// <summary>A symbol: its mesh's name in the FBX less "Sym_", and its size in cells. Order is SlotMath's.</summary>
+        static readonly (string Name, float Scale)[] SevensLooks =
         {
-            public readonly string Name;
-            public readonly Shape Shape;
-            public readonly Color Colour;
-            public readonly float Scale;
-
-            public Look(string name, Shape shape, Color colour, float scale)
-            {
-                Name = name;
-                Shape = shape;
-                Colour = colour;
-                Scale = scale;
-            }
-        }
-
-        static readonly Look[] SevensLooks =
-        {
-            new("Lime", Shape.Sphere, new Color(0.60f, 0.86f, 0.25f), 0.62f),
-            new("Coconut", Shape.Sphere, new Color(0.42f, 0.27f, 0.15f), 0.8f),
-            new("Mango", Shape.Pod, new Color(1.00f, 0.62f, 0.12f), 0.85f),
-            new("Papaya", Shape.Pod, new Color(0.95f, 0.42f, 0.36f), 0.85f),
-            new("Pineapple", Shape.Drum, new Color(0.96f, 0.80f, 0.20f), 0.75f),
-            new("Melon", Shape.Sphere, new Color(0.13f, 0.52f, 0.20f), 0.92f),
-            new("Seven", Shape.Seven, new Color(0.86f, 0.08f, 0.10f), 0.9f),
-            new("Star", Shape.Diamond, new Color(1.00f, 0.86f, 0.18f), 0.9f),
+            ("Lime", 0.8f), ("Coconut", 0.84f), ("Mango", 0.86f), ("Papaya", 0.86f), ("Pineapple", 0.88f),
+            ("Melon", 0.92f), ("Seven", 0.96f), ("Star", 0.96f),
         };
 
-        static readonly Look[] VolcanoLooks =
+        static readonly (string, float)[] VolcanoLooks =
         {
-            new("Obsidian", Shape.Diamond, new Color(0.16f, 0.15f, 0.22f), 0.62f),
-            new("Jade", Shape.Diamond, new Color(0.28f, 0.76f, 0.45f), 0.62f),
-            new("Amber", Shape.Diamond, new Color(0.96f, 0.58f, 0.12f), 0.62f),
-            new("Ruby", Shape.Diamond, new Color(0.86f, 0.10f, 0.22f), 0.66f),
-            new("Pearl", Shape.Sphere, new Color(0.96f, 0.94f, 0.88f), 0.66f),
-            new("Drum", Shape.Drum, new Color(0.56f, 0.34f, 0.18f), 0.78f),
-            new("Mask", Shape.Card, new Color(0.25f, 0.62f, 0.70f), 0.85f),
-            new("Idol", Shape.Pod, new Color(0.78f, 0.62f, 0.30f), 0.9f),
-            new("Crown", Shape.Crown, new Color(1.00f, 0.80f, 0.16f), 0.9f),
-            new("Volcano", Shape.Peak, new Color(0.62f, 0.22f, 0.12f), 0.95f),
-            new("LavaOrb", Shape.Sphere, new Color(1.00f, 0.40f, 0.05f), 0.85f),
+            ("Obsidian", 0.78f), ("Jade", 0.8f), ("Amber", 0.8f), ("Ruby", 0.84f), ("Pearl", 0.84f), ("Drum", 0.88f),
+            ("Mask", 0.9f), ("Idol", 0.92f), ("Crown", 0.94f), ("Volcano", 0.98f), ("LavaOrb", 0.9f),
         };
 
-        static readonly Look[] ReefLooks =
+        static readonly (string, float)[] ReefLooks =
         {
-            new("Kelp", Shape.Pod, new Color(0.24f, 0.58f, 0.30f), 0.8f),
-            new("Shell", Shape.Disc, new Color(0.96f, 0.70f, 0.76f), 0.75f),
-            new("Starfish", Shape.Starfish, new Color(1.00f, 0.52f, 0.22f), 0.85f),
-            new("Urchin", Shape.Sphere, new Color(0.46f, 0.20f, 0.56f), 0.72f),
-            new("Puffer", Shape.Sphere, new Color(0.96f, 0.86f, 0.32f), 0.9f),
-            new("Clownfish", Shape.Fish, new Color(1.00f, 0.44f, 0.08f), 0.9f),
-            new("Octopus", Shape.Sphere, new Color(0.80f, 0.24f, 0.46f), 0.92f),
-            new("Chest", Shape.Cube, new Color(0.86f, 0.64f, 0.18f), 0.8f),
+            ("Kelp", 0.84f), ("Shell", 0.84f), ("Starfish", 0.88f), ("Urchin", 0.86f), ("Puffer", 0.92f),
+            ("Clownfish", 0.94f), ("Octopus", 0.96f), ("Chest", 0.94f),
         };
 
         // Names carry a prefix: a look's name keys its mesh, and Sevens already has a pineapple.
-        static readonly Look[] FruitLooks =
+        static readonly (string, float)[] FruitLooks =
         {
-            new("FruitBerry", Shape.Sphere, new Color(0.62f, 0.10f, 0.32f), 0.6f),
-            new("FruitLychee", Shape.Sphere, new Color(0.98f, 0.62f, 0.66f), 0.66f),
-            new("FruitKiwi", Shape.Disc, new Color(0.48f, 0.70f, 0.18f), 0.7f),
-            new("FruitStarfruit", Shape.Starfish, new Color(0.98f, 0.90f, 0.36f), 0.75f),
-            new("FruitGuava", Shape.Pod, new Color(0.70f, 0.86f, 0.46f), 0.75f),
-            new("FruitBanana", Shape.Pod, new Color(1.00f, 0.84f, 0.10f), 0.85f),
-            new("FruitDragonfruit", Shape.Pod, new Color(0.94f, 0.18f, 0.56f), 0.88f),
-            new("FruitPassionfruit", Shape.Sphere, new Color(0.40f, 0.18f, 0.48f), 0.85f),
-            new("FruitGoldenPineapple", Shape.Crown, new Color(1.00f, 0.72f, 0.06f), 0.92f),
-            new("FruitSun", Shape.Disc, new Color(1.00f, 0.56f, 0.10f), 0.95f),
-            new("FruitCoconutBomb", Shape.Sphere, new Color(0.30f, 0.18f, 0.10f), 0.88f),
+            ("FruitBerry", 0.8f), ("FruitLychee", 0.82f), ("FruitKiwi", 0.84f), ("FruitStarfruit", 0.86f),
+            ("FruitGuava", 0.86f), ("FruitBanana", 0.9f), ("FruitDragonfruit", 0.92f), ("FruitPassionfruit", 0.92f),
+            ("FruitGoldenPineapple", 0.96f), ("FruitSun", 0.98f), ("FruitCoconutBomb", 0.92f),
         };
 
-        static readonly Look[] LagoonLooks =
+        // The fish grow with their value, so a golden marlin reads across the room.
+        static readonly (string, float)[] LagoonLooks =
         {
-            new("LagoonShell", Shape.Disc, new Color(0.92f, 0.80f, 0.66f), 0.62f),
-            new("LagoonStarfish", Shape.Starfish, new Color(0.95f, 0.36f, 0.30f), 0.66f),
-            new("LagoonCrab", Shape.Sphere, new Color(0.85f, 0.25f, 0.12f), 0.7f),
-            new("LagoonBobber", Shape.Sphere, new Color(0.98f, 0.42f, 0.10f), 0.66f),
-            new("LagoonTackle", Shape.Cube, new Color(0.20f, 0.45f, 0.30f), 0.72f),
-            new("LagoonRod", Shape.Pod, new Color(0.55f, 0.36f, 0.18f), 0.85f),
-            new("LagoonBoat", Shape.Drum, new Color(0.15f, 0.35f, 0.70f), 0.9f),
-
-            // The fish grow and warm up with their value, so a golden marlin reads across the room.
-            new("LagoonMinnow", Shape.Fish, new Color(0.62f, 0.78f, 0.86f), 0.6f),
-            new("LagoonSnapper", Shape.Fish, new Color(0.95f, 0.45f, 0.40f), 0.7f),
-            new("LagoonGrouper", Shape.Fish, new Color(0.40f, 0.55f, 0.30f), 0.8f),
-            new("LagoonMarlin", Shape.Fish, new Color(0.20f, 0.30f, 0.65f), 0.9f),
-            new("LagoonGoldenMarlin", Shape.Fish, new Color(1.00f, 0.80f, 0.16f), 0.95f),
-
-            new("LagoonCastaway", Shape.Card, new Color(0.95f, 0.72f, 0.50f), 0.92f),
-            new("LagoonHook", Shape.Diamond, new Color(1.00f, 0.86f, 0.18f), 0.92f),
+            ("LagoonShell", 0.8f), ("LagoonStarfish", 0.82f), ("LagoonCrab", 0.84f), ("LagoonBobber", 0.82f),
+            ("LagoonTackle", 0.86f), ("LagoonRod", 0.9f), ("LagoonBoat", 0.92f),
+            ("LagoonMinnow", 0.78f), ("LagoonSnapper", 0.84f), ("LagoonGrouper", 0.9f), ("LagoonMarlin", 0.96f),
+            ("LagoonGoldenMarlin", 1f), ("LagoonCastaway", 0.96f), ("LagoonHook", 0.96f),
         };
 
-        static readonly Look SpotMarked = new("SpotMarked", Shape.Disc, new Color(0.30f, 0.78f, 0.80f), 1f);
-        static readonly Look SpotHot = new("SpotHot", Shape.Disc, new Color(1.00f, 0.28f, 0.62f), 1f);
-        static readonly Look CardBack = new("CardBack", Shape.Card, new Color(0.20f, 0.30f, 0.72f), 1f);
-        static readonly Look CardRed = new("CardRed", Shape.Card, new Color(0.86f, 0.10f, 0.10f), 1f);
-        static readonly Look CardBlack = new("CardBlack", Shape.Card, new Color(0.07f, 0.07f, 0.09f), 1f);
-        static readonly Look Screen = new("Screen", Shape.Slab, new Color(0.05f, 0.06f, 0.09f), 1f);
-
-        // Filled by Build: one texel per distinct colour, one mesh per look.
-        static readonly List<Color> Colours = new();
+        // Filled by Build from the two FBX files, keyed by the mesh's name.
         static readonly Dictionary<string, Mesh> Meshes = new();
 
         public static void Build()
         {
             Directory.CreateDirectory(PrefabDir);
-            Directory.CreateDirectory(ArtDir);
-
-            Colours.Clear();
             Meshes.Clear();
 
-            var all = new List<Look>();
-            all.AddRange(SevensLooks);
-            all.AddRange(VolcanoLooks);
-            all.AddRange(ReefLooks);
-            all.AddRange(FruitLooks);
-            all.AddRange(LagoonLooks);
-            all.AddRange(new[] { SpotMarked, SpotHot, CardBack, CardRed, CardBlack, Screen });
+            foreach (string path in new[] { SymbolsPath, CabinetsPath })
+            {
+                if (!Import(path))
+                {
+                    Debug.LogError($"[SlotFactory] No {path}. Run tools/art/slots.py into {ModelDir} first.");
+                    if (Application.isBatchMode) EditorApplication.Exit(1);
+                    return;
+                }
 
-            foreach (Look look in all)
-                if (!Colours.Contains(look.Colour)) Colours.Add(look.Colour);
+                foreach (Mesh mesh in AssetDatabase.LoadAllAssetsAtPath(path).OfType<Mesh>()) Meshes[mesh.name] = mesh;
+            }
 
-            Material material = Atlas();
-            BakeMeshes(all);
+            bool upright = CheckSeven();
+            Material material = Symbols();
+            Material bulbOn = StyleLook.Glowing("SlotBulbOn", new Color(1f, 0.93f, 0.7f), new Color(3.2f, 2.5f, 1.3f));
 
             int built = 0;
-            if (Cabinet(SlotKind.Sevens, SevensPath, SevensLooks, material, new Color(0.72f, 0.28f, 0.22f))) built++;
-            if (Cabinet(SlotKind.Volcano, VolcanoPath, VolcanoLooks, material, new Color(0.13f, 0.14f, 0.17f))) built++;
-            if (Cabinet(SlotKind.Reef, ReefPath, ReefLooks, material, new Color(0.32f, 0.38f, 0.48f))) built++;
-            if (Cabinet(SlotKind.Fruit, FruitPath, FruitLooks, material, new Color(0.98f, 0.62f, 0.66f))) built++;
-            if (Cabinet(SlotKind.Lagoon, LagoonPath, LagoonLooks, material, new Color(0.15f, 0.35f, 0.70f))) built++;
+            if (Cabinet(SlotKind.Sevens, SevensPath, SevensLooks, material, bulbOn)) built++;
+            if (Cabinet(SlotKind.Volcano, VolcanoPath, VolcanoLooks, material, bulbOn)) built++;
+            if (Cabinet(SlotKind.Reef, ReefPath, ReefLooks, material, bulbOn)) built++;
+            if (Cabinet(SlotKind.Fruit, FruitPath, FruitLooks, material, bulbOn)) built++;
+            if (Cabinet(SlotKind.Lagoon, LagoonPath, LagoonLooks, material, bulbOn)) built++;
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
-            Debug.Log($"[SlotFactory] {built} of {System.Enum.GetValues(typeof(SlotKind)).Length} cabinets built, {Meshes.Count} symbol meshes on one "
-                      + $"{AtlasSize}x{AtlasSize} atlas of {Colours.Count} colours.");
+            Debug.Log($"[SlotFactory] {built} of {System.Enum.GetValues(typeof(SlotKind)).Length} cabinets built from "
+                      + $"{Meshes.Count} Blender meshes on one material; the seven {(upright ? "reads the right way round" : "is MIRRORED")}.");
 
-            if (Application.isBatchMode) EditorApplication.Exit(0);
+            if (Application.isBatchMode) EditorApplication.Exit(upright ? 0 : 1);
         }
 
-        // ---------------------------------------------------------------- the atlas
+        // ---------------------------------------------------------------- the models
 
-        static Material Atlas()
+        /// <summary>Our own FBX, imported as meshes only: no materials of its own, no rig, the file's normals.</summary>
+        static bool Import(string path)
         {
-            var texture = new Texture2D(AtlasSize, AtlasSize, TextureFormat.RGBA32, false);
-            var pixels = new Color[AtlasSize * AtlasSize];
-            for (int i = 0; i < pixels.Length; i++) pixels[i] = i < Colours.Count ? Colours[i] : Color.magenta;
+            if (AssetImporter.GetAtPath(path) is not ModelImporter importer) return false;
 
-            texture.SetPixels(pixels);
-            File.WriteAllBytes(AtlasPath, texture.EncodeToPNG());
-            Object.DestroyImmediate(texture);
-
-            AssetDatabase.ImportAsset(AtlasPath, ImportAssetOptions.ForceSynchronousImport);
-
-            // Point, no mips, no compression: every texel is a flat colour and must stay exactly one.
-            var importer = (TextureImporter)AssetImporter.GetAtPath(AtlasPath);
-            importer.filterMode = FilterMode.Point;
-            importer.mipmapEnabled = false;
-            importer.textureCompression = TextureImporterCompression.Uncompressed;
-            importer.wrapMode = TextureWrapMode.Clamp;
+            importer.globalScale = 1f;
+            importer.importAnimation = false;
+            importer.animationType = ModelImporterAnimationType.None;
+            importer.importCameras = false;
+            importer.importLights = false;
+            importer.importBlendShapes = false;
+            importer.importNormals = ModelImporterNormals.Import;
+            importer.importTangents = ModelImporterTangents.None;
+            importer.materialImportMode = ModelImporterMaterialImportMode.None;
+            importer.isReadable = false;
             importer.SaveAndReimport();
+            return true;
+        }
 
-            var atlas = AssetDatabase.LoadAssetAtPath<Texture2D>(AtlasPath);
+        /// <summary>
+        /// The seven used to be mirrored (#252): a cabinet's front is +z, so the viewer's left is +x.
+        /// The foot of a seven is left of its middle, so its lowest vertices must sit at +x; and the
+        /// nearest thing to the viewer is its gloss, up and to their left, so its frontmost vertices
+        /// sit high at +x. Mirrored, the foot moves; turned round, the front is the gold rim instead.
+        /// </summary>
+        static bool CheckSeven()
+        {
+            if (!Meshes.TryGetValue("Sym_Seven", out Mesh seven)) return false;
+
+            Vector3[] vertices = seven.vertices;
+            float bottom = vertices.Min(v => v.y);
+            float footX = vertices.Where(v => v.y < bottom + 0.15f).Average(v => v.x);
+            float front = vertices.Max(v => v.z);
+            Vector3 gloss = vertices.Where(v => v.z > front - 0.03f).Aggregate(Vector3.zero, (a, v) => a + v)
+                            / vertices.Count(v => v.z > front - 0.03f);
+
+            bool right = footX > 0f && gloss.x > 0.1f && gloss.y > 0.2f;
+            if (!right)
+                Debug.LogError($"[SlotFactory] Sym_Seven reads wrong: foot at x {footX:F2}, frontmost at {gloss}. "
+                               + "slots.py's front must face -Y.");
+            return right;
+        }
+
+        /// <summary>The ramp sheet, filtered and mipped, on the material the reels have always worn.</summary>
+        static Material Symbols()
+        {
+            if (AssetImporter.GetAtPath(TexturePath) is TextureImporter importer)
+            {
+                importer.mipmapEnabled = true;
+                importer.filterMode = FilterMode.Bilinear;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.SaveAndReimport();
+            }
+
+            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(TexturePath);
 
             var material = AssetDatabase.LoadAssetAtPath<Material>(MaterialPath);
             if (material == null)
@@ -216,192 +192,50 @@ namespace EscapeWithYourFriends.EditorTools
                 AssetDatabase.CreateAsset(material, MaterialPath);
             }
 
-            material.SetTexture("_BaseMap", atlas);
-            material.mainTexture = atlas;
+            material.SetTexture("_BaseMap", texture);
+            material.mainTexture = texture;
             material.SetColor("_BaseColor", Color.white);
             material.SetFloat("_Smoothness", 0.35f);
 
-            // The island's one shader and its numbers, even for an atlas made before it existed:
-            // StyleLook.Apply runs before this factory in the bake.
+            // The island's one shader and its numbers: StyleLook.Apply runs before this factory in the bake.
             StyleLook.Wear(material);
-
             return material;
-        }
-
-        static Vector2 Texel(Color colour)
-        {
-            int i = Colours.IndexOf(colour);
-            return new Vector2((i % AtlasSize + 0.5f) / AtlasSize, (i / AtlasSize + 0.5f) / AtlasSize);
-        }
-
-        // ---------------------------------------------------------------- the meshes
-
-        /// <summary>
-        /// One mesh per look, all in one asset file. Rebuilt from scratch each run; the prefabs that
-        /// reference them are rebuilt in the same run, so nothing is left pointing at the old ones.
-        /// </summary>
-        static void BakeMeshes(List<Look> looks)
-        {
-            AssetDatabase.DeleteAsset(MeshesPath);
-
-            Mesh first = null;
-            foreach (Look look in looks)
-            {
-                if (Meshes.ContainsKey(look.Name)) continue;
-
-                Mesh mesh = Bake(look);
-                if (first == null)
-                {
-                    first = mesh;
-                    AssetDatabase.CreateAsset(mesh, MeshesPath);
-                }
-                else
-                {
-                    AssetDatabase.AddObjectToAsset(mesh, first);
-                }
-
-                Meshes[look.Name] = mesh;
-            }
-
-            AssetDatabase.ImportAsset(MeshesPath);
-        }
-
-        /// <summary>Pieces of primitives, each (primitive, position, rotation, scale), combined and fitted into a unit cube.</summary>
-        static Mesh Bake(Look look)
-        {
-            Mesh mesh = look.Shape == Shape.Peak ? Pyramid(look.Name) : Combine(look);
-
-            var uv = new Vector2[mesh.vertexCount];
-            Vector2 texel = Texel(look.Colour);
-            for (int i = 0; i < uv.Length; i++) uv[i] = texel;
-            mesh.uv = uv;
-
-            mesh.RecalculateBounds();
-            return mesh;
-        }
-
-        static Mesh Combine(Look look)
-        {
-            var q = Quaternion.identity;
-            (PrimitiveType, Vector3, Quaternion, Vector3)[] parts = look.Shape switch
-            {
-                Shape.Sphere => new[] { (PrimitiveType.Sphere, Vector3.zero, q, Vector3.one) },
-                Shape.Cube => new[] { (PrimitiveType.Cube, Vector3.zero, q, new Vector3(1f, 0.8f, 0.6f)) },
-                Shape.Drum => new[] { (PrimitiveType.Cylinder, Vector3.zero, q, new Vector3(0.8f, 0.5f, 0.8f)) },
-                Shape.Pod => new[] { (PrimitiveType.Capsule, Vector3.zero, Quaternion.Euler(0f, 0f, 25f), new Vector3(0.55f, 0.5f, 0.55f)) },
-                Shape.Diamond => new[] { (PrimitiveType.Cube, Vector3.zero, Quaternion.Euler(0f, 0f, 45f), new Vector3(0.7f, 0.7f, 0.3f)) },
-                Shape.Disc => new[] { (PrimitiveType.Cylinder, Vector3.zero, Quaternion.Euler(90f, 0f, 0f), new Vector3(1f, 0.08f, 1f)) },
-                Shape.Card => new[] { (PrimitiveType.Cube, Vector3.zero, q, new Vector3(0.7f, 1f, 0.08f)) },
-                Shape.Seven => new[]
-                {
-                    (PrimitiveType.Cube, new Vector3(0f, 0.4f, 0f), q, new Vector3(0.8f, 0.2f, 0.25f)),
-                    (PrimitiveType.Cube, new Vector3(0.05f, -0.1f, 0f), Quaternion.Euler(0f, 0f, -25f), new Vector3(0.22f, 0.9f, 0.25f)),
-                },
-                Shape.Crown => new[]
-                {
-                    (PrimitiveType.Cube, new Vector3(0f, -0.25f, 0f), q, new Vector3(0.9f, 0.4f, 0.3f)),
-                    (PrimitiveType.Cube, new Vector3(-0.35f, 0.2f, 0f), Quaternion.Euler(0f, 0f, 45f), new Vector3(0.25f, 0.25f, 0.3f)),
-                    (PrimitiveType.Cube, new Vector3(0f, 0.25f, 0f), Quaternion.Euler(0f, 0f, 45f), new Vector3(0.3f, 0.3f, 0.3f)),
-                    (PrimitiveType.Cube, new Vector3(0.35f, 0.2f, 0f), Quaternion.Euler(0f, 0f, 45f), new Vector3(0.25f, 0.25f, 0.3f)),
-                },
-                Shape.Starfish => new[]
-                {
-                    (PrimitiveType.Cube, Vector3.zero, Quaternion.Euler(0f, 0f, 45f), new Vector3(0.65f, 0.65f, 0.2f)),
-                    (PrimitiveType.Cube, Vector3.zero, q, new Vector3(0.65f, 0.65f, 0.2f)),
-                },
-                Shape.Fish => new[]
-                {
-                    (PrimitiveType.Sphere, Vector3.zero, q, new Vector3(0.8f, 0.5f, 0.35f)),
-                    (PrimitiveType.Cube, new Vector3(0.45f, 0f, 0f), Quaternion.Euler(0f, 0f, 45f), new Vector3(0.3f, 0.3f, 0.1f)),
-                },
-                _ => new[] { (PrimitiveType.Cube, Vector3.zero, q, Vector3.one) },
-            };
-
-            var combine = new CombineInstance[parts.Length];
-            var temporary = new List<GameObject>();
-
-            for (int i = 0; i < parts.Length; i++)
-            {
-                (PrimitiveType type, Vector3 position, Quaternion rotation, Vector3 scale) = parts[i];
-                GameObject primitive = GameObject.CreatePrimitive(type);
-                temporary.Add(primitive);
-
-                combine[i] = new CombineInstance
-                {
-                    mesh = primitive.GetComponent<MeshFilter>().sharedMesh,
-                    transform = Matrix4x4.TRS(position, rotation, scale),
-                };
-            }
-
-            var mesh = new Mesh { name = "Slot_" + look.Name };
-            mesh.CombineMeshes(combine, mergeSubMeshes: true, useMatrices: true);
-            foreach (GameObject go in temporary) Object.DestroyImmediate(go);
-            return mesh;
-        }
-
-        /// <summary>A four-sided pyramid with a flat top, the one shape no primitive gets close to.</summary>
-        static Mesh Pyramid(string name)
-        {
-            Vector3[] corners =
-            {
-                new(-0.5f, -0.5f, -0.3f), new(0.5f, -0.5f, -0.3f), new(0.5f, -0.5f, 0.3f), new(-0.5f, -0.5f, 0.3f),
-                new(-0.12f, 0.45f, -0.08f), new(0.12f, 0.45f, -0.08f), new(0.12f, 0.45f, 0.08f), new(-0.12f, 0.45f, 0.08f),
-            };
-
-            int[][] faces =
-            {
-                new[] { 0, 4, 5, 1 }, new[] { 1, 5, 6, 2 }, new[] { 2, 6, 7, 3 }, new[] { 3, 7, 4, 0 },
-                new[] { 4, 7, 6, 5 }, new[] { 0, 1, 2, 3 },
-            };
-
-            var vertices = new List<Vector3>();
-            var triangles = new List<int>();
-
-            // Flat shaded: every face its own four vertices.
-            foreach (int[] face in faces)
-            {
-                int start = vertices.Count;
-                foreach (int corner in face) vertices.Add(corners[corner]);
-                triangles.AddRange(new[] { start, start + 1, start + 2, start, start + 2, start + 3 });
-            }
-
-            var mesh = new Mesh { name = "Slot_" + name };
-            mesh.SetVertices(vertices);
-            mesh.SetTriangles(triangles, 0);
-            mesh.RecalculateNormals();
-            return mesh;
         }
 
         // ---------------------------------------------------------------- the cabinet
 
         /// <summary>
-        /// A cabinet, front to +z, standing on its origin: a base with the buttons on its ledge, an
-        /// upper body with the screen, a sign on top in the cabinet's colour. The screen is sized to
-        /// the grid, so Reef's 7x7 gets the tallest glass.
+        /// A cabinet, front to +z, standing on its origin: the Blender body with the glass and the
+        /// reels in its window, the bulbs, the colliders, and the buttons along the deck.
         /// </summary>
-        static bool Cabinet(SlotKind kind, string path, Look[] looks, Material atlas, Color trim)
+        static bool Cabinet(SlotKind kind, string path, (string Name, float Scale)[] looks, Material atlas, Material bulbOn)
         {
             int cols = SlotMath.Cols(kind);
             int rows = SlotMath.Rows(kind);
 
-            const float width = 0.8f;
-            float height = kind is SlotKind.Sevens or SlotKind.Lagoon ? 0.5f : kind is SlotKind.Volcano or SlotKind.Fruit ? 0.66f : 0.8f;
-            float cell = Mathf.Min(width / cols, height / rows);
-            float screenY = 1.5f;
+            float height = Window(kind);
+            float cell = Mathf.Min(Width / cols, height / rows);
+            const float screenY = 1.5f;
 
             var root = new GameObject(Path.GetFileNameWithoutExtension(path));
 
-            Block(root.transform, "Base", new Vector3(0f, 0.45f, 0f), new Vector3(0.9f, 0.9f, 0.65f), trim, solid: true);
-            Block(root.transform, "Ledge", new Vector3(0f, 0.92f, 0.12f), new Vector3(0.9f, 0.04f, 0.45f),
-                  new Color(0.13f, 0.14f, 0.17f), solid: false);
-            Block(root.transform, "Body", new Vector3(0f, 1.5f, -0.1f), new Vector3(0.9f, 1.2f, 0.45f),
-                  new Color(0.13f, 0.14f, 0.17f), solid: true);
-            Block(root.transform, "Sign", new Vector3(0f, 2.25f, -0.05f), new Vector3(0.96f, 0.3f, 0.55f), trim, solid: false);
-            Block(root.transform, "Sign.Trim", new Vector3(0f, 2.25f, 0.23f), new Vector3(0.8f, 0.14f, 0.02f),
-                  new Color(0.83f, 0.68f, 0.24f), solid: false);
+            var body = Part(root.transform, "Cabinet", Meshes[$"Cab_{kind}"], atlas, Vector3.zero, Vector3.one);
+            body.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.On;
 
-            var glass = Part(root.transform, "Screen", Meshes[Screen.Name], atlas,
-                             new Vector3(0f, screenY, 0.13f), new Vector3(width + 0.04f, height + 0.04f, 0.02f));
+            var bulbs = new MeshRenderer[3];
+            for (int g = 0; g < bulbs.Length; g++)
+            {
+                GameObject group = Part(root.transform, $"Bulbs{g}", Meshes[$"Cab_{kind}_Bulbs{g}"], atlas, Vector3.zero, Vector3.one);
+                bulbs[g] = group.GetComponent<MeshRenderer>();
+                bulbs[g].shadowCastingMode = ShadowCastingMode.Off;
+            }
+
+            // What a player bumps into: the base and the body, as the model stands.
+            Collider(root.transform, "Base", new Vector3(0f, 0.44f, 0f), new Vector3(1f, 0.88f, 0.66f));
+            Collider(root.transform, "Body", new Vector3(0f, 1.53f, -0.105f), new Vector3(1f, 1.18f, 0.45f));
+
+            var glass = Part(root.transform, "Screen", Meshes["Sym_Screen"], atlas,
+                             new Vector3(0f, screenY, 0.13f), new Vector3(Width + 0.04f, height + 0.04f, 0.2f));
             glass.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
 
             var screen = new GameObject("Reels").transform;
@@ -415,7 +249,7 @@ namespace EscapeWithYourFriends.EditorTools
 
             for (int s = 0; s < looks.Length; s++)
             {
-                meshes[s] = Meshes[looks[s].Name];
+                meshes[s] = Meshes["Sym_" + looks[s].Name];
                 scales[s] = looks[s].Scale;
             }
 
@@ -441,17 +275,18 @@ namespace EscapeWithYourFriends.EditorTools
             MeshFilter card = null;
             if (kind == SlotKind.Sevens)
             {
-                GameObject face = Part(root.transform, "Card", Meshes[CardBack.Name], atlas,
-                                       new Vector3(0f, 1.08f, 0.14f), new Vector3(0.12f, 0.16f, 0.12f));
+                GameObject face = Part(root.transform, "Card", Meshes["Sym_CardBack"], atlas,
+                                       new Vector3(0f, 1.07f, 0.14f), Vector3.one * 0.16f);
                 card = face.GetComponent<MeshFilter>();
             }
 
             root.AddComponent<NetworkObject>();
             root.AddComponent<SlotMachine>().Configure(
-                kind, cells, meshes, scales, cell, spots, Meshes[SpotMarked.Name], Meshes[SpotHot.Name],
-                card, Meshes[CardBack.Name], Meshes[CardRed.Name], Meshes[CardBlack.Name], Palette.Named("Gold"));
+                kind, cells, meshes, scales, cell, spots, Meshes["Sym_SpotMarked"], Meshes["Sym_SpotHot"],
+                card, Meshes["Sym_CardBack"], Meshes["Sym_CardRed"], Meshes["Sym_CardBlack"], Palette.Named("Gold"),
+                bulbs, bulbOn, atlas);
 
-            // The buttons, along the ledge: spin on the right where a hand falls, the stake on the
+            // The buttons, along the deck: spin on the right where a hand falls, the stake on the
             // left, and between them the two card colours on Sevens or the bonus buy on the others.
             Button(root.transform, SlotAction.Spin, new Vector3(0.28f, 0.97f, 0.2f), new Color(0.25f, 0.70f, 0.30f), 1.3f);
             Button(root.transform, SlotAction.Bet, new Vector3(-0.3f, 0.97f, 0.2f), new Color(0.83f, 0.68f, 0.24f), 1f);
@@ -492,10 +327,23 @@ namespace EscapeWithYourFriends.EditorTools
         /// <summary>A button: its own nested NetworkObject, with a collider for the crosshair to find.</summary>
         static void Button(Transform parent, SlotAction action, Vector3 position, Color colour, float size)
         {
-            GameObject button = Block(parent, action + "Button", position,
-                                      new Vector3(0.14f * size, 0.06f, 0.14f), colour, solid: true);
+            var button = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            button.name = action + "Button";
+            button.transform.SetParent(parent, false);
+            button.transform.localPosition = position;
+            button.transform.localScale = new Vector3(0.14f * size, 0.06f, 0.14f);
+            button.GetComponent<Renderer>().sharedMaterial = Palette.For(colour);
             button.AddComponent<NetworkObject>();
             button.AddComponent<SlotButton>().Configure(action);
+        }
+
+        static void Collider(Transform parent, string name, Vector3 centre, Vector3 size)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            var box = go.AddComponent<BoxCollider>();
+            box.center = centre;
+            box.size = size;
         }
 
         static GameObject Part(Transform parent, string name, Mesh mesh, Material material, Vector3 position, Vector3 scale)
@@ -507,25 +355,6 @@ namespace EscapeWithYourFriends.EditorTools
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             go.AddComponent<MeshRenderer>().sharedMaterial = material;
             return go;
-        }
-
-        /// <summary>Same as CasinoFactory.Block, copied for the reason given there.</summary>
-        static GameObject Block(Transform parent, string name, Vector3 position, Vector3 size, Color color, bool solid)
-        {
-            var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            cube.name = name;
-            cube.transform.SetParent(parent, false);
-            cube.transform.localPosition = position;
-            cube.transform.localScale = size;
-
-            if (!solid)
-            {
-                Object.DestroyImmediate(cube.GetComponent<Collider>());
-                cube.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
-            }
-
-            cube.GetComponent<Renderer>().sharedMaterial = Palette.For(color);
-            return cube;
         }
 
         /// <summary>Same reasoning as PlayerPrefabBuilder.RegisterSpawnable; see the note there.</summary>

@@ -74,6 +74,12 @@ namespace EscapeWithYourFriends.Casino
         [Tooltip("The palette's gold, for the big-win coins.")]
         [SerializeField] Material _coin;
 
+        [Header("Lights, set by SlotFactory")]
+        [Tooltip("The cabinet's bulbs in three interleaved groups, chased round in turn.")]
+        [SerializeField] MeshRenderer[] _bulbs;
+        [SerializeField] Material _bulbOn;
+        [SerializeField] Material _bulbOff;
+
         readonly SyncVar<int> _betIndex = new();
         readonly SyncVar<bool> _busy = new();
         readonly SyncVar<int> _lastSeed = new();
@@ -158,9 +164,16 @@ namespace EscapeWithYourFriends.Casino
         int _frame;
         float _frameStarted;
         int[] _shown;
-        float _nextFlicker;
         int _reelsStopped;
         Vector3[] _home;
+
+        /// <summary>When each reel of the frame on screen lands, and the first one held back for the scatter, or -1.</summary>
+        float[] _stops;
+        int _tease = -1;
+        bool _teaseHeard;
+
+        int _lit = -1;
+        float _flashUntil;
 
         public SlotKind Kind => _kind;
         public string Title => SlotMath.Title(_kind);
@@ -218,6 +231,18 @@ namespace EscapeWithYourFriends.Casino
 
         /// <summary>The symbol drawn in each cell right now, what a camera would see.</summary>
         public int[] ShowingGrid() => _shown;
+
+        /// <summary>Harness: the bulb groups, the reels' symbol meshes, and how far the cells are off their resting places.</summary>
+        internal MeshRenderer[] Bulbs => _bulbs;
+        internal Mesh[] Symbols => _symbolMeshes;
+
+        internal float Displacement()
+        {
+            float off = 0f;
+            for (int i = 0; i < _home.Length; i++)
+                if (_cells[i] != null) off += (_cells[i].localPosition - _home[i]).magnitude;
+            return off;
+        }
 
         public override void OnStartServer()
         {
@@ -549,7 +574,7 @@ namespace EscapeWithYourFriends.Casino
             _playing = result;
             _frame = 0;
             _frameStarted = Time.time;
-            _reelsStopped = 0;
+            Plan(result.Frames[0]);
             if (_card != null && _cardBack != null) _card.sharedMesh = _cardBack;
             Audio.Sfx.Play(Audio.Sound.Spin, transform.position);
         }
@@ -559,6 +584,8 @@ namespace EscapeWithYourFriends.Casino
             // The winner left (disconnected, or died into a ghost): nobody can take the card now,
             // and their object id may be handed to somebody else's body.
             if (IsServerStarted && _gamble.Value > 0 && _gambler == null) EndOffer();
+
+            Lights();
 
             if (_playing == null) return;
 
@@ -570,26 +597,34 @@ namespace EscapeWithYourFriends.Casino
             {
                 _frameStarted += frame.Seconds;
                 _frame++;
-                _reelsStopped = 0;
 
                 SlotFrame next = _playing.Frames[_frame];
                 if (next.Drop) Audio.Sfx.Play(Audio.Sound.Spin, transform.position, 0.6f);
                 if (next.RunningPct > frame.RunningPct) Audio.Sfx.Play(Audio.Sound.Coin, transform.position);
                 frame = next;
+                Plan(frame);
             }
 
             float t = Time.time - _frameStarted;
 
-            // One thunk per reel as it lands; reels that land in the same frame share one.
+            // One thunk per reel as it lands; reels that land in the same frame share one. A held
+            // reel lands lower and louder, and the hold itself starts on a rising whirr.
             if (frame.Drop)
             {
                 int stopped = 0;
-                for (int col = 0; col < Cols; col++) if (t >= StopAt(frame, col, Cols)) stopped++;
+                for (int col = 0; col < Cols; col++) if (t >= _stops[col]) stopped++;
 
                 if (stopped > _reelsStopped)
                 {
+                    bool held = _tease >= 0 && stopped > _tease;
                     _reelsStopped = stopped;
-                    Audio.Sfx.Play(Audio.Sound.ReelStop, transform.position, 0.8f);
+                    Audio.Sfx.Play(Audio.Sound.ReelStop, transform.position, held ? 1f : 0.8f, held ? 0.8f : 1f);
+                }
+
+                if (_tease >= 0 && !_teaseHeard && stopped >= _tease)
+                {
+                    _teaseHeard = true;
+                    Audio.Sfx.Play(Audio.Sound.Spin, transform.position, 0.7f, 1.35f);
                 }
             }
 
@@ -603,24 +638,104 @@ namespace EscapeWithYourFriends.Casino
             _playing = null;
             DrawStill(frame);
 
+            if (Played.Win > 0) _flashUntil = Time.time + (Played.Win >= Played.Bet * 10 ? 5f : 2.5f);
             BigWin.Celebrate(transform.TransformPoint(0f, 1.5f, 0.3f), transform.position.y, Played.Win, Played.Bet, PlayedJackpot);
         }
 
-        /// <summary>How long a drop's reels spin before the last one stops.</summary>
-        static float SpinTime(SlotFrame frame) => Mathf.Min(1.1f, frame.Seconds * 0.6f);
+        // ---------------------------------------------------------------- the reels
 
-        /// <summary>When reel <paramref name="col"/> of a drop lands, left to right.</summary>
-        static float StopAt(SlotFrame frame, int col, int cols)
-            => (frame.Drop ? SpinTime(frame) : 0f) * (0.45f + 0.55f * col / Mathf.Max(1, cols - 1));
+        /// <summary>Cells a second a reel runs at, and a held reel's crawl.</summary>
+        const float Speed = 15f, Crawl = 5f;
+
+        /// <summary>The kick back up before a reel goes, and the drop-and-settle when it lands.</summary>
+        const float WindUp = 0.14f, Bounce = 0.32f;
+
+        /// <summary>Half the window spans this much of the drum.</summary>
+        const float HalfArc = Mathf.PI / 3f;
+
+        /// <summary>
+        /// When each reel lands, left to right over the first sixty-odd per cent of the frame. A
+        /// teased drop's held reels share the extra time SlotMath gave it, each a slow beat apart.
+        /// </summary>
+        void Plan(SlotFrame frame)
+        {
+            int cols = Cols;
+            if (_stops == null || _stops.Length != cols) _stops = new float[cols];
+
+            _reelsStopped = 0;
+            _teaseHeard = false;
+            _tease = SlotMath.Tease(_kind, frame);
+
+            float plain = frame.Seconds - (_tease >= 0 ? SlotMath.TeaseSeconds : 0f);
+            float spin = frame.Drop ? Mathf.Min(1.5f, plain * 0.62f) : 0f;
+            for (int c = 0; c < cols; c++) _stops[c] = spin * (0.4f + 0.6f * c / Mathf.Max(1, cols - 1));
+
+            if (_tease < 0) return;
+            int held = cols - _tease;
+            for (int c = _tease; c < cols; c++) _stops[c] += SlotMath.TeaseSeconds * (c - _tease + 1) / held;
+        }
+
+        /// <summary>How many cells reel <paramref name="col"/> has run by <paramref name="t"/>: a kick back, full speed, a crawl once it is held.</summary>
+        float Travel(int col, float t)
+        {
+            if (t < WindUp) return -0.3f * Mathf.Sin(Mathf.PI * 0.5f * t / WindUp);
+
+            float run = t - WindUp;
+            if (_tease < 0 || col < _tease) return -0.3f + Speed * run;
+
+            float fast = Mathf.Max(0f, _stops[_tease - 1] - WindUp);
+            return -0.3f + Speed * Mathf.Min(run, fast) + Crawl * Mathf.Max(0f, run - fast);
+        }
+
+        /// <summary>The reel strip: a fixed shuffle per reel, the same on every peer and every spin.</summary>
+        int Strip(int col, int slot)
+        {
+            uint h = (uint)(col * 7919 + slot * 104729 + (int)_kind * 31337);
+            h ^= h >> 15;
+            h *= 0x2C1B3C6Du;
+            h ^= h >> 12;
+            return (int)(h % (uint)_symbolMeshes.Length);
+        }
+
+        static float BackOut(float u)
+        {
+            const float k = 2.2f;
+            u -= 1f;
+            return 1f + u * u * ((k + 1f) * u + k);
+        }
+
+        /// <summary>
+        /// Puts cell <paramref name="i"/> at <paramref name="row"/> (fractional, 0 the top) on a drum,
+        /// <paramref name="curve"/> of the way from flat: rows away from the middle roll back and
+        /// foreshorten, and past the window's edge they sink behind the glass.
+        /// </summary>
+        void Place(int i, float row, float curve, float size, float stretch)
+        {
+            float up = (Rows - 1) * 0.5f - row;
+            float arc = HalfArc / (Rows * 0.5f);
+            float a = Mathf.Clamp(up * arc, -Mathf.PI * 0.5f, Mathf.PI * 0.5f);
+            float radius = _cellSize / arc;
+
+            // _home is the cell's own row; the reel's middle is where the flat grid has y = 0.
+            Vector3 home = _home[i];
+            float middle = home.y - ((Rows - 1) * 0.5f - i % Rows) * _cellSize;
+            _cells[i].localPosition = new Vector3(
+                home.x,
+                middle + Mathf.Lerp(up * _cellSize, radius * Mathf.Sin(a), curve),
+                home.z + curve * radius * (Mathf.Cos(a) - 1f));
+            _cells[i].localRotation = Quaternion.Euler(-Mathf.Rad2Deg * a * curve, 0f, 0f);
+            _cells[i].localScale = new Vector3(size, size * stretch, size);
+        }
 
         void Draw(SlotFrame frame, SlotFrame previous, float t)
         {
             if (_cells == null) return;
 
             int rows = Rows;
-            int cols = Cols;
-            bool flicker = Time.time >= _nextFlicker;
-            if (flicker) _nextFlicker = Time.time + 0.06f;
+            (int scatter, _) = SlotMath.Scatter(_kind);
+            float last = _stops[_stops.Length - 1];
+            bool anyWin = false;
+            for (int i = 0; i < frame.Winning.Length; i++) anyWin |= frame.Winning[i];
 
             // A picture that is followed by a tumble bursts its winners in its last quarter.
             bool tumbleNext = _frame + 1 < _playing.Frames.Count && !_playing.Frames[_frame + 1].Drop;
@@ -629,18 +744,31 @@ namespace EscapeWithYourFriends.Casino
             {
                 int col = i / rows;
                 int row = i % rows;
+                float stop = _stops[col];
 
-                float stopAt = StopAt(frame, col, cols);
-
-                if (t < stopAt)
+                if (frame.Drop && t < stop)
                 {
-                    if (flicker) Show(i, Random.Range(0, _symbolMeshes.Length));
-                    _cells[i].localPosition = _home[i] + Vector3.down * (Mathf.Repeat(t * 9f, 1f) - 0.5f) * _cellSize;
-                    _cells[i].localScale = Vector3.one * Scale(_shown[i]);
+                    // Spinning: each cell rides the strip down and wraps to the top with a new symbol.
+                    float s = row + Travel(col, t) + 0.5f;
+                    int lap = Mathf.FloorToInt(s / rows);
+                    Show(i, Strip(col, lap * rows - row));
+
+                    bool held = _tease >= 0 && col >= _tease && t > _stops[_tease - 1];
+                    Place(i, s - lap * rows - 0.5f, 1f, Scale(_shown[i]), held ? 1.1f : 1.3f);
+                    if (held) _cells[i].localPosition += Vector3.right * (Mathf.Sin(t * 70f + col) * 0.03f * _cellSize);
                     continue;
                 }
 
                 Show(i, frame.Grid[i]);
+                float size = Scale(frame.Grid[i]);
+
+                if (frame.Drop && t < stop + Bounce)
+                {
+                    // Landing: dropped in from a little above, past home, and back.
+                    float u = (t - stop) / Bounce;
+                    Place(i, row - 0.6f * (1f - BackOut(u)), 1f - u, size, 1f);
+                    continue;
+                }
 
                 // A tumble: everything that had a winner under it falls into place.
                 float fall = 0f;
@@ -651,15 +779,32 @@ namespace EscapeWithYourFriends.Casino
                     fall = below * _cellSize * Mathf.Pow(1f - Mathf.Clamp01(t / 0.25f), 2f);
                 }
 
-                _cells[i].localPosition = _home[i] + Vector3.up * fall;
+                Vector3 at = _home[i] + Vector3.up * fall;
+                Quaternion turn = Quaternion.identity;
+                float settled = t - last - Bounce;
 
-                float size = Scale(frame.Grid[i]);
-                if (frame.Winning[i] && t > stopAt + 0.1f)
+                if (frame.Winning[i] && settled > 0f)
                 {
+                    // Winners dance: a beat of growth, a hop and a wag, the wag out of step reel to reel.
+                    float beat = Mathf.Abs(Mathf.Sin(settled * 8f));
                     float burst = tumbleNext ? Mathf.Clamp01((frame.Seconds - t) / (frame.Seconds * 0.25f)) : 1f;
-                    size *= (1f + 0.25f * Mathf.Abs(Mathf.Sin(t * 9f))) * burst;
+                    size *= (1f + 0.22f * beat) * burst;
+                    at += Vector3.up * (0.08f * _cellSize * beat) + Vector3.forward * (0.15f * _cellSize);
+                    turn = Quaternion.Euler(0f, 0f, 10f * Mathf.Sin(settled * 11f + col));
+                }
+                else if (anyWin && settled > 0f)
+                {
+                    size *= 0.8f;
+                }
+                else if (_tease >= 0 && t < last && frame.Grid[i] == scatter)
+                {
+                    // While the held reels crawl, the scatters already down throb.
+                    size *= 1f + 0.2f * Mathf.Abs(Mathf.Sin(t * 10f));
+                    at += Vector3.forward * (0.15f * _cellSize);
                 }
 
+                _cells[i].localPosition = at;
+                _cells[i].localRotation = turn;
                 _cells[i].localScale = Vector3.one * size;
             }
 
@@ -674,10 +819,33 @@ namespace EscapeWithYourFriends.Casino
             {
                 Show(i, frame.Grid[i]);
                 _cells[i].localPosition = _home[i];
+                _cells[i].localRotation = Quaternion.identity;
                 _cells[i].localScale = Vector3.one * Scale(frame.Grid[i]);
             }
 
             DrawSpots(frame);
+        }
+
+        /// <summary>
+        /// The bulbs: a slow chase while the cabinet waits, a fast one while it spins, faster still
+        /// on a held reel, and all of them flashing together after a win. Materials are swapped only
+        /// when the pattern moves on.
+        /// </summary>
+        void Lights()
+        {
+            if (_bulbs == null || _bulbs.Length == 0 || _bulbOn == null) return;
+
+            float now = Time.time + (int)_kind * 0.37f;
+            int lit;
+            if (_playing != null) lit = (int)(now * (_tease >= 0 ? 24f : 12f)) % 3;
+            else if (Time.time < _flashUntil) lit = (int)(now * 6f) % 2 == 0 ? 3 : 4;
+            else lit = (int)(now * 2.5f) % 3;
+
+            if (lit == _lit) return;
+            _lit = lit;
+
+            for (int g = 0; g < _bulbs.Length; g++)
+                if (_bulbs[g] != null) _bulbs[g].sharedMaterial = lit == 3 || lit == g % 3 ? _bulbOn : _bulbOff;
         }
 
         void DrawSpots(SlotFrame frame)
@@ -713,8 +881,12 @@ namespace EscapeWithYourFriends.Casino
         /// <summary>Editor-time setup. See <c>SlotFactory</c>.</summary>
         public void Configure(SlotKind kind, Transform[] cells, Mesh[] meshes, float[] scales, float cellSize,
                               MeshFilter[] spots, Mesh spotMarked, Mesh spotHot,
-                              MeshFilter card, Mesh cardBack, Mesh cardRed, Mesh cardBlack, Material coin)
+                              MeshFilter card, Mesh cardBack, Mesh cardRed, Mesh cardBlack, Material coin,
+                              MeshRenderer[] bulbs, Material bulbOn, Material bulbOff)
         {
+            _bulbs = bulbs;
+            _bulbOn = bulbOn;
+            _bulbOff = bulbOff;
             _kind = kind;
             _cells = cells;
             _cellMeshes = System.Array.ConvertAll(cells, c => c.GetComponent<MeshFilter>());

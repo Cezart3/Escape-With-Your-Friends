@@ -158,6 +158,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -6521910245659815480, guid: 0000fce8a49a9044ca1ecc4d89f4facb, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: d5b0bc318f7fdd94eb03c293e3cc6fb3, type: 2}
+    - target: {fileID: -6521910245659815480, guid: 0000fce8a49a9044ca1ecc4d89f4facb, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 84296cb57dc9a47418ed849df65832c7, type: 2}
     - target: {fileID: -5542367552629240389, guid: 0000fce8a49a9044ca1ecc4d89f4facb, type: 3}
       propertyPath: m_IsActive
       value: 0
@@ -269,6 +277,14 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 200940656677894836, guid: 0000fce8a49a9044ca1ecc4d89f4facb, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: d5b0bc318f7fdd94eb03c293e3cc6fb3, type: 2}
+    - target: {fileID: 200940656677894836, guid: 0000fce8a49a9044ca1ecc4d89f4facb, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 84296cb57dc9a47418ed849df65832c7, type: 2}
     - target: {fileID: 919132149155446097, guid: 0000fce8a49a9044ca1ecc4d89f4facb, type: 3}
       propertyPath: m_Name
       value: PalmTwin_LOD0

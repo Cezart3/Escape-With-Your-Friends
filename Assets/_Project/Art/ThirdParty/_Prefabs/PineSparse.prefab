@@ -33,7 +33,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 5927348736085022522}
-  - {fileID: 4128323550738192991}
+  - {fileID: 4521747174045547957}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!205 &7117210268024759754
@@ -57,7 +57,7 @@ LODGroup:
   - screenRelativeHeight: 0.02
     fadeTransitionWidth: 0
     renderers:
-    - renderer: {fileID: 6132488514959591144}
+    - renderer: {fileID: 4150256781307505767}
   m_Enabled: 1
 --- !u!136 &1683132950704625875
 CapsuleCollider:
@@ -178,6 +178,14 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -1437359957191475207, guid: e0b866b3c2a81ea46867a0e3ee3c197a, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 59df9956cc2a6dc438e931e22e94f695, type: 2}
+    - target: {fileID: -1437359957191475207, guid: e0b866b3c2a81ea46867a0e3ee3c197a, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: cf857e5e0bca0b540a3031527054616c, type: 2}
     - target: {fileID: 919132149155446097, guid: e0b866b3c2a81ea46867a0e3ee3c197a, type: 3}
       propertyPath: m_Name
       value: PineSparse_LOD1
@@ -187,14 +195,14 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: e0b866b3c2a81ea46867a0e3ee3c197a, type: 3}
---- !u!4 &4128323550738192991 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: e0b866b3c2a81ea46867a0e3ee3c197a, type: 3}
-  m_PrefabInstance: {fileID: 4128323550738192990}
-  m_PrefabAsset: {fileID: 0}
---- !u!23 &6132488514959591144 stripped
+--- !u!23 &4150256781307505767 stripped
 MeshRenderer:
   m_CorrespondingSourceObject: {fileID: -9164142546985912775, guid: e0b866b3c2a81ea46867a0e3ee3c197a, type: 3}
+  m_PrefabInstance: {fileID: 4128323550738192990}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &4521747174045547957 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: e0b866b3c2a81ea46867a0e3ee3c197a, type: 3}
   m_PrefabInstance: {fileID: 4128323550738192990}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &6181354556795400401
@@ -205,6 +213,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 7811598771721468827}
     m_Modifications:
+    - target: {fileID: -9164142546985912775, guid: e0b866b3c2a81ea46867a0e3ee3c197a, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 59df9956cc2a6dc438e931e22e94f695, type: 2}
+    - target: {fileID: -9164142546985912775, guid: e0b866b3c2a81ea46867a0e3ee3c197a, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: cf857e5e0bca0b540a3031527054616c, type: 2}
     - target: {fileID: -8679921383154817045, guid: e0b866b3c2a81ea46867a0e3ee3c197a, type: 3}
       propertyPath: m_LocalScale.x
       value: 0.993558

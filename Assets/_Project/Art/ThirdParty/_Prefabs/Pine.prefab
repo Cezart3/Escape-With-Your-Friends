@@ -166,6 +166,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: Pine_LOD1
       objectReference: {fileID: 0}
+    - target: {fileID: 2150778803384890118, guid: 015c42ed2ee9d444ab0192d038af4d9f, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 59df9956cc2a6dc438e931e22e94f695, type: 2}
+    - target: {fileID: 2150778803384890118, guid: 015c42ed2ee9d444ab0192d038af4d9f, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: cf857e5e0bca0b540a3031527054616c, type: 2}
     - target: {fileID: 4770649766630312382, guid: 015c42ed2ee9d444ab0192d038af4d9f, type: 3}
       propertyPath: m_CastShadows
       value: 0
@@ -270,6 +278,14 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 2100000, guid: 59df9956cc2a6dc438e931e22e94f695, type: 2}
     - target: {fileID: 2150778803384890118, guid: 015c42ed2ee9d444ab0192d038af4d9f, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: cf857e5e0bca0b540a3031527054616c, type: 2}
+    - target: {fileID: 4770649766630312382, guid: 015c42ed2ee9d444ab0192d038af4d9f, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 59df9956cc2a6dc438e931e22e94f695, type: 2}
+    - target: {fileID: 4770649766630312382, guid: 015c42ed2ee9d444ab0192d038af4d9f, type: 3}
       propertyPath: 'm_Materials.Array.data[1]'
       value: 
       objectReference: {fileID: 2100000, guid: cf857e5e0bca0b540a3031527054616c, type: 2}

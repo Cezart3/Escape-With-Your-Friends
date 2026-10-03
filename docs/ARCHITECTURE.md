@@ -9381,6 +9381,123 @@ stubs) and browns one in fourteen.
 2 200 to 3 900 triangles near, 300 to 540 far; the Quaternius pines were 1 600 to 3 900 with no far
 mesh at all.
 
+## Slot cabinets and symbols modelled in Blender, reels that roll (#252)
+
+The five cabinets were boxes in the palette's colours, and their symbols were primitives:
+spheres for fruit, a rotated cube for a gem, and a seven of two bars that read backwards from
+the front. Everything visible on a slot now comes from `tools/art/slots.py`.
+
+### The models
+
+```
+blender -b --factory-startup -P tools/art/slots.py -- <absolute path>/Assets/_Project/Art/Casino/Models
+```
+
+It writes the following files:
+
+- **`SlotSymbols.fbx`** holds 58 meshes named `Sym_<Look>`. Each symbol is built from a few
+  spheres, lathes, extruded outlines and tubes. Every part gets an inverted-hull outline and a
+  white gloss blob.
+- **`SlotCabinets.fbx`** holds `Cab_<Kind>` plus three bulb groups for each game, named
+  `Cab_<Kind>_Bulbs0..2`, with every third bulb in each group.
+- **`Textures/Symbols.png`** is one 32-column ramp sheet. Each part is painted dark at its foot
+  and light at its top, which gives the symbols the candy gradient that slot reels have.
+
+The symbols are fitted to one unit, and `SlotFactory` scales them by the cell. The cabinets are
+1:1 and share the shared measurements:
+
+| Measurement | Value |
+|---|---|
+| Deck top (where the buttons sit) | 0.94 |
+| Reel window centre | 1.5, sized to the game's grid |
+| Depth behind the origin | at most 0.33, because the wall is 10 cm away |
+
+Each cabinet has its own theme:
+
+| Game | Body | Topper and details |
+|---|---|---|
+| Sevens | Red and gold | An arched marquee |
+| Volcano | Basalt | A lava cone, with lava running down the corners |
+| Reef | Teal | A brass porthole holding a starfish, with coral up the sides |
+| Fruit | Striped pink | A fruit-stand awning under a heap of fruit |
+| Lagoon | Bamboo | A thatched hut roof under a marlin |
+
+Each cabinet has 5.8k to 7.2k triangles plus about 33 bulbs. The biggest symbol has 1.4k
+triangles, counting its outline shell.
+
+All of it, symbols and cabinets together, wears **one** material: the old `SlotAtlas.mat` with
+the ramp sheet in place of the 8x8 colour atlas. `SlotAtlas.png` and `SlotMeshes.asset` are
+deleted. The bulbs add one glowing material, `SlotBulbOn` (`StyleLook.Glowing`), which
+`LookTest` counts like the flame. A bulb that is off wears the atlas, so its cream colour is
+the unlit glass.
+
+`SlotFactory.Build` imports both files as meshes only:
+
+- no materials;
+- the file's own normals;
+- `globalScale` 1.
+
+The bodies are the models. What a player bumps into is two collider-only boxes. The buttons
+stay as palette cubes, each still its own NetworkObject.
+
+The factory checks the seven before it saves anything. Its foot must sit at +x, which is the
+viewer's left on a cabinet that faces +z. Its frontmost vertices, the gloss, must sit high at
++x. If the seven reads wrong, the batch exits with code 1.
+
+### The reels
+
+`SlotMachine` draws everything locally, as before. Only the timing moved into the arithmetic.
+
+**Spin.** Each reel kicks back up a third of a cell, then runs at 15 cells a second. The cells
+ride a drum: rows away from the middle roll back, foreshorten and stretch with the blur. A cell
+that leaves the bottom of the window wraps to the top with the next symbol from a fixed strip
+per reel. The strip is a hash of the column and the slot, the same on every peer.
+
+**Land.** A reel lands by dropping its final symbols in from 0.6 cells above, overshooting home
+on an ease-out-back, and settling within 0.32 s while the drum curve flattens. Reels land from
+40% to 100% of the spin time. Spin time is `min(1.5 s, 62% of the frame)`, up from
+`min(1.1 s, 60%)`.
+
+**Win.** Winners dance with a growth beat, a hop and a wag, out of step from reel to reel, and
+come forward of the glass. Everything else shrinks to 80% so the winners read. The tumble games
+still burst their winners in the last quarter before the cascade.
+
+**Anticipation.**
+
+- `SlotMath.Scatter(kind)` gives each game's scatter and how many it takes:
+
+  | Game | Scatter | Needed |
+  |---|---|---|
+  | Sevens | Star | 3 |
+  | Volcano | Peak | 4 |
+  | Fruit | Sun | 4 |
+  | Reef | Chest | 3 |
+  | Lagoon | Hook | 3 |
+
+- `SlotMath.Tease(kind, frame)` returns the first reel after the reels that already show all but
+  one of the needed scatters.
+- `Spin` adds `TeaseSeconds` (1.2 s) to every such drop. The time is the arithmetic's, not the
+  screen's, because the server pays at the sum of the frames.
+- On screen, the held reels slow to a crawl and shiver. They land a slow beat apart, on a lower,
+  louder thunk, after a rising whirr. Meanwhile the scatters already down throb in front.
+- The harness measures the share of drops that are teased: 0.3% on Volcano and Fruit, which need
+  four scatters, up to 4.6% on Sevens. Win totals are unchanged, so the golden-seed checks still hold.
+
+**Lights.** The bulbs chase slowly at idle, at 12 steps a second while spinning and at 24 on a
+held reel. After a win they all flash together, for 2.5 s or for 5 s on a win of 10x or more.
+Materials are swapped only when the pattern moves on.
+
+### Checks (`-slotTest`)
+
+- Each cabinet wears `Cab_<Kind>`, only `Sym_*` symbols, and three bulb groups.
+- During every spin some cell leaves its place, and after it every cell is home.
+- The bulbs changed at least six times over the spins.
+- For each game, the teased share of 4,000 seeds' drops is between 0.1% and 8%. Each teased drop
+  holds the teased reels at least `TeaseSeconds` longer.
+
+Rebuild the cabinets with `slots.py`, then `SlotFactory.Build`. The prefabs keep their GUIDs,
+so the POIs need no rebake.
+
 ---
 
 ## Data-driven content

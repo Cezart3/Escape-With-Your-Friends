@@ -134,6 +134,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -330807868736892226, guid: ff45e78744cae6948a0781af72830f7e, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 6d0c834353fe57e47b0da262d9d7f082, type: 2}
     - target: {fileID: 573776823307238953, guid: ff45e78744cae6948a0781af72830f7e, type: 3}
       propertyPath: m_IsActive
       value: 0
@@ -237,6 +241,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Strelitzia_LOD1
       objectReference: {fileID: 0}
+    - target: {fileID: 969826623651880459, guid: ff45e78744cae6948a0781af72830f7e, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 6d0c834353fe57e47b0da262d9d7f082, type: 2}
     - target: {fileID: 7331685843709504237, guid: ff45e78744cae6948a0781af72830f7e, type: 3}
       propertyPath: m_IsActive
       value: 0

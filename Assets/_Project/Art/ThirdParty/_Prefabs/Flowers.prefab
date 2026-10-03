@@ -154,6 +154,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Flowers_LOD1
       objectReference: {fileID: 0}
+    - target: {fileID: 5169323328472683122, guid: f828553fdd854254dad3cf6f77aefbde, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 6d0c834353fe57e47b0da262d9d7f082, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -229,6 +233,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -5698611575415013154, guid: f828553fdd854254dad3cf6f77aefbde, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 6d0c834353fe57e47b0da262d9d7f082, type: 2}
     - target: {fileID: -4172203107421932781, guid: f828553fdd854254dad3cf6f77aefbde, type: 3}
       propertyPath: m_IsActive
       value: 0
