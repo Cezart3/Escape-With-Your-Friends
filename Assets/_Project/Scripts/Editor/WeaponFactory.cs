@@ -33,6 +33,7 @@ namespace EscapeWithYourFriends.EditorTools
         const string CatalogPath = "Assets/_Project/Data/Weapons.asset";
         const string PrefabDir = "Assets/_Project/Prefabs/Weapons";
         const string ItemFolder = "Assets/_Project/Data/Items";
+        const string ModelsPath = "Assets/_Project/Art/Casino/Models/Weapons.fbx";
 
         /// <summary>
         /// One weapon. <c>Item</c> empty means it is not carried - which is only ever true of fists.
@@ -423,76 +424,39 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
-        /// Which kit model each weapon wears instead of its box (#79, ART-PLAN T12). No kit has a
-        /// machete or a bat, so those two are stretched to fill the old box: a knife drawn out long,
-        /// a thin log for a club. The rest keep their proportions at the box's length. The chainsaw
-        /// has no row and stays a box.
-        /// </summary>
-        static readonly Dictionary<string, (string Model, bool Stretch)> Art = new()
-        {
-            ["pistol"] = ("Pistol", false),
-            ["pistol_mk2"] = ("PistolSilenced", false),
-            ["pistol_auto"] = ("PistolAuto", false),
-            ["smg"] = ("Smg", false),
-            ["shotgun"] = ("Shotgun", false),
-            ["rifle"] = ("Rifle", false),
-            // No LMG in the Kenney weapon pack: the SMG model drawn larger stands in for it, and the
-            // sniper wears the same long rifle as the hunting rifle, just longer.
-            ["machinegun"] = ("Smg", false),
-            ["sniper"] = ("Rifle", false),
-            ["knife"] = ("Knife", false),
-            ["machete"] = ("Knife", true),
-            ["hatchet"] = ("Axe", false),
-            ["hatchet_fire"] = ("FireAxe", false),
-            ["shovel"] = ("Shovel", false),
-            ["bat"] = ("Club", true),
-            ["bat_nailed"] = ("Club", true),
-            ["bat_shark"] = ("Club", true),
-        };
-
-        /// <summary>
-        /// The saved prefab with its kit model hung in place of the box, dressed where it lies so the
-        /// GUID the weapon asset names survives. Dressed or not, it is returned: a machine without the
-        /// kits keeps the box.
+        /// The saved prefab wearing its own model, dressed where it lies so the GUID the weapon asset
+        /// names survives: <c>Wpn_&lt;id&gt;</c> out of tools/art/weapons.py, one metre long, scaled to
+        /// the seed's length (#283). The box and the grip, or the kit art from before, go. Without the
+        /// model the prefab keeps what it has.
         /// </summary>
         static GameObject Dressed(Seed seed, string path)
         {
-            ArtDress.DressPrefab(path, "Art", root => Dress(root, seed));
-            return AssetDatabase.LoadAssetAtPath<GameObject>(path);
-        }
-
-        static bool Dress(Transform root, Seed seed)
-        {
-            if (!Art.TryGetValue(seed.Id, out (string Model, bool Stretch) art)) return false;
-
-            GameObject source = ArtLibrary.Source(art.Model);
-            if (source == null) return false;
-
-            // The kit draws a gun lying along +z with the muzzle forward, which is how the box lies. A
-            // knife or a tool stands on its handle; a quarter turn about x lays it down with the tip
-            // at +z and the handle at -z, where the box had its grip.
-            Vector3 native = ArtLibrary.NativeBounds(source).size;
-            Quaternion turn = native.y > native.z ? Quaternion.Euler(90f, 0f, 0f) : Quaternion.identity;
-            Vector3 laid = turn * native;
-            laid = new Vector3(Mathf.Abs(laid.x), Mathf.Abs(laid.y), Mathf.Abs(laid.z));
-
-            // Centred where the box was, which is where the hand holds it.
-            Vector3 size = art.Stretch ? seed.Size : laid * (seed.Size.z / laid.z);
-            if (!ArtDress.FitBox(root, new Bounds(Vector3.zero, size), art.Model, !art.Stretch, "Art", turn))
-                return false;
-
-            // Upright only told the kit which way is up. Laid in a weapon it does not stand, and the
-            // look harness must not expect it to.
-            if (turn != Quaternion.identity) root.Find("Art").GetComponent<ArtVisual>().Upright = false;
-
-            foreach (string box in new[] { "Body", "Grip" })
+            Dictionary<string, Mesh> models = SlotFactory.Models(ModelsPath);
+            if (models == null || !models.TryGetValue("Wpn_" + seed.Id, out Mesh mesh))
             {
-                Transform piece = root.Find(box);
-                if (piece != null) Object.DestroyImmediate(piece.gameObject);
+                Debug.LogError($"[WeaponFactory] No Wpn_{seed.Id} in {ModelsPath}: run tools/art/weapons.py.");
+                return AssetDatabase.LoadAssetAtPath<GameObject>(path);
             }
 
-            Debug.Log($"[WeaponFactory] {seed.Id} wears {ArtCatalog.Find(art.Model).File}.");
-            return true;
+            GameObject root = PrefabUtility.LoadPrefabContents(path);
+            try
+            {
+                foreach (string old in new[] { "Art", "Body", "Grip", "Model" })
+                    for (Transform t; (t = root.transform.Find(old)) != null;) Object.DestroyImmediate(t.gameObject);
+
+                var model = new GameObject("Model");
+                model.transform.SetParent(root.transform, false);
+                model.transform.localScale = Vector3.one * seed.Size.z;
+                model.AddComponent<MeshFilter>().sharedMesh = mesh;
+                model.AddComponent<MeshRenderer>().sharedMaterial = SlotFactory.Atlas();
+                PrefabUtility.SaveAsPrefabAsset(root, path);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+
+            return AssetDatabase.LoadAssetAtPath<GameObject>(path);
         }
 
         /// <summary>
