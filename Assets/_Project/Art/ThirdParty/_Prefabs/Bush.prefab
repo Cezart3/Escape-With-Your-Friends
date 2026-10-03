@@ -150,6 +150,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Bush_LOD1
       objectReference: {fileID: 0}
+    - target: {fileID: 4158575324894216494, guid: e2cc5bd7c505e6e43ad7b37652ba6c8a, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 6d0c834353fe57e47b0da262d9d7f082, type: 2}
     - target: {fileID: 8454490724748930801, guid: e2cc5bd7c505e6e43ad7b37652ba6c8a, type: 3}
       propertyPath: m_IsActive
       value: 0
@@ -229,6 +233,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -3099936630637904550, guid: e2cc5bd7c505e6e43ad7b37652ba6c8a, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 6d0c834353fe57e47b0da262d9d7f082, type: 2}
     - target: {fileID: 919132149155446097, guid: e2cc5bd7c505e6e43ad7b37652ba6c8a, type: 3}
       propertyPath: m_Name
       value: Bush_LOD0

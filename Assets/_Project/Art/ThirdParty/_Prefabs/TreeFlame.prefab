@@ -163,6 +163,14 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -4693995094107874871, guid: 5cc7a99308d84ab48865e09991f59aac, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 230bbe5d6fe288e4b9ce8f79cf6663d5, type: 2}
+    - target: {fileID: -4693995094107874871, guid: 5cc7a99308d84ab48865e09991f59aac, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: ff6edfcb58a1e864ca58754e11d8e7e9, type: 2}
     - target: {fileID: -4194666420575367894, guid: 5cc7a99308d84ab48865e09991f59aac, type: 3}
       propertyPath: m_CastShadows
       value: 0
@@ -179,6 +187,10 @@ PrefabInstance:
       propertyPath: 'm_Materials.Array.data[1]'
       value: 
       objectReference: {fileID: 2100000, guid: ff6edfcb58a1e864ca58754e11d8e7e9, type: 2}
+    - target: {fileID: -1180366406682474690, guid: 5cc7a99308d84ab48865e09991f59aac, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 230bbe5d6fe288e4b9ce8f79cf6663d5, type: 2}
     - target: {fileID: 919132149155446097, guid: 5cc7a99308d84ab48865e09991f59aac, type: 3}
       propertyPath: m_Name
       value: TreeFlame_LOD1
@@ -267,6 +279,14 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 2100000, guid: 230bbe5d6fe288e4b9ce8f79cf6663d5, type: 2}
     - target: {fileID: -4693995094107874871, guid: 5cc7a99308d84ab48865e09991f59aac, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: ff6edfcb58a1e864ca58754e11d8e7e9, type: 2}
+    - target: {fileID: -4194666420575367894, guid: 5cc7a99308d84ab48865e09991f59aac, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 230bbe5d6fe288e4b9ce8f79cf6663d5, type: 2}
+    - target: {fileID: -4194666420575367894, guid: 5cc7a99308d84ab48865e09991f59aac, type: 3}
       propertyPath: 'm_Materials.Array.data[1]'
       value: 
       objectReference: {fileID: 2100000, guid: ff6edfcb58a1e864ca58754e11d8e7e9, type: 2}

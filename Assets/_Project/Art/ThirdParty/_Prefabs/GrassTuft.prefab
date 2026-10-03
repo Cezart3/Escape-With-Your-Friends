@@ -134,6 +134,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -8420539595687790139, guid: defe8092c7351d04fb3837af54df5d8c, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 6d0c834353fe57e47b0da262d9d7f082, type: 2}
     - target: {fileID: -7314938367479053390, guid: defe8092c7351d04fb3837af54df5d8c, type: 3}
       propertyPath: m_IsActive
       value: 0
@@ -241,6 +245,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: GrassTuft_LOD1
       objectReference: {fileID: 0}
+    - target: {fileID: 8636486161343547052, guid: defe8092c7351d04fb3837af54df5d8c, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 6d0c834353fe57e47b0da262d9d7f082, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

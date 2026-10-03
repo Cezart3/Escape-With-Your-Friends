@@ -182,6 +182,14 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1002114879397681776, guid: caedf57b17adcd54fa7b7f48ff3017db, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: d5b0bc318f7fdd94eb03c293e3cc6fb3, type: 2}
+    - target: {fileID: 1002114879397681776, guid: caedf57b17adcd54fa7b7f48ff3017db, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 84296cb57dc9a47418ed849df65832c7, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -257,6 +265,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -2867207619617029698, guid: caedf57b17adcd54fa7b7f48ff3017db, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: d5b0bc318f7fdd94eb03c293e3cc6fb3, type: 2}
+    - target: {fileID: -2867207619617029698, guid: caedf57b17adcd54fa7b7f48ff3017db, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 84296cb57dc9a47418ed849df65832c7, type: 2}
     - target: {fileID: 919132149155446097, guid: caedf57b17adcd54fa7b7f48ff3017db, type: 3}
       propertyPath: m_Name
       value: PalmBend_LOD0

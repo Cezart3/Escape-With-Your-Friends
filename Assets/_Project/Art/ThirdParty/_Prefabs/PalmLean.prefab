@@ -166,6 +166,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: PalmLean_LOD0
       objectReference: {fileID: 0}
+    - target: {fileID: 4457497648734360212, guid: 865cb9c91dc10db4cb5e05b4fb5c0819, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: d5b0bc318f7fdd94eb03c293e3cc6fb3, type: 2}
+    - target: {fileID: 4457497648734360212, guid: 865cb9c91dc10db4cb5e05b4fb5c0819, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 84296cb57dc9a47418ed849df65832c7, type: 2}
     - target: {fileID: 6598546945205742871, guid: 865cb9c91dc10db4cb5e05b4fb5c0819, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
@@ -270,6 +278,14 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 2100000, guid: d5b0bc318f7fdd94eb03c293e3cc6fb3, type: 2}
     - target: {fileID: 4457497648734360212, guid: 865cb9c91dc10db4cb5e05b4fb5c0819, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 84296cb57dc9a47418ed849df65832c7, type: 2}
+    - target: {fileID: 6598546945205742871, guid: 865cb9c91dc10db4cb5e05b4fb5c0819, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: d5b0bc318f7fdd94eb03c293e3cc6fb3, type: 2}
+    - target: {fileID: 6598546945205742871, guid: 865cb9c91dc10db4cb5e05b4fb5c0819, type: 3}
       propertyPath: 'm_Materials.Array.data[1]'
       value: 
       objectReference: {fileID: 2100000, guid: 84296cb57dc9a47418ed849df65832c7, type: 2}

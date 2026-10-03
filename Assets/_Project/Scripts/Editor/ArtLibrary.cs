@@ -168,6 +168,10 @@ namespace EscapeWithYourFriends.EditorTools
 
                 Renderer[] renderers = level.GetComponentsInChildren<MeshRenderer>(true);
 
+                // Every renderer, the one this level switches off too: it is still in the prefab, and
+                // a still twin of the palm's materials would be two more materials in the scene.
+                foreach (Renderer any in renderers) Sway(any, model.Category);
+
                 // A model that brings its own far mesh, "<name>_Far" (our palms, tools/art/palms.py):
                 // each level keeps the one mesh that is its own and switches the other off.
                 if (renderers.Any(r => r.name.EndsWith(ArtVisual.FarSuffix)))
@@ -179,8 +183,6 @@ namespace EscapeWithYourFriends.EditorTools
 
                 foreach (Renderer worn in renderers)
                 {
-                    Sway(worn, model.Category);
-
                     // The far level is the near level minus its shadow. What costs money on a weak GPU
                     // is fifteen thousand plants each drawing into the shadow map, not their triangles.
                     worn.shadowCastingMode = detail == 0 ? ShadowCastingMode.On : ShadowCastingMode.Off;

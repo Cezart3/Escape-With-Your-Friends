@@ -134,6 +134,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -5921442229046098732, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 6d0c834353fe57e47b0da262d9d7f082, type: 2}
     - target: {fileID: 919132149155446097, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
       propertyPath: m_Name
       value: Hibiscus_LOD1
@@ -241,6 +245,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Hibiscus_LOD0
       objectReference: {fileID: 0}
+    - target: {fileID: 3554805831135409503, guid: b57852a6858608c48b10fe01e9cdf9c7, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 6d0c834353fe57e47b0da262d9d7f082, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
