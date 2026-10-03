@@ -6778,8 +6778,9 @@ keeping Kenney's proportions: bumping into a bench that is not drawn there is wo
 a little wider than drawn. Kenney's workbench is square, so the long bench is two of them.
 
 **Lighting.** SSAO is a renderer feature written by `RenderTuning` on Medium and High, never Low.
-On Medium it runs after opaque, from depth alone, at half resolution with four samples, because the
-before-opaque mode needs a depth prepass an iGPU cannot pay for. HDR is now on for Medium: URP 17
+On Medium it ran after opaque, from depth alone, at half resolution with four samples, because the
+before-opaque mode needs a depth prepass an iGPU cannot pay for. #287 gave Medium High's SSAO: the
+cheap one was grainy, and the 760M pays for the prepass. HDR is now on for Medium: URP 17
 renders it into 32-bit R11G11B10, the same bandwidth as LDR, and without it the ACES curve had
 nothing to roll off and the bloom threshold could never be crossed. And `PostProcess` now switches
 post-processing on for the camera. Until now only `DrunkVision` did, so the global grade appeared
@@ -10073,6 +10074,37 @@ Tests:
 - The full playthrough passes through the second island's engine and wing, and its shots show the
   new machine and engine. It was stopped while the bot kept being downed by island 2's animals, an
   old trait of the bot that this change does not touch.
+
+---
+
+## Performance after the own-art pass (#287)
+
+Everything on the island is now our own Blender art: flora, the casino, buildings, items, vehicles,
+characters, animals and the ground. The perf route (`tools/perf-route.sh`, docs/PERF.md) ran on
+every tier of both GPUs at `ead085b` and was compared spot by spot with `17daa68`, the last run
+before the pass. The acceptance bar was no measurable cost on Medium.
+
+- **Triangles fell on every tier.** The worst case was 20 to 25 M triangles at the overlook and the
+  plane; now it is 4 to 8 M. Most of the old cost was the Quaternius trees and the pirate cliffs.
+  Ours carry far LODs and stay under the `ArtVisual` caps.
+- **Batches rose by 10 to 60%** at the wide spots. There are more distinct models, and the outlines
+  draw a second pass. The CPU is still not the floor on any tier: the 4060 holds 4 to 6 ms at High.
+- **Frame time.** The 760M on Medium moved by -2.3 to +0.7 ms at p95, with the overlook 2.3 ms
+  faster. Its slowest spot is 7.9 ms against a 16.7 ms target. On High the 4060 is at or under its
+  old numbers, apart from one run where village and trader showed 24 ms hitches. A rerun gave 4.1
+  and 4.6 ms at p95; the PC was in use during that run.
+
+**Medium's SSAO.** A playtest screenshot from Medium showed a black grain round every edge (the
+bar) and blocky dark pixels in the leaves ("the trees look pixelated"). That was the cheap SSAO:
+after opaque, normals rebuilt from depth, half resolution, four samples and the Kawase blur.
+Full resolution, eight samples and the Gaussian blur were not enough, because the reconstructed
+normals are noisy on flat-shaded facets at any sample count. Medium now carries High's SSAO, with
+its depth-normals prepass. The grain is gone (beauty shots, `12_the_barman`).
+
+The prepass costs the 760M 1 to 2 ms at p95 on Medium. That is over the 1 ms that docs/PERF.md asks
+a look change to explain, so here is the reason: its slowest spot is 9.3 ms, the plane, still
+about 107 fps against a target of 60. Low keeps the cheap SSAO, now at full resolution with eight
+samples, and only when a player switches AO on.
 
 ---
 
