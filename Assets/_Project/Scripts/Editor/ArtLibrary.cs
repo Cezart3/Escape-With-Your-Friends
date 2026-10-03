@@ -298,6 +298,10 @@ namespace EscapeWithYourFriends.EditorTools
         /// <summary>
         /// A capsule around the trunk. Negative radius means "from the mesh", right for a rock whose
         /// bounds are the rock and wrong for a tree whose bounds are mostly canopy you walk under.
+        ///
+        /// Its top is the model's top. A capsule is never shorter than it is wide, and centred on a
+        /// low rock it stood half a metre over it: an invisible dome the buggy rode up and beached on
+        /// (#287, CarTest's tour). Lowered, the rest of it is under the ground.
         /// </summary>
         static void AddCollider(GameObject root, Bounds bounds, float radius)
         {
@@ -307,7 +311,7 @@ namespace EscapeWithYourFriends.EditorTools
             var capsule = root.AddComponent<CapsuleCollider>();
             capsule.radius = radius;
             capsule.height = Mathf.Max(radius * 2f, bounds.size.y);
-            capsule.center = new Vector3(0f, bounds.center.y, 0f);
+            capsule.center = new Vector3(0f, bounds.max.y - capsule.height / 2f, 0f);
         }
 
         /// <summary>

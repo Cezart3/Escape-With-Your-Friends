@@ -10108,6 +10108,27 @@ samples, and only when a player switches AO on.
 
 ---
 
+## Low rocks lost their invisible domes (#287 follow-up)
+
+The buggy's tour in CarTest reached 6 of its 26 stops. The rest of the run it stood on top of a
+sand rock with two wheels in the air. Every rock, log and stump on the terrain is a tree prototype,
+and a tree's only collider is an upright capsule (`ArtLibrary.AddCollider`). Its radius comes from
+the mesh, and a capsule can be no shorter than it is wide. Centred on a low rock, it stood well over
+it: 0.5 m over the sand rock and 0.85 m over the wide slab, an invisible dome the car rode up and
+beached on, while a player saw a car stuck on nothing.
+
+The capsule's top is now the model's top, and the rest of it sits under the ground. Tall models
+(trees, standing rocks) are unchanged: their capsule is as tall as they are. `FloraFactory.Bake`
+rebuilt the prototypes in place, and the islands kept their GUIDs.
+
+After the fix the tour drives 214 m instead of 126 and still reaches 6 stops. Every stall is now
+against something visible: a 0.7 m stump, which is taller than the buggy's 0.55 m clearance, a
+boulder or a log, in the clutter 30 m west of base camp. That is the bot driving into woods, and the
+check that matters still holds: no stall with nothing to stop it. `-treeTest` passes 70/0 and
+`-carTest` 25/0.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**
