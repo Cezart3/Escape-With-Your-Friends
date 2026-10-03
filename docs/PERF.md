@@ -406,3 +406,63 @@ AMD Radeon(TM) 760M (15969MB), 1920x1080 fullscreen, quality 'Very High', vsync 
 | cliff overlook | 8.4 | 9.1 | 10.0 | 11124 | 107 | 3811k | 102 |
 | the volcano | 5.1 | 6.6 | 7.4 | 1397 | 69 | 595k | 62 |
 | the plane | 8.4 | 9.1 | 10.2 | 12985 | 135 | 6042k | 453 |
+
+### 2026-10-03 15:39, Medium on 'Medium', 4be46cf
+
+AMD Radeon(TM) 760M (15969MB), 1920x1080 fullscreen, quality 'Medium', vsync 0, AMD Ryzen 5 7640HS w/ Radeon 760M Graphics 
+
+| Spot | p50 ms | p95 ms | worst ms | batches | SetPass | triangles | shadow casters |
+|---|---|---|---|---|---|---|---|
+| spawn beach | 7.2 | 7.4 | 9.5 | 5785 | 113 | 3042k | 172 |
+| wreck | 5.6 | 8.3 | 9.0 | 4111 | 67 | 1425k | 27 |
+| jungle (cave) | 6.0 | 7.3 | 8.3 | 2273 | 135 | 1533k | 175 |
+| village with natives | 5.3 | 8.3 | 8.9 | 555 | 69 | 446k | 54 |
+| trader | 6.3 | 8.5 | 9.2 | 3245 | 88 | 1904k | 175 |
+| base camp | 5.8 | 8.5 | 9.5 | 2997 | 82 | 1435k | 65 |
+| casino front | 6.1 | 6.4 | 7.3 | 1421 | 82 | 1302k | 215 |
+| casino floor | 6.2 | 6.4 | 6.9 | 1086 | 73 | 994k | 174 |
+| casino tables | 6.9 | 7.0 | 7.6 | 3066 | 105 | 2329k | 316 |
+| casino, every slot spinning | 5.7 | 6.0 | 8.1 | 813 | 69 | 897k | 159 |
+| the buggy | 5.7 | 8.5 | 9.1 | 3074 | 88 | 1254k | 68 |
+| the boat | 6.4 | 8.9 | 9.8 | 4394 | 99 | 2058k | 32 |
+| the barman | 6.8 | 7.0 | 7.5 | 1193 | 80 | 1077k | 189 |
+| the castaway | 7.0 | 8.0 | 9.4 | 5701 | 107 | 2900k | 108 |
+| a native | 5.8 | 8.5 | 9.3 | 2666 | 96 | 1192k | 25 |
+| a boar | 7.5 | 7.7 | 8.5 | 6849 | 110 | 3561k | 138 |
+| a deer | 6.0 | 9.1 | 9.6 | 5806 | 94 | 2854k | 35 |
+| a gull | 6.5 | 9.2 | 10.1 | 6431 | 105 | 3249k | 27 |
+| a jaguar | 4.8 | 7.6 | 8.2 | 135 | 40 | 102k | 27 |
+| a stag | 5.5 | 8.0 | 8.7 | 2444 | 92 | 1060k | 32 |
+| cliff overlook | 7.0 | 8.1 | 9.6 | 5803 | 89 | 2408k | 18 |
+| the volcano | 4.9 | 7.8 | 8.3 | 1128 | 64 | 532k | 27 |
+| the plane | 6.9 | 9.3 | 10.1 | 5419 | 113 | 2834k | 97 |
+
+### 2026-10-03 15:42, High on 'Very High', 4be46cf
+
+NVIDIA GeForce RTX 4060 Laptop GPU (7956MB), 1920x1080 fullscreen, quality 'Very High', vsync 0, AMD Ryzen 5 7640HS w/ Radeon 760M Graphics 
+
+| Spot | p50 ms | p95 ms | worst ms | batches | SetPass | triangles | shadow casters |
+|---|---|---|---|---|---|---|---|
+| spawn beach | 4.8 | 5.4 | 8.3 | 9507 | 138 | 6640k | 1098 |
+| wreck | 4.0 | 4.6 | 12.6 | 6514 | 83 | 2258k | 120 |
+| jungle (cave) | 4.1 | 4.6 | 5.7 | 3929 | 153 | 2716k | 503 |
+| village with natives | 3.6 | 4.1 | 6.3 | 1417 | 84 | 1191k | 251 |
+| trader | 4.1 | 4.6 | 6.7 | 4809 | 106 | 4485k | 965 |
+| base camp | 4.0 | 4.5 | 5.9 | 4345 | 94 | 2758k | 445 |
+| casino front | 3.6 | 4.1 | 6.2 | 2046 | 91 | 2629k | 552 |
+| casino floor | 3.5 | 3.9 | 5.1 | 1584 | 80 | 2081k | 454 |
+| casino tables | 4.2 | 4.7 | 5.2 | 6003 | 127 | 6804k | 1722 |
+| casino, every slot spinning | 3.3 | 3.8 | 4.4 | 1207 | 75 | 1746k | 381 |
+| the buggy | 4.4 | 4.8 | 6.8 | 7182 | 112 | 3084k | 344 |
+| the boat | 4.9 | 5.5 | 7.6 | 10213 | 124 | 3979k | 160 |
+| the barman | 3.5 | 4.0 | 4.6 | 1860 | 86 | 2635k | 594 |
+| the castaway | 4.8 | 5.2 | 6.3 | 8371 | 122 | 5002k | 578 |
+| a native | 3.6 | 4.2 | 5.4 | 2009 | 97 | 2000k | 453 |
+| a boar | 4.3 | 4.8 | 6.0 | 6991 | 117 | 3519k | 421 |
+| a deer | 5.5 | 6.0 | 8.7 | 13004 | 148 | 5830k | 451 |
+| a gull | 4.7 | 5.2 | 6.9 | 8589 | 118 | 4724k | 694 |
+| a jaguar | 3.6 | 5.5 | 26.3 | 267 | 52 | 182k | 65 |
+| a stag | 7.6 | 11.0 | 25.8 | 10367 | 149 | 5759k | 517 |
+| cliff overlook | 5.5 | 6.6 | 9.3 | 11127 | 112 | 3823k | 103 |
+| the volcano | 4.0 | 5.9 | 13.6 | 1397 | 69 | 595k | 62 |
+| the plane | 5.7 | 6.4 | 49.6 | 12986 | 135 | 6050k | 454 |
