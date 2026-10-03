@@ -9610,6 +9610,46 @@ survive. `Door()` rebuilds the VIP door and dresses it before saving it.
 - `LookRoute` adds "base camp" and "casino front" spots. The beauty route ran at 181 to 190 fps at
   Very High on the RTX 4060. The previous baseline was 173.
 
+## Items modelled in Blender (#283)
+
+Before this change, items on the ground were Kenney models fitted to a size, or a few palette
+primitives: a capsule for a feather, stacked cylinders for rope. The antler, the fang and the
+jaguar pelt had no model at all, so they stayed boxes. Every item now comes from
+`tools/art/items.py`:
+
+```
+blender -b --factory-startup -P tools/art/items.py -- <absolute path>/Assets/_Project/Art/Casino/Models
+```
+
+That command writes `Items.fbx`, with one mesh per `ItemDef` id named `Itm_<id>`, painted from the
+slots' ramp sheet and outlined like the symbols. Each maker draws at about a metre in Unity's frame.
+`fit()` then centres the item, stands it on y 0 and scales its longest side to `ITEMS[id]`'s size
+in metres. The outline scales with the item.
+
+There are 32 items, most of them 150 to 1.3k triangles, and the ammo boxes about 1.4k to 1.8k:
+
+- Raw and cooked meat, as drumsticks.
+- Raw fish, and cooked fish on a skewer.
+- A coconut beside its open half, an empty bottle, a canteen on its strap, and grog with a "XXX"
+  label.
+- Flint, a clam with its pearl, an antler, a fang, a hide, a spotted jaguar pelt and a parrot
+  feather.
+- Scrap with a gear, a breastplate with straps and rivets, a roll of cloth, a bandage with a red
+  cross, a torch, a boot, a coil of rope, planks, and a painted hull section.
+- An engine on a pallet, a fuel tank on cradles, a jerrycan, a tyre on its rim, a bamboo fishing rod
+  with a reel and a bobber, and three labelled ammo boxes.
+
+`ItemArtFactory` no longer keeps a Kenney table or primitive recipes. For each item it owns, it
+builds a prefab with a `Model` child that wears `Itm_<id>` and `SlotAtlas`, and then photographs
+every item into its icon as before. Weapons keep WeaponFactory's prefabs. Weapon skins have no
+ground model.
+
+### Checks
+
+- `-itemTest` checks that every item except a weapon or a skin has `Itm_<id>` on its world prefab.
+  It passed 19/0.
+- `-skinTest`, which holds items in the hand, passed 59/0. `-craftTest` passed 43/0.
+
 ---
 
 ## Data-driven content

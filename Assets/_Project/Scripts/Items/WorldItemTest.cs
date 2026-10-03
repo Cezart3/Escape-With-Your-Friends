@@ -213,6 +213,17 @@ namespace EscapeWithYourFriends.Items
                 }
             }
 
+            // ---------------------------------------------------------------- our models
+
+            // Every item but a gun or a skin wears its own model out of tools/art/items.py (#283).
+            string[] bare = catalog.Items
+                .Where(d => d != null && !d.Id.StartsWith("skin_")
+                            && (WeaponCatalog.Active == null || WeaponCatalog.Active.ForItem(d) == null))
+                .Where(d => d.WorldPrefab == null || !d.WorldPrefab.GetComponentsInChildren<MeshFilter>()
+                                                         .Any(f => f.sharedMesh != null && f.sharedMesh.name == "Itm_" + d.Id))
+                .Select(d => d.Id).ToArray();
+            Check($"every item wears its Blender model (bare: {string.Join(", ", bare)})", bare.Length == 0);
+
             // ---------------------------------------------------------------- long models
 
             // The longest model any item wears (a rifle, once the weapons are dressed), dropped
