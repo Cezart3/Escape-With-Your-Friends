@@ -9312,6 +9312,27 @@ The rain tree and the flame tree are wider than they are tall, so their catalogu
 
 `-treeTest` passes 63/0 on island and 60/0 on island2. Measured trunks are 0.4 to 1.8 m across.
 
+
+## Rocks, logs and stumps modelled in Blender (#248)
+
+`tools/art/rocks.py` replaces the Kenney and Quaternius rocks, logs and stumps on the ground slot of
+`IslandFlora` with eleven own models in `Art/Models/Rocks`, two textures (`Wood.png`, `Stone.png`,
+the column-ramp sheets of the palms) and two materials (`EWYF_Rocks_Wood`, `EWYF_Rocks_Stone`).
+
+- **Rocks** are an icosphere (3 subdivisions near, 2 far) pushed by a few lumps and then chiselled
+  by 12 to 16 random planes, with flat normals so every cut reads as a facet. Faces that look up
+  past a threshold take a moss column; the rest pick granite, warm, basalt or sandstone. A
+  cluster is three of them. 320 triangles each near, 80 far.
+- **Logs** are rings along a slightly bent spine with bark faces that turn to moss by a ragged
+  per-face threshold, an end-grain disc painted in rings at the sawn end and a short jagged cap at
+  the broken one. The mossy log carries six mushrooms. Stumps add surface roots.
+- Every part draws from its own `random.Random(rng.random())`, so near and far LOD agree.
+
+Catalogue rows keep their names (`Boulder`, `Log`, `Stump`, ...) so the greybox builder and the
+terrain keep working; four new rows (`RockTall`, `RockMossy`, `RockCluster`, `RockSand`, plus
+`LogMossy`, `StumpBroken`) widen the ground slot to eleven. `ArtVisual` caps rise to 1 000 for a
+rock (the cluster is 960) and 700 for a log. `-treeTest` passes on both islands.
+
 ---
 
 ## Data-driven content

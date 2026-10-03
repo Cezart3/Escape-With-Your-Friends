@@ -161,6 +161,9 @@ namespace EscapeWithYourFriends.EditorTools
             // mesh (roots, lianas) that the trunk collider is measured without.
             new(Own, "Trees", "", "tools/art/trees.py", false, textured: true),
 
+            // #248, rocks, fallen logs and stumps, from tools/art/rocks.py.
+            new(Own, "Rocks", "", "tools/art/rocks.py", false, textured: true),
+
             // P4, the animals (T13). Quaternius's CC0 Deer and Pig from poly.pizza, converted from
             // glTF to FBX with Blender; each zip carries the CC0 text as License.txt. The deer is flat
             // colours, the pig one atlas. No CC0 propeller plane was found, so T14 keeps the greybox.
@@ -235,13 +238,20 @@ namespace EscapeWithYourFriends.EditorTools
             new("Leafy", "Nature", "Plant_1_Big", Plant, Width, 1.8f),
             new("Flowers", "Nature", "Flower_3_Group", Plant, Width, 1.2f),
 
-            // Kenney's, kept for the greybox's rock (GreyboxBuilder).
-            new("Rocks", "Pirate", "rocks-a", Rock, Width, 2.4f),
-            new("Boulder", "Nature", "Rock_Medium_1", Rock, Width, 2.4f),
-            new("BoulderSmall", "Nature", "Rock_Medium_2", Rock, Width, 1.4f),
-            new("BoulderWide", "Nature", "Rock_Medium_3", Rock, Width, 3.2f),
-            new("Log", "Survival", "tree-log", Log, Width, 3f),
-            new("Stump", "Survival", "tree-trunk", Log, Height, 0.8f),
+            // Our rocks and wood. The tall rock is the pack's one upright model and teaches the rest its
+            // axis. "Rocks" is the greybox's lintel (GreyboxBuilder), "Log" and "Stump" its totem.
+            new("Rocks", "Rocks", "Rock_Slab", Rock, Width, 2.4f),
+            new("Boulder", "Rocks", "Rock_Boulder", Rock, Width, 2.4f),
+            new("BoulderSmall", "Rocks", "Rock_Small", Rock, Width, 1.4f),
+            new("BoulderWide", "Rocks", "Rock_Slab", Rock, Width, 3.2f),
+            new("RockTall", "Rocks", "Rock_Tall", Rock, Height, 2.2f, true),
+            new("RockMossy", "Rocks", "Rock_Mossy", Rock, Width, 2.2f),
+            new("RockCluster", "Rocks", "Rock_Cluster", Rock, Width, 3f),
+            new("RockSand", "Rocks", "Rock_Sand", Rock, Width, 2f),
+            new("Log", "Rocks", "Log_Fallen", Log, Width, 3.4f),
+            new("LogMossy", "Rocks", "Log_Mossy", Log, Width, 4f),
+            new("Stump", "Rocks", "Stump_Cut", Log, Height, 0.7f),
+            new("StumpBroken", "Rocks", "Stump_Broken", Log, Height, 1.3f),
 
             // --- the casino (GreyboxBuilder, CasinoFactory) -----------------------------------------
             new("Floor", "Survival", "floor", Structure),

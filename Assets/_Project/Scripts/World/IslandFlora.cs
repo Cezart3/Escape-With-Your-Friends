@@ -71,7 +71,7 @@ namespace EscapeWithYourFriends.World
         /// <summary>
         /// The models each species can be, in <see cref="SpeciesNames"/> order.
         ///
-        /// Placement stays five rules; rendering gets twenty-eight prototypes. That split is the whole
+        /// Placement stays five rules; rendering gets thirty-four prototypes. That split is the whole
         /// trick: the rules are the expensive thing to tune - which ground a palm accepts, where the
         /// pines stop - and variety is free once they are right, because a variant is a second
         /// prefab in the same slot rather than a second rule.
@@ -102,9 +102,13 @@ namespace EscapeWithYourFriends.World
             new[] { new FloraModel("Bush", 0f), new FloraModel("Fern", 0f),
                     new FloraModel("Leafy", 0f), new FloraModel("Flowers", 0f) },
 
+            // Our rocks and wood (tools/art/rocks.py).
             new[] { new FloraModel("Boulder", -1f), new FloraModel("BoulderSmall", -1f),
-                    new FloraModel("BoulderWide", -1f), new FloraModel("Log", -1f),
-                    new FloraModel("Stump", -1f) },
+                    new FloraModel("BoulderWide", -1f), new FloraModel("RockTall", -1f),
+                    new FloraModel("RockMossy", -1f), new FloraModel("RockCluster", -1f),
+                    new FloraModel("RockSand", -1f), new FloraModel("Log", -1f),
+                    new FloraModel("LogMossy", -1f), new FloraModel("Stump", -1f),
+                    new FloraModel("StumpBroken", -1f) },
         };
 
         /// <summary>First flat prototype index of each species. Filled once, read everywhere.</summary>
