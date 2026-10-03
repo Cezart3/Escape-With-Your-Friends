@@ -995,6 +995,8 @@ def seg_dist(p, a, b):
 
 
 def finish(s, f, name, mat, outline=0.01):
+    # A frame may bring its own skeleton and height: the animals do (animals.py).
+    order, parents, tall = getattr(f, "order", BONES), getattr(f, "parents", PARENT), getattr(f, "tall", 1.85)
     bm = s.bm
     bm.normal_update()
     # Shaded by height over the whole body and by which way the surface faces, not per part as the
@@ -1003,7 +1005,7 @@ def finish(s, f, name, mat, outline=0.01):
     for face in bm.faces:
         for loop in face.loops:
             n = loop.vert.normal
-            v = 0.2 + 0.3 * min(loop.vert.co.z / 1.85, 1.0) + 0.3 * (0.5 + 0.5 * n.z) + 0.1 * max(0.0, -n.y)
+            v = 0.2 + 0.3 * min(loop.vert.co.z / tall, 1.0) + 0.3 * (0.5 + 0.5 * n.z) + 0.1 * max(0.0, -n.y)
             loop[uv].uv = P.uv_on(COLUMNS, face[s.col], 0.5, min(max(v, 0.0), 1.0))
 
     faces = [x for x in bm.faces if x[s.part] in s.outlined]
@@ -1035,7 +1037,7 @@ def finish(s, f, name, mat, outline=0.01):
         ws = [(w / total, b) for w, b in ws if w / total > 0.03]
         total = sum(w for w, _ in ws)
         for w, b in ws:
-            v[deform][BONES.index(b)] = w / total
+            v[deform][order.index(b)] = w / total
 
     bmesh.ops.triangulate(bm, faces=[x for x in bm.faces if len(x.verts) > 4])
     mesh = bpy.data.meshes.new(name)
@@ -1044,7 +1046,7 @@ def finish(s, f, name, mat, outline=0.01):
     mesh.materials.append(mat)
     body = bpy.data.objects.new(name, mesh)
     bpy.context.scene.collection.objects.link(body)
-    for b in BONES:
+    for b in order:
         body.vertex_groups.new(name=b)
 
     arm = bpy.data.armatures.new(name + "_Armature")
@@ -1052,13 +1054,13 @@ def finish(s, f, name, mat, outline=0.01):
     bpy.context.scene.collection.objects.link(rig)
     bpy.context.view_layer.objects.active = rig
     bpy.ops.object.mode_set(mode="EDIT")
-    for b in BONES:
+    for b in order:
         eb = arm.edit_bones.new(b)
         eb.head, eb.tail = u(*bones[b][0]), u(*bones[b][1])
         eb.roll = 0.0
-    for b in BONES:
-        if b in PARENT:
-            arm.edit_bones[b].parent = arm.edit_bones[PARENT[b]]
+    for b in order:
+        if b in parents:
+            arm.edit_bones[b].parent = arm.edit_bones[parents[b]]
     bpy.ops.object.mode_set(mode="OBJECT")
     body.parent = rig
     body.modifiers.new("Armature", "ARMATURE").object = rig

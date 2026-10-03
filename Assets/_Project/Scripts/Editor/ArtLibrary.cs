@@ -328,6 +328,22 @@ namespace EscapeWithYourFriends.EditorTools
             return bounds;
         }
 
+        /// <summary>
+        /// A skinned mesh as it stands in its bind pose. Its renderer's bounds are the importer's,
+        /// grown to hold every clip in the file: an animal that dies on its side measured eight
+        /// centimetres taller than it is, and stood that far off the ground.
+        /// </summary>
+        static Bounds Rest(SkinnedMeshRenderer skinned)
+        {
+            Bounds local = skinned.sharedMesh.bounds;
+            Matrix4x4 m = skinned.transform.localToWorldMatrix;
+            var world = new Bounds(m.MultiplyPoint3x4(local.center), Vector3.zero);
+            for (int i = 0; i < 8; i++)
+                world.Encapsulate(m.MultiplyPoint3x4(local.center + Vector3.Scale(local.extents,
+                    new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1))));
+            return world;
+        }
+
         static Bounds Encapsulate(Renderer[] renderers)
         {
             var bounds = new Bounds();
@@ -336,8 +352,10 @@ namespace EscapeWithYourFriends.EditorTools
             foreach (Renderer renderer in renderers)
             {
                 if (renderer == null) continue;
-                if (first) { bounds = renderer.bounds; first = false; }
-                else bounds.Encapsulate(renderer.bounds);
+                Bounds b = renderer is SkinnedMeshRenderer skinned && skinned.sharedMesh != null
+                    ? Rest(skinned) : renderer.bounds;
+                if (first) { bounds = b; first = false; }
+                else bounds.Encapsulate(b);
             }
 
             return bounds;

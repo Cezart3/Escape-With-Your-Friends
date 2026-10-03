@@ -9875,6 +9875,100 @@ Tests:
 
 ---
 
+## Animals modelled in Blender (#287)
+
+The boar and the deer were Quaternius models, and the gull, the jaguar and the stag were still grey
+boxes. All five are now modelled, rigged and animated by `tools/art/animals.py`:
+
+```
+blender -b --factory-startup -P tools/art/animals.py -- <abs>/Assets/_Project/Art/Models/Animals
+```
+
+The script writes `Animal_<Name>.fbx` and `Textures/Animals.png`, which is the characters' ramp
+sheet under the material's name. Run without a folder, it lays the animals side by side in the open
+Blender instead. `main(pose=("Walk", 0.25))` leaves every animal posed at that point of a clip.
+
+**Bodies.** Each animal is built like the people (characters.py), and `finish()` now takes its
+skeleton and height from the frame object. Each part is drawn on a list of bones, weighted to the
+nearest of them, and outlined with the inverted hull. Each animal is modelled at the size of its
+species' body box in AnimalFactory, nose to +z.
+
+The first pass was a tube of a body with balls stuck on for a head and pegs for legs, and the user
+called it goofy. The second pass draws the anatomy:
+
+- `body()` lofts rings from separate back and belly lines, so the chest is deep, the belly tucks up
+  behind it and the haunch is round. The sides are full and the underside narrows to a keel. A row
+  of five numbers is a ring that leans forward. That is how the deer's neck grows out of its chest,
+  and the boar's and the jaguar's heads out of theirs, as one surface. Separate parts pushed into the
+  body left black outline shards and flat panels at every seam.
+- `four_legs()` draws each leg as one tube of nine radii, from a haunch flat side to side to a thin
+  cannon, a fetlock and a hoof or paw. `limb()` keeps x as every ring's across axis, so a leg never
+  twists at the hock where `tube()`'s basis flips through vertical. The legs sit inside the body's
+  width, so no shoulder plate sticks out of the flank.
+- The animals have their own colours in the sheet's columns that no animal wears: a red-brown deer,
+  a darker stag, a grizzled boar with a pink-grey snout, a tawny jaguar instead of the people's
+  yellow GOLD, green-gold cat eyes and dark hooves. `main()` swaps them in and restores the people's
+  sheet when it is done.
+
+The species:
+
+- The boar: narrow, with a high shoulder sloping to a small rump. Its wedge head is a third of the
+  animal, its legs are short with dark socks, and it has a bristle ridge running onto the head.
+- The deer: a wedge head that tapers to a dark nose, with a pale chin and throat. Big ears stand up
+  and out, and the long neck is thick at the base.
+- The stag: the deer, darker and bulkier, with a shaggy neck and antlers of three tines a side.
+- The jaguar: stocky and low, with thick legs. It has a broad round head with a short muzzle,
+  whisker pads, eyes facing forward with slit pupils, and round ears set low and wide. Each rosette
+  is a ring broken into three strokes, which is what tells a jaguar from a cheetah.
+- The gull: white, with grey wings that fold over the back and black tips, a yellow bill with a red
+  spot, and orange legs.
+
+Triangles, outline included: gull 1 296, deer 2 348, boar 2 528, stag 2 676, jaguar 2 992. The
+Animal cap of 3 000 stands.
+
+**Clips.** The rig is the animal's own, so it imports as Generic and every clip lives in the
+animal's FBX: Idle, Walk, Run and Death (the gull flies instead of running). A clip is a function of
+time in [0, 1] keyed on every frame, so a loop's last frame is its first. Each bone's rotation is
+written in the armature's axes, relative to its parent, and turned into the bone's own frame with
+`M^T R M`.
+
+- **Walk** is a lateral-sequence gait: hind left, front left, hind right, front right, a quarter
+  cycle apart. Each leg swings on a cosine and folds its lower joints only while coming forward.
+- **Run** is a bound for the deer, a rotary gallop with a flexing spine for the jaguar, and a
+  shorter gallop for the boar.
+- **Idle**:
+  - The deer and stag graze, chewing with the head down.
+  - The boar roots.
+  - The jaguar swishes its tail and looks round.
+  - The gull snaps its head side to side and ruffles a wing.
+- **Fly** lifts the gull 22 cm off the ground, unfolds the wings and beats them twice a cycle.
+  Unfolding is a quarter roll and a yaw: a wing folded flat against the body is a vertical blade,
+  and it has to turn flat to fly.
+- **Death** rolls the animal onto its side, drops it to its belly half-height, and lets the head
+  and tail fall.
+
+**Unity side.** ArtCatalog has an `EWYF/Animals` pack and a row per species. AnimalArt is unchanged
+apart from its comments: it already found clips by name and built a controller per species, so the
+three new species got controllers with no new code. The Quaternius Animals and FarmAnimals packs,
+and their materials, are gone from the repo.
+
+**Bind-pose bounds.** A skinned renderer's bounds are the importer's, grown to hold every clip in
+the file. Measured that way, the deer was 15 cm taller than its mesh, because it dies on its side,
+and FitBox stood it 8 cm off the ground. `ArtLibrary.NativeBounds` now measures a skinned mesh from
+its mesh in the bind pose.
+
+**LookRoute.** `-beautyShots` adds one close-up per species alive, framed by its body box from the
+front quarter. Every shot that follows a subject now places the camera again just before the
+capture: in the 0.6 s the shot waits, a gull walks out of frame and only its shadow is left.
+
+Tests:
+
+- `-animalTest` 142/0. Every species has a model in the prefab, and every live animal wears its
+  model.
+- `-lookTest` 21/0.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**

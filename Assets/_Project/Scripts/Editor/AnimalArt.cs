@@ -10,7 +10,7 @@ using UnityEngine;
 namespace EscapeWithYourFriends.EditorTools
 {
     /// <summary>
-    /// The animals wear Quaternius's animated animals (#79, docs/ART-PLAN.md T13).
+    /// The animals wear our own animated animals (tools/art/animals.py, epic #287).
     ///
     /// The animal prefab is one prefab for every species, so every species' model hangs in it, fitted
     /// into that species' body box, and <see cref="Animal"/> shows the one its species index names.
@@ -46,7 +46,7 @@ namespace EscapeWithYourFriends.EditorTools
                 var box = new Bounds(new Vector3(0f, size.y * 0.5f, 0f), size);
 
                 // A quarter turn when the model's long side runs across rather than along +z. Which
-                // end is the nose is not knowable from bounds; the Quaternius animals face +z.
+                // end is the nose is not knowable from bounds; ours face +z.
                 GameObject source = ArtLibrary.Source(model.Id);
                 if (source == null) continue;
                 Vector3 native = ArtLibrary.NativeBounds(source).size;
