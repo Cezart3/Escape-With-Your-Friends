@@ -23,6 +23,9 @@ namespace EscapeWithYourFriends.Audio
         Deal,
         Win,
         BigWin,
+        Thunder,
+        Rain,
+        Radio,
     }
 
     /// <summary>
@@ -234,6 +237,45 @@ namespace EscapeWithYourFriends.Audio
                         float chord = (Synth.Sine(t, 1047f) + Synth.Sine(t, 1319f) + Synth.Sine(t, 1568f)) * 0.22f;
                         float sparkle = Synth.Sine(t, 3000f + 1000f * Mathf.Sin(t * 37f)) * 0.06f * (Synth.Sine(t, 11f) > 0.6f ? 1f : 0f);
                         return (chord * shimmer + sparkle) * Synth.Decay(held, 1.16f, 2.5f);
+                    });
+
+                // A crack, then a long rumble: brown noise, slowly breathing. The cutscenes' storm (#287).
+                case Sound.Thunder:
+                {
+                    float brown = 0f;
+                    return Synth.Clip("thunder", 4.0f, t =>
+                    {
+                        brown = Mathf.Clamp(brown * 0.995f + Synth.White() * 0.06f, -1f, 1f);
+                        float crack = Synth.White() * Synth.Decay(t, 0.25f, 10f);
+                        float roll = brown * (0.7f + 0.3f * Mathf.Sin(t * 5.3f) * Mathf.Sin(t * 2.1f));
+                        return (crack * 0.6f + roll * 2.2f) * Synth.Decay(t, 4.0f, 2.2f);
+                    });
+                }
+
+                // Steady rain on a deck: soft noise with drops in it. Loops: nothing in it has a shape.
+                case Sound.Rain:
+                {
+                    float soft = 0f;
+                    return Synth.Clip("rain", 3.0f, t =>
+                    {
+                        soft = soft * 0.6f + Synth.White() * 0.4f;
+                        float drop = Synth.White() > 0.995f ? Synth.White() : 0f;
+                        return soft * 0.35f + drop * 0.4f;
+                    });
+                }
+
+                // A valve radio between stations, and a voice somewhere inside it: a warbling tone in
+                // syllables under the hiss. The post-credits call (#287).
+                case Sound.Radio:
+                    return Synth.Clip("radio", 6.0f, t =>
+                    {
+                        float hiss = Synth.White() * (0.12f + 0.08f * Mathf.Abs(Mathf.Sin(t * 1.7f)));
+                        float pop = Synth.White() > 0.997f ? Synth.White() * 0.6f : 0f;
+                        float syllable = Mathf.Pow(Mathf.Abs(Mathf.Sin(t * 7.3f + Mathf.Sin(t * 2.3f))), 2f);
+                        float talk = t > 1.2f && t < 5.2f
+                            ? Synth.Sine(t, 160f + 40f * Mathf.Sin(t * 9f)) * Synth.Square(t, 480f) * 0.18f * syllable
+                            : 0f;
+                        return hiss + pop + talk + Synth.Sine(t, 50f) * 0.04f;
                     });
 
                 default:

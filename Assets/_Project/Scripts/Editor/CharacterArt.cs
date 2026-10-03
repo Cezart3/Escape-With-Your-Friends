@@ -460,7 +460,7 @@ namespace EscapeWithYourFriends.EditorTools
         // ---------------------------------------------------------------------------- the controller
 
         /// <summary>Every clip in the library by the name it was given above, lower-case letters only.</summary>
-        static Dictionary<string, AnimationClip> Clips()
+        internal static Dictionary<string, AnimationClip> Clips()
         {
             var clips = new Dictionary<string, AnimationClip>();
 
