@@ -117,6 +117,8 @@ namespace EscapeWithYourFriends.World
             renderer.sharedMaterial = material;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
+            // A leaf drifting past the lens would otherwise fill a corner of the screen as a big green blot.
+            renderer.maxParticleSize = 0.02f;
 
             system.Play();
             return system;

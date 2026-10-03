@@ -9969,6 +9969,113 @@ Tests:
 
 ---
 
+## The ground and the volcano (#245)
+
+The sand was one flat colour across most of the screen, and `EnsureLayers` still wrote "placeholder
+ground until the art pass". This pass paints the four layers, gives the terrain shader the
+variation no tile can carry, wets the shore, and puts a crater on the summit.
+
+**Four painted layers.** `tools/art/terrain.py` paints Sand, Grass, Rock and Dirt at 512, each
+tiling seamlessly. It is plain Python with numpy, not Blender, because a texture is a picture and
+not a model. Every noise in it wraps (value noise on a grid that divides the tile, Voronoi measured
+across the wrap), and `main()` asserts that each tile's opposite edges match. Each layer is shifted
+back to the mean colour the island was balanced on, so the lighting and fog tuned on the flat
+placeholders still hold.
+
+- Sand: wind ripples bent by noise, lit crests and shaded troughs, grains, and the odd shell.
+- Grass: light and dark clumps, round clover patches, a few flowers, and dry yellow where the soil
+  is thin.
+- Rock: basalt, cracked into plates by warped Voronoi, each plate its own shade, with grey-green
+  lichen and rust stains. The volcano is made of it.
+- Dirt: trodden earth with fine cracks and pebbles that each have a shadow.
+
+`TerrainGenerator` keeps a layer texture that already exists, so these are what the island wears;
+it only writes its flat placeholder when one is missing. `EnsureTexture` now sets 512, Repeat and
+Compressed on an existing texture too, and **EWYF/Refresh Terrain Layers** re-applies them without
+regenerating the island.
+
+**`StylizedTerrain.shader`.** All of it is arithmetic on samples the shader already takes, plus one
+extra sample of the sand and of the grass:
+
+- **Macro variation.** Two octaves of value noise at about 40 m (`_MacroScale`) brighten and darken
+  the ground by up to 12% (`_MacroStrength`). Sand and grass are also sampled a second time at 0.29
+  of their scale and blended in by the same noise, so no repeat lines up across a beach. The grass
+  yellows in patches (`_DrySpread`).
+- **Slope.** Past `_SlopeDirt` the ground turns to dirt, and past `_SlopeRock` to the rock layer,
+  whatever the splat says, with the noise jittering the line. A cliff is basalt.
+- **Wet sand.** A band from just under the waterline up `_WetHeight` (0.35 m) is darker and cooler
+  (`_WetDarken`) and catches the sun in a tight highlight (`_WetGloss`). The beaches are flat, so a
+  third of a metre is several metres of sand. The band ends 0.6 m under the water: the sea tints
+  what it covers, and darkening that as well turned every shallow sandbar seen through clear water a
+  muddy grey (the first overlook shots).
+- **The swash.** A lace of foam runs up and back on the sand, churned by the same two crossed waves
+  as the sea's foam band (Water.shader) and on the water's clock (`_WaterTime`, WaterSurface's
+  global), so the two meet as one. It fades out past 40 to 80 m: from the summit, every tide pool's
+  edge drew a white contour.
+
+**The volcano.** A heightmap cannot hold a crater, because the pit would have to be a hole that the
+trees, the splat and the navmesh all agree on. So the crater sits on the summit as a cap.
+
+- **The model.** `tools/art/volcano.py` sweeps one profile round the axis (40 sides): a skirt, a
+  shoulder, a jagged crest with a breach on one side, an inner wall of red scoria, and a pool of
+  lava whose crust is cracked into plates. It has two textures, `Volcano.png` (rock ramps) and
+  `Lava.png` (the crust, and a glow from white-hot at the foot of the wall). It is 1 080 triangles.
+- **How it sits.** The pit floor is 1.25 m above the peak, so no ground shows inside it. The skirt
+  falls at about fifty degrees to 90 m below the peak, steeper than the dome, so it dives into the
+  slope wherever it meets it.
+- **The prefab.** `VolcanoFactory.Build` makes `Resources/Volcano.prefab`: the rock on the shared
+  stylized shader, the lava unlit, and a mesh collider so nobody walks through the rim.
+- **Placing it.** No scene holds the crater, because the summit is wherever the seed put it.
+  `Volcano.cs` finds the highest point of every island terrain when its scene loads (a 128 grid,
+  then a 1 m grid round the best cell) and puts the crater there.
+  - It needs a peak at least 60 m high, so the arenas get none.
+  - The skirt's foot must be buried all round. Island 2's summit is a sea-cliff spire that drops
+    49 m too fast, so it gets no crater, and says so in the log.
+- **Night glow.** The lava's colour climbs from 1.3 by day to 3.5 at night on `WorldClock.Night01`,
+  so bloom puts a halo on the summit you can steer by in the dark. There is no light, so it adds no
+  shadow pass.
+
+**Sky.** The sun and moon disks were added after the clouds at full strength, so the sun burnt
+through any cloud that crossed it. They are now drawn behind the cloud: each disk is scaled by
+`1 - cover`. The round clearing that shows in the village shots at every hour is a gap in the cloud
+noise, not the sun.
+
+**The oddities from the art review.**
+
+- **The black box** in `20_island2` and `34_island1_again` was the revive machine, the last
+  Unity primitive on the island: grey cubes on the default material. `tools/art/machines.py` now
+  models it, on the slots' atlas like the vehicles, into `Casino/Models/Machines.fbx`. It is a
+  scrap-built teal cabinet on wooden skids. Its mouth is a hazard-striped funnel where the Intake
+  socket swallows the body, with a REVIVE sign, a pressure gauge in the red, a lever, pipes and a
+  chimney. `Mach_Revive_Rotor` is a four-paddle fan with a beacon, drawn round its own pivot.
+- **ReviveMachineBuilder** wears both meshes. The Housing keeps only its box collider, the Rotor
+  primitive gives way to the fan (ReviveMachine still spins the same transform), and the Mouth
+  marker goes. The sockets are unchanged. If the FBX is missing, the greybox stays and the builder
+  says why. The machine is 3 372 triangles and the rotor 440.
+- **The grey square** in `22_lift_engine` was the engine part's greybox. #249's own model replaced
+  it, and the new playthrough shows the red engine.
+
+**AmbientLife.** Particles are capped at 2% of the screen (`maxParticleSize`). A falling leaf that
+passed the lens otherwise filled a corner of the screen as a green blot, which is the likeliest
+source of the "green square, top right".
+
+**LookRoute.** The cliff overlook now stands 40 m off the summit toward the middle, because standing
+on the summit put it inside the crater. A new spot, **the volcano**, looks into the pit from beyond
+the rim.
+
+Tests:
+
+- `-volcanoTest` (new). On island 1 it passes 13/0: one crater on the highest point, the ground
+  under the lava, the skirt's foot buried 4.1 m at its shallowest, two submeshes within a cap of
+  1 500 triangles, a solid rim standing 14 m clear of the slope, and lava brighter at night. On
+  island 2 it passes 2/0: the spire gets no crater.
+- `-lookTest` 21/0 and `-waterTest` 5/0.
+- The full playthrough passes through the second island's engine and wing, and its shots show the
+  new machine and engine. It was stopped while the bot kept being downed by island 2's animals, an
+  old trait of the bot that this change does not touch.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**

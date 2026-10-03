@@ -114,6 +114,9 @@ Shader "EWYF/Sky"
                     colour += star * _Stars * saturate(y * 3) * 1.5;
                 }
 
+                // How much cloud stands in front of this pixel: the disks are drawn behind it.
+                half hidden = 0;
+
                 // Clouds on a flat ceiling: the direction projected up, so they crowd toward the
                 // horizon like a real cloud deck. Two layers drift with the wind at different speeds.
                 if (y > 0)
@@ -135,15 +138,17 @@ Shader "EWYF/Sky"
                     cloud += _SunColour.rgb * pow(saturate(mu), 12) * 0.6 * sunUp;   // silver lining near the sun
 
                     colour = lerp(colour, cloud, cover * 0.92);
+                    hidden = cover;
                 }
 
-                // The disks last, over the clouds' thin edges; bright enough that bloom catches them.
-                half disk = smoothstep(1 - _SunSize, 1 - _SunSize * 0.6, mu);
+                // The disks last, bright enough that bloom catches them, and behind the cloud: added on
+                // top at full strength they burnt a hole through any cloud that crossed them.
+                half disk = smoothstep(1 - _SunSize, 1 - _SunSize * 0.6, mu) * (1 - hidden);
                 colour += _SunColour.rgb * disk * 12 * saturate(y * 20 + 0.5);
 
                 half moonDisk = smoothstep(1 - _SunSize * 0.8, 1 - _SunSize * 0.5, dot(d, -toSun));
                 half moonHalo = pow(saturate(dot(d, -toSun)), 400) * 0.25;
-                colour += _MoonColour.rgb * (moonDisk * 2.5 + moonHalo) * _Stars;
+                colour += _MoonColour.rgb * (moonDisk * 2.5 + moonHalo) * _Stars * (1 - hidden);
 
                 return half4(colour, 1);
             }

@@ -327,6 +327,7 @@ namespace EscapeWithYourFriends.Net
             World.TreeTest.Begin();
             Core.QualityTest.Begin();
             World.WaterTest.Begin();
+            World.VolcanoTest.Begin();
             AI.NativeTest.Begin();
             AI.AbductionTest.Begin();
             AI.PrisonTest.Begin();

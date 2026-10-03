@@ -4,8 +4,14 @@
 // ground.
 //
 // Deliberately small, for the Radeon 760M: exactly four layers in one pass (IslandSplat.LayerCount;
-// no add pass, so a fifth layer is not drawn), one control fetch plus four albedo fetches, no normal
-// maps, no height blend, no holes, no instancing (TerrainGenerator turns drawInstanced off). No
+// no add pass, so a fifth layer is not drawn), one control fetch plus six albedo fetches (sand and
+// grass twice, at two scales), no normal maps, no height blend, no holes, no instancing
+// (TerrainGenerator turns drawInstanced off).
+//
+// What no tile can carry is done in arithmetic (#245): a tint that wanders over forty metres, the
+// grass yellowing in patches, slopes going to dirt and then to the rock layer whatever the splat
+// says, the sand darkening and catching the sun in a band just above the waterline, and a lace
+// of foam running up the beach on the water's clock. No
 // basemap either: without a BaseMapShader dependency the far terrain would fall to a shader URP does
 // not have, so TerrainGenerator pushes basemapDistance past the fog and this draws to the horizon.
 //
@@ -25,6 +31,19 @@ Shader "EWYF/StylizedTerrain"
         _RampCentre ("Terminator (N.L)", Range(-1, 1)) = 0.05
         _RampSoftness ("Terminator softness", Range(0.001, 0.5)) = 0.08
         _ShadowTint ("Shade side tint", Color) = (0.86, 0.9, 1.05, 1)
+
+        [Header(Ground variation)]
+        _MacroScale ("Variation size (m)", Float) = 40
+        _MacroStrength ("Variation brightness +-", Range(0, 0.4)) = 0.12
+        _FarScale ("Second sample scale (sand, grass)", Range(0.1, 0.9)) = 0.29
+        _DrySpread ("Dry grass share", Range(0, 1)) = 0.35
+        _SlopeDirt ("Slope to dirt (1 - normal.y)", Range(0, 1)) = 0.12
+        _SlopeRock ("Slope to rock (1 - normal.y)", Range(0, 1)) = 0.3
+
+        [Header(Wet sand)]
+        _WetHeight ("Wet band above the sea (m)", Float) = 0.35
+        _WetDarken ("Wet albedo", Color) = (0.6, 0.6, 0.66, 1)
+        _WetGloss ("Wet sheen", Range(0, 1)) = 0.35
     }
 
     SubShader
@@ -55,7 +74,23 @@ Shader "EWYF/StylizedTerrain"
             half4 _ShadowTint;
             half _RampCentre;
             half _RampSoftness;
+            float _MacroScale;
+            half _MacroStrength;
+            half _FarScale;
+            half _DrySpread;
+            half _SlopeDirt;
+            half _SlopeRock;
+            half _WetHeight;
+            half4 _WetDarken;
+            half _WetGloss;
         CBUFFER_END
+
+        // IslandShape.SeaLevel: the wet band is measured from it.
+        static const float SeaLevel = 0;
+        // Water.shader's _FoamColor, so the lace on the sand is the same white as the foam on the sea.
+        static const half3 FoamColour = half3(0.92, 0.96, 0.96);
+        // WaterSurface's clock (a global), which the waves and the sea's foam run on.
+        float _WaterTime;
 
         // The ground has no rim and no highlight; StylizedLighting reads these, so they are constants.
         static const half _RimStrength = 0;
@@ -112,6 +147,23 @@ Shader "EWYF/StylizedTerrain"
                 return output;
             }
 
+            // Value noise in [0, 1] on a unit grid, from a hash: no texture, so it never tiles.
+            float Hash(float2 p)
+            {
+                p = frac(p * float2(123.34, 456.21));
+                p += dot(p, p + 45.32);
+                return frac(p.x * p.y);
+            }
+
+            float ValueNoise(float2 p)
+            {
+                float2 i = floor(p);
+                float2 f = frac(p);
+                f = f * f * (3 - 2 * f);
+                return lerp(lerp(Hash(i), Hash(i + float2(1, 0)), f.x),
+                            lerp(Hash(i + float2(0, 1)), Hash(i + 1), f.x), f.y);
+            }
+
             half4 Fragment(Varyings input) : SV_Target
             {
                 // Texel centres, the way URP's terrain reads its control map: without the remap the
@@ -120,12 +172,66 @@ Shader "EWYF/StylizedTerrain"
                 half4 weights = SAMPLE_TEXTURE2D(_Control, sampler_Control, controlUV);
                 weights /= max(dot(weights, half4(1, 1, 1, 1)), 0.001);
 
-                half3 albedo = weights.r * SAMPLE_TEXTURE2D(_Splat0, sampler_Splat0, TRANSFORM_TEX(input.uv, _Splat0)).rgb
-                             + weights.g * SAMPLE_TEXTURE2D(_Splat1, sampler_Splat1, TRANSFORM_TEX(input.uv, _Splat1)).rgb
-                             + weights.b * SAMPLE_TEXTURE2D(_Splat2, sampler_Splat2, TRANSFORM_TEX(input.uv, _Splat2)).rgb
-                             + weights.a * SAMPLE_TEXTURE2D(_Splat3, sampler_Splat3, TRANSFORM_TEX(input.uv, _Splat3)).rgb;
+                // Two octaves over the island: the slow tint and where the grass dries.
+                float2 xz = input.positionWS.xz / _MacroScale;
+                half macro = ValueNoise(xz) * 0.65 + ValueNoise(xz * 2.7 + 17.3) * 0.35;
 
-                half3 colour = StylizedLighting(albedo, input.positionWS, normalize(input.normalWS), input.positionCS);
+                // Sand and grass cover most of the island, so they are read twice, the second time
+                // larger, and the two mixed by the macro noise: the repeat every seven metres has no
+                // grid left to show.
+                float2 uv0 = TRANSFORM_TEX(input.uv, _Splat0);
+                float2 uv1 = TRANSFORM_TEX(input.uv, _Splat1);
+                half3 sand = lerp(SAMPLE_TEXTURE2D(_Splat0, sampler_Splat0, uv0).rgb,
+                                  SAMPLE_TEXTURE2D(_Splat0, sampler_Splat0, uv0 * _FarScale + 0.37).rgb, 0.25 + 0.5 * macro);
+                half3 grass = lerp(SAMPLE_TEXTURE2D(_Splat1, sampler_Splat1, uv1).rgb,
+                                   SAMPLE_TEXTURE2D(_Splat1, sampler_Splat1, uv1 * _FarScale + 0.61).rgb, 0.25 + 0.5 * macro);
+                half3 rock = SAMPLE_TEXTURE2D(_Splat2, sampler_Splat2, TRANSFORM_TEX(input.uv, _Splat2)).rgb;
+                half3 dirt = SAMPLE_TEXTURE2D(_Splat3, sampler_Splat3, TRANSFORM_TEX(input.uv, _Splat3)).rgb;
+
+                // Dry patches: the grass yellows where the macro noise is high.
+                half dry = smoothstep(1 - _DrySpread, 1.15 - _DrySpread * 0.5, macro);
+                grass = lerp(grass, grass * half3(1.35, 1.12, 0.62), dry * 0.7);
+
+                half3 albedo = weights.r * sand + weights.g * grass + weights.b * rock + weights.a * dirt;
+
+                // Slopes: grass and sand wear to dirt, then everything steep is rock. The noise
+                // wobbles the line so a hillside does not have a contour drawn round it.
+                half3 normal = normalize(input.normalWS);
+                half steep = 1 - normal.y + (macro - 0.5) * 0.08;
+                half toRock = smoothstep(_SlopeRock, _SlopeRock + 0.1, steep);
+                half toDirt = smoothstep(_SlopeDirt, _SlopeDirt + 0.08, steep) * (weights.r + weights.g) * (1 - toRock);
+                albedo = lerp(albedo, dirt, toDirt * 0.8);
+                albedo = lerp(albedo, rock, toRock);
+
+                albedo *= 1 + (macro - 0.5) * 2 * _MacroStrength;
+
+                // Wet sand: a band from just under the waterline up _WetHeight, darker, cooler and
+                // catching the sun. The beaches are flat, so a third of a metre is metres of sand, and
+                // the band ends under the water too: the sea tints what it covers, and darkening that
+                // as well turned every shallow sandbar seen through clear water a muddy grey.
+                half above = input.positionWS.y - SeaLevel + (macro - 0.5) * 0.08;
+                half wet = (1 - smoothstep(_WetHeight * 0.25, _WetHeight, above)) * smoothstep(-0.6, -0.15, above);
+                albedo *= lerp(half3(1, 1, 1), _WetDarken.rgb, wet);
+
+                // The swash: a lace of foam on the sand that runs up and back, churned by the same
+                // two crossed waves the sea's foam band is (Water.shader), so the two meet as one.
+                float2 world = input.positionWS.xz;
+                half churn = sin(dot(world, float2(0.42, 0.31)) - _WaterTime * 1.7)
+                           * sin(dot(world, float2(-0.27, 0.36)) + _WaterTime * 1.1);
+                half reach = 0.06 + 0.05 * sin(_WaterTime * 0.6 + dot(world, float2(0.05, 0.04)));
+                half lace = (1 - smoothstep(0.0, 0.03, abs(input.positionWS.y - SeaLevel - reach)))
+                          * saturate(0.45 + 0.6 * churn)
+                          // Close up only: from a summit, every tide pool's edge drew a white contour.
+                          * saturate(2 - distance(input.positionWS, _WorldSpaceCameraPos) / 40);
+                albedo = lerp(albedo, FoamColour, lace * 0.85);
+
+                half3 colour = StylizedLighting(albedo, input.positionWS, normal, input.positionCS);
+
+                Light sun = GetMainLight(TransformWorldToShadowCoord(input.positionWS));
+                half3 view = SafeNormalize(GetWorldSpaceViewDir(input.positionWS));
+                half sheen = pow(saturate(dot(normal, SafeNormalize(sun.direction + view))), 24);
+                colour += sun.color * sheen * wet * _WetGloss * sun.shadowAttenuation;
+
                 return half4(StylizedFog(colour, input.fogFactor, input.positionWS), 1);
             }
             ENDHLSL
@@ -229,6 +335,23 @@ Shader "EWYF/StylizedTerrain"
                 output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 return output;
+            }
+
+            // Value noise in [0, 1] on a unit grid, from a hash: no texture, so it never tiles.
+            float Hash(float2 p)
+            {
+                p = frac(p * float2(123.34, 456.21));
+                p += dot(p, p + 45.32);
+                return frac(p.x * p.y);
+            }
+
+            float ValueNoise(float2 p)
+            {
+                float2 i = floor(p);
+                float2 f = frac(p);
+                f = f * f * (3 - 2 * f);
+                return lerp(lerp(Hash(i), Hash(i + float2(1, 0)), f.x),
+                            lerp(Hash(i + float2(0, 1)), Hash(i + 1), f.x), f.y);
             }
 
             half4 Fragment(Varyings input) : SV_Target
