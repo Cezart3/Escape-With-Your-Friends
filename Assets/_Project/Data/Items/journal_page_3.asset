@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dec79073e0c5b3d4c932cfd2929ea34d, type: 3}
+  m_Name: journal_page_3
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.ItemDef
+  _id: journal_page_3
+  _displayName: Journal Page (3)
+  _description: A page torn from Radu Voinea's notebook. About the cages.
+  _category: 6
+  _maxStack: 1
+  _weight: 0.05
+  _icon: {fileID: -4359865478219838066, guid: 7e196c5aad490c54db21008f56a3a70d, type: 3}
+  _worldPrefab: {fileID: 6232350420815841793, guid: 24cc93da0c66f194d824c6c52faeab9e, type: 3}
+  _effect: {fileID: 0}
+  _useSeconds: 1.5
+  _leavesBehind: {fileID: 0}
+  _value: 0

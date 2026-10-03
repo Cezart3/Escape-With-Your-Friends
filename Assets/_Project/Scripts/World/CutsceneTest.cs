@@ -75,6 +75,7 @@ namespace EscapeWithYourFriends.World
 
             Check($"four friends ({cast.Friends.Length})", cast.Friends.Length == 4 && cast.Friends.All(Humanoid));
             Check("Bogdan is a humanoid", Humanoid(cast.Bogdan));
+            Check("Radu is a humanoid", Humanoid(cast.Radu));
             string[] missing = ClipsUsed.Where(c => cast.Clip(c) == null).ToArray();
             Check($"every clip a scene uses is in the library ({string.Join(", ", missing)} missing)", missing.Length == 0);
             string[] noSet = SetsUsed.Where(s => cast.Set(s) == null).ToArray();
@@ -85,6 +86,7 @@ namespace EscapeWithYourFriends.World
             Transform wreck = Landmark.All.FirstOrDefault(l => l != null && l.Id.ToLowerInvariant() == "wreck")?.transform;
             Transform castaway = FindAnyObjectByType<AI.Castaway>()?.transform;
             Transform plane = FindAnyObjectByType<PlaneAssembly>()?.transform;
+            Transform cave = Landmark.All.FirstOrDefault(l => l != null && l.Id == "cave")?.transform;
             Check("there is a wreck to arrive at", wreck != null);
 
             // The island's own arrival beat retries until it plays; out of reach of the wreck it would
@@ -100,7 +102,7 @@ namespace EscapeWithYourFriends.World
             {
                 ("prologue", null, 5), ("arrive:island", wreck, 4), ("arrive:island2", wreck, 4),
                 ("castaway", castaway != null ? castaway : wreck, 5), ("plane", plane != null ? plane : wreck, 4),
-                ("ending", null, 5), ("radio", null, 0),
+                ("ending", null, 5), ("radio", null, 0), ("flashback", cave != null ? cave : wreck, 1),
             };
 
             foreach ((string id, Transform focus, int actors) in scenes)

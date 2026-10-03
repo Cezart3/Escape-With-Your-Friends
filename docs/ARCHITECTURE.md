@@ -10423,6 +10423,65 @@ than 1000 grass tufts painted. `LookRoute` has three new spots, `ground grass`, 
 `ground rock` (`-beautySpots ground`): the nearest grass, tide line and rock to the spawn, at a
 walker's height.
 
+## Radu's journal pages (#275)
+
+docs/STORY.md has Radu Voinea leave five journal pages across the Ash Isles in 1957. They are now
+items you can pick up and read, and the first one plays a flashback.
+
+**The pages.** `World/Journal.Pages` holds the five, each an item id, a heading and the text. Page
+one is the existing `chart_page`, the lifeboat part from the Act 1 cave (#274). Pages two to five are
+new Quest items, `journal_page_2` to `journal_page_5`, from `ItemFactory`. Their model is
+`journal_page(n)` in `tools/art/items.py`: a torn notebook page with ruled handwriting and, in the
+corner, a sketch of what the page is about.
+
+| Page | Where | Placed |
+|---|---|---|
+| 1 `chart_page` | Act 1 cave | `POISpawner.Quest["Island/cave"]` |
+| 2 `journal_page_2` | Temple Isle wreck beach | `Quest["Island2/wreck"]` |
+| 3 `journal_page_3` | Temple Isle village | `Quest["Island2/village"]` |
+| 4 `journal_page_4` | Temple Isle cave | `Quest["Island2/cave"]` |
+| 5 `journal_page_5` | Act 3, Radu's last camp | not placed: Act 3 does not exist yet |
+
+`POISpawner.Quest` is now keyed by `scene/place`, so the same kind of place can hold a different
+item on each island.
+
+**Reading.** To read a page, hold it and press Use. `ItemUse.RequestUse` falls through to
+`Journal.Toggle` for anything that is not consumable, and `Toggle` returns false for anything that
+is not a page, so other items behave as before. The reader is local IMGUI, the same way `StoryBeat`
+draws: a sheet of procedurally foxed paper with a torn top and the text in brown ink. It closes on
+Escape, on a second Use, when the page leaves your hand, or when a cutscene starts.
+
+**Finding.** `Inventory.Add`, on the server, calls `Journal.FirstFind`. The first time a page enters
+any bag, an `ObserversRpc` tells every peer. Each peer shows "Journal page N of 5 found - hold it and
+press [Use] to read" for six seconds, and page one calls
+`StoryBeat.Play("flashback", ..., finder)`. Found pages are tracked once per process, like
+`StoryBeat`'s played ids.
+
+**The flashback.** `StoryScenes.Flashback` is a 20 s island scene, staged round the finder at the
+back of the cave in sepia (`Grade`), with a key light and the daylight from the cave mouth:
+
+1. Radu crouches over his journal.
+2. He tears out the page.
+3. He leaves it on the rock.
+4. He walks out towards the light.
+
+Radu is actor 5: `CutsceneCast.Radu` is filled from `Body_Pilot_Radu`, the new `Pilot` kind in
+`CharacterArt`, modelled in `tools/art/characters.py` (`radu()`): a leather flying jacket and
+helmet, goggles, a white scarf, breeches and boots. Close to a cave wall, the scene's lenses are
+pulled in towards him until they are out of the rock, but never closer than 1.5 m.
+
+**Test.** `-journalTest` runs solo with `-scene island2`. It checks:
+
+- the five pages, their items and their words;
+- pages two to four lie within 20 m of their places;
+- the first pickup of a page is heard once, and the second is not;
+- page one plays the flashback;
+- Use on a page in hand opens it, Use again closes it, a non-page does nothing, and putting the page
+  away closes it.
+
+`-journalShots <folder>`, windowed, saves pictures of the hint and every page. `-cutsceneTest` checks
+that Radu is a humanoid and rehearses the flashback at the cave, like every other scene.
+
 ---
 
 ## Data-driven content

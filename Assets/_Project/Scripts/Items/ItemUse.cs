@@ -89,7 +89,10 @@ namespace EscapeWithYourFriends.Items
             ItemStack selected = _inventory.Selected;
             ItemDef def = selected.Def;
 
-            if (def == null || !def.Consumable) return false;
+            if (def == null) return false;
+
+            // #275: a journal page is read, not used up. Local; nobody else needs to know.
+            if (!def.Consumable) return World.Journal.Toggle(def.Id, _inventory);
 
             ServerUse(_inventory.SelectedSlot);
             return true;

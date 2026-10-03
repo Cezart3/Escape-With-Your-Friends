@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dec79073e0c5b3d4c932cfd2929ea34d, type: 3}
+  m_Name: journal_page_5
+  m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.ItemDef
+  _id: journal_page_5
+  _displayName: Journal Page (5)
+  _description: The last page of Radu Voinea's notebook.
+  _category: 6
+  _maxStack: 1
+  _weight: 0.05
+  _icon: {fileID: -4424690953045566568, guid: ccd1ab50d8b26204eb54b2a7a08e4b3f, type: 3}
+  _worldPrefab: {fileID: 4742213859184610770, guid: 47086b5539cc9dd40811c3fae28a2236, type: 3}
+  _effect: {fileID: 0}
+  _useSeconds: 1.5
+  _leavesBehind: {fileID: 0}
+  _value: 0

@@ -138,8 +138,8 @@ namespace EscapeWithYourFriends.World
                 placed++;
 
                 if (Loot.ContainsKey(placement.Id)) StartCoroutine(Scatter(placement.Id, placement.Position));
-                if (Quest.ContainsKey(placement.Id) && gameObject.scene.name == "Island")
-                    StartCoroutine(PlaceQuest(placement.Id, instance.transform));
+                string quest = gameObject.scene.name + "/" + placement.Id;
+                if (Quest.ContainsKey(quest)) StartCoroutine(PlaceQuest(quest, instance.transform));
             }
 
             Debug.Log($"[POISpawner] Placed {placed} points of interest"
@@ -163,11 +163,16 @@ namespace EscapeWithYourFriends.World
         /// #274. Two of the boat's four parts lie where Act 1 sends you for them, on the first island
         /// only: the cult's fuel by their totem and the chart at the back of the cave. In the place's
         /// own frame, so they turn with it, and dropped onto the floor from just under the ceiling.
+        /// Keyed by scene and place. #275 adds Radu's journal pages two to four on Temple Isle: where he
+        /// landed, where he saw the cages, and the cave he left from. Page five waits for Act 3.
         /// </summary>
         static readonly Dictionary<string, (string Item, Vector3 At)> Quest = new()
         {
-            ["village"] = ("fuel_drum", new Vector3(2f, 2.5f, -1.5f)),
-            ["cave"] = ("chart_page", new Vector3(-1.5f, 2.5f, -3.5f)),
+            ["Island/village"] = ("fuel_drum", new Vector3(2f, 2.5f, -1.5f)),
+            ["Island/cave"] = ("chart_page", new Vector3(-1.5f, 2.5f, -3.5f)),
+            ["Island2/wreck"] = ("journal_page_2", new Vector3(1.5f, 2.5f, 2f)),
+            ["Island2/village"] = ("journal_page_3", new Vector3(-2f, 2.5f, 1f)),
+            ["Island2/cave"] = ("journal_page_4", new Vector3(-1.5f, 2.5f, -3.5f)),
         };
 
         static System.Collections.IEnumerator PlaceQuest(string id, Transform place)
