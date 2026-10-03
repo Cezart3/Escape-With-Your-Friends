@@ -109,7 +109,7 @@ namespace EscapeWithYourFriends.EditorTools
 
             bool upright = CheckSeven();
             Material material = Symbols();
-            Material bulbOn = StyleLook.Glowing("SlotBulbOn", new Color(1f, 0.93f, 0.7f), new Color(3.2f, 2.5f, 1.3f));
+            Material bulbOn = BulbOn();
 
             int built = 0;
             if (Cabinet(SlotKind.Sevens, SevensPath, SevensLooks, material, bulbOn)) built++;
@@ -135,6 +135,10 @@ namespace EscapeWithYourFriends.EditorTools
 
         /// <summary>The ramp-sheet material every slot and table wears.</summary>
         internal static Material Atlas() => AssetDatabase.LoadAssetAtPath<Material>(MaterialPath);
+
+        /// <summary>A lit bulb: the slots' cabinets and the casino's sign share it.</summary>
+        internal static Material BulbOn()
+            => StyleLook.Glowing("SlotBulbOn", new Color(1f, 0.93f, 0.7f), new Color(3.2f, 2.5f, 1.3f));
 
         /// <summary>Our own FBX, imported as meshes only: no materials of its own, no rig, the file's normals.</summary>
         static bool Import(string path)

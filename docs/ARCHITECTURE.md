@@ -9564,6 +9564,52 @@ Because the laps are whole turns, the ball ends at +z, which is where the winnin
 - `LookRoute` adds a "casino tables" spot, taken from a blackjack seat. It measured 173 fps on the
   beauty route at Very High on the RTX 4060.
 
+## Buildings modelled in Blender (#78)
+
+The six POI buildings and the casino's fittings came from `GreyboxBuilder`'s boxes, with a
+`DressX` per building that tiled Kenney and Quaternius pieces over them. Now they come from
+`tools/art/buildings.py`:
+
+```
+blender -b --factory-startup -P tools/art/buildings.py -- <absolute path>/Assets/_Project/Art/Casino/Models
+```
+
+That command writes `Buildings.fbx`. It reuses `slots.py`'s symbols and `tables.py`'s chips, and
+everything wears the slots' ramp sheet `SlotAtlas`. Bulbs come as a separate `_Bulbs` mesh that
+wears `SlotBulbOn`, the slots' glowing bulb, and casts no shadow.
+
+| Mesh | What it is | Triangles |
+|---|---|---|
+| `Bld_Casino` (+ `_Bulbs`) | Mismatched decking, a VIP carpet and a red-and-gold partition with VIP lettering, plank walls with shuttered windows and flower boxes, a thatched gable with rafters. Outside: the tilted CASINO sign in a ring of bulbs, banners and tiki torches. Inside: a bamboo bar with shelves of bottles and barrel stools, string lights, the seven lamps as pendants, and VIP portraits | 28k + 4k |
+| `Bld_Shop` | A trader's shack: a patchwork tin roof, a crate counter with goods, shelves, a TRADER sign, hanging bananas and fish | 7.9k |
+| `Bld_BaseCamp` | A tarp shelter on bamboo posts, bedrolls, a sea chest, a workbench with a vice, and a fire pit with a tripod and pot | 2.5k |
+| `Bld_NativeVillage` | Five log huts with lashing, hide curtains, masks and hipped thatch, all facing a totem of four carved faces, and the fire | 21k |
+| `Bld_Wreck` | A planked hull broken open on its side, with ribs, keel and stem, a fallen mast with yard and sail, and debris | 7.4k |
+| `Bld_Cave` | Lumpy, moss-topped rock masses round a dark floor, and ore crystals at the old ore spot | 2.3k |
+| `Bld_Cage_Chips`, `Bld_Cage_Cash` (+ `_Bulbs`) | The cashier windows: a counter with panels, gold bars, a striped awning, a sign with the word on it, chips or banknotes on the top. Red is for chips and green is for cash | 4.3k, 2.8k |
+| `Bld_VipDoor` (+ `_Bulbs`) | A gold double door with ruby panels and a VIP plaque on both faces, and a crown with an arc of bulbs | 2.3k |
+
+### In place
+
+`GreyboxBuilder.Model(root, id, models)` replaces every `DressX` function. It does three things:
+
+1. It deletes any `Model`, `Model.Bulbs` or kit `Art` child from an earlier run.
+2. It strips the boxes' renderers (`ArtDress.Strip`). Their colliders and names stay, because
+   tests, POIs and players walk into them.
+3. It puts the meshes on a `Model` child and a `Model.Bulbs` child.
+
+`CasinoFactory` remodels the two cage windows on their saved prefabs, so their NetworkObject ids
+survive. `Door()` rebuilds the VIP door and dresses it before saving it.
+
+### Checks
+
+- `-lookTest` checks that every building and fitting (`Casino`, `Shop`, `BaseCamp`,
+  `NativeVillage`, `Wreck`, `Cave`, `ChipWindow`, `CashWindow`, `VipDoor`) has a `Model` child
+  wearing a `Bld_` mesh.
+- `-casinoTest`, `-casinoFloorTest` and the `-shopTest` pair are unchanged and pass.
+- `LookRoute` adds "base camp" and "casino front" spots. The beauty route ran at 181 to 190 fps at
+  Very High on the RTX 4060. The previous baseline was 173.
+
 ---
 
 ## Data-driven content

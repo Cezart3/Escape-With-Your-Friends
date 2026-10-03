@@ -122,6 +122,8 @@ namespace EscapeWithYourFriends.World
             Around(spots, "cave", "jungle (cave)", 16f, 2.5f);
             Around(spots, "village", "village with natives", 22f, 4f);
             Around(spots, "shop", "trader", 12f, 2.5f);
+            Around(spots, "camp.base", "base camp", 13f, 3f);
+            Around(spots, "casino", "casino front", 16f, 2.5f);
 
             Landmark casino = Find("casino");
             if (casino != null)
