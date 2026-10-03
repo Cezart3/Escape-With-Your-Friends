@@ -115,6 +115,27 @@ namespace EscapeWithYourFriends.World
             Check("a skipped scene ends", !StoryBeat.Playing);
             Check("and leaves no actors", FindObjectsByType<Puppet>(FindObjectsSortMode.None).Length == 0);
 
+            // #272. Skipping is a vote: the server's count, driven directly as two and four players.
+            SkipVote.Count(1, new SkipWish { Id = "t", Watching = true });
+            SkipVote.Count(2, new SkipWish { Id = "t", Watching = true });
+            SkipTally one = SkipVote.Count(1, new SkipWish { Id = "t", Watching = true, Skip = true });
+            Check($"of two watchers one vote is not enough ({one.Votes} of {one.Needed})", !one.Carried && one.Needed == 2);
+            Check("the second carries it", SkipVote.Count(2, new SkipWish { Id = "t", Watching = true, Skip = true }).Carried);
+            for (int c = 1; c <= 4; c++) SkipVote.Count(c, new SkipWish { Id = "u", Watching = true });
+            SkipVote.Count(1, new SkipWish { Id = "u", Watching = true, Skip = true });
+            SkipTally two = SkipVote.Count(2, new SkipWish { Id = "u", Watching = true, Skip = true });
+            SkipTally left = SkipVote.Count(4, new SkipWish { Id = "u", Watching = false });
+            Check($"of four, two votes wait ({two.Votes} of {two.Needed}); one leaving carries it ({left.Votes} of {left.Needed})",
+                  !two.Carried && left.Carried);
+
+            // And over the wire: the host alone watching, its own vote ends the scene.
+            StoryBeat.Forget("castaway");
+            StoryBeat.Play("castaway", "Found him", "He waited. Barely.", castaway != null ? castaway : wreck);
+            yield return new WaitForSeconds(1f * Speed);
+            SkipVote.Want("castaway");
+            for (float t = Time.realtimeSinceStartup; StoryBeat.Playing && Time.realtimeSinceStartup - t < 3f;) yield return null;
+            Check("a vote from the only watcher ends it", !StoryBeat.Playing);
+
             // A scene asked for while another plays waits its turn.
             StoryBeat.Forget("radio");
             StoryBeat.Forget("arrive:island");

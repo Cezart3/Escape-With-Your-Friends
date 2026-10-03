@@ -10234,6 +10234,35 @@ a warbling voice), all synthesised like the rest.
 `-cutsceneShots <folder>`, windowed, plays the same run at normal speed and saves a picture 1.2 s
 into every shot.
 
+## Skipping a cutscene is a vote (#272)
+
+While a scene plays, its watchers cannot move. If one player skipped alone, the others would stay
+frozen next to someone who can act, so skipping is now a vote. `SkipVote` uses FishNet broadcasts,
+not RPCs, so no networked object has to exist for it; that matters in the attic and in the storm.
+
+**How it works.**
+- When a scene begins, each peer sends `SkipWish { Watching = true }`, and sends `Watching = false`
+  when it ends.
+- A key press sends one `Skip`.
+- The server keeps two sets per scene id, the watchers and the votes. After each wish it broadcasts
+  a `SkipTally`.
+- A tally carries at a strict majority of the watchers (`Needed = watchers / 2 + 1`): 1 of 1, 2 of
+  2, 2 of 3, 3 of 4. A carried tally ends the scene on every peer that is playing it.
+- A watcher who leaves can carry a vote that was waiting on them.
+- The hint in the letterbox changes from "any key to skip" to "skip: 1 of 2".
+- Offline (no client running), a wish is answered locally, so a solo game skips on one key as before.
+
+**Not done.**
+- A peer that disconnects mid-scene stays counted (`ponytail:` in `SkipVote.Count`); the scene
+  still ends by itself within 40 s.
+- Scenes still start on each peer from that peer's own synced trigger (castaway stage, plane
+  bitmask, run over, arrival). They do not wait until every player has arrived.
+
+**Tests.** `-cutsceneTest` gains four checks (68 pass):
+- the server count, driven directly: of two watchers, one vote waits and the second carries it;
+- of four, two votes wait, and a leaver carries it;
+- the real broadcast round trip: the host alone votes and its scene ends.
+
 ---
 
 ## Data-driven content

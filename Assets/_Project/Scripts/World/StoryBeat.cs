@@ -117,6 +117,18 @@ namespace EscapeWithYourFriends.World
             if (_current != null) _current.Finish();
         }
 
+        /// <summary>#272. The vote on the scene playing here: the hint shows it, and a carried vote ends it.</summary>
+        internal static void Tally(SkipTally tally)
+        {
+            if (_current == null || _current._id != tally.Id) return;
+            _current._votes = tally.Votes;
+            _current._needed = tally.Needed;
+            if (tally.Carried) _current.Finish();
+        }
+
+        int _votes, _needed = 1;
+        bool _voted;
+
         static void Begin(string id, string title, string line, Transform focus)
         {
             var beat = new GameObject($"StoryBeat ({id})").AddComponent<StoryBeat>();
@@ -138,6 +150,7 @@ namespace EscapeWithYourFriends.World
             _camera.Priority.Value = 30; // Over the rig's 10 and the death camera's 20.
             BuildLook();
             HideWorld();
+            SkipVote.Watching(_id, true);
 
             if (_cast == null)
             {
@@ -202,6 +215,7 @@ namespace EscapeWithYourFriends.World
             foreach (Renderer r in _hidden)
                 if (r != null) r.forceRenderingOff = false;
             if (_profile != null) Destroy(_profile);
+            if (gameObject.scene.isLoaded) SkipVote.Watching(_id, false);
 
             if (_current != this) return;
             _current = null;
@@ -229,7 +243,11 @@ namespace EscapeWithYourFriends.World
 
         void Update()
         {
-            if (Time.time - Started > 0.6f && Pressed()) { Skip(); return; }
+            if (!_voted && Time.time - Started > 0.6f && Pressed())
+            {
+                _voted = true;
+                SkipVote.Want(_id);
+            }
 
             _white = Mathf.MoveTowards(_white, 0f, Time.deltaTime * 1.5f);
             _flash = Mathf.MoveTowards(_flash, 0f, Time.deltaTime * 4f);
@@ -671,7 +689,8 @@ namespace EscapeWithYourFriends.World
             }
 
             GUI.color = new Color(1f, 1f, 1f, _bars * 0.4f);
-            GUI.Label(new Rect(0, h - bar, w - 16f, bar), "any key to skip",
+            string hint = _voted && _needed > 1 ? $"skip: {_votes} of {_needed}" : _voted ? "" : "any key to skip";
+            GUI.Label(new Rect(0, h - bar, w - 16f, bar), hint,
                       new GUIStyle(_small) { alignment = TextAnchor.MiddleRight, fontSize = _small.fontSize / 2 + 4 });
             GUI.color = Color.white;
         }
