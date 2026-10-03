@@ -108,6 +108,17 @@ namespace EscapeWithYourFriends.Items
             inventory.ServerMove(0, 9999);
             Check("out-of-range moves change nothing", inventory[7].Equals(before7) && AllValid(inventory));
 
+            // Shift-click (#287): hotbar is 0, 1 and 2 (hatchet, ten rope, three rope); slot 7 holds two.
+            inventory.ServerQuickMove(2);
+            Check("shift-click tops up the bag's rope first", inventory[2].IsEmpty && inventory[7].Count == 5);
+            inventory.ServerQuickMove(0);
+            Check("shift-click sends the hatchet to the first free bag slot",
+                  inventory[0].IsEmpty && inventory[Inventory.HotbarSlots].SameKind(new ItemStack(catalog.IndexOf(hatchet), 1)));
+            inventory.ServerQuickMove(Inventory.HotbarSlots);
+            Check("and back to the first free hotbar slot",
+                  inventory[0].SameKind(new ItemStack(catalog.IndexOf(hatchet), 1)) && inventory[Inventory.HotbarSlots].IsEmpty);
+            Check("shift-click conserved the rope", inventory.CountOf(rope) == 15);
+
             // Weight. Boat parts are heavy on purpose; the limit has to bite before the slots run out.
             float limit = inventory.CarryLimit;
             int refused = inventory.Add(part, 20);

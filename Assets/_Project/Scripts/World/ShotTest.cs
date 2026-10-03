@@ -77,8 +77,50 @@ namespace EscapeWithYourFriends.World
                 yield return Shoot(folder, "at_" + at);
             }
 
+            if (CommandLine.HasFlag("-shotsUi")) yield return Screens(folder, player, camera);
+
             Debug.Log($"[ShotTest] 5 shots in {folder}.");
             Application.Quit();
+        }
+
+        /// <summary>
+        /// <c>-shotsUi</c>: the bag, a chest and the trader, with a few things in each (#287). A
+        /// headless run builds no canvas, so these shots are the only check the screens get.
+        /// </summary>
+        static IEnumerator Screens(string folder, PlayerMotor player, Camera camera)
+        {
+            if (player == null || Data.ItemCatalog.Active == null) yield break;
+            Destroy(camera.gameObject);
+
+            var bag = player.GetComponent<Items.Inventory>();
+            var input = player.GetComponent<PlayerInputReader>();
+            int given = 0;
+            foreach (Data.ItemDef def in Data.ItemCatalog.Active.Items)
+                if (def != null && def.Icon != null && def.Weight < 3f && given < 12 && bag.Add(def, Mathf.Min(def.MaxStack, 1 + given % 4)) == 0)
+                    given++;
+
+            input.BotDriven = true;
+            input.BotPress("inventory");
+            yield return new WaitForSeconds(1f);
+            yield return Shoot(folder, "ui_bag");
+
+            Items.Storage chest = FindAnyObjectByType<Items.Storage>();
+            if (chest != null)
+            {
+                foreach (Data.ItemDef def in Data.ItemCatalog.Active.Items)
+                    if (def != null && def.Icon != null && chest.UsedSlots < 9) chest.Add(def, def.MaxStack);
+                player.ServerTeleport(chest.transform.position + chest.transform.forward * 1.5f + Vector3.up * 0.2f, 0f);
+                yield return new WaitForSeconds(1f);
+                yield return Shoot(folder, "ui_chest");
+            }
+
+            int n = 0;
+            foreach (Economy.ShopCounter counter in FindObjectsByType<Economy.ShopCounter>(FindObjectsSortMode.None))
+            {
+                player.ServerTeleport(counter.transform.position + counter.transform.forward * 1.5f + Vector3.up * 0.2f, 0f);
+                yield return new WaitForSeconds(1f);
+                yield return Shoot(folder, $"ui_shop{n++}");
+            }
         }
 
         static IEnumerator Shoot(string folder, string name)

@@ -259,6 +259,10 @@ namespace EscapeWithYourFriends.Items
         [ServerRpc]
         public void SelectSlot(int slot) => ServerSelect(slot);
 
+        /// <summary>Shift-click: the stack jumps between the hotbar and the rest of the bag.</summary>
+        [ServerRpc]
+        public void QuickMoveSlot(int from) => ServerQuickMove(from);
+
         /// <summary>
         /// Move a stack between this bag and a chest, from #46's drag and drop.
         ///
@@ -339,6 +343,29 @@ namespace EscapeWithYourFriends.Items
 
             _slots[from] = target;
             _slots[to] = source;
+        }
+
+        /// <summary>
+        /// Minecraft's shift-click. A hotbar stack goes to the bag and a bag stack to the hotbar:
+        /// topping up piles of the same thing first, then the first empty slot. Whatever finds no
+        /// room stays where it was. Built from <see cref="ServerMove"/>, so it cannot invent items.
+        /// </summary>
+        [Server]
+        public void ServerQuickMove(int from)
+        {
+            if (!InRange(from) || _slots[from].IsEmpty) return;
+
+            bool toBag = from < HotbarSlots;
+            int start = toBag ? HotbarSlots : 0;
+            int end = toBag ? _slots.Count : Mathf.Min(HotbarSlots, _slots.Count);
+
+            for (int pass = 0; pass < 2; pass++)
+                for (int i = start; i < end && !_slots[from].IsEmpty; i++)
+                {
+                    ItemStack target = _slots[i];
+                    bool fits = pass == 0 ? _slots[from].SameKind(target) && target.Space > 0 : target.IsEmpty;
+                    if (fits) ServerMove(from, i);
+                }
         }
 
         [Server]

@@ -10144,6 +10144,34 @@ trips it, and it only fires with the throttle held, so a parked car never moves.
 itself back more than 2 m from it on its wheels. The island tour keeps its own 2 s back-off, under
 the unstick, so its stall count still measures the obstacles rather than the rescue.
 
+
+## Inventory like Minecraft, and a screen worth looking at (#287 follow-up)
+
+**Shift-click.** `Inventory.ServerQuickMove(from)` (ServerRpc `QuickMoveSlot`) sends a hotbar stack
+(slots 0-4) to the bag (5-19) and a bag stack to the hotbar: it tops up piles of the same item
+first, then takes the first empty slot, and whatever finds no room stays put. It is two passes of
+`ServerMove`, so it cannot create or lose items. In the screen, shift-click on a bag slot stores the
+stack in the open chest when there is one and quick-moves it otherwise; a click on a chest slot
+takes the stack, as before. **Number keys:** 1-5 with the cursor over a bag slot moves that stack
+onto that hotbar key (swapping), and over a chest slot takes it out. Drag, shift-drag for half and
+right-click to store or sell are unchanged.
+
+**Layout.** The bag panel draws its fifteen bag slots as three rows and the hotbar as a fourth row
+under a gold rule, with the key numbers in the corners. The HUD hotbar hides while the screen is
+open, because the panel already shows it and the HUD copy sat under the hint text. The shop panel
+fits its visible rows (`FitShop`), so the barman's one line is no longer a lone row in a panel sized
+for the gunsmith's thirty-six.
+
+**Look.** `HudFactory.Rounded` draws a rounded square into a 32 px texture once, in code, and
+nine-slices it: panels, slots, the tooltip and the drag ghost all use it, with a separate 2 px ring
+for frames. Slots get a faint frame at rest, a bright one under the cursor and a gold one when
+chosen, plus a 3 px strip in the item's category colour (weapons red, food green, drink blue,
+medical pink, tools orange, quest gold). The drag ghost shows the icon. Shop lines read at 15 px.
+
+**Tests.** `-invTest` gains four shift-click checks (27 pass). The screens themselves can only be
+checked by eye: `-shots <folder> -shotsUi`, in a window, adds the bag, a stocked chest and every shop
+counter to the usual island shots.
+
 ---
 
 ## Data-driven content
