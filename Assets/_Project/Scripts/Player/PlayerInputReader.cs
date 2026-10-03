@@ -367,7 +367,8 @@ namespace EscapeWithYourFriends.Player
             if (_toggleSettings != null)
                 _toggleSettingsQueued |= _toggleSettings.WasPressedThisFrame();
 
-            if (UiOpen)
+            // A cutscene holds the body still too (#287): any key skips it, and that key moves nobody.
+            if (UiOpen || World.StoryBeat.Playing)
             {
                 // E opened the trader or the chest, so E closes it too.
                 if (UI.HudRoot.InventoryOpen && _interact.WasPressedThisFrame()) _toggleInventoryQueued = true;

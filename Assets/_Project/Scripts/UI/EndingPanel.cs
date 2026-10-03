@@ -17,6 +17,9 @@ namespace EscapeWithYourFriends.UI
     /// aeroplane that is already flying away from an island. The aeroplane is the cutscene; this
     /// draws on top of it, which also means the four of you watch your own copy fly out.
     ///
+    /// Since #287 the aeroplane leaving is the first shot of the epilogue (<see cref="StoryBeat"/>), and
+    /// this panel comes up after it, already black; the credits rolling off the top play the radio.
+    ///
     /// It reads <see cref="RunSummary"/>, which every peer has had filled in by one RPC, so nothing
     /// here waits on the network.
     /// </summary>
@@ -57,6 +60,10 @@ namespace EscapeWithYourFriends.UI
 
         float _started;
         float _creditsY;
+        bool _epilogue, _radio;
+
+        /// <summary>Credits scrolled this far are off the top of a 1080-high canvas.</summary>
+        const float RadioAt = 1700f;
 
         public void Build(RectTransform parent)
         {
@@ -89,7 +96,14 @@ namespace EscapeWithYourFriends.UI
         {
             if (_root == null) return;
 
-            if (!RunSummary.Over)
+            // #287: the epilogue plays first, and the radio after the credits; the panel waits under both.
+            if (RunSummary.Over && !_epilogue)
+            {
+                _epilogue = true;
+                StoryBeat.Play("ending", "Home", "Two weeks later.", null);
+            }
+
+            if (!RunSummary.Over || StoryBeat.Playing)
             {
                 if (_root.gameObject.activeSelf) _root.gameObject.SetActive(false);
                 return;
@@ -98,7 +112,9 @@ namespace EscapeWithYourFriends.UI
             if (!_root.gameObject.activeSelf)
             {
                 _root.gameObject.SetActive(true);
-                _started = Time.time;
+                if (_radio) return; // Back from the radio: the credits have already gone by.
+                // Already black: the epilogue ended on black, and nothing should show between the two.
+                _started = Time.time - FadeSeconds;
                 _creditsY = -40f;
                 _figures.text = Figures();
             }
@@ -117,6 +133,13 @@ namespace EscapeWithYourFriends.UI
 
             _creditsY += ScrollSpeed * Time.deltaTime;
             _creditsRect.anchoredPosition = new Vector2(0f, -40f + _creditsY);
+
+            // Gone off the top: the post-credits call.
+            if (_creditsY > RadioAt && !_radio)
+            {
+                _radio = true;
+                StoryBeat.Play("radio", "Post-credits", "The radio in the attic.", null);
+            }
         }
 
         /// <summary>

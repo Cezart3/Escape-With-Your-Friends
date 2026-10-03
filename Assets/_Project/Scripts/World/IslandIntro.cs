@@ -55,6 +55,9 @@ namespace EscapeWithYourFriends.World
                         if (motor != null && motor.IsOwner && Time.time - _foundAt > 1.5f)
                         {
                             bool second = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name.Contains("2");
+
+                            // #287. The attic and the storm first, on the first island; the beat queues behind it.
+                            if (!second) StoryBeat.Play("prologue", "The Ash Isles", "Radu Voinea's attic.", null);
                             _beat = StoryBeat.Play("arrive:" + (second ? "island2" : "island"),
                                 second ? "The far island" : "Day one",
                                 second ? "Somewhere on here is a way home." : "Whatever brought you here is on the tideline.",

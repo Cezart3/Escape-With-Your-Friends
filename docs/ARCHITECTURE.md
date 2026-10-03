@@ -10172,6 +10172,68 @@ medical pink, tools orange, quest gold). The drag ghost shows the icon. Shop lin
 checked by eye: `-shots <folder> -shotsUi`, in a window, adds the bag, a stocked chest and every shop
 counter to the usual island shots.
 
+## Cutscenes that act (#287 follow-up)
+
+The old beats were a camera orbiting the players with a title card. The scenes in `docs/STORY.md`
+are now filmed, with actors, sets, cuts, lines and sound. `StoryBeat` is the director (queue,
+camera, look, overlay), and `StoryScenes.cs` (a partial of it) holds the scenes in story order.
+
+**Cast.** `CutsceneCast` (Resources) holds the four friends (the `Body_Player_*` models, as Gus,
+Kiki, Mo and Rex), Bogdan (`Body_Castaway`), the 43-clip library and the nine sets. It is generated
+by `CutsceneCastBuilder.Build` in batchmode. `Puppet` is an actor with no animator controller: a
+two-input Playables mixer crossfades any clip into any other. Death01 played backwards is somebody
+getting up. A walk moves at the clip's own `averageSpeed`, so the feet do not skate. Props are
+pinned to a hand in LateUpdate. Puppets have no colliders and no network presence.
+
+**Sets.** `tools/art/sets.py` (Blender) builds `Sets.fbx` on the casino atlas:
+- the attic, with a table, chair, trunk, shelf, chimney, window and lantern;
+- the trawler Marisol and the reef;
+- the props: tin box and lid, journal, radio, photo and crate.
+
+The attic stands at (0, 900, 0) and the storm at (2600, 0, -2600), out of everyone's sight. While a
+scene plays, the players and Bogdan are hidden (`forceRenderingOff`), the HUD canvas is off and the
+input reader is gated.
+
+**Scenes.**
+
+| Scene | Trigger | What happens |
+|---|---|---|
+| prologue | First spawn on island 1 | Gus finds the tin in the attic, the chart, "who's got a boat?"; then the Marisol in the storm, the reef and the crash |
+| arrive:island | Island 1 arrival | The four wake around the player, get up, and look to the wreck |
+| arrive:island2 | Island 2 arrival | They come up out of the surf |
+| castaway | Bogdan found | Bogdan on his crate; shot/reverse-shot |
+| plane | Plane complete | Gus at the engine; a dance |
+| ending | Run over | Optional plane fly-by, "Two weeks later", the daylit attic |
+| radio | After the credits | Radu's voice on the radio in the dark attic |
+
+**Camera.** A CinemachineCamera at priority 30 does smoothstep dollies, tracking, handheld Perlin
+wobble and depth-of-field focus. The scene has its own Volume (DoF, vignette, grain, grade). Entering
+or leaving a set more than 40 m away is a cut, not a blend, so the brain never flies through the
+sky. On the island, `Frame` tries headings in 30° steps until every lens is out of the scenery and
+can see the middle. `Clear` rejects colliders, and also the bounding boxes of small collider-less
+meshes near the lens, such as the camp's shelter poles.
+
+**Behaviour.**
+- Every scene is skippable after 0.6 s with any key, and a scene asked for while another plays
+  waits in a queue.
+- Scenes are local to each peer.
+- The prologue plays once per process, so it replays on a loaded save.
+- Headless peers skip the visuals.
+- STORY.md's flashback and Act 3 scenes are not filmed, because their triggers do not exist yet.
+
+**Sound.** `Sfx` gains Thunder (a brown-noise rumble), Rain (noise with drops) and Radio (hiss and
+a warbling voice), all synthesised like the rest.
+
+**Tests.** `-cutsceneTest` (solo, headless, 4x speed) plays every scene and checks (64 pass):
+- the cast loads, every actor is a humanoid, and every clip and set a scene uses exists;
+- each scene ends by itself inside 41 s, with all its actors, three or more shots and moving bones;
+- no lens ends up inside the scenery;
+- nothing is left behind, and the players are visible again;
+- skip and queue behave.
+
+`-cutsceneShots <folder>`, windowed, plays the same run at normal speed and saves a picture 1.2 s
+into every shot.
+
 ---
 
 ## Data-driven content

@@ -132,6 +132,9 @@ namespace EscapeWithYourFriends.UI
                 // again on reconnect adoption (#111).
                 if (_camera == null) _camera = Camera.main;
 
+                // A cutscene has the screen to itself (#287); the ending panel waits under it.
+                _canvas.enabled = !World.StoryBeat.Playing;
+
                 _panel.Refresh(_entries);
                 _markers.Refresh(_entries, _camera);
                 _objective.Refresh(SquadModel.FindLocalAnchor());

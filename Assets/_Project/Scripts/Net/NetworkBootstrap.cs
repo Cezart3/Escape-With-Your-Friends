@@ -300,6 +300,7 @@ namespace EscapeWithYourFriends.Net
             World.DemoTest.Begin();
             World.LookTest.Begin();
             World.ShotTest.Begin();
+            World.CutsceneTest.Begin();
             World.LookRoute.Begin();
             World.DevCheats.Begin();
             World.Playthrough.Begin();
