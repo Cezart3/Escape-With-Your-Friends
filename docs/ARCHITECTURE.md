@@ -10127,6 +10127,23 @@ boulder or a log, in the clutter 30 m west of base camp. That is the bot driving
 check that matters still holds: no stall with nothing to stop it. `-treeTest` passes 70/0 and
 `-carTest` 25/0.
 
+
+## The buggy frees itself (#287 follow-up)
+
+The own-art pass put 0.7 m stumps and boulders on the island and the buggy has 0.55 m of ground
+clearance, so a driver who noses into one can sit there with the throttle open forever.
+`CarController.Unstick` watches for exactly that: on its wheels, no handbrake, throttle past half,
+and under 0.5 m/s for `_unstickDelay` (4 s). Then it zeroes the velocities, levels the body to its
+current heading, lifts it by the righting lift and sets it back 1.5 m against the throttle's
+direction. `Unstuck` counts the rescues.
+
+It is a rescue, not a driving aid: four seconds is long enough that nobody climbing a slope slowly
+trips it, and it only fires with the throttle held, so a parked car never moves.
+
+`-carTest` gains a wall check: an 8 m concrete slab 5 m ahead, throttle held, and the car must set
+itself back more than 2 m from it on its wheels. The island tour keeps its own 2 s back-off, under
+the unstick, so its stall count still measures the obstacles rather than the rescue.
+
 ---
 
 ## Data-driven content

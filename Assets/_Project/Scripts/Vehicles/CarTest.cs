@@ -141,6 +141,9 @@ namespace EscapeWithYourFriends.Vehicles
             yield return Flipping(car, body);
             yield return Driverless(car, buggy, motor);
 
+            Recentre(car, body);
+            yield return Wedged(car, body);
+
             Cleanup(buggy, car);
             yield return Touring(car, body);
 
@@ -504,6 +507,37 @@ namespace EscapeWithYourFriends.Vehicles
             Debug.Log($"[CarTest] driver ejected at {entry:0.0} m/s; the buggy braked itself to a stop.");
         }
 
+        // ---------------------------------------------------------------- wedged (#287)
+
+        /// <summary>
+        /// Throttle held into a wall it cannot climb: the car has to free itself, set back from the
+        /// wall and level, rather than sit there with its wheels spinning until somebody gives up.
+        /// </summary>
+        IEnumerator Wedged(CarController car, Rigidbody body)
+        {
+            Vector3 ahead = Flat(car.transform.forward).normalized;
+            var wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            wall.name = "CarTest.Wall";
+            wall.transform.SetPositionAndRotation(body.position + ahead * 5f + Vector3.up, Quaternion.LookRotation(ahead));
+            wall.transform.localScale = new Vector3(8f, 4f, 1f);
+
+            int before = car.Unstuck;
+            car.ServerDrive(1f, 0f, handbrake: false);
+
+            float deadline = Time.time + 14f;
+            while (Time.time < deadline && car.Unstuck == before) yield return null;
+
+            bool freed = car.Unstuck > before;
+            float gap = Vector3.Dot(wall.transform.position - body.position, ahead);
+            car.ServerDrive(0f, 0f, handbrake: true);
+            Object.Destroy(wall);
+
+            Check($"held against a wall, it frees itself ({(freed ? "set back" : "still pushing")}, {gap:0.0} m from the wall)",
+                  freed && gap > 2f && !car.IsUpsideDown);
+
+            yield return new WaitForSeconds(1f);
+        }
+
         // ---------------------------------------------------------------- across the island (#200)
 
         /// <summary>
@@ -589,6 +623,7 @@ namespace EscapeWithYourFriends.Vehicles
                     last = body.position;
                     stillFor = Mathf.Abs(car.ForwardSpeed) < 0.5f ? stillFor + Time.deltaTime : 0f;
 
+                    // Under the car's own unstick (four seconds): the tour backs off by itself first.
                     if (stillFor > 2f)
                     {
                         stalls++;

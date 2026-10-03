@@ -71,6 +71,10 @@ namespace EscapeWithYourFriends.Vehicles
         [Tooltip("Upward nudge given when righting, so the roll does not start inside the ground.")]
         [SerializeField] float _rightingLift = 0.8f;
 
+        [Tooltip("Seconds of throttle held against something that will not move before the car frees "
+                 + "itself: lifted and set back a car length's half the other way.")]
+        [SerializeField] float _unstickDelay = 4f;
+
         Rigidbody _body;
         Vehicle _vehicle;
 
@@ -84,6 +88,12 @@ namespace EscapeWithYourFriends.Vehicles
 
         /// <summary>How long the car has been on its roof and not going anywhere.</summary>
         float _upsideDownFor;
+
+        /// <summary>How long the throttle has been held with the car going nowhere.</summary>
+        float _stuckFor;
+
+        /// <summary>Times this car has freed itself. CarTest reads it.</summary>
+        public int Unstuck { get; private set; }
 
         /// <summary>Whether somebody was in seat 0 last step. See the release in FixedUpdate.</summary>
         bool _hadDriver;
@@ -392,6 +402,7 @@ namespace EscapeWithYourFriends.Vehicles
             }
 
             Right(Time.fixedDeltaTime);
+            Unstick(Time.fixedDeltaTime);
         }
 
         /// <summary>
@@ -433,6 +444,40 @@ namespace EscapeWithYourFriends.Vehicles
             Physics.SyncTransforms();
 
             Debug.Log($"[Car] {name} righted itself after {_rightingDelay:0.#}s on its roof.");
+        }
+
+        /// <summary>
+        /// Frees a car wedged on its wheels: a stump under the belly, or nose and tail against two
+        /// rocks. The buggy's 0.55 m of clearance is less than a stump is tall, and there is no
+        /// getting out and pushing (#287). After the throttle has been held for a few seconds with
+        /// the car going nowhere, it is lifted and set back from the way it was pushing, level, the
+        /// heading kept. The handbrake held is a driver who means to stand still, so it never fires.
+        /// </summary>
+        void Unstick(float dt)
+        {
+            if (IsUpsideDown || _handbrake || Mathf.Abs(_throttle) < 0.5f || Mathf.Abs(ForwardSpeed) > 0.5f)
+            {
+                _stuckFor = 0f;
+                return;
+            }
+
+            _stuckFor += dt;
+            if (_stuckFor < _unstickDelay) return;
+
+            _stuckFor = 0f;
+            Unstuck++;
+
+            Vector3 forward = Vector3.ProjectOnPlane(transform.forward, Vector3.up);
+            if (forward.sqrMagnitude < 0.01f) forward = Vector3.forward;
+            forward.Normalize();
+
+            _body.linearVelocity = Vector3.zero;
+            _body.angularVelocity = Vector3.zero;
+            _body.rotation = Quaternion.LookRotation(forward, Vector3.up);
+            _body.position += Vector3.up * _rightingLift - forward * (Mathf.Sign(_throttle) * 1.5f);
+            Physics.SyncTransforms();
+
+            Debug.Log($"[Car] {name} was stuck for {_unstickDelay:0.#}s with the throttle open; set it back 1.5 m.");
         }
 
         // ---------------------------------------------------------------- visuals
