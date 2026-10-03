@@ -99,17 +99,14 @@ namespace EscapeWithYourFriends.EditorTools
                                            new Vector3(-0.45f, DeckHeight + 0.55f, 1.6f),
                                            new Vector3(0.7f, 1.1f, 0.25f), collider: false);
 
-            // The watercraft kit's speedboat, once the art is in (ART-PLAN T11). Its own proportions
-            // in the hull's footprint, standing on the keel: the kit draws it 1.78 across and 4.27
-            // long, near enough the hull's 2.4 by 6 that nothing has to be stretched. The hull keeps
-            // its collider, so the floats, the seats and every harness see the boat they saw before.
-            var footprint = new Bounds(new Vector3(0f, 1.5f, 0f), new Vector3(HalfBeam * 2f, 3f, HalfLength * 2f));
-            if (ArtDress.FitBox(root.transform, footprint, "Boat", keepShape: true, "Art"))
+            // #249. Our own boat (tools/art/vehicles.py), drawn round the hull box: keel on y 0, the deck
+            // the riders stand on at 0.88, the transom bench the cargo lies on. The hull keeps its
+            // collider, so the floats, the seats and every harness see the boat they saw before.
+            if (VehicleArt.Art(root.transform, "Boat") != null)
             {
                 ArtDress.Strip(hull);
                 Object.DestroyImmediate(bow);
                 Object.DestroyImmediate(console);
-                Debug.Log($"[BoatBuilder] Dressed as {ArtCatalog.Find("Boat").File}.");
             }
 
             var seats = new List<Vehicle.Seat>();

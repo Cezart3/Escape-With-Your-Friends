@@ -88,6 +88,17 @@ namespace EscapeWithYourFriends.EditorTools
             POICatalog catalog = profile.Pois != null
                 ? profile.Pois
                 : AssetDatabase.LoadAssetAtPath<POICatalog>(CatalogPathFor(profile));
+
+            // #249. The rocks bake (#248) wrote the first island's places onto the second one's
+            // terrain: the plane stood off its edge and fell for ever, the parts with it, and no
+            // harness on island2 could pass. Whatever the profile says, an island bakes its own list.
+            string own = CatalogPathFor(profile);
+            if (catalog != null && AssetDatabase.GetAssetPath(catalog) != own)
+            {
+                Debug.LogError($"[POIFactory] {profile.Id} pointed at {AssetDatabase.GetAssetPath(catalog)}; "
+                               + $"baking {own} instead.");
+                catalog = AssetDatabase.LoadAssetAtPath<POICatalog>(own);
+            }
             if (catalog == null || spawner == null)
             {
                 Debug.LogError($"[POIFactory] No catalog at {CatalogPathFor(profile)} or no spawner; "

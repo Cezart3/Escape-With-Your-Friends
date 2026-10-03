@@ -63,16 +63,16 @@ namespace EscapeWithYourFriends.EditorTools
             // A radial engine: small, dense, and the reason the word "haul" is in the issue. Alone
             // it is slower than a crouch, which is the point - this is the one you fetch a friend for.
             new(EnginePath, "PlanePart.Engine", "engine",
-                new Vector3(1.1f, 1.0f, 1.3f), mass: 260f, alone: 0.30f, shared: 0.75f),
+                new Vector3(1.3f, 1.3f, 1.4f), mass: 260f, alone: 0.30f, shared: 0.75f),
 
             // Five metres of wing. Not heavy so much as impossible: it is the part that catches on
             // every tree between the wreck and the beach.
             new(WingPath, "PlanePart.Wing", "wing",
-                new Vector3(0.35f, 0.3f, 5.0f), mass: 140f, alone: 0.40f, shared: 0.85f),
+                new Vector3(1.5f, 0.25f, 4.85f), mass: 140f, alone: 0.40f, shared: 0.85f),
 
             // The one a single player can genuinely walk home, so that a group of two is never stuck.
             new(PropellerPath, "PlanePart.Propeller", "propeller",
-                new Vector3(2.2f, 0.25f, 0.3f), mass: 70f, alone: 0.55f, shared: 0.90f)
+                new Vector3(2.4f, 0.4f, 0.42f), mass: 70f, alone: 0.55f, shared: 0.90f)
         };
 
         /// <summary>Where the three prefabs live, in the order the parts are listed above.</summary>
@@ -128,14 +128,9 @@ namespace EscapeWithYourFriends.EditorTools
             box.size = part.Size;
             box.center = new Vector3(0f, part.Size.y * 0.5f, 0f);
 
-            // The visual is a child with its collider stripped, so the one collider on the root is
-            // the only thing anybody has to ignore when they pick it up.
-            GameObject visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            visual.name = "Body";
-            visual.transform.SetParent(root.transform, false);
-            visual.transform.localPosition = new Vector3(0f, part.Size.y * 0.5f, 0f);
-            visual.transform.localScale = part.Size;
-            UnityEngine.Object.DestroyImmediate(visual.GetComponent<Collider>());
+            // #249. The same piece the plane wears in its hole, lying on the ground: the collider above
+            // is its size (tools/art/vehicles.py prints it), so nothing here is scaled.
+            VehicleArt.Wear(root.transform, "Part_" + part.Name.Substring("PlanePart.".Length));
 
             var planePart = root.AddComponent<PlanePart>();
 

@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using EscapeWithYourFriends.Vehicles;
 using EscapeWithYourFriends.World;
 using FishNet.Component.Transforming;
@@ -134,11 +133,8 @@ namespace EscapeWithYourFriends.EditorTools
             Box(root, "Fitted.propeller", new Vector3(0f, 1.7f, HalfLength + 1.2f),
                 new Vector3(2.4f, 0.22f, 0.12f), solid: false);
 
-            // T14. After the holes exist, so the model's loose pieces have somewhere to go.
+            // #249. Our own aeroplane over the boxes, after the holes exist so each can wear its piece.
             Dress(root.transform);
-
-            // #203. No catalogue plane took: primitives, so it is at least not boxes.
-            if (root.transform.Find("Art") == null) Composite(root.transform);
 
             // ---- #72. Four of you get off this island, so four seats.
 
@@ -213,218 +209,27 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
-        /// Quarter turns about the vertical that point the model's nose along +z, the way the
-        /// airframe flies. Not seen yet: if the first build shows it flying tail first, this is 2.
-        /// </summary>
-        const int PlaneTurns = 0;
-
-        /// <summary>The boxes the model replaces. The wheels stay: they are what touches the strip.</summary>
-        static readonly string[] Airframe =
-        {
-            "Fuselage", "Cockpit", "Wing.Port", "Tail.Fin", "Tail.Stabiliser",
-            "Fitted.engine", "Fitted.wing", "Fitted.propeller",
-        };
-
-        /// <summary>
-        /// The catalogue's plane over the whole airframe, kept in shape (T14, docs/ART-PLAN.md).
-        ///
-        /// A hole has to stay a hole, so any piece of the model named like a part - a propeller, an
-        /// engine, the starboard wing - is moved under its <c>Fitted.*</c> box, and
-        /// <see cref="PlaneAssembly"/> hides and shows it with the box. A model that is one mesh has
-        /// nothing to move: it is drawn whole, and those holes keep their boxes so they still read.
-        /// Every collider stays where the greybox put it.
+        /// #249: the airframe from tools/art/vehicles.py under an <c>Art</c> child, and each of the three
+        /// holes wearing its own piece in the plane's space, so <see cref="PlaneAssembly"/> shows and
+        /// hides it with the box and the propeller turns it. Only the looks change: every collider
+        /// stays where the greybox put it, the wheels included.
         /// </summary>
         static void Dress(Transform root)
         {
-            var pieces = new List<GameObject>();
-            Bounds box = default;
+            if (VehicleArt.Art(root, "Plane") == null) return;
 
-            foreach (string name in Airframe)
+            foreach (string name in new[] { "Fuselage", "Cockpit", "Wing.Port", "Tail.Fin", "Tail.Stabiliser",
+                                            "Gear.Port", "Gear.Starboard", "Gear.Tail" })
+                ArtDress.Strip(root.Find(name).gameObject);
+
+            foreach ((string hole, string id) in new[] { ("Fitted.engine", "Plane_Engine"),
+                                                         ("Fitted.wing", "Plane_Wing"),
+                                                         ("Fitted.propeller", "Plane_Propeller") })
             {
-                Transform piece = root.Find(name);
-                if (piece == null) continue;
-
-                // Unit cubes, unrotated, so a box is its position and scale.
-                var bounds = new Bounds(piece.localPosition, piece.localScale);
-                if (pieces.Count == 0) box = bounds;
-                else box.Encapsulate(bounds);
-                pieces.Add(piece.gameObject);
+                Transform box = root.Find(hole);
+                ArtDress.Strip(box.gameObject);
+                VehicleArt.InRootSpace(box, id);
             }
-
-            // No catalogue row, no model: T14 keeps the greybox until a CC0 plane is found.
-            if (!ArtCatalog.Models.Any(m => m.Id == "Plane")) return;
-            if (!ArtDress.FitBox(root, box, "Plane", true, "Art", PlaneTurns)) return;
-
-            Transform art = root.Find("Art");
-
-            // An FBX instance's children cannot be re-parented; the prefab only needs the meshes.
-            PrefabUtility.UnpackPrefabInstance(art.GetChild(0).gameObject, PrefabUnpackMode.Completely,
-                                               InteractionMode.AutomatedAction);
-            var filled = new HashSet<Transform>();
-
-            foreach (Renderer renderer in art.GetComponentsInChildren<Renderer>(true))
-            {
-                string name = renderer.name.ToLowerInvariant();
-                float side = root.InverseTransformPoint(renderer.bounds.center).x;
-
-                string hole = name.Contains("prop") ? "Fitted.propeller"
-                    : name.Contains("engine") || name.Contains("motor") ? "Fitted.engine"
-                    : name.Contains("wing") && side > 0.5f ? "Fitted.wing"
-                    : null;
-                if (hole == null) continue;
-
-                // Under an unscaled holder: straight under the stretched box, a blade at 45 degrees
-                // would shear.
-                Transform target = root.Find(hole);
-                Transform holder = target.Find("Art");
-                if (holder == null)
-                {
-                    holder = new GameObject("Art").transform;
-                    holder.SetParent(target, false);
-                    Vector3 s = target.localScale;
-                    holder.localScale = new Vector3(1f / s.x, 1f / s.y, 1f / s.z);
-                }
-
-                renderer.transform.SetParent(holder, true);
-                filled.Add(target);
-            }
-
-            // One mesh, or none of its pieces named: the model would draw the plane whole over its
-            // own holes. The greybox reads as unfinished; that plane would not.
-            if (filled.Count == 0)
-            {
-                Object.DestroyImmediate(art.gameObject);
-                Debug.LogWarning($"[PlaneBuilder] {ArtCatalog.Find("Plane").File} has no separate propeller, engine "
-                                 + "or starboard wing, so it cannot show the holes. Kept the greybox.");
-                return;
-            }
-
-            // The moved pieces leave the wrapper's LOD group; PlaneAssembly shows and hides them now.
-            var group = art.GetComponent<LODGroup>();
-            if (group != null)
-            {
-                LOD[] lods = group.GetLODs();
-                group.SetLODs(new[] { new LOD(lods[0].screenRelativeTransitionHeight,
-                                              art.GetComponentsInChildren<Renderer>(true)) });
-                group.RecalculateBounds();
-            }
-
-            foreach (GameObject piece in pieces)
-                if (!piece.name.StartsWith("Fitted.") || filled.Contains(piece.transform))
-                    ArtDress.Strip(piece);
-
-            Debug.Log($"[PlaneBuilder] Dressed as {ArtCatalog.Find("Plane").File}; "
-                      + $"{filled.Count} of 3 holes hold a piece of it.");
-        }
-
-        /// <summary>
-        /// #203: the boxes become an aeroplane. No plane model is in the project (the closed PR's
-        /// Quaternius one was never downloaded), so this is a composite of primitives in the
-        /// <see cref="Palette"/>: a capsule fuselage, a canopy, a wing, a fin and a tail plane under
-        /// an <c>Art</c> child that carries the <see cref="ArtVisual"/> marker the look harness reads.
-        ///
-        /// Only the looks change. The fuselage and port wing keep their colliders, the wheels stay,
-        /// and the three <c>Fitted.*</c> holes keep their names and their place - <see cref="PlaneAssembly"/>
-        /// hides and shows the whole child - but each wears a part-shaped mesh instead of a plain
-        /// box: a cowling for the engine, a hub and two crossed blades for the propeller, a red panel
-        /// for the wing that matches the one already on.
-        /// </summary>
-        static void Composite(Transform root)
-        {
-            var art = new GameObject("Art");
-            art.transform.SetParent(root, false);
-
-            var visual = art.AddComponent<ArtVisual>();
-            visual.Id = "Plane";
-            visual.Category = ArtCategory.Vehicle;
-
-            Mesh sphere = PrimitiveMesh(PrimitiveType.Sphere);
-            Mesh capsule = PrimitiveMesh(PrimitiveType.Capsule);
-            Mesh cube = PrimitiveMesh(PrimitiveType.Cube);
-
-            // A capsule stands along its own Y and is 2 tall; laid along z and stretched to the
-            // fuselage's length it is a rounded tube whose ends are ellipsoids.
-            Part(art.transform, "Fuselage", capsule, "Plastic", new Vector3(0f, 1.6f, 0f),
-                 Quaternion.Euler(90f, 0f, 0f), new Vector3(1.3f, HalfLength, 1.3f));
-
-            Part(art.transform, "Canopy", sphere, "Dark", new Vector3(0f, 2.3f, 0.9f),
-                 Quaternion.identity, new Vector3(1.0f, 0.75f, 1.8f));
-
-            Part(art.transform, "Wing.Port", cube, "Accent", new Vector3(-(WingSpan * 0.5f + 0.6f), 1.6f, 0.4f),
-                 Quaternion.identity, new Vector3(WingSpan, 0.22f, 1.5f));
-
-            // Swept back a little: a vertical fin reads as a fence.
-            Part(art.transform, "Tail.Fin", cube, "Accent", new Vector3(0f, 2.8f, -HalfLength + 0.4f),
-                 Quaternion.Euler(-15f, 0f, 0f), new Vector3(0.18f, 1.7f, 1.2f));
-
-            Part(art.transform, "Tail.Stabiliser", cube, "Accent", new Vector3(0f, 2.1f, -HalfLength + 0.5f),
-                 Quaternion.identity, new Vector3(3f, 0.18f, 0.9f));
-
-            // The greybox pieces the composite replaces. Fuselage and Wing.Port keep their colliders.
-            foreach (string name in new[] { "Fuselage", "Cockpit", "Wing.Port", "Tail.Fin", "Tail.Stabiliser" })
-            {
-                Transform piece = root.Find(name);
-                if (piece != null) ArtDress.Strip(piece.gameObject);
-            }
-
-            foreach (string name in new[] { "Gear.Port", "Gear.Starboard", "Gear.Tail" })
-                Skin(root.Find(name), "Dark");
-
-            // The holes. Still one child each, so PlaneAssembly needs no change.
-            Transform engine = root.Find("Fitted.engine");
-            engine.GetComponent<MeshFilter>().sharedMesh = sphere;
-            Skin(engine, "Metal");
-
-            Transform propeller = root.Find("Fitted.propeller");
-            Skin(propeller, "Dark");
-            Transform blades = Holder(propeller);
-            Part(blades, "Blade.Vertical", cube, "Dark", Vector3.zero, Quaternion.identity, new Vector3(0.22f, 2.4f, 0.12f));
-            Part(blades, "Hub", sphere, "Metal", Vector3.zero, Quaternion.identity, new Vector3(0.35f, 0.35f, 0.5f));
-
-            Skin(root.Find("Fitted.wing"), "Accent");
-
-            Debug.Log("[PlaneBuilder] Dressed as a primitive composite (no plane model in the project).");
-        }
-
-        /// <summary>The mesh of a built-in primitive, borrowed and the object thrown away.</summary>
-        static Mesh PrimitiveMesh(PrimitiveType shape)
-        {
-            GameObject go = GameObject.CreatePrimitive(shape);
-            Mesh mesh = go.GetComponent<MeshFilter>().sharedMesh;
-            Object.DestroyImmediate(go);
-            return mesh;
-        }
-
-        /// <summary>One visual-only piece: a mesh, a palette material, no collider.</summary>
-        static void Part(Transform parent, string name, Mesh mesh, string material, Vector3 position,
-                         Quaternion rotation, Vector3 scale)
-        {
-            var go = new GameObject(name);
-            go.transform.SetParent(parent, false);
-            go.transform.SetLocalPositionAndRotation(position, rotation);
-            go.transform.localScale = scale;
-
-            go.AddComponent<MeshFilter>().sharedMesh = mesh;
-            go.AddComponent<MeshRenderer>().sharedMaterial = Palette.Named(material);
-        }
-
-        static void Skin(Transform piece, string material)
-        {
-            if (piece != null && piece.TryGetComponent(out MeshRenderer renderer))
-                renderer.sharedMaterial = Palette.Named(material);
-        }
-
-        /// <summary>
-        /// An unscaled child of a stretched box, so a piece hung under it keeps its own size: a blade
-        /// parented straight to a 2.4 x 0.22 x 0.12 box would inherit the squash.
-        /// </summary>
-        static Transform Holder(Transform box)
-        {
-            var holder = new GameObject("Art").transform;
-            holder.SetParent(box, false);
-            Vector3 s = box.localScale;
-            holder.localScale = new Vector3(1f / s.x, 1f / s.y, 1f / s.z);
-            return holder;
         }
 
         static GameObject Box(GameObject root, string name, Vector3 position, Vector3 scale, bool solid)

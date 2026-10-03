@@ -152,6 +152,17 @@ namespace EscapeWithYourFriends.World
                     Target = slots.transform.position + Vector3.up * 1.2f,
                 });
 
+            // #249. The buggy and the boat are not landmarks; three quarters from the front, close.
+            foreach (string label in new[] { "buggy", "boat" })
+            {
+                Vehicles.Vehicle v = System.Array.Find(FindObjectsByType<Vehicles.Vehicle>(FindObjectsSortMode.None),
+                                                       x => x.Label == label);
+                if (v == null) continue;
+                Transform t = v.transform;
+                spots.Add(new Spot { Name = "the " + label, Eye = t.TransformPoint(3.5f, 2.6f, 5.5f),
+                                     Target = t.TransformPoint(0f, 0.9f, 0f) });
+            }
+
             Overlook(spots);
             Around(spots, "plane", "the plane", 18f, 5f);
 
