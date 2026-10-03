@@ -30,6 +30,14 @@ Shader "EWYF/Stylized"
         _RimStrength ("Rim light", Range(0, 1)) = 0.2
         _Smoothness ("Smoothness (hard highlight above 0.3)", Range(0, 1)) = 0.1
         [HDR] _EmissionColor ("Emission (with _EMISSION)", Color) = (0, 0, 0, 1)
+        [Toggle(_SELF_LIT)] _SelfLit ("Emission tinted by the albedo (screens, neon)", Float) = 0
+
+        [Header(Reflection)]
+        [Toggle(_REFLECT)] _Reflect ("Reflects the probe, box-projected (the casino floor)", Float) = 0
+        _BoxMin ("Room box min, object space", Vector) = (-1, 0, -1, 0)
+        _BoxMax ("Room box max, object space", Vector) = (1, 1, 1, 0)
+        _ProbeAt ("Probe position, object space", Vector) = (0, 0.5, 0, 0)
+        [NoScaleOffset] _RoomCube ("Room cubemap (CasinoLook sets it)", Cube) = "black" {}
 
         [Header(Surface)]
         _Cutoff ("Alpha cutoff", Range(0, 1)) = 0.5
@@ -63,6 +71,9 @@ Shader "EWYF/Stylized"
             half4 _BaseColor;
             half4 _ShadowTint;
             half4 _EmissionColor;
+            float4 _BoxMin;
+            float4 _BoxMax;
+            float4 _ProbeAt;
             half _Detail;
             half _Saturation;
             half _Brightness;
@@ -76,6 +87,8 @@ Shader "EWYF/Stylized"
             half _Wind;
             half _WindSway;
             half _WindFlutter;
+            half _SelfLit;
+            half _Reflect;
         CBUFFER_END
 
         // Set every frame by Wind.cs, for every material at once (#244). xy: direction on the ground,
@@ -137,6 +150,8 @@ Shader "EWYF/Stylized"
             #pragma shader_feature_local_vertex _WIND
             #pragma shader_feature_local_fragment _DETAIL_SOFTEN
             #pragma shader_feature_local_fragment _EMISSION
+            #pragma shader_feature_local_fragment _SELF_LIT
+            #pragma shader_feature_local_fragment _REFLECT
 
             // Per-pixel lamps only: every tier renders them per pixel, and a per-vertex lamp would be
             // the smooth gradient this shader exists to remove.
@@ -188,6 +203,32 @@ Shader "EWYF/Stylized"
                 return output;
             }
 
+            TEXTURECUBE(_RoomCube);
+            SAMPLER(sampler_RoomCube);
+
+            // The casino floor (#252). Box projection done here, in the room's own frame, rather than
+            // through URP's: the room is turned to face the camp, and the pipeline's boxes are
+            // axis-aligned unless probe rotation is on everywhere. The box is the material's.
+            half3 Reflection(float3 positionWS, half3 normal)
+            {
+                half3 view = normalize(GetWorldSpaceViewDir(positionWS));
+                float3 p = TransformWorldToObject(positionWS);
+                float3 d = TransformWorldToObjectDir(reflect(-view, normal));
+                float3 far = (d > 0 ? _BoxMax.xyz : _BoxMin.xyz) - p;
+                float3 t = far / d;
+                d = p + d * min(min(t.x, t.y), t.z) - _ProbeAt.xyz;
+                half3 dir = TransformObjectToWorldDir(d);
+
+                // Sharper than URP's roughness curve: the neon is two centimetres thick and a blurred
+                // mip loses it altogether.
+                half mip = (1 - _Smoothness) * 4;
+                // The room's own probe, bound by CasinoLook: URP's probe atlas never hands it over as
+                // unity_SpecCube0, and only this floor wants it.
+                half3 env = SAMPLE_TEXTURECUBE_LOD(_RoomCube, sampler_RoomCube, dir, mip).rgb;
+                half fresnel = 0.35 + 0.65 * pow(1 - saturate(dot(normal, view)), 3);
+                return env * fresnel * _Smoothness * 1.5;
+            }
+
             half3 Albedo(float2 uv, out half alpha)
             {
                 half4 fine = BaseSample(uv);
@@ -230,6 +271,12 @@ Shader "EWYF/Stylized"
                 // The campfire's flame (StationBuilder): it has to read at night.
                 #if defined(_EMISSION)
                     colour += _EmissionColor.rgb;
+                #endif
+                #if defined(_SELF_LIT)
+                    colour += albedo * _EmissionColor.rgb;
+                #endif
+                #if defined(_REFLECT)
+                    colour += Reflection(input.positionWS, normal);
                 #endif
                 colour = StylizedFog(colour, input.fogFactor, input.positionWS);
                 return half4(colour, 1);

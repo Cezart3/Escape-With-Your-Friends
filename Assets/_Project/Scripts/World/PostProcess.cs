@@ -65,6 +65,17 @@ namespace EscapeWithYourFriends.World
             Debug.Log("[PostProcess] Global look on: ACES, graded, bloom, vignette.");
         }
 
+        /// <summary>
+        /// Indoors under neon (CasinoLook, #252): the bloom starts lower and spreads further, so every
+        /// tube haloes. Out in daylight it would bleach the sand.
+        /// </summary>
+        internal static void Indoors(bool on)
+        {
+            if (!_started) return;
+            _bloom.threshold.value = on ? 0.9f : 1.05f;
+            _bloom.intensity.value = on ? 0.9f : 0.45f;
+        }
+
         /// <summary>The two options that live here, bloom and SMAA, read again. Called by VideoSettings.</summary>
         internal static void Refresh()
         {

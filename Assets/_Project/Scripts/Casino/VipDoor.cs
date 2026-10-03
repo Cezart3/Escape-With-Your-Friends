@@ -30,13 +30,49 @@ namespace EscapeWithYourFriends.Casino
         /// <summary>True for a point on the VIP side.</summary>
         public bool Inside(Vector3 point) => Vector3.Dot(point - transform.position, transform.forward) < 0f;
 
+        NetworkObject Local => ClientManager != null && ClientManager.Connection != null
+            ? ClientManager.Connection.FirstObject
+            : null;
+
+        // #252: the neon arch round the door is lit while this player holds enough to go in, dark
+        // while they do not. Checked twice a second; a property block, so the material stays shared.
+        Renderer _neon;
+        MaterialPropertyBlock _block;
+        float _next;
+        bool? _lit;
+
+        void Update()
+        {
+            if (Time.time < _next) return;
+            _next = Time.time + 0.5f;
+
+            if (_neon == null)
+            {
+                Transform t = transform.Find("Model.Neon");
+                if (t == null) { enabled = false; return; }
+                _neon = t.GetComponent<Renderer>();
+                _block = new MaterialPropertyBlock();
+            }
+
+            NetworkObject local = Local;
+            Wallet wallet = local != null ? local.GetComponent<Wallet>() : null;
+            bool lit = wallet != null && wallet.Chips >= Minimum;
+            if (lit == _lit) return;
+
+            _lit = lit;
+            if (lit) _neon.SetPropertyBlock(null);
+            else
+            {
+                _block.SetColor("_EmissionColor", Color.black);
+                _neon.SetPropertyBlock(_block);
+            }
+        }
+
         public string Prompt
         {
             get
             {
-                NetworkObject local = ClientManager != null && ClientManager.Connection != null
-                    ? ClientManager.Connection.FirstObject
-                    : null;
+                NetworkObject local = Local;
                 Wallet wallet = local != null ? local.GetComponent<Wallet>() : null;
                 if (wallet == null) return string.Empty;
 

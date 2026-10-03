@@ -10308,6 +10308,70 @@ the hull reuses the old boat-part model). They run 180 to 1156 triangles.
   outboard and fits both. It then fetches the chart from the cave and the fuel from the village,
   and fits those.
 
+
+## The casino's look (#252)
+
+The inside of the casino was a salvage shack: mismatched decking, string lights with bottles, and
+lamps that cycled the whole colour wheel. #252 makes it a room that reads as a casino the moment you
+walk in: near-black plum walls, gold trim, a polished checkered floor, neon over every game, and
+chandeliers.
+
+**The model** (`tools/art/buildings.py`, `casino_interior`):
+- **Floor.** Plum and black tiles with a gold line every four tiles, and a ruby carpet with a gold
+  border under the roulette and blackjack tables. The tiles are a mesh of their own,
+  `Bld_Casino_Floor`.
+- **Walls.** An obsidian wainscot, a gold rail and black above it, plus a black ceiling. The lining
+  blinds the windows from the inside on purpose: a casino has no daylight.
+- **Neon** (`Bld_Casino_Neon`, self-lit):
+  - a tube along the top of every wall (magenta down the sides, teal at the ends);
+  - BLACKJACK, ROULETTE and SLOTS signs, with each slot machine's name above it;
+  - the CASINO sign outside, and CASH and CHIPS on the cages.
+- **Chandeliers** in gold, one over the roulette and one in the VIP room. Velvet ropes on gold posts
+  either side of the VIP door. The VIP door gets a neon arch (`Bld_VipDoor_Neon`).
+- The string lights, the hanging bottles and the decking are gone.
+
+**Materials.** All three are twins of the slots' atlas, made by `SlotFactory.AtlasTwin`. Each is
+copied from the atlas on every run.
+- `CasinoNeon`: `_SELF_LIT` with emission 2.6. The tube is lit by its own albedo, so it shows its
+  colour and blooms.
+- `SlotScreenLit`: `_SELF_LIT` at 0.55. It is on the reel windows and every symbol, so the reels
+  read like a screen in a dark room.
+- `CasinoFloor`: `_REFLECT` at smoothness 0.85.
+
+**Two shader keywords** were added to `EWYF/Stylized`, both off by default:
+- `_SELF_LIT` adds `albedo * _EmissionColor`.
+- `_REFLECT` box-projects a cubemap into the room. The material carries the box (`_BoxMin`,
+  `_BoxMax`, `_ProbeAt`, in object space). The projection is done in the room's own frame because the
+  casino is turned to face the camp, and URP's box projection is axis-aligned.
+
+The cubemap is the room's own. A realtime `ReflectionProbe` (256 px, drawn by script) stands in the
+middle of the front room. Two seconds after the casino arrives, `CasinoLook` draws it once and hands
+the result to the floor through a property block as `_RoomCube`. It is never drawn again. URP's
+probe atlas does not pass a probe to a renderer as `unity_SpecCube0`, so the floor is given its probe
+directly.
+
+**Runtime.**
+- `CasinoLook` raises the bloom (`PostProcess.Indoors`) while the camera is inside the building:
+  threshold 1.05 → 0.9, intensity 0.45 → 0.9. Outside, the old bloom applies.
+- `TackyLights` now drifts each lamp ±0.05 of hue around the colour `GreyboxBuilder` gave it, which
+  is the colour of the nearest neon. Before, every lamp cycled the whole wheel. The flicker is down
+  from 0.35 to 0.15.
+- `VipDoor` lights its neon arch while the local player holds the minimum chips, and darkens it
+  (emission zeroed by a property block) while they do not. It checks twice a second.
+
+**Cost.**
+- The probe is drawn once: six 256 px renders. Low and Medium have realtime probes off, so there the
+  floor stays matte and costs nothing.
+- The floor adds one cubemap sample per pixel.
+- The neon is about 5k triangles in one draw call with no shadows. The floor is 416 triangles.
+- No new lights, and no shadows on any of them. On Low, URP's per-object limit of 2 lights already
+  caps the lamps.
+
+**Tests.** `-casinoTest`, `-casinoFloorTest` and `-slotTest` pass unchanged. The look itself cannot
+be tested headless (there is no camera), so it is judged from `-beautyShots ... -beautySpots casino`.
+`-beautySpots <word>` is new. It keeps only the spots whose name contains that word, so a PR about
+one place shoots only that place.
+
 ---
 
 ## Data-driven content
