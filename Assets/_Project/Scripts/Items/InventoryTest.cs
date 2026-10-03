@@ -61,7 +61,7 @@ namespace EscapeWithYourFriends.Items
 
             ItemDef rope = Need(catalog, "rope");
             ItemDef hatchet = Need(catalog, "hatchet");
-            ItemDef part = Need(catalog, "boat_part");
+            ItemDef part = Need(catalog, "hull_planks");
             if (rope == null || hatchet == null || part == null) return;
 
             _passed = 0;

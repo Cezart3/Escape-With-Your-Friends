@@ -122,7 +122,7 @@ namespace EscapeWithYourFriends.Economy
             ItemDef flint = items.Find("flint");
             ItemDef hatchet = items.Find("hatchet");
             ItemDef knife = items.Find("knife");
-            ItemDef boatPart = items.Find("boat_part");
+            ItemDef boatPart = items.Find("outboard");
 
             if (rope == null || flint == null || hatchet == null || knife == null || boatPart == null)
             {

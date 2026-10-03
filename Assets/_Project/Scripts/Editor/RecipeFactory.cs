@@ -102,6 +102,10 @@ namespace EscapeWithYourFriends.EditorTools
             new("fishing_rod", "Fishing Rod", "Two planks and a lot of rope.",
                 CraftStation.Bench, 6f, 2, new[] { ("plank", 2), ("rope", 2) }, outputItem: "fishing_rod"),
 
+            // #274. One of the boat's four parts: the wreck's planks and rope, worked at the bench.
+            new("hull_planks", "Hull Planks", "Planks pegged to the curve of a hull. One part of the boat.",
+                CraftStation.Bench, 10f, 2, new[] { ("plank", 4), ("rope", 2) }, outputItem: "hull_planks"),
+
             new("bottle", "Bottle", "Scrap and sailcloth, shaped into something that holds water.",
                 CraftStation.Bench, 4f, 2, new[] { ("scrap_metal", 1), ("cloth", 1) },
                 outputItem: "empty_bottle"),

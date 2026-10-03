@@ -10265,6 +10265,51 @@ not RPCs, so no networked object has to exist for it; that matters in the attic 
 
 ---
 
+## The lifeboat's four parts (#274)
+
+Act 1 used to be "buy four boat parts from the Trader". Now each of the four parts comes from a
+different kind of play:
+
+| Part | Item | Where |
+|------|------|-------|
+| Hull planks | `hull_planks`, 14 kg | Crafted at the bench from 4 planks and 2 rope. The wreck's loot holds exactly that. |
+| Outboard | `outboard`, 18 kg | Bought from the Trader for 4800. It is the only boat part on the shelf, and it cannot be sold back. |
+| Fuel | `fuel_drum`, 16 kg | Lies by the totem in the cult village. |
+| Chart | `chart_page`, 0.1 kg | Lies at the back of the cave. |
+
+The four models are new, drawn in `tools/art/items.py` (`outboard`, `fuel_drum`, `chart_page`;
+the hull reuses the old boat-part model). They run 180 to 1156 triangles.
+
+**How it works.**
+- `BoatVoyage` is still the authority. `Parts` is a table of item id, name and where to find it.
+  `_fitted` (synced) and the group's static `_owned` hold one bit per part, not a count.
+- `Wants(id)` says whether that item is a part the boat still lacks. `ServerFit(id)` sets its bit.
+- `Vehicle` asks `Wants` for both the prompt ("Fit the Outboard Motor to the boat (1/4)") and the
+  press. Any other item behaves as before.
+- The objective line is `"Fix the boat. Missing: " + MissingLine()`, for example "the chart (the
+  end of the cave), fuel (the cult village)".
+- `POISpawner.Quest` places the fuel and the chart in the place's own frame, so they turn with
+  it. Each is dropped onto the floor from just under the ceiling. This happens on `Island` only:
+  the second island's hull is seaworthy on arrival, because the parts belong to the group.
+- `WorldItem.Trim` never evicts a quest item. The parts are placed first, so without this they
+  would be the oldest items on the ground and the first ones the 240-stack cap removes.
+- `boat_part` is gone, along with its item asset, prefab and icon.
+
+**Not done.**
+- A part dropped in the sea is lost. Quest items do not respawn.
+- The cult does not yet guard its fuel any harder than its village already does.
+
+**Tests.**
+- `-voyageTest` fits each of the four ids in turn. It checks that the report names what is missing
+  and where, and that rope is not taken as a part.
+- `-shopTest`, `-economyTest` and `-animalTest` price the boat from the outboard.
+- `-invTest` and `-itemTest` use the hull planks as their heavy item.
+- `-playthrough` picks up the wreck's planks and rope, crafts the hull at the bench, buys the
+  outboard and fits both. It then fetches the chart from the cave and the fuel from the village,
+  and fits those.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**

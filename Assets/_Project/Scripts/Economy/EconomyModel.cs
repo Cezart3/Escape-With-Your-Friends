@@ -299,7 +299,7 @@ namespace EscapeWithYourFriends.Economy
 
             foreach (ShopDef.Offer offer in shop.Offers)
             {
-                if (!offer.IsValid || offer.Item == null || offer.Item.Id != "boat_part") continue;
+                if (!offer.IsValid || offer.Item == null || offer.Item.Id != "outboard") continue;
 
                 total += offer.Price * Mathf.Max(1, offer.Stock);
             }

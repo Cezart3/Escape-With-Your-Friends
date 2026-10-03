@@ -92,9 +92,9 @@ MonoBehaviour:
   - Item: {fileID: 11400000, guid: bca846cb3a39c9d4cb5289bde5b78b74, type: 2}
     Price: 14
     Stock: -1
-  - Item: {fileID: 11400000, guid: 43200af100ee5ae44884e6b2ea684b1c, type: 2}
-    Price: 1400
-    Stock: 4
+  - Item: {fileID: 11400000, guid: 1c1eba8b9e041c64383672206473de0d, type: 2}
+    Price: 4800
+    Stock: 1
   - Item: {fileID: 11400000, guid: dcee8da054f77c941a3fad5a621b9b55, type: 2}
     Price: 50000
     Stock: -1

@@ -138,6 +138,8 @@ namespace EscapeWithYourFriends.World
                 placed++;
 
                 if (Loot.ContainsKey(placement.Id)) StartCoroutine(Scatter(placement.Id, placement.Position));
+                if (Quest.ContainsKey(placement.Id) && gameObject.scene.name == "Island")
+                    StartCoroutine(PlaceQuest(placement.Id, instance.transform));
             }
 
             Debug.Log($"[POISpawner] Placed {placed} points of interest"
@@ -156,6 +158,33 @@ namespace EscapeWithYourFriends.World
                                 ("plank", 4), ("bandage", 2), ("empty_bottle", 2) },
             ["cave"] = new[] { ("shotgun_shell", 12), ("torch", 1), ("flint", 3) },
         };
+
+        /// <summary>
+        /// #274. Two of the boat's four parts lie where Act 1 sends you for them, on the first island
+        /// only: the cult's fuel by their totem and the chart at the back of the cave. In the place's
+        /// own frame, so they turn with it, and dropped onto the floor from just under the ceiling.
+        /// </summary>
+        static readonly Dictionary<string, (string Item, Vector3 At)> Quest = new()
+        {
+            ["village"] = ("fuel_drum", new Vector3(2f, 2.5f, -1.5f)),
+            ["cave"] = ("chart_page", new Vector3(-1.5f, 2.5f, -3.5f)),
+        };
+
+        static System.Collections.IEnumerator PlaceQuest(string id, Transform place)
+        {
+            float until = Time.time + 60f;
+            while (Data.ItemCatalog.Active == null && Time.time < until) yield return null;
+            Data.ItemDef def = Data.ItemCatalog.Active != null ? Data.ItemCatalog.Active.Find(Quest[id].Item) : null;
+            if (def == null || place == null) yield break;
+
+            Vector3 at = place.TransformPoint(Quest[id].At);
+            if (Physics.Raycast(at, Vector3.down, out RaycastHit hit, 6f, ~0, QueryTriggerInteraction.Ignore))
+                at = hit.point;
+
+            Items.WorldItemSpawner.Drop(new Items.ItemStack(Data.ItemCatalog.Active.IndexOf(def), 1),
+                                        at + Vector3.up * 0.3f, place.rotation);
+            Debug.Log($"[POISpawner] {def.Id} waits at the {id}, {at}.");
+        }
 
         static System.Collections.IEnumerator Scatter(string id, Vector3 centre)
         {

@@ -154,7 +154,11 @@ namespace EscapeWithYourFriends.EditorTools
             new("pistol_mk2", "Tuned Pistol", ItemCategory.Weapon, 1, 1.2f, 220, "The same pistol after somebody who knew what they were doing had it."),
             new("pistol_auto", "Machine Pistol", ItemCategory.Weapon, 1, 1.6f, 420, "A pistol that forgot to stop. Empties the box in three seconds."),
 
-            new("boat_part", "Boat Part", ItemCategory.Quest, 1, 12f, 0, "One of the pieces that gets you off this island."),
+            // #274. The boat's four parts, each from a different kind of play.
+            new("hull_planks", "Hull Planks", ItemCategory.Quest, 1, 14f, 0, "Planks steamed and pegged to the curve of a hull. Crafted at the bench."),
+            new("outboard", "Outboard Motor", ItemCategory.Quest, 1, 18f, 0, "A PIKE two-stroke. Heavy, loud and the only engine on the island."),
+            new("fuel_drum", "Fuel Drum", ItemCategory.Quest, 1, 16f, 0, "The cult's lamp oil. It burns in an outboard just as well."),
+            new("chart_page", "Chart Page", ItemCategory.Quest, 1, 0.1f, 0, "A torn page of chart with a course pencilled to the next island."),
         };
 
         /// <summary>The seeds plus one stand-in per weapon skin (#209): what the trader lists, never carried.</summary>
