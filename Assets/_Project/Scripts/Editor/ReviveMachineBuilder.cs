@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using EscapeWithYourFriends.World;
 using FishNet.Managing.Object;
@@ -8,7 +9,8 @@ using UnityEngine;
 namespace EscapeWithYourFriends.EditorTools
 {
     /// <summary>
-    /// Generates the greybox Revive Machine prefab and registers it as spawnable.
+    /// Generates the Revive Machine prefab, dressed in its model from tools/art/machines.py, and
+    /// registers it as spawnable.
     ///
     ///   Unity.exe -quit -batchmode -projectPath . -executeMethod EscapeWithYourFriends.EditorTools.ReviveMachineBuilder.BuildReviveMachine
     ///
@@ -27,6 +29,7 @@ namespace EscapeWithYourFriends.EditorTools
         const string PrefabDir = "Assets/_Project/Prefabs";
         const string PrefabPath = PrefabDir + "/ReviveMachine.prefab";
         const string PrefabObjectsPath = "Assets/DefaultPrefabObjects.asset";
+        const string ModelsPath = "Assets/_Project/Art/Casino/Models/Machines.fbx";
 
         public static void BuildReviveMachine()
         {
@@ -60,18 +63,32 @@ namespace EscapeWithYourFriends.EditorTools
 
             // The thing you aim at. PlayerInteractor searches upward from whatever collider it hits,
             // so the hit box being a child of the networked root is the normal case, not a special one.
-            Primitive(root.transform, "Housing", PrimitiveType.Cube,
-                      new Vector3(0f, 1.4f, 0f), new Vector3(3f, 2.8f, 2f), collider: true);
+            GameObject housing = Primitive(root.transform, "Housing", PrimitiveType.Cube,
+                                           new Vector3(0f, 1.4f, 0f), new Vector3(3f, 2.8f, 2f), collider: true);
 
             // A lid that spins faster the closer the cycle is to finishing. Purely cosmetic and
             // therefore explicitly collider-free: a spinning collider next to a ragdoll is a
             // catapult, and this machine has enough ways to be funny already.
-            Primitive(root.transform, "Rotor", PrimitiveType.Cylinder,
-                      new Vector3(0f, 2.9f, 0f), new Vector3(1.2f, 0.25f, 1.2f), collider: false);
+            GameObject rotor = Primitive(root.transform, "Rotor", PrimitiveType.Cylinder,
+                                         new Vector3(0f, 2.9f, 0f), new Vector3(1.2f, 0.25f, 1.2f), collider: false);
 
             // Marks the mouth. Also collider-free — the body has to pass through here.
-            Primitive(root.transform, "Mouth", PrimitiveType.Cube,
-                      new Vector3(0f, 1.6f, 1.02f), new Vector3(1.4f, 1.4f, 0.1f), collider: false);
+            GameObject mouth = Primitive(root.transform, "Mouth", PrimitiveType.Cube,
+                                         new Vector3(0f, 1.6f, 1.02f), new Vector3(1.4f, 1.4f, 0.1f), collider: false);
+
+            // The model (tools/art/machines.py), when it has been exported: the housing keeps only its
+            // collider, the rotor turns into the fan, and the funnel is the mouth. Without it the
+            // greybox stays, which is what the machine was until #245.
+            if (Wear(root.transform, "Mach_Revive", Vector3.zero) != null
+                && Wear(rotor.transform, "Mach_Revive_Rotor", Vector3.zero) != null)
+            {
+                Object.DestroyImmediate(housing.GetComponent<MeshRenderer>());
+                Object.DestroyImmediate(housing.GetComponent<MeshFilter>());
+                Object.DestroyImmediate(rotor.GetComponent<MeshRenderer>());
+                Object.DestroyImmediate(rotor.GetComponent<MeshFilter>());
+                rotor.transform.localScale = Vector3.one;
+                Object.DestroyImmediate(mouth);
+            }
 
             // Where a corpse has to be lying, or be held. In front, on the floor: the gesture is
             // dropping your friend at the machine's feet, or standing there holding them.
@@ -114,6 +131,24 @@ namespace EscapeWithYourFriends.EditorTools
                 if (existing != null) Object.DestroyImmediate(existing);
             }
 
+            return go;
+        }
+
+        /// <summary>A mesh from Machines.fbx on the slots' atlas, as a child at the origin; null if it is missing.</summary>
+        static GameObject Wear(Transform parent, string id, Vector3 localPosition)
+        {
+            Dictionary<string, Mesh> models = SlotFactory.Models(ModelsPath);
+            if (models == null || !models.TryGetValue(id, out Mesh mesh))
+            {
+                Debug.LogError($"[ReviveMachineBuilder] No {id} in {ModelsPath}: run tools/art/machines.py. Greybox kept.");
+                return null;
+            }
+
+            var go = new GameObject("Art");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPosition;
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            go.AddComponent<MeshRenderer>().sharedMaterial = SlotFactory.Atlas();
             return go;
         }
 

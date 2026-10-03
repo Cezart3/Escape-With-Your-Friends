@@ -659,6 +659,17 @@ namespace EscapeWithYourFriends.EditorTools
             return map;
         }
 
+        /// <summary>
+        /// Re-imports the painted layers (tools/art/terrain.py) without touching a height or a splat:
+        /// both islands share the four layers, so neither needs regenerating for new ground art.
+        /// </summary>
+        [MenuItem("EWYF/Refresh Terrain Layers")]
+        public static void RefreshLayers()
+        {
+            EnsureLayers(LoadOrCreateProfile());
+            AssetDatabase.SaveAssets();
+        }
+
         /// <summary>Nearest power of two at or below the request. Alphamaps are not 2^n+1, unlike heightmaps.</summary>
         static int ValidSplatResolution(int requested)
         {
@@ -777,15 +788,29 @@ namespace EscapeWithYourFriends.EditorTools
             return layer;
         }
 
+        /// <summary>The painted layers' size (tools/art/terrain.py), which the importer must not halve.</summary>
+        const int PaintedSize = 512;
+
         /// <summary>
-        /// A tiling grain texture, generated once and then left alone. Two octaves of the same noise
-        /// the island is built from, cross-faded against a wrapped copy of themselves so the texture
-        /// repeats without a visible seam every few metres.
+        /// A layer texture. The painted ones (tools/art/terrain.py, #245) are kept, imported at their
+        /// full 512. A missing one gets a placeholder grain: two octaves of the same noise the island
+        /// is built from, cross-faded against a wrapped copy of themselves so the texture repeats
+        /// without a visible seam every few metres.
         /// </summary>
         static Texture2D EnsureTexture(string path, Color baseColour, Color grainColour, int salt)
         {
             var existing = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
-            if (existing != null) return existing;
+            if (existing != null)
+            {
+                if (AssetImporter.GetAtPath(path) is TextureImporter painted && painted.maxTextureSize != PaintedSize)
+                {
+                    painted.wrapMode = TextureWrapMode.Repeat;
+                    painted.maxTextureSize = PaintedSize;
+                    painted.textureCompression = TextureImporterCompression.Compressed;
+                    painted.SaveAndReimport();
+                }
+                return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            }
 
             const int size = 256;
             var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);

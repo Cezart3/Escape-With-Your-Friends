@@ -233,7 +233,18 @@ namespace EscapeWithYourFriends.World
 
             Vector3 middle = origin + new Vector3(size.x * 0.5f, 0f, size.z * 0.5f);
             middle.y = terrain.SampleHeight(middle) + origin.y;
-            spots.Add(new Spot { Name = "cliff overlook", Eye = best + Vector3.up * 3f, Target = middle });
+            // Off the summit toward the middle, clear of the crater's rim (Volcano), which would fill the view.
+            Vector3 toMiddle = new Vector3(middle.x - best.x, 0f, middle.z - best.z).normalized;
+            spots.Add(new Spot { Name = "cliff overlook", Eye = best + toMiddle * 40f + Vector3.up * 6f, Target = middle });
+
+            // The crater, from a little below its rim and out toward the middle, so the pit shows.
+            Volcano volcano = terrain.GetComponentInChildren<Volcano>();
+            if (volcano != null)
+            {
+                Vector3 c = volcano.transform.position;
+                Vector3 away = new Vector3(middle.x - c.x, 0f, middle.z - c.z).normalized;
+                spots.Add(new Spot { Name = "the volcano", Eye = c + away * 34f + Vector3.up * 22f, Target = c + Vector3.up * 2f });
+            }
         }
 
         /// <summary>
