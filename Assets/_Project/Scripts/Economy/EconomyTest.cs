@@ -80,7 +80,7 @@ namespace EscapeWithYourFriends.Economy
             while (Time.time < deadline && counter == null)
             {
                 counter = FindObjectsByType<ShopCounter>(FindObjectsSortMode.None)
-                    .FirstOrDefault(c => c.Shop != null);
+                    .FirstOrDefault(c => c.Shop != null && c.Shop.Offers.Any(o => o.IsValid && o.Item.Id == "rope"));
                 yield return null;
             }
 

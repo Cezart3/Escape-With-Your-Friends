@@ -93,7 +93,7 @@ MonoBehaviour:
     Price: 14
     Stock: -1
   - Item: {fileID: 11400000, guid: 1c1eba8b9e041c64383672206473de0d, type: 2}
-    Price: 4800
+    Price: 5600
     Stock: 1
   - Item: {fileID: 11400000, guid: dcee8da054f77c941a3fad5a621b9b55, type: 2}
     Price: 50000

@@ -10273,7 +10273,7 @@ different kind of play:
 | Part | Item | Where |
 |------|------|-------|
 | Hull planks | `hull_planks`, 14 kg | Crafted at the bench from 4 planks and 2 rope. The wreck's loot holds exactly that. |
-| Outboard | `outboard`, 18 kg | Bought from the Trader for 4800. It is the only boat part on the shelf, and it cannot be sold back. |
+| Outboard | `outboard`, 18 kg | Bought from the Trader for 5600, the old price of all four parts, which keeps the boat 1.6 sessions of coin away. It is the only boat part on the shelf, and it cannot be sold back. |
 | Fuel | `fuel_drum`, 16 kg | Lies by the totem in the cult village. |
 | Chart | `chart_page`, 0.1 kg | Lies at the back of the cave. |
 
