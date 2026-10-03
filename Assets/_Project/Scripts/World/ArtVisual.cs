@@ -38,6 +38,9 @@ namespace EscapeWithYourFriends.World
         /// <summary>A model's own far-LOD mesh is named after it plus this (tools/art/palms.py).</summary>
         public const string FarSuffix = "_Far";
 
+        /// <summary>A near-LOD mesh of roots and lianas, left out of the trunk measurement.</summary>
+        public const string DecoSuffix = "_Deco";
+
         /// <summary>Taller than it is wide when it is the right way up: a tree, a palm, a person.</summary>
         public bool Upright;
 
@@ -55,8 +58,10 @@ namespace EscapeWithYourFriends.World
             // bushes up to 900. IslandProfile.TreeMaximumFullLOD (60) bounds what is drawn at once.
             ArtCategory.Tree => 6500,
             ArtCategory.Plant => 1000,
-            ArtCategory.Rock => 600,
-            ArtCategory.Log => 150,
+            // Our rocks (tools/art/rocks.py): a chiselled boulder is 320, a cluster of three 960; a
+            // mossy log with its mushrooms about 600. All carry a far LOD of a quarter of that.
+            ArtCategory.Rock => 1000,
+            ArtCategory.Log => 700,
             // P6 V2, measured on Quaternius's pirate kit: bottle 204, bucket 532, barrel 640, chest 1 636, the large ship
             // 20 636, the cliff 8 596 (three at the cave), the small ship 5 578.
             ArtCategory.SmallProp => 600,

@@ -71,7 +71,7 @@ namespace EscapeWithYourFriends.World
         /// <summary>
         /// The models each species can be, in <see cref="SpeciesNames"/> order.
         ///
-        /// Placement stays five rules; rendering gets twenty-five prototypes. That split is the whole
+        /// Placement stays five rules; rendering gets forty-five prototypes. That split is the whole
         /// trick: the rules are the expensive thing to tune - which ground a palm accepts, where the
         /// pines stop - and variety is free once they are right, because a variant is a second
         /// prefab in the same slot rather than a second rule.
@@ -87,24 +87,34 @@ namespace EscapeWithYourFriends.World
                     new FloraModel("PalmTwin", 0.30f), new FloraModel("PalmYoung", 0.30f),
                     new FloraModel("PalmOld", 0.30f) },
 
-            // Quaternius's Nature MegaKit (P6 V1), and two of our palms so the jungle stays tropical.
-            // Radii measured on the kit at its placed height: the broadleaf trunks flare to 0.9-1.0m at
-            // the root, and a thinner capsule lets the camera walk into the bark.
-            new[] { new FloraModel("Broadleaf", 0.85f), new FloraModel("BroadleafTall", 0.8f),
-                    new FloraModel("BroadleafSmall", 0.75f), new FloraModel("JunglePalm", 0.30f),
-                    new FloraModel("JungleClump", 0.30f) },
+            // Our broadleaf trees (#248, tools/art/trees.py) and two of our palms. Any positive radius
+            // works for a tree: ArtLibrary measures the real one from the trunk.
+            new[] { new FloraModel("TreeRain", 0.5f), new FloraModel("TreeKapok", 0.5f),
+                    new FloraModel("TreeFig", 0.5f), new FloraModel("TreeFlame", 0.5f),
+                    new FloraModel("TreeYoung", 0.3f), new FloraModel("TreeOld", 0.5f),
+                    new FloraModel("JunglePalm", 0.30f), new FloraModel("JungleClump", 0.30f) },
 
             new[] { new FloraModel("Pine", 0.36f), new FloraModel("PineWide", 0.36f),
-                    new FloraModel("PineTall", 0.36f), new FloraModel("PineSparse", 0.34f) },
+                    new FloraModel("PineTall", 0.36f), new FloraModel("PineSparse", 0.34f),
+                    new FloraModel("PineYoung", 0.3f) },
 
             // Nothing here is solid. A bush that blocks you is infuriating; a bush you walk through
             // is free cover, and a fern that stops a car is a bug report.
             new[] { new FloraModel("Bush", 0f), new FloraModel("Fern", 0f),
-                    new FloraModel("Leafy", 0f), new FloraModel("Flowers", 0f) },
+                    new FloraModel("Leafy", 0f), new FloraModel("Flowers", 0f),
+                    new FloraModel("FernTall", 0f), new FloraModel("Hibiscus", 0f),
+                    new FloraModel("Croton", 0f), new FloraModel("Bromeliad", 0f),
+                    new FloraModel("Heliconia", 0f), new FloraModel("Strelitzia", 0f),
+                    new FloraModel("FlowersDaisy", 0f), new FloraModel("FlowersLily", 0f),
+                    new FloraModel("FlowersSpike", 0f), new FloraModel("GrassTuft", 0f) },
 
+            // Our rocks and wood (tools/art/rocks.py).
             new[] { new FloraModel("Boulder", -1f), new FloraModel("BoulderSmall", -1f),
-                    new FloraModel("BoulderWide", -1f), new FloraModel("Log", -1f),
-                    new FloraModel("Stump", -1f) },
+                    new FloraModel("BoulderWide", -1f), new FloraModel("RockTall", -1f),
+                    new FloraModel("RockMossy", -1f), new FloraModel("RockCluster", -1f),
+                    new FloraModel("RockSand", -1f), new FloraModel("Log", -1f),
+                    new FloraModel("LogMossy", -1f), new FloraModel("Stump", -1f),
+                    new FloraModel("StumpBroken", -1f) },
         };
 
         /// <summary>First flat prototype index of each species. Filled once, read everywhere.</summary>

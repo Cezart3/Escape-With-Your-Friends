@@ -65,3 +65,5 @@ Steam/sdk/
 # graphify
 graphify-out/
 .graphify_*
+
+__pycache__/

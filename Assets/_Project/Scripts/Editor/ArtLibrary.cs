@@ -119,7 +119,8 @@ namespace EscapeWithYourFriends.EditorTools
             for (int i = 0; i < materials.Length; i++)
             {
                 if (materials[i] == null) continue;
-                bool leaves = materials[i].name.Contains("Leaves") || materials[i].name.Contains("Flowers");
+                string name = materials[i].name;
+                bool leaves = name.Contains("Leaves") || name.Contains("Flowers") || name.Contains("Foliage");
                 float sway = category == ArtCategory.Plant ? 8f : 1f;
                 materials[i] = StyleLook.WindTwin(materials[i], sway, leaves ? 1f : 0.4f);
             }
@@ -257,6 +258,7 @@ namespace EscapeWithYourFriends.EditorTools
 
             foreach (Renderer renderer in renderers)
             {
+                if (renderer.name.EndsWith(ArtVisual.DecoSuffix)) continue;
                 if (!renderer.TryGetComponent(out MeshFilter filter) || filter.sharedMesh == null) continue;
 
                 foreach (Vector3 vertex in filter.sharedMesh.vertices)
