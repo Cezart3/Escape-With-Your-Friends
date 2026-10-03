@@ -85,6 +85,12 @@ namespace EscapeWithYourFriends.Casino
         [SerializeField] Transform _wheel;
         [SerializeField] Transform _ball;
 
+        /// <summary>
+        /// The ball's two places, from the wheel's centre along +z: riding the bowl's track, and at
+        /// rest in the pocket the marker points at. tools/art/tables.py measures the bowl to match.
+        /// </summary>
+        public static readonly Vector3 BallTrack = new(0f, 0.08f, 0.47f), BallRest = new(0f, 0.028f, 0.3f);
+
         /// <summary>The last number that came up, or -1 before the first spin. Everybody sees it.</summary>
         readonly SyncVar<int> _result = new(-1);
 
@@ -374,15 +380,44 @@ namespace EscapeWithYourFriends.Casino
             float t = Mathf.Clamp01((Time.time - _spinStarted) / _spinSeconds);
             float eased = 1f - Mathf.Pow(1f - t, 3f);
 
-            _wheel.localRotation = Quaternion.Euler(0f, Mathf.Lerp(_spinFrom, _spinTo, eased), 0f);
+            float turned = Mathf.Lerp(_spinFrom, _spinTo, eased);
+            _wheel.localRotation = Quaternion.Euler(0f, turned, 0f);
 
-            if (_ball != null)
-                _ball.localRotation = Quaternion.Euler(0f, -Mathf.Lerp(_spinFrom, _spinTo, eased) * 2f, 0f);
+            if (_ball != null) Roll(t, eased, turned);
 
             if (t < 1f) return;
 
             _spinStarted = -1f;
             Audio.Sfx.Play(Audio.Sound.ReelStop, _ball != null ? _ball.position : transform.position);
+        }
+
+        /// <summary>
+        /// The ball: up onto the track, round it against the wheel in whole turns, then down into the
+        /// winning pocket with a few hops and round with it. Whole turns, so it ends where it began,
+        /// at the marker - which is where the winning pocket stops.
+        /// </summary>
+        void Roll(float t, float eased, float turned)
+        {
+            int laps = Mathf.Max(2, Mathf.RoundToInt(_turns * 1.5f));
+            float drop = Mathf.SmoothStep(0f, 1f, (t - 0.6f) / 0.25f);
+
+            // Free, it laps the bowl; dropped, it is in the pocket and turns as the wheel does.
+            float free = -laps * 360f * eased;
+            _ball.localRotation = Quaternion.Euler(0f, Mathf.LerpAngle(free, turned - _spinTo, drop), 0f);
+
+            if (_ball.childCount == 0) return;
+
+            float up = Mathf.Clamp01(t / 0.08f) - drop;
+            float hop = drop > 0f && drop < 1f ? 0.02f * Mathf.Abs(Mathf.Sin(drop * Mathf.PI * 3f)) * (1f - drop) : 0f;
+            _ball.GetChild(0).localPosition = Vector3.Lerp(BallRest, BallTrack, up) + Vector3.up * hop;
+        }
+
+        /// <summary>How far the ball sits from the pocket the wheel shows, in metres. For the harness.</summary>
+        public float BallMiss()
+        {
+            if (_wheel == null || _ball == null || _ball.childCount == 0 || _result.Value < 0) return float.MaxValue;
+            Vector3 pocket = _wheel.TransformPoint(Quaternion.Euler(0f, -PocketAngle(_result.Value), 0f) * BallRest);
+            return Vector3.Distance(pocket, _ball.GetChild(0).position);
         }
 
         /// <summary>True while this peer's own wheel is still turning. Local, like the animation.</summary>

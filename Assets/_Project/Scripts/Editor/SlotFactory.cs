@@ -37,6 +37,7 @@ namespace EscapeWithYourFriends.EditorTools
         const string CabinetsPath = ModelDir + "/SlotCabinets.fbx";
         const string TexturePath = ModelDir + "/Textures/Symbols.png";
         const string MaterialPath = ArtDir + "/SlotAtlas.mat";
+        internal const string TablesPath = ModelDir + "/CasinoTables.fbx";
 
         internal const string SevensPath = PrefabDir + "/SlotSevens.prefab";
         internal const string VolcanoPath = PrefabDir + "/SlotVolcano.prefab";
@@ -127,6 +128,13 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         // ---------------------------------------------------------------- the models
+
+        /// <summary>A Blender file's meshes by name, imported the way ours are; the table games' too. Null if it is missing.</summary>
+        internal static Dictionary<string, Mesh> Models(string path)
+            => Import(path) ? AssetDatabase.LoadAllAssetsAtPath(path).OfType<Mesh>().ToDictionary(m => m.name) : null;
+
+        /// <summary>The ramp-sheet material every slot and table wears.</summary>
+        internal static Material Atlas() => AssetDatabase.LoadAssetAtPath<Material>(MaterialPath);
 
         /// <summary>Our own FBX, imported as meshes only: no materials of its own, no rig, the file's normals.</summary>
         static bool Import(string path)

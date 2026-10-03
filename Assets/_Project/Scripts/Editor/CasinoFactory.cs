@@ -60,7 +60,7 @@ namespace EscapeWithYourFriends.EditorTools
 
             if (Table()) built++;
 
-            DressTable();
+            Remodel();
 
             // Both cage windows get the bar's counter, the same one the bar in the shack has. The bars
             // and the sign stay: the sign's colour is what tells buying chips from cashing them out.
@@ -247,40 +247,91 @@ namespace EscapeWithYourFriends.EditorTools
             return true;
         }
 
+        /// <summary>Where the rotor turns on the table: on the felt, at the table's left end.</summary>
+        internal static readonly Vector3 WheelAt = new(-1f, 0.94f, 0f);
+
+        /// <summary>A bet square, its collider, and where the first of them sits. Five to a row, two rows.</summary>
+        static readonly Vector3 SpotSize = new(0.36f, 0.03f, 0.56f);
+        const float SpotLeft = -0.2f, SpotStep = 0.4f, SpotRow = 0.33f, SpotHeight = 0.944f;
+
         /// <summary>
-        /// The art pass on the table (docs/ART-PLAN.md §4), done in place on the saved prefab.
+        /// The table modelled in Blender (#252, tools/art/tables.py), done in place on the saved prefab.
         ///
         /// In place because <see cref="Table"/> never overwrites: the table is a networked prefab with
         /// ten networked bet spots nested in it, and a rebuilt prefab is a new GUID that silently
-        /// unhooks it from every scene that places it. Loading its contents, dressing them and saving
-        /// over the same path keeps every id.
+        /// unhooks it from every scene that places it. Loading its contents, remodelling them and
+        /// saving over the same path keeps every id.
         ///
-        /// Only looks change. The baize keeps its collider under a Kenney table stretched to its box,
-        /// the rim becomes the felt, and the wheel - still the cylinder whose "Zero" marker the
-        /// harness reads the result off - is painted with a generated 37-pocket face.
+        /// The baize keeps its collider and draws nothing; the model is a child of the root. The
+        /// wheel and ball keep their transforms, which <see cref="RouletteWheel"/> turns, and wear
+        /// the rotor and the ball. The bet squares move onto the felt - they used to run a metre and
+        /// a quarter off the table's end - and wear their own lettered squares.
         /// </summary>
-        static void DressTable()
+        static void Remodel()
         {
             if (AssetDatabase.LoadAssetAtPath<GameObject>(TablePath) == null) return;
+
+            Dictionary<string, Mesh> meshes = SlotFactory.Models(SlotFactory.TablesPath);
+            Material atlas = SlotFactory.Atlas();
+            if (meshes == null || atlas == null)
+            {
+                Debug.LogError($"[CasinoFactory] No {SlotFactory.TablesPath} or slot atlas. Run tools/art/tables.py "
+                               + "and SlotFactory.Build first.");
+                return;
+            }
 
             GameObject root = PrefabUtility.LoadPrefabContents(TablePath);
 
             try
             {
-                Transform baize = root.transform.Find("Baize");
-                if (baize == null || baize.Find("Art") != null) return;
+                Transform t = root.transform;
 
-                if (!ArtDress.Fit(baize.gameObject, "Table")) return;
+                Transform baize = t.Find("Baize");
+                Transform kit = baize.Find("Art");
+                if (kit != null) Object.DestroyImmediate(kit.gameObject);
+                if (baize.TryGetComponent(out Renderer old)) old.enabled = false;
 
-                Transform rim = root.transform.Find("Rim");
-                if (rim != null) rim.GetComponent<Renderer>().sharedMaterial = Palette.Named("Felt");
+                Transform rim = t.Find("Rim");
+                if (rim != null) Object.DestroyImmediate(rim.gameObject);
 
-                Transform wheel = root.transform.Find("Wheel");
-                Material face = WheelMaterial();
-                if (wheel != null && face != null) wheel.GetComponent<Renderer>().sharedMaterial = face;
+                Transform model = t.Find("Model");
+                if (model == null)
+                {
+                    model = new GameObject("Model").transform;
+                    model.SetParent(t, false);
+                }
+                Wear(model.gameObject, meshes["Rou_Table"], atlas);
+
+                Transform wheel = t.Find("Wheel");
+                Transform zero = wheel.Find("Zero");
+                if (zero != null) Object.DestroyImmediate(zero.gameObject);
+                wheel.localPosition = WheelAt;
+                wheel.localScale = Vector3.one;
+                Wear(wheel.gameObject, meshes["Rou_Rotor"], atlas);
+
+                Transform ball = t.Find("Ball");
+                ball.localPosition = WheelAt;
+                ball.localScale = Vector3.one;
+                Transform marker = ball.Find("Marker");
+                marker.localPosition = RouletteWheel.BallRest;
+                marker.localScale = Vector3.one;
+                Wear(marker.gameObject, meshes["Rou_Ball"], atlas);
+
+                BetSpot[] spots = root.GetComponentsInChildren<BetSpot>();
+                for (int i = 0; i < spots.Length; i++)
+                {
+                    Transform spot = spots[i].transform;
+                    spot.localPosition = new Vector3(SpotLeft + i % 5 * SpotStep, SpotHeight, i < 5 ? SpotRow : -SpotRow);
+                    spot.localScale = Vector3.one;
+                    Wear(spot.gameObject, meshes["Rou_Spot_" + spot.name.Replace("Spot", "")], atlas);
+
+                    var box = spot.GetComponent<BoxCollider>();
+                    box.center = new Vector3(0f, 0.01f, 0f);
+                    box.size = SpotSize;
+                }
 
                 PrefabUtility.SaveAsPrefabAsset(root, TablePath);
-                Debug.Log($"[CasinoFactory] Dressed {TablePath}: Kenney table, felt top, painted wheel.");
+                Debug.Log($"[CasinoFactory] Remodelled {TablePath}: Blender table, rotor, ball and {spots.Length} squares.");
             }
             finally
             {
@@ -288,94 +339,18 @@ namespace EscapeWithYourFriends.EditorTools
             }
         }
 
-        const string WheelFolder = "Assets/_Project/Art/Casino";
-
-        /// <summary>European order, clockwise from zero. The order is the wheel; the colours follow from it.</summary>
-        static readonly int[] Pockets =
+        /// <summary>Puts a mesh on an object on the slots' one material, adding the components it lacks.</summary>
+        static void Wear(GameObject target, Mesh mesh, Material material)
         {
-            0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10,
-            5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26,
-        };
+            var filter = target.GetComponent<MeshFilter>();
+            if (filter == null) filter = target.AddComponent<MeshFilter>();
+            filter.sharedMesh = mesh;
 
-        static readonly HashSet<int> Reds = new()
-        {
-            1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36,
-        };
-
-        /// <summary>
-        /// The wheel's face, drawn rather than downloaded: nobody free has a roulette wheel, and a
-        /// wheel is geometry anyway - a ring of 37 alternating pockets round a cone and a brass hub.
-        /// No numbers, because a 256-pixel face at table distance cannot show them.
-        /// </summary>
-        static Material WheelMaterial()
-        {
-            string materialPath = $"{WheelFolder}/RouletteWheel.mat";
-            var existing = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
-            if (existing != null) return existing;
-
-            Directory.CreateDirectory(WheelFolder);
-            string texturePath = $"{WheelFolder}/RouletteWheel.png";
-
-            const int size = 256;
-            var pixels = new Color32[size * size];
-            var wood = new Color(0.36f, 0.21f, 0.11f);
-            var cone = new Color(0.24f, 0.13f, 0.07f);
-            var brass = new Color(0.83f, 0.68f, 0.24f);
-            var red = new Color(0.70f, 0.10f, 0.10f);
-            var black = new Color(0.08f, 0.08f, 0.09f);
-            var green = new Color(0.10f, 0.50f, 0.22f);
-
-            for (int y = 0; y < size; y++)
-            for (int x = 0; x < size; x++)
-            {
-                float dx = (x + 0.5f) / size * 2f - 1f;
-                float dy = (y + 0.5f) / size * 2f - 1f;
-                float r = Mathf.Sqrt(dx * dx + dy * dy);
-                float turn = (Mathf.Atan2(dx, dy) / (Mathf.PI * 2f) + 1f) % 1f;
-
-                Color colour;
-                if (r > 0.94f) colour = wood;
-                else if (r > 0.70f)
-                {
-                    // Half a pocket on, so pocket s is centred on s steps the way RouletteWheel.PocketAt
-                    // rounds, rather than starting there and leaving the marker on a fret.
-                    float slot = turn * Pockets.Length + 0.5f;
-                    int number = Pockets[Mathf.FloorToInt(slot) % Pockets.Length];
-
-                    // Brass frets between the pockets, which is what makes it read as a wheel.
-                    if (slot - Mathf.Floor(slot) < 0.08f) colour = brass;
-                    else colour = number == 0 ? green : Reds.Contains(number) ? red : black;
-                }
-                else if (r > 0.30f) colour = Color.Lerp(cone, wood, (r - 0.30f) / 0.40f);
-                else if (r > 0.26f) colour = cone;
-                else colour = brass;
-
-                pixels[y * size + x] = colour;
-            }
-
-            var texture = new Texture2D(size, size, TextureFormat.RGBA32, true);
-            texture.SetPixels32(pixels);
-            File.WriteAllBytes(texturePath, texture.EncodeToPNG());
-            Object.DestroyImmediate(texture);
-            AssetDatabase.ImportAsset(texturePath, ImportAssetOptions.ForceSynchronousImport);
-
-            var face = AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath);
-            if (face == null)
-            {
-                Debug.LogError($"[CasinoFactory] {texturePath} did not import; the wheel stays plain.");
-                return null;
-            }
-
-            Material material = StyleLook.New("RouletteWheel");
-            material.SetTexture("_BaseMap", face);
-            material.mainTexture = face;
-            material.SetColor("_BaseColor", Color.white);
-
-            // Lacquered: the one wooden thing in the game allowed a highlight.
-            material.SetFloat("_Smoothness", 0.4f);
-
-            AssetDatabase.CreateAsset(material, materialPath);
-            return material;
+            var renderer = target.GetComponent<MeshRenderer>();
+            if (renderer == null) renderer = target.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.enabled = true;
+            renderer.shadowCastingMode = ShadowCastingMode.On;
         }
 
         /// <summary>

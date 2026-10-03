@@ -54,10 +54,24 @@ namespace EscapeWithYourFriends.EditorTools
             var root = new GameObject("BlackjackTable");
             Transform t = root.transform;
 
-            Block(t, "Base", new Vector3(0f, 0.45f, 0f), new Vector3(1.9f, 0.9f, 0.9f), "WoodDark", solid: true);
-            Block(t, "Felt", new Vector3(0f, Top - 0.01f, 0f), new Vector3(1.8f, 0.02f, 0.8f), "Felt", solid: false);
-            Block(t, "Rail", new Vector3(0f, Top + 0.01f, 0.43f), new Vector3(1.9f, 0.05f, 0.06f), "WoodDark", solid: false);
-            Block(t, "Tray", new Vector3(0f, Top + 0.02f, -0.34f), new Vector3(0.44f, 0.04f, 0.1f), "Gold", solid: false);
+            // The body is a collider; what you see is the table modelled in Blender (#252,
+            // tools/art/tables.py): a D with the dealer on the flat side, the rail round the seats,
+            // the chip tray and the shoe, on the slots' one material.
+            Block(t, "Base", new Vector3(0f, 0.45f, 0f), new Vector3(1.9f, 0.9f, 0.9f), "WoodDark", solid: true)
+                .GetComponent<Renderer>().enabled = false;
+
+            Dictionary<string, Mesh> meshes = SlotFactory.Models(SlotFactory.TablesPath);
+            if (meshes == null || !meshes.TryGetValue("Bj_Table", out Mesh body))
+            {
+                Debug.LogError($"[BlackjackFactory] No Bj_Table in {SlotFactory.TablesPath}. Run tools/art/tables.py first.");
+                Object.DestroyImmediate(root);
+                return false;
+            }
+
+            var model = new GameObject("Model");
+            model.transform.SetParent(t, false);
+            model.AddComponent<MeshFilter>().sharedMesh = body;
+            model.AddComponent<MeshRenderer>().sharedMaterial = SlotFactory.Atlas();
 
             var cards = new List<Renderer>();
             var faces = new List<Renderer>();
@@ -94,22 +108,22 @@ namespace EscapeWithYourFriends.EditorTools
             root.AddComponent<BlackjackTable>().Configure(cards.ToArray(), faces.ToArray(),
                                                           Palette.Named("Plastic"), Palette.Named("Cloth"));
 
-            (BlackjackPress press, string colour, float x)[] small =
+            (BlackjackPress press, float x)[] small =
             {
-                (BlackjackPress.Hit, "Leaf", -0.15f),
-                (BlackjackPress.Stand, "Accent", -0.05f),
-                (BlackjackPress.Double, "Plastic", 0.05f),
-                (BlackjackPress.Split, "Cloth", 0.15f),
+                (BlackjackPress.Hit, -0.15f),
+                (BlackjackPress.Stand, -0.05f),
+                (BlackjackPress.Double, 0.05f),
+                (BlackjackPress.Split, 0.15f),
             };
 
             for (int seat = 0; seat < BlackjackMath.Seats; seat++)
             {
                 float x = (seat - 1.5f) * SeatStep;
 
-                Button(t, seat, BlackjackPress.Bet, new Vector3(x, Top + 0.02f, 0.3f), new Vector3(0.16f, 0.04f, 0.1f), "Gold");
+                Button(t, seat, BlackjackPress.Bet, new Vector3(x, Top + 0.02f, 0.26f), new Vector3(0.12f, 0.04f, 0.1f), meshes);
 
-                foreach ((BlackjackPress press, string colour, float dx) in small)
-                    Button(t, seat, press, new Vector3(x + dx, Top + 0.02f, 0.16f), new Vector3(0.08f, 0.04f, 0.08f), colour);
+                foreach ((BlackjackPress press, float dx) in small)
+                    Button(t, seat, press, new Vector3(x + dx, Top + 0.02f, 0.15f), new Vector3(0.08f, 0.04f, 0.08f), meshes);
             }
 
             GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, TablePath, out bool success);
@@ -121,10 +135,17 @@ namespace EscapeWithYourFriends.EditorTools
             return true;
         }
 
-        /// <summary>A button: its own nested NetworkObject, with a collider for the crosshair to find.</summary>
-        static void Button(Transform parent, int seat, BlackjackPress press, Vector3 position, Vector3 size, string colour)
+        /// <summary>
+        /// A button: its own nested NetworkObject, with a collider for the crosshair to find, wearing
+        /// its chip from tables.py (Bj_Bet, Bj_Hit...) at scale 1, so the box is the collider's size.
+        /// </summary>
+        static void Button(Transform parent, int seat, BlackjackPress press, Vector3 position, Vector3 size,
+                           Dictionary<string, Mesh> meshes)
         {
-            GameObject button = Block(parent, $"Seat{seat + 1}.{press}", position, size, colour, solid: true);
+            GameObject button = Block(parent, $"Seat{seat + 1}.{press}", position, Vector3.one, "Gold", solid: true);
+            button.GetComponent<BoxCollider>().size = size;
+            button.GetComponent<MeshFilter>().sharedMesh = meshes["Bj_" + press];
+            button.GetComponent<Renderer>().sharedMaterial = SlotFactory.Atlas();
             button.AddComponent<NetworkObject>();
             button.AddComponent<BlackjackButton>().Configure(seat, press);
         }
