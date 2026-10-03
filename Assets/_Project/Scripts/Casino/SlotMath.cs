@@ -175,6 +175,11 @@ namespace EscapeWithYourFriends.Casino
                 default: Reef.Play(ref rng, result, buy); break;
             }
 
+            // A drop one scatter short holds its last reels back. The screen needs the time for it, and
+            // the server pays at the sum of the frames, so the time is the arithmetic's, not the screen's.
+            foreach (SlotFrame frame in result.Frames)
+                if (Tease(kind, frame) >= 0) frame.Seconds += TeaseSeconds;
+
             long cap = MaxWinX * 100L;
             if (result.WinPct >= cap)
             {
@@ -207,6 +212,38 @@ namespace EscapeWithYourFriends.Casino
 
         /// <summary>What a spin at <paramref name="bet"/> stakes with the ante on. Pays are still on the bet.</summary>
         public static int AnteStake(int bet) => bet + bet / 4;
+
+        /// <summary>The symbol that pays or triggers wherever it lands, and how many it takes. The screen's anticipation reads it.</summary>
+        public static (int Symbol, int Need) Scatter(SlotKind kind) => kind switch
+        {
+            SlotKind.Sevens => (Sevens.Star, 3),
+            SlotKind.Volcano => (Volcano.Peak, 4),
+            SlotKind.Fruit => (Fruit.Sun, 4),
+            SlotKind.Reef => (Reef.Chest, 3),
+            _ => (Lagoon.Hook, 3),
+        };
+
+        /// <summary>What a teased drop adds to its frame.</summary>
+        public const float TeaseSeconds = 1.2f;
+
+        /// <summary>
+        /// The first reel a drop holds back for its scatter, or -1: the reels before it already show
+        /// all but one of what the scatter needs. About one drop in forty on every game.
+        /// </summary>
+        public static int Tease(SlotKind kind, SlotFrame frame)
+        {
+            if (!frame.Drop || frame.Grid == null) return -1;
+
+            (int symbol, int need) = Scatter(kind);
+            int cols = Cols(kind), rows = Rows(kind), seen = 0;
+            for (int c = 0; c < cols - 1; c++)
+            {
+                for (int r = 0; r < rows; r++) if (frame.Grid[c * rows + r] == symbol) seen++;
+                if (seen >= need - 1) return c + 1;
+            }
+
+            return -1;
+        }
 
         /// <summary>Games a player can leave spinning on their own: Lagoon Catch, the one built to be farmed.</summary>
         public static bool HasAutoplay(SlotKind kind) => kind == SlotKind.Lagoon;

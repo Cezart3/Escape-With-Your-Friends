@@ -323,6 +323,28 @@ namespace EscapeWithYourFriends.Casino
 
             Check("Sevens has nothing to buy", SlotMath.BuyPrice(SlotKind.Sevens) == 0);
 
+            // The anticipation: a drop one scatter short holds its last reels. Often enough to be
+            // felt, rare enough that it means something, and it adds its time to the frame.
+            foreach (SlotKind kind in System.Enum.GetValues(typeof(SlotKind)))
+            {
+                int drops = 0, teased = 0;
+                bool timed = true;
+                for (int seed = 0; seed < 4000; seed++)
+                    foreach (SlotFrame frame in SlotMath.Spin(kind, seed, 100).Frames)
+                    {
+                        if (!frame.Drop) continue;
+                        drops++;
+                        int from = SlotMath.Tease(kind, frame);
+                        if (from < 0) continue;
+                        teased++;
+                        if (from < 1 || from >= SlotMath.Cols(kind) || frame.Seconds < SlotMath.TeaseSeconds + 0.8f) timed = false;
+                    }
+
+                float share = (float)teased / drops;
+                Check($"{kind}: {share:P1} of drops hold their last reels for the scatter, each with the time for it",
+                      share > 0.001f && share < 0.08f && timed);
+            }
+
             foreach ((SlotKind kind, long won) in GoldenAnte)
             {
                 long total = 0;
@@ -411,6 +433,13 @@ namespace EscapeWithYourFriends.Casino
 
                 Check($"{machine.Title} has a cell for every square of its grid",
                       machine.ShowingGrid().Length == machine.Cols * machine.Rows);
+
+                Mesh body = machine.transform.Find("Cabinet")?.GetComponent<MeshFilter>()?.sharedMesh;
+                Check($"{machine.Title} wears its Blender cabinet ({(body != null ? body.name : "none")}), Blender symbols "
+                      + "and three bulb groups",
+                      body != null && body.name == $"Cab_{machine.Kind}"
+                      && machine.Symbols.All(m => m != null && m.name.StartsWith("Sym_"))
+                      && machine.Bulbs != null && machine.Bulbs.Length == 3 && machine.Bulbs.All(b => b != null));
             }
         }
 
@@ -423,7 +452,9 @@ namespace EscapeWithYourFriends.Casino
             for (int n = 0; n < SlotMath.Bets.Length && machine.Bet != SlotMath.Bets[1]; n++) bet.ServerInteract(actor);
             Check($"{machine.Title}: the bet button sets the stake ({machine.Bet})", machine.Bet == SlotMath.Bets[1]);
 
-            bool paid = true, replayed = true, shown = true;
+            bool paid = true, replayed = true, shown = true, rolled = false, rested = true;
+            int blinks = 0;
+            Material lastBulb = machine.Bulbs[0].sharedMaterial;
 
             for (int n = 0; n < SpinsPerCabinet; n++)
             {
@@ -438,7 +469,14 @@ namespace EscapeWithYourFriends.Casino
 
                 SlotResult result = machine.LastResult;
                 float giveUp = Time.time + result.Seconds + 10f;
-                while ((machine.Busy || machine.Animating) && Time.time < giveUp) yield return null;
+                while ((machine.Busy || machine.Animating) && Time.time < giveUp)
+                {
+                    if (machine.Animating && machine.Displacement() > 0.01f) rolled = true;
+                    if (machine.Bulbs[0].sharedMaterial != lastBulb) { blinks++; lastBulb = machine.Bulbs[0].sharedMaterial; }
+                    yield return null;
+                }
+
+                if (machine.Displacement() > 0.001f) rested = false;
 
                 // A jackpot can drop on any spin, one in several thousand at this stake.
                 int jackpot = machine.LastJackpot;
@@ -463,6 +501,8 @@ namespace EscapeWithYourFriends.Casino
             Check($"{machine.Title}: every spin paid exactly what its seed says", paid);
             Check($"{machine.Title}: and the replicated seed replays to the same win", replayed);
             Check($"{machine.Title}: and the screen stopped on the spin's last picture", shown);
+            Check($"{machine.Title}: the reels rolled off their places mid-spin and every cell came home", rolled && rested);
+            Check($"{machine.Title}: the bulbs chased while it played ({blinks} changes)", blinks >= 6);
 
             string title = UI.SlotBoard.Title(machine);
             string line = UI.SlotBoard.Line(machine, wallet.Chips, -1);
