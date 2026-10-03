@@ -35,6 +35,9 @@ namespace EscapeWithYourFriends.World
         public string Id;
         public ArtCategory Category;
 
+        /// <summary>A model's own far-LOD mesh is named after it plus this (tools/art/palms.py).</summary>
+        public const string FarSuffix = "_Far";
+
         /// <summary>Taller than it is wide when it is the right way up: a tree, a palm, a person.</summary>
         public bool Upright;
 
@@ -92,7 +95,8 @@ namespace EscapeWithYourFriends.World
             }
 
             int total = 0;
-            foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>(true)) total += Triangles(renderer);
+            foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>(true))
+                if (!renderer.name.EndsWith(FarSuffix)) total += Triangles(renderer);
             return total;
         }
 

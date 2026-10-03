@@ -167,6 +167,15 @@ namespace EscapeWithYourFriends.EditorTools
 
                 Renderer[] renderers = level.GetComponentsInChildren<MeshRenderer>(true);
 
+                // A model that brings its own far mesh, "<name>_Far" (our palms, tools/art/palms.py):
+                // each level keeps the one mesh that is its own and switches the other off.
+                if (renderers.Any(r => r.name.EndsWith(ArtVisual.FarSuffix)))
+                {
+                    foreach (Renderer r in renderers)
+                        r.gameObject.SetActive(r.name.EndsWith(ArtVisual.FarSuffix) == (detail == 1));
+                    renderers = renderers.Where(r => r.gameObject.activeSelf).ToArray();
+                }
+
                 foreach (Renderer worn in renderers)
                 {
                     Sway(worn, model.Category);
@@ -605,9 +614,12 @@ namespace EscapeWithYourFriends.EditorTools
                 material.SetFloat("_AlphaClip", 1f);
                 material.SetFloat("_Cutoff", 0.5f);
                 material.EnableKeyword("_ALPHATEST_ON");
-                material.SetFloat("_Cull", 0f);
                 material.renderQueue = (int)RenderQueue.AlphaTest;
             }
+
+            // Leaves are seen from both sides, cut out of a card or not: our palms' leaflets are single
+            // faces, and from under the crown every one of them is a back face.
+            if (clip || slot.Contains("Leaves")) material.SetFloat("_Cull", 0f);
 
             Debug.Log($"[ArtLibrary] {worn.name} ({pack.Name}) is painted from {file}"
                       + (clip ? ", alpha-clipped, both sides." : "."));
