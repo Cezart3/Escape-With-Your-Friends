@@ -112,224 +112,307 @@ class Bird:
 
 # ------------------------------------------------------------------------------------- the parts
 
-def trunk(s, rows, col, n=12, paint=None, caps=(True, True), outline=True):
-    """[(z, centre height, half width, half height)] as rings across the body, joined nose-ward."""
+# The animals' own colours, in the columns of the characters' sheet that no animal wears (the sheet
+# is written fresh as Animals.png, so the people keep theirs).
+OWN_RAMPS = {
+    "DENIM": ("DEER", ["3A1C0A", "A8642E", "EAB27A"]),
+    "NAVY": ("STAG", ["24120A", "70442A", "B88A60"]),
+    "KHAKI": ("BOAR", ["1E1810", "5A4836", "A08A6E"]),
+    "PINK": ("SNOUT", ["3A2420", "8E6458", "D0A898"]),
+    "TEAL": ("JAG", ["5A2C08", "C88A36", "FFDEA0"]),
+    "BLUE": ("HOOF", ["060404", "201A16", "4A403A"]),
+    "GREEN": ("IRIS", ["4A4006", "C8B21C", "F8F08A"]),
+}
+
+
+def body(s, rows, col, n=14, keel=0.8):
+    """[(z, top, bottom, half width)] as rings across the body, joined nose-ward: the back and the
+    belly lines drawn apart, the sides full and the underside narrowing to a keel, as a ribcage is.
+    A row of five, (top y, top z, bottom y, bottom z, half width), is a ring leaning forward: what
+    carries the same skin on up a neck, so the neck grows out of the chest with no seam."""
+    rings = []
+    for row in rows:
+        if len(row) == 4:
+            z, top, bottom, w = row
+            row = (top, z, bottom, z, w)
+        ty, tz, by, bz, w = row
+        centre, half = Vector((0, ty + by, tz + bz)) / 2, Vector((0, ty - by, tz - bz)) / 2
+        ring = []
+        for k in range(n):
+            c, sn = math.cos(k * TAU / n), math.sin(k * TAU / n)
+            x = w * math.copysign(abs(c) ** 0.8, c) * (1 - (1 - keel) * max(0.0, -sn))
+            ring.append(tuple(centre + Vector((x, 0, 0)) + half * math.copysign(abs(sn) ** 0.9, sn)))
+        rings.append(ring)
+    return C.loft(s, rings, col)
+
+
+def trunk(s, rows, col, n=12):
+    """[(z, centre height, half width, half height)] as plain elliptic rings: the gull's tail."""
     rings = [[(rx * math.cos(k * TAU / n), y + ry * math.sin(k * TAU / n), z) for k in range(n)]
              for z, y, rx, ry in rows]
-    return C.loft(s, rings, col, paint=paint, caps=caps, outline=outline)
+    return C.loft(s, rings, col)
 
 
-def top_of(rows, z):
-    """The height of the back above z, from the trunk's rows."""
-    for (z0, y0, _, r0), (z1, y1, _, r1) in zip(rows, rows[1:]):
-        if z0 <= z <= z1:
-            t = (z - z0) / (z1 - z0)
-            return y0 + r0 + (y1 + r1 - y0 - r0) * t
-    return rows[-1][1] + rows[-1][3]
+def line(rows, z, i):
+    """The back (i=1) or the belly (i=2) at z, from body()'s rows."""
+    if z <= rows[0][0]:
+        return rows[0][i]
+    for r0, r1 in zip(rows, rows[1:]):
+        if r0[0] <= z <= r1[0]:
+            t = (z - r0[0]) / (r1[0] - r0[0])
+            return r0[i] + (r1[i] - r0[i]) * t
+    return rows[-1][i]
 
 
-def eyes(s, f, at, r, col="DARK", glint=True):
+def along(a, b, prof):
+    """[(t, radius)] along a to b as tube() points and radii: a head, a snout, an ear."""
+    a, b = Vector(a), Vector(b)
+    return [tuple(a.lerp(b, t)) for t, _ in prof], [r for _, r in prof]
+
+
+def eyes(s, at, r, col="DARK", iris=None, glint=True):
     """A pair of eyes at (x, y, z) and its mirror, with a glint so they are alive at ten metres."""
     x, y, z = at
     s.on("Head")
     for k in (-1, 1):
-        C.ball(s, (k * x, y, z), r, col, segs=6, rings=4, outline=False)
+        if iris:
+            C.ball(s, (k * x, y, z), r, iris, segs=6, rings=4, outline=False)
+            # A slit: the eyes that have an iris are a cat's, and look forward.
+            C.ball(s, (k * (x + 0.1 * r), y, z + 0.75 * r), (0.3 * r, 0.75 * r, 0.3 * r), col, segs=5, rings=3,
+                   outline=False)
+        else:
+            C.ball(s, (k * x, y, z), r, col, segs=6, rings=4, outline=False)
         if glint:
-            C.ball(s, (k * (x + 0.25 * r), y + 0.3 * r, z + 0.6 * r), 0.25 * r, "WHITE", segs=4, rings=3,
+            C.ball(s, (k * (x + 0.3 * r), y + 0.35 * r, z + 0.55 * r), 0.25 * r, "WHITE", segs=4, rings=3,
                    outline=False)
 
 
-def four_legs(s, f, col, hind, front, thighs, low="DARK", sides=6):
-    """Each leg a tube from inside the body to the ground, its radii per point, and a thigh of the
-    given half sizes where it leaves the body; `low` paints the hoof, the stretch below the last
-    joint's point above the ground."""
-    last = 3
-    for end, radii, thigh in (("Hind", hind, thighs[0]), ("Front", front, thighs[1])):
-        body = "Hips" if end == "Hind" else "Chest"
+def four_legs(s, f, col, hind, front, hoof="HOOF", sock=None, sides=7):
+    """Each leg one tube from inside the body to the ground, nine radii from the haunch to the sole:
+    the top, past the first joint, the second, the fetlock and the hoof (or paw). A leg is thick and
+    flat side to side where it leaves the body and thin below the hock or the knee, which is most of
+    what makes an animal's leg read as a leg and not a peg."""
+    for end, radii in (("Hind", hind), ("Front", front)):
+        trunk_bone = "Hips" if end == "Hind" else "Chest"
         for side, k in (("L", -1), ("R", 1)):
-            p = f.leg(end, k)
-            s.on(body, f"{end}{side}1", f"{end}{side}2", f"{end}{side}3")
-            C.tube(s, p, radii, col, sides=sides, paint=(lambda i: low if i == last else None) if low else None)
-            s.on(body, f"{end}{side}1")
-            C.ball(s, tuple(Vector(p[0]).lerp(Vector(p[1]), 0.4)), thigh, col, segs=7, rings=4)
+            top, j1, j2, fet, ground = (Vector(p) for p in f.leg(end, k))
+            sole = ground + Vector((0, 0, 0.02))
+            pts = [top, top.lerp(j1, 0.5), j1, j1.lerp(j2, 0.45), j2, j2.lerp(fet, 0.55), fet,
+                   fet.lerp(sole, 0.5) + Vector((0, 0, 0.008)), sole]
+            s.on(trunk_bone, f"{end}{side}1", f"{end}{side}2", f"{end}{side}3")
+            limb(s, pts, radii, col, sides, paint=lambda i: hoof if hoof and i >= 6 else sock if i >= 4 else None)
 
 
-def deer_like(s, coat, rows, f, ruff=None):
-    """The deer and the stag: the same long legs and narrow head, a pale rump and throat."""
-    s.on("Hips", "Chest")
-    trunk(s, rows, coat)
-    # Pale underneath and round the tail, as a deer is.
-    C.daub(s, coat, lambda p: "CREAM" if p.y < 0.70 or p.z < -0.57 else None)
-
-    s.on("Chest", "Neck", "Head")
-    C.tube(s, [(0, 0.93, 0.36), (0, 1.06, 0.50), (0, 1.17, 0.60)],
-           [(0.10, 0.13), (0.075, 0.085), (0.065, 0.07)], ruff or coat, sides=8)
-    s.on("Head")
-    C.ball(s, (0, 1.20, 0.65), (0.075, 0.08, 0.10), coat, segs=10, rings=7)
-    C.ball(s, (0, 1.14, 0.79), (0.05, 0.055, 0.085), coat, segs=8, rings=6)
-    C.daub(s, coat, lambda p: "CREAM" if p.z > 0.6 and p.y < 1.135 else None)
-    C.ball(s, (0, 1.145, 0.873), (0.03, 0.024, 0.02), "DARK", segs=6, rings=4, outline=False)
-    eyes(s, f, (0.068, 1.225, 0.70), 0.022)
-    for k in (-1, 1):
-        C.tube(s, [(k * 0.05, 1.26, 0.62), (k * 0.12, 1.31, 0.60), (k * 0.20, 1.34, 0.58)],
-               [(0.025, 0.012), (0.045, 0.015), (0.012, 0.006)], coat, sides=6)
-
-    s.on("Hips", "Tail1", "Tail2")
-    C.tube(s, [(0, 0.95, -0.57), (0, 0.90, -0.64), (0, 0.82, -0.68)], [0.04, 0.045, 0.02], coat, sides=6,
-           paint=lambda i: "CREAM" if i == 1 else None)
-    four_legs(s, f, coat, [0.09, 0.06, 0.035, 0.03, 0.034], [0.07, 0.05, 0.035, 0.03, 0.034],
-              ((0.065, 0.14, 0.10), (0.06, 0.11, 0.08)))
+def limb(s, pts, radii, col, sides=7, paint=None):
+    """tube() for a leg, which bends only in its own side-on plane: every ring keeps x as its across
+    axis, so the rings never twist at a hock as tube()'s would where the leg turns through vertical."""
+    rings = []
+    for i, p in enumerate(pts):
+        d = (pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]).normalized()
+        a = Vector((1, 0, 0))
+        b = a.cross(d).normalized()
+        ra, rb = radii[i]
+        rings.append([tuple(p + a * math.cos(k * TAU / sides) * ra + b * math.sin(k * TAU / sides) * rb)
+                      for k in range(sides)])
+    return C.loft(s, rings, col, paint=paint)
 
 
-DEER_ROWS = [(-0.64, 0.88, 0.05, 0.06), (-0.58, 0.88, 0.12, 0.15), (-0.44, 0.87, 0.16, 0.19),
-             (-0.20, 0.85, 0.15, 0.18), (0.05, 0.85, 0.16, 0.20), (0.26, 0.87, 0.17, 0.22),
-             (0.40, 0.92, 0.14, 0.18), (0.47, 0.98, 0.08, 0.10)]
+# The deer, nose to tail: a deep chest, the belly tucked up behind it, a round haunch.
+DEER_ROWS = [(-0.63, 0.90, 0.80, 0.05), (-0.58, 0.97, 0.68, 0.12), (-0.46, 1.00, 0.64, 0.15),
+             (-0.28, 0.98, 0.66, 0.15), (-0.08, 0.96, 0.67, 0.15), (0.10, 0.97, 0.63, 0.16),
+             (0.26, 1.00, 0.60, 0.15), (0.36, 1.02, 0.62, 0.13)]
 
 
 def deer_frame(tall):
-    return Quad(tall, hip=(0.90, -0.40), shoulder=(0.86, 0.30),
-                hind=[(0.62, -0.30), (0.36, -0.50), (0.0, -0.44)],
-                front=[(0.58, 0.25), (0.30, 0.30), (0.0, 0.31)], hx=0.11, fx=0.12,
-                neck=(0.95, 0.40), head=(1.18, 0.60), nose=(1.12, 0.88),
-                tail=[(0.95, -0.57), (0.90, -0.64), (0.82, -0.68)], belly=0.17)
+    return Quad(tall, hip=(0.92, -0.42), shoulder=(0.88, 0.30),
+                hind=[(0.66, -0.30), (0.40, -0.54), (0.0, -0.47)],
+                front=[(0.62, 0.24), (0.34, 0.29), (0.0, 0.31)], hx=0.08, fx=0.085,
+                neck=(0.94, 0.40), head=(1.31, 0.55), nose=(1.14, 0.84),
+                tail=[(0.94, -0.60), (0.90, -0.66), (0.82, -0.69)], belly=0.18)
+
+
+def deer_like(s, f, coat, rows, ruff=None):
+    """The deer and the stag: long legs, a long neck thick at the base, a narrow wedge of a head with
+    big ears, a pale throat, belly and rump."""
+    s.on("Hips", "Chest", "Neck")
+    shag = 0.012 if ruff else 0.0
+    neck = [(1.03, 0.42, 0.70, 0.48, 0.105), (1.08, 0.46, 0.84, 0.55, 0.085), (1.17, 0.49, 0.99, 0.585, 0.072),
+            (1.27, 0.51, 1.12, 0.60, 0.064), (1.33, 0.52, 1.22, 0.60, 0.055)]
+    body(s, rows + [(t + shag, z, b, zb, w + shag) for t, z, b, zb, w in neck], coat)
+    C.daub(s, coat, lambda p: "CREAM" if (p.y < line(rows, p.z, 2) + 0.05 and p.z < 0.42) or p.z < -0.6 else None)
+    if ruff:
+        C.daub(s, coat, lambda p: ruff if p.z > 0.34 and p.y > 0.8 + 0.6 * (0.5 - p.z) else None)
+
+    a, b = Vector((0, 1.31, 0.55)), Vector((0, 1.14, 0.84))
+    s.on("Head")
+    pts, radii = along(a, b, [(0.0, (0.045, 0.045)), (0.1, (0.07, 0.072)), (0.32, (0.07, 0.07)),
+                              (0.55, (0.052, 0.058)), (0.8, (0.04, 0.047)), (0.95, (0.032, 0.038)),
+                              (1.0, (0.02, 0.022))])
+    C.tube(s, pts, radii, coat, sides=10)
+    axis = (b - a).normalized()
+
+    def chin(p):
+        q = Vector(p)
+        t = (q - a).dot(axis) / (b - a).length
+        return "CREAM" if 0.35 < t and (q - a.lerp(b, t)).y < -0.03 else None
+    C.daub(s, coat, lambda p: chin(p) if p.y > 1.05 and p.z > 0.55 else None)
+    C.ball(s, tuple(a.lerp(b, 0.97) + Vector((0, 0.008, 0))), (0.032, 0.026, 0.024), "DARK", segs=6, rings=4,
+           outline=False)
+    e = a.lerp(b, 0.3)
+    eyes(s, (0.064, e.y + 0.012, e.z), 0.019)
+    for k in (-1, 1):
+        base = a.lerp(b, 0.06) + Vector((k * 0.05, 0.045, 0))
+        pts, radii = along(base, base + Vector((k * 0.10, 0.12, -0.03)),
+                           [(0.0, (0.024, 0.01)), (0.4, (0.05, 0.013)), (0.78, (0.04, 0.011)), (1.0, (0.006, 0.004))])
+        C.tube(s, pts, radii, coat, sides=6)
+
+    s.on("Hips", "Tail1", "Tail2")
+    C.tube(s, [(0, 0.94, -0.60), (0, 0.90, -0.66), (0, 0.83, -0.69)], [(0.04, 0.03), (0.045, 0.035), 0.015],
+           coat, sides=6, paint=lambda i: "CREAM" if i == 1 else None)
+    four_legs(s, f, coat,
+              [(0.065, 0.12), (0.065, 0.115), (0.05, 0.075), (0.035, 0.05), (0.03, 0.04), (0.019, 0.024),
+               (0.023, 0.028), (0.026, 0.033), (0.024, 0.036)],
+              [(0.05, 0.10), (0.05, 0.085), (0.042, 0.06), (0.032, 0.04), (0.028, 0.032), (0.018, 0.022),
+               (0.022, 0.027), (0.025, 0.032), (0.023, 0.035)])
 
 
 def deer(s):
     f = deer_frame(1.35)
-    deer_like(s, "WOOD", DEER_ROWS, f)
+    deer_like(s, f, "DEER", DEER_ROWS)
     return f
 
 
 def stag(s):
     """The deer's bigger brother: darker, a shaggy neck, and the antlers the rifle is for."""
     f = deer_frame(1.6)
-    rows = [(z, y, rx + 0.02, ry + 0.01) for z, y, rx, ry in DEER_ROWS]
-    deer_like(s, "LEATHER", rows, f, ruff="BROWN_HAIR")
+    rows = [(z, t + 0.01, b - 0.01, w + 0.02) for z, t, b, w in DEER_ROWS]
+    deer_like(s, f, "STAG", rows, ruff="BROWN_HAIR")
     s.on("Head")
     for k in (-1, 1):
-        C.tube(s, [(k * 0.045, 1.27, 0.63), (k * 0.10, 1.36, 0.60), (k * 0.17, 1.45, 0.55), (k * 0.22, 1.53, 0.53),
-                   (k * 0.24, 1.60, 0.57)], [0.022, 0.019, 0.016, 0.012, 0.005], "BONE", sides=5)
-        for a, b in (((k * 0.07, 1.31, 0.62), (k * 0.09, 1.37, 0.73)),
-                     ((k * 0.15, 1.43, 0.56), (k * 0.17, 1.51, 0.67)),
-                     ((k * 0.21, 1.51, 0.53), (k * 0.30, 1.57, 0.49))):
+        beam = [(k * 0.04, 1.36, 0.60), (k * 0.10, 1.45, 0.56), (k * 0.17, 1.55, 0.51), (k * 0.22, 1.64, 0.50),
+                (k * 0.23, 1.72, 0.55)]
+        C.tube(s, beam, [0.022, 0.019, 0.016, 0.012, 0.005], "BONE", sides=5)
+        for a, b in (((k * 0.07, 1.40, 0.59), (k * 0.08, 1.46, 0.70)),
+                     ((k * 0.15, 1.52, 0.53), (k * 0.16, 1.61, 0.63)),
+                     ((k * 0.21, 1.62, 0.50), (k * 0.30, 1.69, 0.46))):
             C.tube(s, [a, b], [0.012, 0.004], "BONE", sides=4)
     return f
 
 
 def boar(s):
-    """Low, heavy in front, a black bristle ridge, tusks, and a temper."""
-    rows = [(-0.66, 0.54, 0.07, 0.08), (-0.60, 0.54, 0.17, 0.20), (-0.42, 0.54, 0.22, 0.25),
-            (-0.15, 0.54, 0.23, 0.27), (0.12, 0.56, 0.25, 0.30), (0.32, 0.57, 0.24, 0.29),
-            (0.46, 0.56, 0.19, 0.23)]
-    f = Quad(0.9, hip=(0.54, -0.44), shoulder=(0.56, 0.28),
-             hind=[(0.38, -0.36), (0.20, -0.50), (0.0, -0.46)],
-             front=[(0.34, 0.25), (0.16, 0.29), (0.0, 0.30)], hx=0.12, fx=0.13,
-             neck=(0.58, 0.40), head=(0.58, 0.52), nose=(0.43, 0.86),
-             tail=[(0.60, -0.64), (0.52, -0.69), (0.44, -0.71)], belly=0.24)
-    s.on("Hips", "Chest")
-    trunk(s, rows, "BROWN_HAIR")
+    """Narrow, heavy in front and low: the back slopes from a high shoulder to a small rump, the
+    head is a third of the animal and the legs are short. A black bristle ridge, tusks, a temper."""
+    rows = [(-0.66, 0.64, 0.50, 0.05), (-0.60, 0.70, 0.36, 0.12), (-0.46, 0.73, 0.30, 0.16),
+            (-0.24, 0.76, 0.28, 0.18), (0.0, 0.80, 0.26, 0.19), (0.18, 0.85, 0.25, 0.185),
+            (0.32, 0.85, 0.28, 0.17), (0.44, 0.80, 0.32, 0.15), (0.55, 0.75, 0.32, 0.135),
+            (0.64, 0.68, 0.32, 0.115), (0.75, 0.585, 0.31, 0.08), (0.86, 0.49, 0.30, 0.058),
+            (0.935, 0.45, 0.30, 0.052)]
+    f = Quad(0.9, hip=(0.62, -0.42), shoulder=(0.66, 0.22),
+             hind=[(0.36, -0.32), (0.20, -0.50), (0.0, -0.46)],
+             front=[(0.36, 0.18), (0.18, 0.22), (0.0, 0.23)], hx=0.095, fx=0.10,
+             neck=(0.62, 0.36), head=(0.62, 0.50), nose=(0.38, 0.96),
+             tail=[(0.66, -0.64), (0.56, -0.69), (0.46, -0.70)], belly=0.24)
+    s.on("Hips", "Chest", "Neck", "Head")
+    body(s, rows, "BOAR")
+    s.on("Head")
+    C.ball(s, (0, 0.375, 0.945), (0.058, 0.068, 0.022), "SNOUT", segs=10, rings=5)
+    for k in (-1, 1):
+        C.ball(s, (k * 0.022, 0.375, 0.965), (0.011, 0.016, 0.006), "DARK", segs=5, rings=3, outline=False)
+        C.tube(s, [(k * 0.05, 0.34, 0.80), (k * 0.085, 0.38, 0.83), (k * 0.095, 0.44, 0.81)],
+               [0.016, 0.011, 0.003], "BONE", sides=5)
+        C.tube(s, [(k * 0.08, 0.75, 0.47), (k * 0.13, 0.81, 0.45), (k * 0.16, 0.85, 0.43)],
+               [(0.032, 0.012), (0.028, 0.01), (0.004, 0.004)], "BOAR", sides=6)
+    eyes(s, (0.10, 0.64, 0.63), 0.014)
 
-    # The bristles: a jagged blade along the spine, from the rump to between the ears.
+    # The bristles: a jagged blade along the spine, from the rump over the shoulder onto the head.
     ridge = []
-    for i in range(14):
-        z = -0.32 + i * 0.06
-        y = top_of(rows, min(z, 0.46)) - 0.03
+    for i in range(15):
+        z = -0.34 + i * 0.06
+        y = line(rows, z, 1) - 0.03
         h = (0.05 if i % 2 else 0.10) * (1.0 - abs(i - 8) / 12)
         ridge.append([(-0.03, y, z), (0, y + h, z - 0.02), (0.03, y, z)])
-    s.on("Hips", "Chest", "Neck")
+    s.on("Hips", "Chest", "Neck", "Head")
     C.loft(s, ridge, "BLACK_HAIR")
 
-    s.on("Neck", "Head")
-    head = [(0.40, 0.58, 0.17, 0.20), (0.54, 0.55, 0.15, 0.17), (0.66, 0.49, 0.10, 0.11),
-            (0.78, 0.44, 0.065, 0.07), (0.84, 0.43, 0.06, 0.065)]
-    trunk(s, head, "BROWN_HAIR", n=10)
-    s.on("Head")
-    C.ball(s, (0, 0.43, 0.85), (0.064, 0.06, 0.022), "SKIN_DARK", segs=10, rings=5)
-    for k in (-1, 1):
-        C.ball(s, (k * 0.022, 0.43, 0.869), 0.012, "DARK", segs=5, rings=3, outline=False)
-        C.tube(s, [(k * 0.055, 0.41, 0.76), (k * 0.09, 0.44, 0.78), (k * 0.10, 0.50, 0.76)],
-               [0.016, 0.011, 0.003], "BONE", sides=5)
-        C.tube(s, [(k * 0.08, 0.70, 0.48), (k * 0.12, 0.78, 0.44), (k * 0.13, 0.84, 0.40)],
-               [(0.035, 0.012), (0.03, 0.01), (0.006, 0.004)], "BROWN_HAIR", sides=6)
-    eyes(s, f, (0.098, 0.605, 0.625), 0.016)
-
     s.on("Hips", "Tail1", "Tail2")
-    C.tube(s, [(0, 0.60, -0.64), (0, 0.52, -0.69), (0, 0.45, -0.71)], 0.015, "BROWN_HAIR", sides=5)
+    C.tube(s, [(0, 0.66, -0.64), (0, 0.56, -0.69), (0, 0.47, -0.70)], 0.014, "BOAR", sides=5)
     s.on("Tail2")
-    C.ball(s, (0, 0.43, -0.715), (0.025, 0.04, 0.025), "BLACK_HAIR", segs=6, rings=4)
-    four_legs(s, f, "BROWN_HAIR", [0.10, 0.07, 0.045, 0.04, 0.042], [0.09, 0.065, 0.045, 0.04, 0.042],
-              ((0.09, 0.12, 0.12), (0.085, 0.11, 0.10)))
+    C.ball(s, (0, 0.45, -0.705), (0.022, 0.04, 0.022), "BLACK_HAIR", segs=6, rings=4)
+    four_legs(s, f, "BOAR",
+              [(0.07, 0.15), (0.07, 0.13), (0.058, 0.08), (0.045, 0.055), (0.038, 0.045), (0.03, 0.034),
+               (0.032, 0.036), (0.034, 0.04), (0.032, 0.042)],
+              [(0.06, 0.13), (0.06, 0.11), (0.052, 0.07), (0.045, 0.05), (0.04, 0.042), (0.03, 0.033),
+               (0.032, 0.036), (0.034, 0.04), (0.032, 0.042)], sock="BLACK_HAIR")
     return f
 
 
 def jaguar(s):
-    """Long and low, a heavy head, a long tail, and the coat the trader pays for."""
-    rows = [(-0.54, 0.50, 0.06, 0.07), (-0.48, 0.50, 0.13, 0.15), (-0.30, 0.49, 0.16, 0.17),
-            (-0.05, 0.47, 0.15, 0.16), (0.20, 0.50, 0.17, 0.19), (0.36, 0.53, 0.15, 0.17),
-            (0.44, 0.56, 0.09, 0.11)]
-    f = Quad(0.8, hip=(0.50, -0.38), shoulder=(0.50, 0.30),
-             hind=[(0.33, -0.24), (0.16, -0.46), (0.0, -0.40)],
-             front=[(0.30, 0.24), (0.09, 0.30), (0.0, 0.33)], hx=0.11, fx=0.12,
-             neck=(0.54, 0.38), head=(0.62, 0.56), nose=(0.60, 0.80),
-             tail=[(0.53, -0.52), (0.38, -0.78), (0.34, -1.0)], belly=0.16)
-    s.on("Hips", "Chest")
-    trunk(s, rows, "GOLD")
-    C.daub(s, "GOLD", lambda p: "CREAM" if p.y < 0.40 else None)
-
-    s.on("Chest", "Neck", "Head")
-    C.tube(s, [(0, 0.53, 0.36), (0, 0.58, 0.48), (0, 0.62, 0.56)], [(0.11, 0.13), (0.09, 0.10), (0.08, 0.085)],
-           "GOLD", sides=8)
+    """Stocky and low: a deep chest, thick short legs, a big round head with a short muzzle, a long
+    tail, and the rosettes the trader pays for."""
+    rows = [(-0.56, 0.58, 0.46, 0.05), (-0.50, 0.64, 0.36, 0.12), (-0.36, 0.66, 0.33, 0.145),
+            (-0.16, 0.63, 0.34, 0.145), (0.04, 0.63, 0.32, 0.15), (0.22, 0.68, 0.30, 0.16),
+            (0.34, 0.70, 0.34, 0.14)]
+    head = [(0.43, 0.69, 0.43, 0.115), (0.50, 0.72, 0.49, 0.11), (0.58, 0.75, 0.50, 0.125),
+            (0.65, 0.735, 0.51, 0.11), (0.70, 0.70, 0.52, 0.08), (0.75, 0.675, 0.53, 0.062),
+            (0.775, 0.655, 0.55, 0.045)]
+    f = Quad(0.8, hip=(0.58, -0.38), shoulder=(0.58, 0.28),
+             hind=[(0.38, -0.22), (0.17, -0.44), (0.0, -0.40)],
+             front=[(0.34, 0.22), (0.10, 0.29), (0.0, 0.32)], hx=0.085, fx=0.09,
+             neck=(0.56, 0.38), head=(0.62, 0.54), nose=(0.60, 0.78),
+             tail=[(0.58, -0.54), (0.44, -0.80), (0.36, -1.02)], belly=0.16)
+    s.on("Hips", "Chest", "Neck", "Head")
+    body(s, rows + head, "JAG")
+    C.daub(s, "JAG", lambda p: "CREAM" if (p.z < 0.4 or p.z > 0.62)
+           and p.y < line(rows + head, p.z, 2) + (0.03 if p.z > 0.62 else 0.06) else None)
     s.on("Head")
-    # Broad and flat-topped, the ears small and wide apart: a big cat, not a bear.
-    C.ball(s, (0, 0.625, 0.62), (0.11, 0.075, 0.10), "GOLD", segs=10, rings=7)
-    C.ball(s, (0, 0.59, 0.715), (0.065, 0.045, 0.07), "GOLD", segs=8, rings=5)
-    C.ball(s, (0, 0.555, 0.70), (0.045, 0.025, 0.05), "CREAM", segs=6, rings=4)
-    C.ball(s, (0, 0.607, 0.783), (0.03, 0.018, 0.016), "SUNBURN", segs=6, rings=4, outline=False)
+    # A cat's face: eyes to the front and lined dark, whisker pads under a small nose, round ears
+    # set low and wide.
     for k in (-1, 1):
-        C.ball(s, (k * 0.09, 0.685, 0.57), (0.028, 0.026, 0.012), "GOLD", segs=6, rings=4)
-        C.ball(s, (k * 0.052, 0.66, 0.695), (0.02, 0.016, 0.012), "YELLOW", segs=6, rings=4, outline=False)
-        C.ball(s, (k * 0.054, 0.66, 0.705), (0.006, 0.012, 0.005), "DARK", segs=4, rings=3, outline=False)
+        C.ball(s, (k * 0.026, 0.615, 0.765), (0.03, 0.026, 0.022), "CREAM", segs=6, rings=4, outline=False)
+        C.ball(s, (k * 0.052, 0.688, 0.692), (0.026, 0.017, 0.012), "DARK", segs=5, rings=3, outline=False)
+        C.ball(s, (k * 0.098, 0.73, 0.545), (0.034, 0.032, 0.012), "JAG", segs=6, rings=4)
+        C.ball(s, (k * 0.098, 0.728, 0.554), (0.021, 0.019, 0.004), "CREAM", segs=6, rings=3, outline=False)
+    C.ball(s, (0, 0.648, 0.776), (0.024, 0.014, 0.01), "SNOUT", segs=6, rings=4, outline=False)
+    eyes(s, (0.054, 0.69, 0.70), 0.019, iris="IRIS")
 
     s.on("Hips", "Tail1", "Tail2")
-    C.tube(s, [(0, 0.53, -0.50), (0, 0.46, -0.64), (0, 0.38, -0.78), (0, 0.32, -0.92), (0, 0.34, -1.02),
-               (0, 0.40, -1.07)], [0.05, 0.045, 0.04, 0.036, 0.034, 0.03], "GOLD", sides=6,
+    C.tube(s, [(0, 0.58, -0.52), (0, 0.50, -0.66), (0, 0.43, -0.80), (0, 0.37, -0.94), (0, 0.37, -1.04),
+               (0, 0.42, -1.09)], [0.045, 0.042, 0.038, 0.035, 0.033, 0.03], "JAG", sides=6,
            paint=lambda i: "DARK" if i in (2, 4) else None)
 
-    four_legs(s, f, "GOLD", [0.08, 0.06, 0.045, 0.04, 0.04], [0.075, 0.06, 0.045, 0.04, 0.04],
-              ((0.075, 0.12, 0.11), (0.07, 0.11, 0.085)), low=None)
-    for end in ("Hind", "Front"):
-        for side, k in (("L", -1), ("R", 1)):
-            p = f.leg(end, k)[-1]
-            s.on(f"{end}{side}3")
-            C.ball(s, (p[0], 0.035, p[2] + 0.03), (0.045, 0.035, 0.055), "GOLD", segs=6, rings=4)
+    four_legs(s, f, "JAG",
+              [(0.06, 0.13), (0.065, 0.12), (0.058, 0.08), (0.048, 0.06), (0.04, 0.046), (0.036, 0.04),
+               (0.04, 0.045), (0.045, 0.05), (0.04, 0.05)],
+              [(0.055, 0.12), (0.06, 0.10), (0.058, 0.07), (0.055, 0.06), (0.045, 0.05), (0.04, 0.045),
+               (0.045, 0.05), (0.048, 0.055), (0.042, 0.055)], hoof=None)
 
-    # The rosettes on the flanks and back: a broken ring each, two strokes with gaps, which is what
-    # tells a jaguar from a cheetah. Plain dots down the legs and on the head.
+    # Rosettes on the flanks and back: a ring broken into three strokes, which is what tells a
+    # jaguar from a cheetah. Plain dots down the legs and on the head.
     s.on("Hips", "Chest")
-    for i in range(7):
-        z = -0.40 + i * 0.12
-        y, rx, ry = next((y, rx, ry) for z1, y, rx, ry in reversed(rows) if z1 <= z)
-        for j in range(6):
-            a = math.radians(-30 + j * 44 + (22 if i % 2 else 0))
-            c = Vector((rx * 1.1 * math.cos(a), y + ry * 1.1 * math.sin(a), z))
+    for i in range(6):
+        z = -0.40 + i * 0.13
+        top, bottom, w = line(rows, z, 1), line(rows, z, 2), line(rows, z, 3)
+        for j in range(5):
+            a = math.radians(-20 + j * 45 + (22 if i % 2 else 0))
+            c = Vector((w * 1.1 * math.cos(a), (top + bottom) / 2 + (top - bottom) / 2 * 1.1 * math.sin(a), z))
             n = Vector((math.cos(a), math.sin(a), 0))
             side = n.cross(Vector((0, 0, 1)))
-            r = 0.026 + 0.006 * ((i * 7 + j * 3) % 3)
-            for start in (0.3, 3.5):
-                arc = [c + (side * math.cos(start + q * 0.75) + Vector((0, 0, 1)) * math.sin(start + q * 0.75)) * r
+            r = 0.03 + 0.006 * ((i * 7 + j * 3) % 3)
+            for start in (0.2, 2.3, 4.4):
+                arc = [c + (side * math.cos(start + q * 0.4) + Vector((0, 0, 1)) * math.sin(start + q * 0.4)) * r
                        for q in range(4)]
-                C.smear(s, [tuple(v) for v in arc], "DARK", "GOLD", w=0.008, step=0.03, seed=i * 7 + j)
+                C.smear(s, [tuple(v) for v in arc], "DARK", "JAG", w=0.011, step=0.02, seed=i * 7 + j)
     spots = []
     for end, k in (("Hind", -1), ("Hind", 1), ("Front", -1), ("Front", 1)):
         p = f.leg(end, k)
-        for t in (0.35, 0.7):
+        for t in (0.3, 0.65):
             q = Vector(p[1]).lerp(Vector(p[2]), t)
             spots.append((q.x + k * 0.06, q.y, q.z))
-    for y, z in ((0.70, 0.58), (0.68, 0.64), (0.60, 0.47), (0.56, 0.42)):
+    for y, z in ((0.745, 0.58), (0.72, 0.64), (0.62, 0.47), (0.58, 0.42)):
         spots += [(-0.07, y, z), (0.07, y, z)]
     s.on("Hips", "Chest", "Neck", "Head", "HindL1", "HindR1", "HindL2", "HindR2", "FrontL1", "FrontR1",
          "FrontL2", "FrontR2")
-    C.smear(s, spots, "DARK", "GOLD", w=0.022, dots=True, seed=4)
+    C.smear(s, spots, "DARK", "JAG", w=0.018, dots=True, seed=4)
     return f
 
 
@@ -344,15 +427,16 @@ def gull(s):
     C.tube(s, [(0, 0.258, 0.165), (0, 0.253, 0.21), (0, 0.245, 0.245)],
            [(0.016, 0.016), (0.011, 0.012), (0.003, 0.005)], "YELLOW", sides=6)
     C.ball(s, (0, 0.246, 0.215), 0.007, "RED", segs=4, rings=3, outline=False)
-    eyes(s, f, (0.035, 0.28, 0.145), 0.009)
+    eyes(s, (0.035, 0.28, 0.145), 0.009)
     s.on("Body", "Tail")
     trunk(s, [(-0.26, 0.17, 0.045, 0.008), (-0.20, 0.175, 0.05, 0.012), (-0.12, 0.18, 0.04, 0.02)], "WHITE", n=8)
     for side, k in (("L", -1), ("R", 1)):
         s.on("Body", f"Wing{side}1", f"Wing{side}2")
-        rows = [(0.07, 0.205, 0.035), (0.0, 0.20, 0.05), (-0.10, 0.195, 0.045), (-0.18, 0.19, 0.03),
-                (-0.25, 0.19, 0.012), (-0.28, 0.19, 0.003)]
-        rings = [[(k * (0.08 + 0.012 * math.cos(a * TAU / 8)), y + h * math.sin(a * TAU / 8), z) for a in range(8)]
-                 for z, y, h in rows]
+        rows = [(0.07, 0.21, 0.035), (0.0, 0.205, 0.048), (-0.10, 0.20, 0.042), (-0.18, 0.195, 0.028),
+                (-0.25, 0.195, 0.012), (-0.28, 0.195, 0.003)]
+        # Folded over the back: the top edge tucked in, so the wing hugs the body and is not a plate.
+        rings = [[(k * (0.07 + 0.01 * math.cos(a * TAU / 8) - 0.025 * max(0.0, math.sin(a * TAU / 8))),
+                   y + h * math.sin(a * TAU / 8), z) for a in range(8)] for z, y, h in rows]
         C.loft(s, rings, "GREY_HAIR", paint=lambda i: "DARK" if i >= 3 else None)
         s.on(f"Leg{side}")
         C.tube(s, [(k * 0.03, 0.12, 0.0), (k * 0.03, 0.06, 0.005), (k * 0.03, 0.012, 0.01)], 0.008, "ORANGE", sides=5)
@@ -563,6 +647,16 @@ def main(out_dir=None, only=None, pose=None):
             block.remove(item)
     bpy.context.scene.render.fps = FPS
     folder = os.path.join(out_dir, "Textures") if out_dir else os.path.join(bpy.app.tempdir or ".", "animals")
+    ramps, col = C.RAMPS, C.COL
+    C.RAMPS = [OWN_RAMPS.get(name, (name, stops)) for name, stops in ramps]
+    C.COL = {name: i for i, (name, _) in enumerate(C.RAMPS)}
+    try:
+        return build(out_dir, only, pose, folder)
+    finally:
+        C.RAMPS, C.COL = ramps, col
+
+
+def build(out_dir, only, pose, folder):
     sheet = C.paint_texture(folder)
     texture = os.path.join(folder, "Animals.png")
     shutil.move(sheet, texture)
