@@ -89,6 +89,9 @@ namespace EscapeWithYourFriends.World
             yield return new WaitForSeconds(10f);
 
             List<Spot> spots = Spots(player);
+            // -beautySpots casino: only the spots whose name holds that word, for one place's PR.
+            string only = CommandLine.GetString("-beautySpots", null);
+            if (!string.IsNullOrEmpty(only)) spots.RemoveAll(s => !s.Name.Contains(only));
             Debug.Log($"[LookRoute] {spots.Count} spots: {string.Join(", ", spots.Select(s => s.Name))}. "
                       + PerfProbe.Describe());
 

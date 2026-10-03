@@ -7,6 +7,7 @@ every building wears the slots' one material. One mesh per landmark, on the land
 GreyboxBuilder's boxes, which stay behind as the colliders:
 
 - Bld_Casino, and Bld_Casino_Bulbs: the lit bulbs, which wear the slots' glowing material.
+  Bld_Casino_Floor, the polished tiles that reflect the room, and Bld_Casino_Neon, self-lit (#252).
 - Bld_Shop, Bld_BaseCamp, Bld_NativeVillage (five huts, the totem, the fire), Bld_Wreck, Bld_Cave.
 - Bld_Cage_Chips, Bld_Cage_Cash and Bld_VipDoor, with their bulbs: CasinoFactory's cashier windows and
   VIP door, on those prefabs' origins.
@@ -378,19 +379,8 @@ def symbol(s, make, scale, at, facing=(0, 1)):
 def casino(s, g):
     rng = random.Random(65)
 
-    # The floor: a dark bed, mismatched decking across the front room, a carpet in the VIP room.
-    box(s, (-10, -0.02, -10), (10, 0.035, 9.15), "DARK")
-    x = -10.0
-    while x < 9.99:
-        z = -2.5 - rng.uniform(0, 1.5)
-        w = 0.48
-        while z < 9.1:
-            z1 = min(9.1, z + rng.uniform(1.5, 3.6))
-            col = "STRAW" if rng.random() < 0.06 else "TEAL" if rng.random() < 0.02 else "BROWN"
-            box(s, (x + 0.01, 0.035, max(z, -2.5) + 0.01), (x + w - 0.01, 0.065 + rng.uniform(-0.004, 0.004), z1 - 0.01),
-                col)
-            z = z1
-        x += 0.5
+    # The floor: a dark bed, the front room's tiles (casino_interior), a carpet in the VIP room.
+    box(s, (-10, -0.02, -10), (10, 0.06, 9.15), "DARK")
     for i in range(-4, 4):
         box(s, (i * 0.5 + 0.01, -0.03, 9.17), (i * 0.5 + 0.49, 0.05, 10.3), "BROWN")
     box(s, (-9.85, 0.035, -9.85), (9.85, 0.072, -2.65), "RUBY")
@@ -461,7 +451,7 @@ def casino(s, g):
         box(s, (-2.9 - rng.uniform(0, 0.12), 4.0 + r * 0.38, 9.14), (2.9 + rng.uniform(0, 0.12), 4.37 + r * 0.38, 9.26),
             ("STRAW", "BROWN", "STRAW", "BROWN")[r])
     box(s, (-2.55, 4.2, 9.25), (2.55, 5.32, 9.29), "RUBY")
-    sign_text(s, "CASINO", 0.95, (0.0, 4.76, 9.3), (0, 1), "GOLD", depth=0.06)
+    sign_text(s.neon, "CASINO", 0.95, (0.0, 4.76, 9.3), (0, 1), "GOLD", depth=0.06)
     for k in range(20):
         bulb(g, (-2.75 + k * 5.5 / 19, 5.43, 9.3), 0.045)
         bulb(g, (-2.75 + k * 5.5 / 19, 4.1, 9.3), 0.045)
@@ -512,23 +502,10 @@ def casino(s, g):
     for k in range(6):
         bottle(s, (-4.75 + (k % 3) * 0.35, 0.55, -1.85 + (k // 3) * 0.45), "LIME", h=0.32)
 
-    # String lights across the room with bottles hung off them, and a shade over every lamp.
-    pts = [(-7.0 + 14.0 * k / 28, 3.95 - 0.25 * math.sin(math.pi * ((k % 7) / 7)), 3.0) for k in range(29)]
-    rope(s, pts, 0.012, "DARK")
-    for k, p in enumerate(pts):
-        if k % 2:
-            bulb(g, (p[0], p[1] - 0.05, p[2]), 0.04)
-    for i in range(7):
-        x = -6.0 + i * 2.0
-        rope(s, [(x, 3.9, 3.0), (x, 3.72, 3.0)], 0.008, "DARK")
-        S.lathe(s, [(0.0, 0.0), (0.05, 0.02), (0.05, 0.18), (0.02, 0.26), (0.0, 0.27)], glass[i], segs=8,
-                c=u(x, 3.45, 3.0), smooth=True, outline=False)
-
-    def roof_y(z):
-        return 4.0 + 3.0 * (1 - abs(z + 0.5) / 9.8) - 0.15
-    for at, col in (((0, 3.4, 3), "MAGENTA"), ((-6.5, 3.2, -1.2), "TEAL"), ((0, 3.3, 8.4), "GOLD"),
+    # A shade over every lamp but the table's, which is the chandelier's (casino_interior).
+    for at, col in (((-6.5, 3.2, -1.2), "TEAL"), ((0, 3.3, 8.4), "GOLD"),
                     ((-8.4, 3.5, 5), "LIME"), ((8.4, 3.5, 2), "PURPLE"), ((-4, 3.4, -6.5), "RED"), ((4, 3.4, -6.5), "GOLD")):
-        pendant(s, g, at, col, roof_y(at[2]))
+        pendant(s, g, at, col, 3.98)
 
     # The VIP room's walls: two portraits in gold frames, a seven and a crown.
     for x, make in ((-6.5, S.seven), (7.2, S.crown)):
@@ -537,6 +514,126 @@ def casino(s, g):
                        ((x - 0.85, 1.25, -9.85), (x - 0.7, 3.15, -9.75)), ((x + 0.7, 1.25, -9.85), (x + 0.85, 3.15, -9.75))):
             box(s, lo, hi, "GOLD", outline=True)
         symbol(s, make, 1.1, (x, 2.2, -9.72))
+
+    casino_interior(s, g)
+
+
+# ------------------------------------------------------------------------------- casino interior
+
+def tile(s, x0, z0, x1, z1, y, col):
+    """One flat quad facing up: a floor tile is its top and nothing else."""
+    before = s.begin()
+    vs = [s.bm.verts.new(u(x, y, z)) for x, z in ((x0, z0), (x1, z0), (x1, z1), (x0, z1))]
+    f = s.bm.faces.new(vs)
+    f.normal_update()
+    if f.normal.z < 0:
+        f.normal_flip()
+    return s.end(before, col, False, outline=False)
+
+
+def chandelier(s, g, at, roof_y):
+    """Gold, two tiers of arms with a bulb on each, crystal drops under them."""
+    x, y, z = at
+    rope(s, [(x, roof_y, z), (x, y + 0.75, z)], 0.015, "GOLD")
+    lathe(s, [(0.0, y - 0.25), (0.06, y - 0.2), (0.09, y), (0.05, y + 0.25), (0.07, y + 0.5), (0.04, y + 0.62),
+              (0.06, y + 0.75), (0.0, y + 0.78)], "GOLD", (x, 0, z), segs=8)
+    for tier, (r, h, n) in enumerate(((0.75, 0.05, 8), (0.45, 0.42, 6))):
+        for k in range(n):
+            a = TAU * (k + 0.5 * tier) / n
+            px, pz = x + r * math.cos(a), z + r * math.sin(a)
+            log(s, (x + 0.06 * math.cos(a), y + h + 0.06, z + 0.06 * math.sin(a)), (px, y + h, pz), 0.018, "GOLD", sides=4)
+            lathe(s, [(0.0, y + h - 0.03), (0.06, y + h), (0.04, y + h + 0.04), (0.0, y + h + 0.04)], "GOLD", (px, 0, pz),
+                  segs=6, smooth=False)
+            bulb(g, (px, y + h + 0.09, pz), 0.045)
+            S.lathe(s, [(0.0, 0.0), (0.025, 0.04), (0.0, 0.12)], "PEARL", segs=4,
+                    c=u(px, y + h - 0.16, pz), smooth=False, outline=False)
+    lathe(s, [(0.0, y - 0.05), (0.8, y + 0.0), (0.8, y + 0.02), (0.0, y - 0.02)], "GOLD", (x, 0, z), segs=16, smooth=False)
+
+
+def stanchion(s, at):
+    x, z = at
+    lathe(s, [(0.0, 0.0), (0.16, 0.0), (0.16, 0.04), (0.03, 0.08), (0.025, 0.9), (0.05, 0.93), (0.0, 1.0)], "GOLD",
+          (x, 0, z), segs=8)
+
+
+def velvet(s, a, b):
+    """A sagging red rope between two posts' tops."""
+    (x0, z0), (x1, z1) = a, b
+    pts = [(x0 + (x1 - x0) * t, 0.88 - 0.2 * math.sin(math.pi * t), z0 + (z1 - z0) * t) for t in (k / 6 for k in range(7))]
+    S.tube(s, [u(*p) for p in pts], 0.03, "RED", sides=6, outline=False)
+
+
+def casino_interior(s, g):
+    """#252: a near-black plum room lit by neon, a polished floor that takes the lamps' reflections,
+    carpet under the tables, chandeliers, a sign over every game and a velvet rope at the VIP door.
+    Floor tiles go to s.floor (the reflecting material), the neon to s.neon (self-lit)."""
+    f, n = s.floor, s.neon
+
+    # The floor: plum and black tiles, a gold line every four, carpet under roulette and blackjack.
+    carpets = ((-2.7, 1.2, 2.7, 4.8), (-9.85, 1.0, -7.4, 5.0))
+    k = 0
+    for i in range(20):
+        for j in range(12):
+            x0, z0 = -9.85 + i * 0.985, -2.5 + j * (11.5 / 12)
+            x1, z1 = x0 + 0.985, z0 + 11.5 / 12
+            cx, cz = (x0 + x1) / 2, (z0 + z1) / 2
+            if any(a <= cx <= c and b <= cz <= d for a, b, c, d in carpets):
+                continue
+            tile(f, x0, z0, x1, z1, 0.066, "PURPLE" if (i + j) % 2 else "DARK")
+            k += 1
+    for i in range(1, 5):
+        x = -9.85 + i * 3.94
+        box(s, (x - 0.02, 0.066, -2.5), (x + 0.02, 0.07, 9.0), "GOLD", outline=False)
+    for x0, z0, x1, z1 in carpets:
+        box(s, (x0, 0.05, z0), (x1, 0.075, z1), "RUBY", outline=False)
+        for lo, hi in (((x0 + 0.15, 0.075, z0 + 0.15), (x1 - 0.15, 0.08, z0 + 0.25)),
+                       ((x0 + 0.15, 0.075, z1 - 0.25), (x1 - 0.15, 0.08, z1 - 0.15)),
+                       ((x0 + 0.15, 0.075, z0 + 0.15), (x0 + 0.25, 0.08, z1 - 0.15)),
+                       ((x1 - 0.25, 0.075, z0 + 0.15), (x1 - 0.15, 0.08, z1 - 0.15))):
+            box(s, lo, hi, "GOLD", outline=False)
+
+    # The walls lined: plum wainscot, a gold rail, black above, black ceiling. The lining blinds the
+    # windows from the inside, which is the point: a casino has no clocks and no daylight.
+    walls = (((-9.85, -9.85), (9.85, -9.85), (0, 1)), ((-9.85, -9.85), (-9.85, 8.85), (1, 0)),
+             ((9.85, -9.85), (9.85, 8.85), (-1, 0)), ((-9.85, 8.85), (-1.5, 8.85), (0, -1)),
+             ((1.5, 8.85), (9.85, 8.85), (0, -1)))
+    for (x0, z0), (x1, z1), (nx, nz) in walls:
+        def slab(y0, y1, depth, col, outline=False, t=0.0):
+            lo = (min(x0, x1) - abs(nz) * t, y0, min(z0, z1) - abs(nx) * t)
+            hi = (max(x0, x1) + abs(nz) * t, y1, max(z0, z1) + abs(nx) * t)
+            lo = (lo[0] + (nx * depth if nx < 0 else 0), lo[1], lo[2] + (nz * depth if nz < 0 else 0))
+            hi = (hi[0] + (nx * depth if nx > 0 else 0), hi[1], hi[2] + (nz * depth if nz > 0 else 0))
+            box(s, lo, hi, col, outline=outline)
+        slab(0.0, 1.1, 0.05, "OBSIDIAN")
+        slab(1.1, 1.17, 0.08, "GOLD")
+        slab(1.17, 3.98, 0.03, "DARK")
+        slab(0.0, 0.14, 0.07, "DARK")
+        # Neon along the top of every wall: magenta down the sides, teal at the ends.
+        y = 3.72
+        a = (x0 + nx * 0.1, y, z0 + nz * 0.1)
+        b = (x1 + nx * 0.1, y, z1 + nz * 0.1)
+        log(n, a, b, 0.022, "MAGENTA" if nx else "TEAL", sides=6)
+    box(s, (-9.9, 3.98, -9.9), (9.9, 4.04, 8.9), "DARK", outline=False)
+
+    # Signs over the games, in neon.
+    sign_text(n, "BLACKJACK", 0.42, (-9.78, 2.4, 3.0), (1, 0), "MAGENTA", depth=0.03, res=3)
+    sign_text(n, "ROULETTE", 0.36, (6.6, 3.1, -2.3), (0, 1), "TEAL", depth=0.03, res=3)
+    sign_text(n, "SLOTS", 0.5, (9.78, 3.15, 1.65), (-1, 0), "LIME", depth=0.03, res=3)
+    sign_text(n, "COCONUT 7s", 0.14, (9.78, 2.6, 1.0), (-1, 0), "GOLD", depth=0.02, res=2)
+    sign_text(n, "FRUIT TUMBLE", 0.14, (9.78, 2.6, 2.3), (-1, 0), "PINK", depth=0.02, res=2)
+    for x, name, col in ((-1.2, "VOLCANO", "LAVA"), (1.2, "REEF RUSH", "TEAL"), (3.6, "LAGOON", "SEA")):
+        sign_text(n, name, 0.2, (x, 3.05, -9.78), (0, 1), col, depth=0.03, res=2)
+
+    # Chandeliers over the roulette and in the VIP room, and a velvet rope either side of its door.
+    chandelier(s, g, (0.0, 3.0, 3.0), 3.98)
+    chandelier(s, g, (0.0, 3.0, -6.3), 3.98)
+    for side in (-1, 1):
+        posts = [(side * 1.25, -2.1), (side * 1.25, -0.9), (side * 2.6, -0.9)]
+        for p in posts:
+            stanchion(s, p)
+        for a, b in zip(posts, posts[1:]):
+            velvet(s, a, b)
+    print(f"[buildings] casino interior: {k} floor tiles")
 
 
 # ------------------------------------------------------------------------------------------ shop
@@ -979,7 +1076,7 @@ def cage(word, sign, stripe, money):
         box(s, (-0.62, 2.28, -0.39), (0.62, 2.72, -0.31), "GOLD", outline=True)
         box(s, (-0.57, 2.32, -0.4), (0.57, 2.68, -0.3), sign)
         for f in (1, -1):
-            sign_text(s, word, 0.26, (0.0, 2.5, -0.35 + f * 0.05), (0, f), "CREAM", depth=0.03)
+            sign_text(s.neon, word, 0.26, (0.0, 2.5, -0.35 + f * 0.05), (0, f), "CREAM", depth=0.03)
         for k in range(8):
             bulb(g, (-0.55 + k * 1.1 / 7, 2.75, -0.35), 0.025)
         for k in range(9):
@@ -1021,6 +1118,12 @@ def vip_door(s, g):
         sign_text(s, "VIP", 0.24, (0.0, 2.16, f * 0.09), (0, f), "CREAM", depth=0.02)
     lathe(s, [(0.0, 2.4), (0.95, 2.4), (0.95, 2.5), (0.0, 2.5)], "GOLD", (0, 0, 0), segs=4, smooth=False)
     symbol(s, S.crown, 0.5, (0.0, 2.78, 0.0))
+    # #252: a neon arch round the door, which VipDoor lights when the player can afford to go in.
+    for f in (1, -1):
+        pts = ([(0.92, 0.0, f * 0.1), (0.92, 2.42, f * 0.1)]
+               + [(0.92 * math.cos(math.pi * k / 10), 2.42 + 0.5 * math.sin(math.pi * k / 10), f * 0.1) for k in range(1, 10)]
+               + [(-0.92, 2.42, f * 0.1), (-0.92, 0.0, f * 0.1)])
+        S.tube(s.neon, [u(*p) for p in pts], 0.025, "MAGENTA", sides=6, outline=False)
     for k in range(7):
         a = math.pi * k / 6
         bulb(g, (0.62 * math.cos(a), 2.55 + 0.28 * math.sin(a), 0.09), 0.025)
@@ -1043,10 +1146,12 @@ def main(out_dir=None, only=None):
         if only and name not in only:
             continue
         s, g = S.Sym(), S.Sym()
+        s.floor, s.neon = S.Sym(), S.Sym()
         make(s, g)
         made = [S.finish(s, "Bld_" + name, mat, fit=False, outline=0.02)]
-        if g.bm.faces:
-            made.append(S.finish(g, f"Bld_{name}_Bulbs", mat, fit=False))
+        for part, suffix in ((g, "Bulbs"), (s.floor, "Floor"), (s.neon, "Neon")):
+            if part.bm.faces:
+                made.append(S.finish(part, f"Bld_{name}_{suffix}", mat, fit=False))
         for obj in made:
             tris = sum(len(p.vertices) - 2 for p in obj.data.polygons)
             print(f"[buildings] {obj.name}: {tris} tris")

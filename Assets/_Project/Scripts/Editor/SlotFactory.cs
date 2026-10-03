@@ -110,13 +110,14 @@ namespace EscapeWithYourFriends.EditorTools
             bool upright = CheckSeven();
             Material material = Symbols();
             Material bulbOn = BulbOn();
+            Material lit = ScreenLit();
 
             int built = 0;
-            if (Cabinet(SlotKind.Sevens, SevensPath, SevensLooks, material, bulbOn)) built++;
-            if (Cabinet(SlotKind.Volcano, VolcanoPath, VolcanoLooks, material, bulbOn)) built++;
-            if (Cabinet(SlotKind.Reef, ReefPath, ReefLooks, material, bulbOn)) built++;
-            if (Cabinet(SlotKind.Fruit, FruitPath, FruitLooks, material, bulbOn)) built++;
-            if (Cabinet(SlotKind.Lagoon, LagoonPath, LagoonLooks, material, bulbOn)) built++;
+            if (Cabinet(SlotKind.Sevens, SevensPath, SevensLooks, material, bulbOn, lit)) built++;
+            if (Cabinet(SlotKind.Volcano, VolcanoPath, VolcanoLooks, material, bulbOn, lit)) built++;
+            if (Cabinet(SlotKind.Reef, ReefPath, ReefLooks, material, bulbOn, lit)) built++;
+            if (Cabinet(SlotKind.Fruit, FruitPath, FruitLooks, material, bulbOn, lit)) built++;
+            if (Cabinet(SlotKind.Lagoon, LagoonPath, LagoonLooks, material, bulbOn, lit)) built++;
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -137,6 +138,41 @@ namespace EscapeWithYourFriends.EditorTools
         internal static Material Atlas() => AssetDatabase.LoadAssetAtPath<Material>(MaterialPath);
 
         /// <summary>A lit bulb: the slots' cabinets and the casino's sign share it.</summary>
+        /// <summary>
+        /// The atlas again under its own name, lit from within by its own colours (the neon, the reel
+        /// screens) or reflecting the room's probe (the casino floor), #252. Re-copied from the atlas
+        /// every run, so a change to the atlas reaches its twins.
+        /// </summary>
+        internal static Material AtlasTwin(string name, float selfLit, float reflect = 0f)
+        {
+            Material atlas = Atlas();
+            string path = $"{ArtDir}/{name}.mat";
+            var twin = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (twin == null)
+            {
+                twin = new Material(atlas) { name = name };
+                AssetDatabase.CreateAsset(twin, path);
+            }
+            else twin.CopyPropertiesFromMaterial(atlas);
+
+            twin.SetColor("_EmissionColor", Color.white * selfLit);
+            twin.SetFloat("_SelfLit", selfLit > 0f ? 1f : 0f);
+            twin.SetFloat("_Reflect", reflect > 0f ? 1f : 0f);
+            twin.DisableKeyword("_EMISSION");
+            if (selfLit > 0f) twin.EnableKeyword("_SELF_LIT"); else twin.DisableKeyword("_SELF_LIT");
+            if (reflect > 0f)
+            {
+                twin.EnableKeyword("_REFLECT");
+                twin.SetFloat("_Smoothness", reflect);
+            }
+            else twin.DisableKeyword("_REFLECT");
+            EditorUtility.SetDirty(twin);
+            return twin;
+        }
+
+        /// <summary>The reel windows and their symbols: lit from inside, like a screen (#252).</summary>
+        internal static Material ScreenLit() => AtlasTwin("SlotScreenLit", 0.55f);
+
         internal static Material BulbOn()
             => StyleLook.Glowing("SlotBulbOn", new Color(1f, 0.93f, 0.7f), new Color(3.2f, 2.5f, 1.3f));
 
@@ -220,7 +256,8 @@ namespace EscapeWithYourFriends.EditorTools
         /// A cabinet, front to +z, standing on its origin: the Blender body with the glass and the
         /// reels in its window, the bulbs, the colliders, and the buttons along the deck.
         /// </summary>
-        static bool Cabinet(SlotKind kind, string path, (string Name, float Scale)[] looks, Material atlas, Material bulbOn)
+        static bool Cabinet(SlotKind kind, string path, (string Name, float Scale)[] looks, Material atlas, Material bulbOn,
+                            Material lit)
         {
             int cols = SlotMath.Cols(kind);
             int rows = SlotMath.Rows(kind);
@@ -246,7 +283,7 @@ namespace EscapeWithYourFriends.EditorTools
             Collider(root.transform, "Base", new Vector3(0f, 0.44f, 0f), new Vector3(1f, 0.88f, 0.66f));
             Collider(root.transform, "Body", new Vector3(0f, 1.53f, -0.105f), new Vector3(1f, 1.18f, 0.45f));
 
-            var glass = Part(root.transform, "Screen", Meshes["Sym_Screen"], atlas,
+            var glass = Part(root.transform, "Screen", Meshes["Sym_Screen"], lit,
                              new Vector3(0f, screenY, 0.13f), new Vector3(Width + 0.04f, height + 0.04f, 0.2f));
             glass.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
 
@@ -271,14 +308,14 @@ namespace EscapeWithYourFriends.EditorTools
                 int i = c * rows + r;
                 var at = new Vector3((c - (cols - 1) * 0.5f) * cell, ((rows - 1) * 0.5f - r) * cell, 0f);
 
-                GameObject symbol = Part(screen, $"Cell{c}.{r}", meshes[(c + r) % meshes.Length], atlas,
+                GameObject symbol = Part(screen, $"Cell{c}.{r}", meshes[(c + r) % meshes.Length], lit,
                                          at, Vector3.one * cell * scales[(c + r) % meshes.Length]);
                 symbol.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
                 cells[i] = symbol.transform;
 
                 if (kind != SlotKind.Reef) continue;
 
-                GameObject spot = Part(screen, $"Spot{c}.{r}", null, atlas, at + new Vector3(0f, 0f, -0.04f),
+                GameObject spot = Part(screen, $"Spot{c}.{r}", null, lit, at + new Vector3(0f, 0f, -0.04f),
                                        new Vector3(cell * 0.6f, cell * 0.6f, cell * 0.1f));
                 spot.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
                 spots[i] = spot.GetComponent<MeshFilter>();

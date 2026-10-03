@@ -241,18 +241,41 @@ namespace EscapeWithYourFriends.EditorTools
                 Box(root, $"Chandelier.Bottle{i}", "Metal",
                     new Vector3(-6f + i * 2f, 3.7f, 3f), new Vector3(0.1f, 0.34f, 0.1f), solid: false);
 
+            // #252: each lamp is the colour of the neon nearest it - the chandelier's gold over the
+            // roulette, magenta at the blackjack wall, violet at the slots, teal at the bar - and
+            // drifts only a little round it (TackyLights). The room around them is near black.
             var lamps = new[]
             {
-                Lamp(root, "Lamp.Table", new Vector3(0f, 3.4f, 3f), new Color(1f, 0.35f, 0.75f), 4.5f, 10f),
-                Lamp(root, "Lamp.Bar", new Vector3(-6.5f, 3.2f, -1.2f), new Color(0.3f, 0.9f, 1f), 3f, 8f),
-                Lamp(root, "Lamp.Door", new Vector3(0f, 3.3f, 8.4f), new Color(1f, 0.8f, 0.25f), 2.5f, 8f),
-                Lamp(root, "Lamp.Left", new Vector3(-8.4f, 3.5f, 5f), new Color(0.55f, 1f, 0.4f), 2.5f, 8f),
-                Lamp(root, "Lamp.Right", new Vector3(8.4f, 3.5f, 2f), new Color(0.8f, 0.4f, 1f), 2.5f, 8f),
-                Lamp(root, "Lamp.VipL", new Vector3(-4f, 3.4f, -6.5f), new Color(1f, 0.25f, 0.2f), 3f, 9f),
-                Lamp(root, "Lamp.VipR", new Vector3(4f, 3.4f, -6.5f), new Color(1f, 0.85f, 0.45f), 3f, 9f),
+                Lamp(root, "Lamp.Table", new Vector3(0f, 2.6f, 3f), new Color(1f, 0.78f, 0.45f), 5f, 10f),
+                Lamp(root, "Lamp.Bar", new Vector3(-6.5f, 3.2f, -1.2f), new Color(0.25f, 0.9f, 1f), 3f, 8f),
+                Lamp(root, "Lamp.Door", new Vector3(0f, 3.3f, 8.4f), new Color(1f, 0.72f, 0.35f), 2.5f, 8f),
+                Lamp(root, "Lamp.Left", new Vector3(-8.4f, 3.5f, 5f), new Color(1f, 0.3f, 0.75f), 3f, 8f),
+                Lamp(root, "Lamp.Right", new Vector3(8.4f, 3.5f, 2f), new Color(0.65f, 0.35f, 1f), 3f, 8f),
+                Lamp(root, "Lamp.VipL", new Vector3(-4f, 3.4f, -6.5f), new Color(1f, 0.2f, 0.3f), 3f, 9f),
+                Lamp(root, "Lamp.VipR", new Vector3(4f, 3.4f, -6.5f), new Color(1f, 0.8f, 0.4f), 3f, 9f),
             };
 
             root.AddComponent<TackyLights>().Configure(lamps);
+
+            // The floor's reflections: one probe in the middle of the front room, drawn once when the
+            // casino arrives (CasinoLook), and the box the floor's shader projects it into (#252).
+            var probeGo = new GameObject("Probe");
+            probeGo.transform.SetParent(root.transform, false);
+            probeGo.transform.localPosition = ProbeAt;
+            var probe = probeGo.AddComponent<ReflectionProbe>();
+            probe.mode = ReflectionProbeMode.Realtime;
+            probe.refreshMode = ReflectionProbeRefreshMode.ViaScripting;
+            probe.timeSlicingMode = ReflectionProbeTimeSlicingMode.NoTimeSlicing;
+            probe.resolution = 256;
+            probe.hdr = true;
+            probe.importance = 10;
+            probe.shadowDistance = 0f;
+            probe.clearFlags = ReflectionProbeClearFlags.SolidColor;
+            probe.backgroundColor = Color.black;
+            probe.size = new Vector3(20f, 4.4f, 19.4f);
+            probe.center = new Vector3(0f, 2.2f, -0.5f) - ProbeAt;
+
+            root.AddComponent<CasinoLook>().Configure(probe, new Vector3(-10f, 0f, -10f), new Vector3(10f, 4.2f, 9f));
 
             Empty(root, "TableSeat", new Vector3(0f, 0f, 4.6f));
             Empty(root, "BarNpcStand", new Vector3(-6.5f, 0f, -2.05f));
@@ -260,6 +283,10 @@ namespace EscapeWithYourFriends.EditorTools
             Model(root);
             return root;
         }
+
+        // The front room the floor reflects, and where in it the probe stands, in the casino's frame.
+        static readonly Vector3 ProbeAt = new(0f, 1.6f, 3.2f);
+        static readonly Vector4 FloorBoxMin = new(-9.85f, 0f, -2.5f), FloorBoxMax = new(9.85f, 3.98f, 8.85f);
 
         /// <summary>
         /// A coloured point light with no shadows. Shadows off is not a saving here, it is the look:
@@ -305,13 +332,25 @@ namespace EscapeWithYourFriends.EditorTools
                 return;
             }
 
-            foreach (string old in new[] { "Model", "Model.Bulbs", "Art" })
+            foreach (string old in new[] { "Model", "Model.Bulbs", "Model.Floor", "Model.Neon", "Art" })
                 for (Transform t; (t = root.transform.Find(old)) != null;) Object.DestroyImmediate(t.gameObject);
             foreach (MeshRenderer box in root.GetComponentsInChildren<MeshRenderer>(true)) ArtDress.Strip(box.gameObject);
 
             Wear(root, "Model", mesh, SlotFactory.Atlas(), ShadowCastingMode.On);
             if (models.TryGetValue($"Bld_{id}_Bulbs", out Mesh bulbs))
                 Wear(root, "Model.Bulbs", bulbs, SlotFactory.BulbOn(), ShadowCastingMode.Off);
+
+            // #252: the casino's polished tiles, which reflect the room, and the neon, lit by itself.
+            if (models.TryGetValue($"Bld_{id}_Floor", out Mesh floor))
+            {
+                Material polished = SlotFactory.AtlasTwin("CasinoFloor", 0f, 0.85f);
+                polished.SetVector("_BoxMin", FloorBoxMin);
+                polished.SetVector("_BoxMax", FloorBoxMax);
+                polished.SetVector("_ProbeAt", ProbeAt);
+                Wear(root, "Model.Floor", floor, polished, ShadowCastingMode.Off);
+            }
+            if (models.TryGetValue($"Bld_{id}_Neon", out Mesh neon))
+                Wear(root, "Model.Neon", neon, SlotFactory.AtlasTwin("CasinoNeon", 2.6f), ShadowCastingMode.Off);
         }
 
         static void Wear(GameObject root, string name, Mesh mesh, Material material, ShadowCastingMode shadows)
