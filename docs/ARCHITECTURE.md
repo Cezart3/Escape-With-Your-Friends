@@ -9650,6 +9650,51 @@ ground model.
   It passed 19/0.
 - `-skinTest`, which holds items in the hand, passed 59/0. `-craftTest` passed 43/0.
 
+## Weapons modelled in Blender (#283)
+
+Before this change, the guns and tools wore Kenney kit models. The machete and the bats were a
+knife and a club stretched to fill their box, the machine gun and the sniper borrowed the SMG and
+the rifle, and the chainsaw stayed a grey box. All 17 weapons now come from `tools/art/weapons.py`:
+
+```
+blender -b --factory-startup -P tools/art/weapons.py -- <absolute path>/Assets/_Project/Art/Casino/Models
+```
+
+That command writes `Weapons.fbx`, with one mesh per seed named `Wpn_<id>`, on the slots' ramp sheet
+with their outline. Each weapon is one metre long and centred on the origin. The meshes are laid
+the way the kit laid them, which is what `CharacterSkin`'s grip and muzzle code reads:
+
+- A gun lies along +z, muzzle forward, top up.
+- A blade or a tool has its tip at +z and its handle at -z, flat across x.
+
+| Weapon | Model | Triangles |
+|---|---|---|
+| Pistol | Slide with serrations, frame, raked grip with grooves, trigger guard, sights | 0.9k |
+| Tuned pistol | Navy slide with gold trim, a suppressor with gold bands, a red dot | 1.4k |
+| Machine pistol | Long magazine, compensator, wire stock, red trim | 1.6k |
+| Submachine gun | Ported barrel shroud, two grips, magazine, wire stock | 1.6k |
+| Shotgun | Barrel over tube magazine, ridged wooden pump, curved stock | 1.1k |
+| Hunting rifle | Wooden stock, bolt, scope | 1.0k |
+| Sniper rifle | Green stock, long scope, muzzle brake, bipod | 1.2k |
+| Machine gun | Perforated shroud, carry handle, ammo box with belt, bipod | 1.6k |
+| Knife, machete | Flat blade with an edge bevel, guard, wrapped handle | 0.4k |
+| Hatchet, fire axe | Wedge head with a light edge. The fire axe is red and yellow, with a spike | 0.3k |
+| Shovel | Spade, D-grip | 0.3k |
+| Bat, nailed bat, shark-tooth bat | Turned bat with taped grip, then nails or three rings of teeth | 0.7k to 1.3k |
+| Chainsaw | Orange body with a vent, top handle and wrap handle, and a bar with its chain | 1.4k |
+
+`WeaponFactory.Dressed` replaces the kit table, `Dress` and its stretch rules. It loads the saved
+prefab, so the GUID that the weapon and item assets name survives. It deletes `Body`, `Grip` and
+any `Art` or `Model` from an earlier run, then adds a `Model` child that wears `Wpn_<id>` scaled to
+the seed's length. Skins still tint through the property block: `SlotAtlas` multiplies the tint
+like any `_BaseColor`. `ItemArtFactory` rendered the weapon icons again.
+
+### Checks
+
+- `-weaponTest` (a pair) passed 28/0.
+- `-skinTest` passed 59/0. It holds and tints weapons.
+- `-itemTest` passed 19/0. Its long-model check drops the sniper, which is 1.55 m long.
+
 ---
 
 ## Data-driven content
