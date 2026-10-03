@@ -48,6 +48,7 @@ namespace EscapeWithYourFriends.EditorTools
         public const string Natives = "Native";
         public const string Castaway = "Castaway";
         public const string Barman = "Barman";
+        public const string Pilot = "Pilot";
 
         const string MovesPack = "UniversalAnimationLibrary";
 
@@ -108,7 +109,7 @@ namespace EscapeWithYourFriends.EditorTools
                 foreach (string path in BodyFiles("")) ImportBody(path, atlas);
                 foreach (string path in Models(moves)) ImportMoves(path);
 
-                foreach (string kind in new[] { Players, Natives, Castaway, Barman })
+                foreach (string kind in new[] { Players, Natives, Castaway, Barman, Pilot })
                 {
                     GameObject[] found = Bodies(kind);
                     Debug.Log($"[CharacterArt] {found.Length} {kind} bodies: {string.Join(", ", found.Select(b => b.name))}.");

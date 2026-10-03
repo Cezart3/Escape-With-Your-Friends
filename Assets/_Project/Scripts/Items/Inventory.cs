@@ -156,8 +156,13 @@ namespace EscapeWithYourFriends.Items
             remaining -= Fill(index, def, remaining, emptySlots: false);
             remaining -= Fill(index, def, remaining, emptySlots: true);
 
+            if (remaining < count && World.Journal.FirstFind(def.Id)) ObserversFoundPage(World.Journal.PageOf(def.Id));
             return remaining;
         }
+
+        /// <summary>#275. The first of a journal page into anybody's bag: every peer hears which, and page one plays its flashback.</summary>
+        [ObserversRpc]
+        void ObserversFoundPage(int page) => World.Journal.Found(page, transform);
 
         /// <summary>Takes items out, wherever they are. Returns how many were actually removed.</summary>
         [Server]

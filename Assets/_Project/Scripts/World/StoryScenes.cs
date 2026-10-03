@@ -531,6 +531,76 @@ namespace EscapeWithYourFriends.World
             if (light != null) light.intensity = 0f;
         }
 
+        // ---------------------------------------------------------------------- 4: Radu, 1957 (#275)
+
+        /// <summary>
+        /// The first journal page, picked up at the back of the cave, and the man who left it there:
+        /// Radu, kneeling where the finder stands, writing the page, tearing it out and setting it on
+        /// the rock, then walking out into the light. In sepia, staged round the finder.
+        /// </summary>
+        IEnumerator Flashback()
+        {
+            Vector3 here = _focus != null ? _focus.position : Here();
+            Vector3[] lenses = { new(2.4f, 1.3f, 2.4f), new(1.1f, 1.1f, 1.4f), new(2.8f, 1.5f, 0.2f), new(0.4f, 1.6f, 3f) };
+            Vector2[] spots = { new(0f, 0f), new(0f, -5f) };
+            float yaw = Frame(here, Heading(Here(), here), lenses, spots);
+            Vector3 radu = Spot(here, yaw, 0f, 0f);
+            Vector3 page = Spot(here, yaw, 0f, 0.5f) + Vector3.up * 0.03f;
+            Vector3 door = Spot(here, yaw, 0f, -6f);
+
+            // The back of a cave: a lens that lands in the rock comes in towards Radu until it is out,
+            // but never closer than a metre and a half.
+            Vector3 L(Vector3 local)
+            {
+                Vector3 at = Lens(here, yaw, local), to = radu + Vector3.up * 1.1f;
+                for (int k = 0; k < 6 && Vector3.Distance(at, to) > 1.5f
+                                && Physics.CheckSphere(at, 0.3f, ~0, QueryTriggerInteraction.Ignore); k++)
+                    at = Vector3.Lerp(at, to, 0.15f);
+                return at;
+            }
+
+            Puppet pilot = Actor(5, radu, yaw).Play("Crouch_Idle_Loop", 0f);
+            Prop("Journal", page, Quaternion.Euler(0f, yaw + 90f, 0f));
+            Grade(0.55f, new Color(1f, 0.84f, 0.6f), -75f, 12f);
+            // A key light on him, and the day in through the mouth of the cave behind.
+            Lamp(Spot(here, yaw, 1.2f, 1.6f) + Vector3.up * 2f, Sun, 4f, 7f);
+            Lamp(Spot(here, yaw, 0.4f, -3f) + Vector3.up * 2.2f, Sun, 3f, 10f);
+            White(1f);
+            Black(0f);
+
+            // 0: Radu crouched over the journal, the camera easing in.
+            Caption("Wreck Island, 1957.", 4f);
+            Shot(L(lenses[0]), radu + Vector3.up * 0.7f, 40f, 7f, L(new Vector3(2f, 1.2f, 2f)));
+            yield return Wait(1.2f);
+            Say("RADU", "Set her down on the beach at first light. There are lights on the hill at night.", 4.2f);
+            yield return Wait(4.4f);
+
+            // 5.6: the page, close.
+            Shot(L(lenses[1]), page + Vector3.up * 0.35f, 40f, 4f, L(new Vector3(0.8f, 0.95f, 1f)));
+            Say("RADU", "The reef opens only at low water, along the line I drew. Nowhere else.", 3.8f);
+            yield return Wait(2f);
+            pilot.Play("Interact", 0.25f);
+            Sfx.Play2D(Sound.Pickup, 0.5f);
+            yield return Wait(2f);
+
+            // 9.6: he leaves it there, and gets up.
+            Shot(L(lenses[2]), radu + Vector3.up * 1f, 42f, 4.5f, L(new Vector3(2.5f, 1.6f, 0f)), radu + Vector3.up * 1.4f);
+            Say("RADU", "I'll leave the chart here, where the rain can't reach it.", 3.2f);
+            pilot.Play("Crouch_Idle_Loop", 0.3f);
+            yield return Wait(1.6f);
+            pilot.Play("Idle_Loop", 0.6f);
+            yield return Wait(2f);
+
+            // 13.6: and out, towards the light, from behind.
+            pilot.Walk(door);
+            Shot(L(lenses[3]), radu + Vector3.up * 1.2f, 48f, 5f, null, door + Vector3.up * 1.4f);
+            Say("RADU", "Follow the line, not the lights. - R.V.", 3.4f);
+            yield return Wait(3.6f);
+            Card(_title, _line, 3.5f);
+            yield return Wait(2.5f);
+            yield return Fade(1f, 1f);
+        }
+
         // ---------------------------------------------------------------------- anything else
 
         /// <summary>A beat with no scene of its own: a slow push on the subject and its title.</summary>

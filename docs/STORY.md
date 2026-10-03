@@ -99,7 +99,7 @@ plays, and it plays for everyone at once.
 | 1 | The attic: the journal, the chart | New game | no |
 | 2 | Storm, the *Marisol* breaks on the reef | After 1 | no |
 | 3 | Waking on the beach | Spawn | yes (`IslandIntro`) |
-| 4 | Flashback: Radu on this beach, 1957 | The first journal page | no |
+| 4 | Flashback: Radu in this cave, 1957 | The first journal page | no |
 | 5 | The crossing, the second island rising | Lifeboat launched | partly (`StoryBeat`) |
 | 6 | Radu's plane on the beachhead | First sight of it | no |
 | 7 | Bogdan freed | Freed | no |

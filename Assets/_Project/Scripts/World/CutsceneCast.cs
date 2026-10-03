@@ -19,6 +19,9 @@ namespace EscapeWithYourFriends.World
         [Tooltip("Bogdan, the Marisol's captain: Body_Castaway.")]
         public GameObject Bogdan;
 
+        [Tooltip("Radu Voinea, the pilot, in 1957: Body_Pilot_Radu (#275).")]
+        public GameObject Radu;
+
         [Tooltip("The whole humanoid library. Scenes ask for a clip by name.")]
         public AnimationClip[] Clips;
 

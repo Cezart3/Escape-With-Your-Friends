@@ -310,6 +310,7 @@ namespace EscapeWithYourFriends.Net
             World.Playthrough.Begin();
             World.WipeGuard.Begin();
             World.ArmsTest.Begin();
+            World.JournalTest.Begin();
             Player.AnimTest.Begin();
             Player.SkinTest.Begin();
 

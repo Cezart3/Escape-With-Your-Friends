@@ -159,6 +159,12 @@ namespace EscapeWithYourFriends.EditorTools
             new("outboard", "Outboard Motor", ItemCategory.Quest, 1, 18f, 0, "A PIKE two-stroke. Heavy, loud and the only engine on the island."),
             new("fuel_drum", "Fuel Drum", ItemCategory.Quest, 1, 16f, 0, "The cult's lamp oil. It burns in an outboard just as well."),
             new("chart_page", "Chart Page", ItemCategory.Quest, 1, 0.1f, 0, "A torn page of chart with a course pencilled to the next island."),
+
+            // #275. Radu's journal, pages two to five (page one is the chart). Hold one and Use to read it.
+            new("journal_page_2", "Journal Page (2)", ItemCategory.Quest, 1, 0.05f, 0, "A page torn from Radu Voinea's notebook. About his plane."),
+            new("journal_page_3", "Journal Page (3)", ItemCategory.Quest, 1, 0.05f, 0, "A page torn from Radu Voinea's notebook. About the cages."),
+            new("journal_page_4", "Journal Page (4)", ItemCategory.Quest, 1, 0.05f, 0, "A page torn from Radu Voinea's notebook. About a canoe."),
+            new("journal_page_5", "Journal Page (5)", ItemCategory.Quest, 1, 0.05f, 0, "The last page of Radu Voinea's notebook."),
         };
 
         /// <summary>The seeds plus one stand-in per weapon skin (#209): what the trader lists, never carried.</summary>

@@ -979,10 +979,49 @@ def barman(s):
     return f
 
 
+# ----------------------------------------------------------------------------------------- Radu
+
+def radu(s):
+    """Radu Voinea, bush pilot, 1957 (#275): a leather flying jacket zipped to a white silk scarf,
+    khaki breeches into boots, a leather flying helmet with its goggles pushed up, a pencil moustache."""
+    f = Frame(girth=1.0, head=0.165, arms=1.0, shoulders=0.205)
+    skin = "SKIN_PALE"
+    torso(s, f, "LEATHER", "KHAKI", waist=0.95, chest=1.02, paint=lambda y: "DARK" if 0.97 < y < 1.01 else None)
+    s.on("Spine", "Spine1", "Spine2")
+    tube(s, [(0, 1.0, 0.142), (0, 1.36, 0.13)], 0.006, "GOLD", sides=4, outline=False)
+    mirror(lambda k: ball(s, (k * 0.09, 1.22, 0.135), (0.045, 0.04, 0.012), "DARK", segs=6, rings=4, outline=False))
+    neck(s, f, skin)
+    collar(s, f, "LEATHER")
+    mirror(lambda k: arm(s, f, k, skin, sleeve="LEATHER", sleeve_to=0.66, cuff="DARK"))
+    mirror(lambda k: leg(s, f, k, skin, "KHAKI", pants_to=0.1, hem=False))
+    mirror(lambda k: shoe(s, f, k, "boot", col="LEATHER", trim="DARK"))
+    belt(s, f, "DARK", y=0.94)
+    head(s, f, skin, eyes="round", nose="long", brows="BROWN_HAIR", mouth="smile")
+    moustache(s, f, "BROWN_HAIR", droop=-0.012)
+    # The scarf: a loop round the neck, one end down the front of the jacket.
+    s.on("Spine2", "Neck")
+    loft(s, ellipse_rings([(1.39, 0.086, 0.08, 0.012), (1.45, 0.074, 0.07, 0.014)]), "WHITE")
+    tube(s, [(0.035, 1.41, 0.085), (0.06, 1.3, 0.15), (0.05, 1.17, 0.158)], [0.03, 0.028, 0.02], "WHITE", sides=5)
+    # The helmet, cut away round the face like hair, its ear flaps, and the goggles on the brow.
+    hair_cap(s, f, "LEATHER", low=-0.6, fringe=0.5, puff=1.05)
+    s.on("Head")
+    c, r = f.head_c, f.hr
+    mirror(lambda k: ball(s, (k * r * 1.0, c.y - r * 0.3, c.z - r * 0.02), (r * 0.16, r * 0.45, r * 0.38), "LEATHER",
+                          segs=8, rings=5))
+    tube(s, [(-r * 1.04, c.y + r * 0.55, c.z - r * 0.1), (-r * 0.7, c.y + r * 0.62, c.z + r * 0.72),
+             (r * 0.7, c.y + r * 0.62, c.z + r * 0.72), (r * 1.04, c.y + r * 0.55, c.z - r * 0.1)], 0.012, "DARK",
+         sides=4, outline=False)
+    mirror(lambda k: ball(s, (k * 0.056, c.y + r * 0.66, c.z + r * 0.88), (0.042, 0.034, 0.022), "GOLD", segs=10,
+                          rings=5))
+    mirror(lambda k: ball(s, (k * 0.056, c.y + r * 0.66, c.z + r * 0.92), (0.032, 0.025, 0.012), "TEAL", segs=8,
+                          rings=4, outline=False))
+    return f
+
+
 BODIES = [
     ("Player_Gus", gus), ("Player_Kiki", kiki), ("Player_Rex", rex), ("Player_Mo", mo),
     ("Native_Hunter", native_hunter), ("Native_Mud", native_mud), ("Native_Skull", native_skull),
-    ("Native_Brute", native_brute), ("Castaway", castaway), ("Barman", barman),
+    ("Native_Brute", native_brute), ("Castaway", castaway), ("Barman", barman), ("Pilot_Radu", radu),
 ]
 
 

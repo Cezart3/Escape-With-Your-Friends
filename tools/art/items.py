@@ -376,6 +376,36 @@ def chart_page(s):
                at(0.13, 0, 0.08))
 
 
+
+def journal_page(n):
+    """#275: a page torn from Radu's notebook. Ruled lines of handwriting, a ragged top edge, and a
+    sketch in the corner of what the page is about: the propeller, a cage, the canoe, the idol."""
+    def build(s):
+        shaped(s, lambda: box(s, (-0.11, 0.0, -0.15), (0.11, 0.004, 0.13), "CREAM", outline=True), rx(-2))
+        for k in range(6):  # the torn top, a few teeth of paper left on the binding side
+            x = -0.1 + k * 0.04
+            box(s, (x, 0.0, 0.13), (x + 0.02, 0.004, 0.14 + 0.006 * (k % 3)), "CREAM")
+        for k in range(9):
+            z = 0.1 - k * 0.026
+            w = 0.17 if k % 4 != 3 else 0.09
+            box(s, (-0.09, 0.005, z - 0.0025), (-0.09 + w, 0.0065, z + 0.0025), "DARK")
+        if n == 2:      # a propeller
+            for a in (0, 120, 240):
+                shaped(s, lambda: box(s, (-0.005, 0.005, 0.0), (0.005, 0.008, 0.035), "BROWN"), B.turn_y(a),
+                       at(0.06, 0, -0.1))
+        elif n == 3:    # a cage
+            for k in range(4):
+                box(s, (0.035 + k * 0.016, 0.005, -0.135), (0.04 + k * 0.016, 0.008, -0.08), "BROWN")
+            box(s, (0.03, 0.005, -0.085), (0.09, 0.008, -0.08), "BROWN")
+        elif n == 4:    # the canoe
+            box(s, (0.02, 0.005, -0.11), (0.1, 0.008, -0.1), "BROWN")
+            box(s, (0.035, 0.005, -0.1), (0.085, 0.008, -0.094), "BROWN")
+        else:           # the idol, in red
+            box(s, (0.05, 0.005, -0.13), (0.075, 0.008, -0.08), "RED")
+            box(s, (0.04, 0.005, -0.09), (0.085, 0.008, -0.083), "RED")
+    return build
+
+
 # --------------------------------------------------------------------------------------- kits
 
 def engine_kit(s):
@@ -507,6 +537,10 @@ ITEMS = {
     "outboard": (outboard, 0.9),
     "fuel_drum": (fuel_drum, 0.85),
     "chart_page": (chart_page, 0.32),
+    "journal_page_2": (journal_page(2), 0.28),
+    "journal_page_3": (journal_page(3), 0.28),
+    "journal_page_4": (journal_page(4), 0.28),
+    "journal_page_5": (journal_page(5), 0.28),
     "engine_kit": (engine_kit, 0.6),
     "tank_kit": (tank_kit, 0.6),
     "fuel": (fuel, 0.4),

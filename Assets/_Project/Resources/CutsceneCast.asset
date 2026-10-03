@@ -18,6 +18,7 @@ MonoBehaviour:
   - {fileID: 919132149155446097, guid: fbcc616eb9efd204685d6bdd81afd046, type: 3}
   - {fileID: 919132149155446097, guid: b24d9d9220810f545b7e490c9c3456af, type: 3}
   Bogdan: {fileID: 919132149155446097, guid: 59d0798095d8f974bb786d46d543f626, type: 3}
+  Radu: {fileID: 919132149155446097, guid: 85f1a382b653e7d4684655badd0d1e72, type: 3}
   Clips:
   - {fileID: 4996995007976980875, guid: abf4393423a81214caa80b01724e40dd, type: 3}
   - {fileID: 4366774653929184976, guid: abf4393423a81214caa80b01724e40dd, type: 3}

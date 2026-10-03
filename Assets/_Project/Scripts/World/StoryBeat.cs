@@ -173,6 +173,7 @@ namespace EscapeWithYourFriends.World
                 "plane" => Airworthy(),
                 "ending" => Epilogue(),
                 "radio" => Radio(),
+                "flashback" => Flashback(),
                 _ => Glimpse(),
             };
             yield return scene;
@@ -409,7 +410,7 @@ namespace EscapeWithYourFriends.World
 
         internal Puppet Actor(int who, Vector3 at, float yaw, Transform parent = null, bool grounded = true)
         {
-            GameObject body = who < 4 ? _cast.Friends[who] : _cast.Bogdan;
+            GameObject body = who < 4 ? _cast.Friends[who] : who == 4 ? _cast.Bogdan : _cast.Radu;
             Puppet puppet = Puppet.Spawn(body, _cast, at, yaw, parent != null ? parent : transform);
             if (grounded) puppet.Ground = GroundAt;
             Actors.Add(puppet);
@@ -622,6 +623,7 @@ namespace EscapeWithYourFriends.World
             "MO" => new Color(0.6f, 0.9f, 0.35f),
             "REX" => new Color(0.5f, 0.78f, 1f),
             "BOGDAN" => new Color(0.95f, 0.85f, 0.6f),
+            "RADU" => new Color(0.9f, 0.8f, 0.62f),
             _ => new Color(1f, 0.75f, 0.35f),
         };
 
