@@ -117,6 +117,13 @@ namespace EscapeWithYourFriends.World
 
             Check($"only trees and plants sway ({string.Join(", ", ghosts.Take(5))})", ghosts.Count == 0);
 
+            // Every building and casino fitting wears its buildings.py model (#78), not greybox boxes.
+            MeshFilter[] models = FindObjectsByType<MeshFilter>(FindObjectsSortMode.None)
+                .Where(f => f.name == "Model" && f.sharedMesh != null && f.sharedMesh.name.StartsWith("Bld_")).ToArray();
+            string[] bare = { "Casino", "Shop", "BaseCamp", "NativeVillage", "Wreck", "Cave", "ChipWindow", "CashWindow", "VipDoor" };
+            bare = bare.Where(b => !models.Any(f => f.transform.parent.name.StartsWith(b))).ToArray();
+            Check($"every building wears its Blender model ({models.Length}; bare: {string.Join(", ", bare)})", bare.Length == 0);
+
             // The terrain draws its trees without a Renderer anywhere, so a forest of stray materials
             // used to be invisible to the loop above. Its prototypes are prefabs; read them directly.
             Trees(materials, broken);

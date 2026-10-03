@@ -62,11 +62,19 @@ namespace EscapeWithYourFriends.EditorTools
 
             Remodel();
 
-            // Both cage windows get the bar's counter, the same one the bar in the shack has. The bars
-            // and the sign stay: the sign's colour is what tells buying chips from cashing them out.
-            foreach (string window in new[] { BuyWindowPath, CashWindowPath })
-                ArtDress.DressPrefab(window, "Art", cage => ArtDress.ReplaceTiled(cage, "BarCounter", "Art", 1f,
-                    "Counter", "Top"));
+            // Both cage windows wear their Blender booth: gold and red for chips, green for cash, the
+            // word on the sign as well as the colour.
+            Dictionary<string, Mesh> booths = SlotFactory.Models(GreyboxBuilder.ModelsPath);
+            foreach ((string window, string id) in new[] { (BuyWindowPath, "Cage_Chips"), (CashWindowPath, "Cage_Cash") })
+            {
+                GameObject cage = PrefabUtility.LoadPrefabContents(window);
+                try
+                {
+                    GreyboxBuilder.Model(cage, id, booths);
+                    PrefabUtility.SaveAsPrefabAsset(cage, window);
+                }
+                finally { PrefabUtility.UnloadPrefabContents(cage); }
+            }
 
             if (Barman(EnsureBar())) built++;
             if (Door()) built++;
@@ -117,7 +125,7 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
-        /// The VIP room's door (#254): a gold slab you press, never one that opens. See
+        /// The VIP room's door (#254): a gold double door you press, never one that opens. See
         /// <see cref="VipDoor"/>. Rebuilt every run, like the slot cabinets: nothing on it is dressed
         /// by hand, and the POI places it by path.
         /// </summary>
@@ -130,6 +138,8 @@ namespace EscapeWithYourFriends.EditorTools
                   new Color(0.85f, 0.70f, 0.25f), solid: true);
             Block(root.transform, "Sign", new Vector3(0f, 2.75f, 0.1f), new Vector3(1.2f, 0.35f, 0.06f),
                   new Color(0.55f, 0.12f, 0.30f), solid: false);
+
+            GreyboxBuilder.Model(root, "VipDoor", SlotFactory.Models(GreyboxBuilder.ModelsPath));
 
             root.AddComponent<NetworkObject>();
             root.AddComponent<VipDoor>();
