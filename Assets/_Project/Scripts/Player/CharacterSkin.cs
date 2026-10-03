@@ -15,7 +15,7 @@ namespace EscapeWithYourFriends.Player
     /// A person over the ragdoll (#76, #77, docs/ART-PLAN.md T9).
     ///
     /// The physics skeleton stays exactly what it was - eleven primitives, their joints, their
-    /// masses - and stops being drawn. What is drawn is a skinned Quaternius body, which lives two
+    /// masses - and stops being drawn. What is drawn is a skinned body of our own (#76), which lives two
     /// lives: standing, an <see cref="Animator"/> plays the library's clips on it and the physics
     /// bones are nobody's business; limp, the animator is switched off and each of its big bones is
     /// laid along the physics bone it corresponds to, so the body you see is the body the solver is

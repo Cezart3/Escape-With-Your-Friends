@@ -13,8 +13,8 @@ using UnityEngine;
 namespace EscapeWithYourFriends.EditorTools
 {
     /// <summary>
-    /// The people: Quaternius's Universal Base Characters, animated by his Universal Animation Library
-    /// (#76, #77, docs/ART-PLAN.md T9).
+    /// The people: our own bodies (tools/art/characters.py, #76), animated by Quaternius's Universal
+    /// Animation Library through their Humanoid avatars (#77, docs/ART-PLAN.md T9).
     ///
     ///   Unity.exe -batchmode -quit -projectPath . -logFile characters.log
     ///     -executeMethod EscapeWithYourFriends.EditorTools.CharacterArt.Build -artZips "D:\Downloads\ewyf-art"
@@ -23,11 +23,10 @@ namespace EscapeWithYourFriends.EditorTools
     /// and <c>NativeFactory</c>, <c>CastawayBuilder</c> and <c>CasinoFactory</c>, which dress the NPCs
     /// through <see cref="Dress"/> (T10).
     ///
-    /// One command for three jobs - extract, import, build the controller - because none of them is
-    /// useful alone and each depends on the one before. Unlike the Kenney kits, the file names inside
-    /// these zips were never seen by this project (only the models, re-exported elsewhere as glTF;
-    /// ART-PLAN §1), so extraction is by kind rather than by name: every FBX, the base-colour
-    /// textures and the licence, and the log says exactly what it found.
+    /// One command for three jobs - extract the library, import it and the bodies, build the
+    /// controller - because none of them is useful alone and each depends on the one before. The
+    /// library's file names inside its zip were never seen by this project, so extraction is by kind
+    /// rather than by name: every FBX and the licence, and the log says exactly what it found.
     ///
     /// The controller is emptied and refilled in place on every run, so its GUID - which every prefab
     /// wearing it holds, including the barman, who is dressed once and never rebuilt - survives.
@@ -40,12 +39,21 @@ namespace EscapeWithYourFriends.EditorTools
         public const string ControllerPath = Folder + "/Player.controller";
         const string MaskPath = Folder + "/UpperBody.mask";
 
-        const string BodiesPack = "UniversalBaseCharacters";
+        /// <summary>Our bodies, <c>Body_&lt;Kind&gt;_&lt;Name&gt;.fbx</c>, and the ramp sheet they are painted from.</summary>
+        const string BodyFolder = "Assets/_Project/Art/Characters";
+        const string AtlasTexture = BodyFolder + "/Textures/Characters.png";
+        const string AtlasPath = BodyFolder + "/CharacterAtlas.mat";
+
+        public const string Players = "Player";
+        public const string Natives = "Native";
+        public const string Castaway = "Castaway";
+        public const string Barman = "Barman";
+
         const string MovesPack = "UniversalAnimationLibrary";
 
         /// <summary>
-        /// Bodies on one prefab. Every one is a full skeleton under every player, so this is a cost
-        /// per player, not per scene; four is one per colour of a full lobby.
+        /// Bodies of one kind on one prefab. Every one is a full skeleton under every player, so this is
+        /// a cost per player, not per scene; four is one per colour of a full lobby.
         /// </summary>
         const int MaxBodies = 4;
 
@@ -87,27 +95,28 @@ namespace EscapeWithYourFriends.EditorTools
         public static void Build()
         {
             string zips = CommandLine.GetString("-artZips", DefaultZips);
-            ArtCatalog.Pack bodies = ArtCatalog.FindPack(BodiesPack);
             ArtCatalog.Pack moves = ArtCatalog.FindPack(MovesPack);
 
-            // Both, before failing: one run should say everything that is missing.
-            bool ok = Extract(bodies, zips, textures: true);
-            ok &= Extract(moves, zips, textures: false);
+            bool ok = Extract(moves, zips, textures: false);
 
             Directory.CreateDirectory(Folder);
             AssetDatabase.Refresh();
 
             if (ok)
             {
-                foreach (string path in Models(bodies)) ImportBody(path, bodies);
+                Material atlas = Atlas();
+                foreach (string path in BodyFiles("")) ImportBody(path, atlas);
                 foreach (string path in Models(moves)) ImportMoves(path);
 
-                GameObject[] found = Bodies();
-                Debug.Log($"[CharacterArt] {found.Length} bodies: {string.Join(", ", found.Select(b => b.name))}.");
-                if (found.Length == 0)
+                foreach (string kind in new[] { Players, Natives, Castaway, Barman })
                 {
-                    Debug.LogError($"[CharacterArt] No usable body in {bodies.Folder}: none is a humanoid "
-                                   + "with a skinned mesh between 1.4 and 2.2 m tall. The log above says why each was refused.");
+                    GameObject[] found = Bodies(kind);
+                    Debug.Log($"[CharacterArt] {found.Length} {kind} bodies: {string.Join(", ", found.Select(b => b.name))}.");
+                    if (found.Length > 0) continue;
+
+                    Debug.LogError($"[CharacterArt] No usable {kind} body in {BodyFolder}: none is a humanoid with a "
+                                   + "skinned mesh between 1.4 and 2.2 m tall. Run tools/art/characters.py; the log above "
+                                   + "says why each was refused.");
                     ok = false;
                 }
 
@@ -230,7 +239,7 @@ namespace EscapeWithYourFriends.EditorTools
 
         static bool Has(string text, string part) => text.IndexOf(part, StringComparison.OrdinalIgnoreCase) >= 0;
 
-        /// <summary>Lower-case letters and digits only, so "Universal Base Characters[Standard]" matches "basecharacter".</summary>
+        /// <summary>Lower-case letters and digits only, so "Universal Animation Library[Standard]" matches "animationlibrary".</summary>
         static string Plain(string text) => new(text.ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
 
         static string[] Models(ArtCatalog.Pack pack)
@@ -298,7 +307,8 @@ namespace EscapeWithYourFriends.EditorTools
             return importer;
         }
 
-        static void ImportBody(string path, ArtCatalog.Pack pack)
+        /// <summary>A body, Humanoid, with whatever material Blender wrote remapped onto the sheet's.</summary>
+        static void ImportBody(string path, Material atlas)
         {
             ModelImporter importer = Humanoid(path, animations: false);
             if (importer == null) return;
@@ -307,80 +317,44 @@ namespace EscapeWithYourFriends.EditorTools
             if (asset == null) return;
 
             bool changed = false;
-            var seen = new HashSet<string>();
-
             foreach (Renderer renderer in asset.GetComponentsInChildren<Renderer>(true))
             foreach (Material worn in renderer.sharedMaterials)
             {
-                if (worn == null || !seen.Add(worn.name)) continue;
-                if (AssetDatabase.GetAssetPath(worn).StartsWith(ArtLibrary.MaterialFolder)) continue;
-
-                importer.AddRemap(new AssetImporter.SourceAssetIdentifier(typeof(Material), worn.name),
-                                  Paint(worn, pack));
+                if (worn == null || worn == atlas) continue;
+                importer.AddRemap(new AssetImporter.SourceAssetIdentifier(typeof(Material), worn.name), atlas);
                 changed = true;
             }
 
             if (changed) importer.SaveAndReimport();
         }
 
-        /// <summary>
-        /// One shared material per slot the artist named. Painted, in order of preference, from the
-        /// texture the FBX itself pointed at, from a texture in the pack named after the slot, or
-        /// from the slot's own colour - and the log says which, because a white body is the one
-        /// failure that looks like a style choice.
-        /// </summary>
-        static Material Paint(Material worn, ArtCatalog.Pack pack)
+        /// <summary>The bodies' one material: their ramp sheet, filtered like the slots' (SlotFactory).</summary>
+        static Material Atlas()
         {
-            string slot = new(worn.name.Where(c => char.IsLetterOrDigit(c) || c == '_').ToArray());
-            string path = $"{ArtLibrary.MaterialFolder}/Quaternius_{slot}.mat";
-
-            var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
-            if (existing != null) return existing;
-
-            Texture texture = worn.HasProperty("_BaseMap") ? worn.GetTexture("_BaseMap") : null;
-            if (texture == null) texture = worn.mainTexture;
-            string source = texture != null ? "the FBX" : null;
-
-            if (texture == null)
+            if (AssetImporter.GetAtPath(AtlasTexture) is TextureImporter importer)
             {
-                string file = BaseColour(pack, slot);
-                if (file != null)
-                {
-                    if (AssetImporter.GetAtPath(file) is TextureImporter importer && importer.maxTextureSize != 1024)
-                    {
-                        importer.maxTextureSize = 1024;
-                        importer.SaveAndReimport();
-                    }
-
-                    texture = AssetDatabase.LoadAssetAtPath<Texture2D>(file);
-                    source = file;
-                }
+                importer.mipmapEnabled = true;
+                importer.filterMode = FilterMode.Bilinear;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.SaveAndReimport();
             }
 
-            Material material = StyleLook.New($"Quaternius_{slot}");
-            material.SetFloat("_Smoothness", 0.18f);
-
-            if (texture != null)
+            var material = AssetDatabase.LoadAssetAtPath<Material>(AtlasPath);
+            if (material == null)
             {
-                material.SetTexture("_BaseMap", texture);
-                material.mainTexture = texture;
-                material.SetColor("_BaseColor", Color.white);
-            }
-            else
-            {
-                Color colour = worn.HasProperty("_BaseColor") ? worn.GetColor("_BaseColor") : worn.color;
-                material.SetColor("_BaseColor", colour);
-                material.color = colour;
-                Debug.LogWarning($"[CharacterArt] {worn.name}: no texture in the FBX or in {pack.Folder}/Textures; "
-                                 + $"flat #{ColorUtility.ToHtmlStringRGB(colour)}.");
+                material = StyleLook.New("CharacterAtlas");
+                AssetDatabase.CreateAsset(material, AtlasPath);
             }
 
-            // Eyebrows and lashes are single cards. Drawn from one side only, they vanish in profile.
-            if (Has(slot, "hair") || Has(slot, "brow") || Has(slot, "lash"))
-                material.SetFloat("_Cull", 0f);
-
-            if (source != null) Debug.Log($"[CharacterArt] {worn.name} is painted from {source}.");
-            return ArtLibrary.Save(material, path);
+            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(AtlasTexture);
+            material.SetTexture("_BaseMap", texture);
+            material.mainTexture = texture;
+            material.SetColor("_BaseColor", Color.white);
+            material.SetFloat("_Smoothness", 0.2f);
+            StyleLook.Wear(material);
+            EditorUtility.SetDirty(material);
+            return material;
         }
 
         /// <summary>A base-colour texture named after the slot: "MI_Superhero_Male" finds "T_Superhero_Male_BaseColor".</summary>
@@ -439,15 +413,20 @@ namespace EscapeWithYourFriends.EditorTools
                       + (clips.Length > 0 ? $": {string.Join(", ", clips.Select(c => c.name))}." : "."));
         }
 
+        static string[] BodyFiles(string kind)
+            => Directory.Exists(BodyFolder)
+                ? Directory.GetFiles(BodyFolder, $"Body_{kind}*.fbx").Select(p => p.Replace('\\', '/')).OrderBy(p => p).ToArray()
+                : Array.Empty<string>();
+
         /// <summary>
-        /// The bodies the player prefab wears: humanoid, skinned, the height of a person. When the pack
-        /// has a "FullBody" variant beside modular parts, only those. At most <see cref="MaxBodies"/>.
+        /// The bodies of one kind (<see cref="Players"/>, <see cref="Natives"/>, ...): humanoid, skinned,
+        /// the height of a person, in name order. At most <see cref="MaxBodies"/>.
         /// </summary>
-        public static GameObject[] Bodies()
+        public static GameObject[] Bodies(string kind = Players)
         {
             var found = new List<GameObject>();
 
-            foreach (string path in Models(ArtCatalog.FindPack(BodiesPack)))
+            foreach (string path in BodyFiles(kind))
             {
                 var asset = AssetDatabase.LoadAssetAtPath<GameObject>(path);
                 if (asset == null) continue;
@@ -475,7 +454,6 @@ namespace EscapeWithYourFriends.EditorTools
                 found.Add(asset);
             }
 
-            if (found.Any(b => Has(b.name, "fullbody"))) found.RemoveAll(b => !Has(b.name, "fullbody"));
             return found.Take(MaxBodies).ToArray();
         }
 
@@ -806,9 +784,11 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
-        /// A band round the skull, 7.5 cm under the crown: the one untextured thing on a body, so the
-        /// one thing a colour can go on. The bodies are textured and have no hair; tinting the skin
-        /// turns it green. Also returns how tall the body stands, which the band had to find anyway.
+        /// A band round the brow: the one untextured thing on a body, so the one thing a colour can go
+        /// on (a player's colour, a native's role). 7.5 cm under the crown, but never above the
+        /// forehead and only round the skull itself, so a topknot or a pair of horns (#76) does not
+        /// lift it into a hat. No material, no band. Also returns how tall the body stands, which the
+        /// band had to find anyway.
         /// </summary>
         internal static Renderer Band(Transform head, SkinnedMeshRenderer[] skinned, Material material, out float crown)
         {
@@ -836,8 +816,10 @@ namespace EscapeWithYourFriends.EditorTools
             if (points.Count > 20)
             {
                 crown = points.Max(p => p.y);
-                float y = crown - 0.075f;
-                List<Vector3> ring = points.Where(p => Mathf.Abs(p.y - y) < 0.02f).ToList();
+                float y = Mathf.Min(crown - 0.075f, head.position.y + 0.21f);
+                var axis = new Vector2(head.position.x, head.position.z);
+                List<Vector3> ring = points.Where(p => Mathf.Abs(p.y - y) < 0.02f
+                                                       && Vector2.Distance(new Vector2(p.x, p.z), axis) < 0.2f).ToList();
 
                 if (ring.Count > 8)
                 {
@@ -851,6 +833,8 @@ namespace EscapeWithYourFriends.EditorTools
             {
                 Debug.LogWarning($"[CharacterArt] Could not measure the skull above {head.name}; the band is a guess.");
             }
+
+            if (material == null) return null;
 
             GameObject band = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             band.name = "Band";
@@ -866,16 +850,15 @@ namespace EscapeWithYourFriends.EditorTools
         }
 
         /// <summary>
-        /// An NPC in the same bodies as the players (T10). Every body, or only the
-        /// <paramref name="only"/>th, goes under a <c>Skin</c> child, inactive until
-        /// <see cref="NpcSkin"/> picks one; each wears a band in <paramref name="band"/>. Then the
+        /// An NPC in its <paramref name="kind"/>'s bodies (T10, #76). Every one goes under a <c>Skin</c>
+        /// child, inactive until <see cref="NpcSkin"/> picks one; each wears a band in <paramref name="band"/>. Then the
         /// greybox goes: every other direct child loses its renderer, and keeps its transform and any
         /// collider, because scripts aim from a head and hit a torso. False, with nothing touched, when
         /// there is nothing to wear yet - the boxes stay rather than leave an invisible person.
         /// </summary>
-        internal static bool Dress(GameObject root, Material band, Transform carrySocket = null, int only = -1)
+        internal static bool Dress(GameObject root, Material band, string kind, Transform carrySocket = null)
         {
-            GameObject[] models = Bodies();
+            GameObject[] models = Bodies(kind);
             var controller = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(ControllerPath);
 
             if (models.Length == 0 || controller == null)
@@ -891,8 +874,6 @@ namespace EscapeWithYourFriends.EditorTools
             var bodies = new List<NpcSkin.Body>();
             for (int i = 0; i < models.Length; i++)
             {
-                if (only >= 0 && i != only % models.Length) continue;
-
                 GameObject instance = Put(models[i], holder);
                 var animator = instance.GetComponent<Animator>();
                 animator.runtimeAnimatorController = controller;

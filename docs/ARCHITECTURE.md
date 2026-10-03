@@ -9789,6 +9789,92 @@ The beauty route now visits the buggy and the boat as well. It averaged 194 fps 
 
 ---
 
+## Characters modelled in Blender (#76, #77)
+
+Before this, every person in the game was a Quaternius Universal Base Character. Now each one is
+modelled, rigged and painted by `tools/art/characters.py`:
+
+- four players: Gus the tourist, Kiki the athlete, Rex the surfer, Mo the old captain;
+- four natives;
+- the castaway;
+- the barman.
+
+The Quaternius animation library still moves them. The Universal Base Characters pack is gone from
+the repo.
+
+```
+blender -b --factory-startup -P tools/art/characters.py -- <abs>/Assets/_Project/Art/Characters
+```
+
+The command writes `Body_<Kind>_<Name>.fbx`, where Kind is Player, Native, Castaway or Barman, plus
+`Textures/Characters.png`. That texture is a 32-column ramp sheet of its own: skins, hair and cloth
+need colours the slots' sheet has no room for. Run without a folder, the script lays every body side
+by side in the open Blender instead.
+
+**Rig.** Each body is one skinned mesh on a Mixamo-named skeleton in T-pose.
+
+- Unity maps the skeleton to a Humanoid avatar by name, so the library's 43 clips retarget onto it.
+  `Player.controller` keeps its GUID.
+- The joints sit exactly where the player's ragdoll has them, so `PlayerPrefabBuilder` fits a body
+  without scaling it: hips 0.95, legs at x ±0.11, knees 0.48, shoulders 1.36 at x ±0.20, neck 1.42.
+- Every part is drawn on a list of bones. Each vertex is weighted to the nearest of those bones by
+  inverse distance to the sixth power, three bones at most. A sleeve therefore bends at the elbow,
+  while a hand, a head or a shoe has one bone and stays rigid.
+
+**Shading.** Shading is baked into the UVs from height and normal for the whole body at once, not
+part by part, so there is no seam between shirt and trousers. The outline is the same inverted hull
+the rest of the art uses.
+
+**Triangle budget.** A body is 6.8k to 8.9k triangles. The Quaternius bodies were about 15k.
+
+**Natives.** The natives are islanders, not people in costume: The Forest's cannibals without the
+gore. They wear hide and rope, go barefoot, and wear bone and teeth. Their faces are hard.
+
+- The Hunter has dreadlocks, a red ochre band across the eyes, and white clay drawn down the chest
+  and round the arms.
+- The Mud native has a shaved head with a topknot, a bone through the nose, white fingertip dots
+  round the eyes, a red handprint on the chest, and mud to the thighs.
+- The Skull wears a goat's skull with horns, and has ash streaked down the chest and forearms.
+- The Brute is big. His face is daubed white with the eyes blacked in, and he has a matted beard.
+
+Paint is `smear()`. It draws a stroke as a flat ribbon, or dots as flat discs, each point projected
+onto the nearest face that is still skin (a BVH tree built over the skin faces only). Strokes follow
+the body however it curves, never land on an eye or a necklace, and cost a few dozen triangles. The
+first version recoloured whole faces, which read as a checkerboard. The second laid down rounded
+dabs, which read as strings of beads.
+
+**Unity side.** `CharacterArt.Build` imports the bodies as Humanoid and remaps whatever material
+Blender wrote onto one `CharacterAtlas.mat`. `Bodies(kind)` picks up a kind by file name.
+
+- `Dress(root, band, kind, socket)` puts all the bodies of a kind under an NPC's `Skin`, where
+  `NpcSkin` picks one.
+- The natives get the four native bodies. The castaway and the barman each get their own.
+- The barman is redressed in place, so its GUID and NetworkObject survive.
+
+**The band.** The band is the coloured ring that carries a player's colour or a native's role. It is
+now measured at the brow, never more than 21 cm above the head bone, and only from vertices within
+20 cm of the head's axis. Measured from the crown as before, a topknot or a pair of horns lifted it
+into a beret. The castaway and the barman have no band (`band: null`): there is one of each, so
+there is nothing to tell apart.
+
+**Island NavMesh.** The island 1 and island 2 generators had once been run at the same time on one
+project. That left island 2's 512 m bake in `IslandNavMesh.asset`, so the first island's village and
+cave had no NavMesh within 25 m and no native ever spawned. `-nativeTest` caught it with "the camps
+man themselves (0 spawned)". Island 1 is regenerated alone here. Never run the two generators
+together.
+
+**LookRoute.** `-beautyShots` adds three close-ups that follow their subject when the shot is taken:
+the barman, the castaway, and the native nearest the village.
+
+Tests:
+
+- `-skinTest` 65/0.
+- `-nativeTest`, run solo, 167/0.
+- `-casinoTest` 26/0.
+- `-lookTest` 21/0.
+
+---
+
 ## Data-driven content
 
 **Every piece of content that is not geometry is a ScriptableObject.**
