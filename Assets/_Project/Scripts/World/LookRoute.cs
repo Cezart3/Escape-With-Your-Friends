@@ -50,6 +50,9 @@ namespace EscapeWithYourFriends.World
             public string Name;
             public Vector3 Eye;
             public Vector3 Target;
+
+            /// <summary>Someone who walks about: the camera finds them where they are at the shot.</summary>
+            public Transform Subject;
         }
 
         internal static void Begin()
@@ -163,10 +166,26 @@ namespace EscapeWithYourFriends.World
                                      Target = t.TransformPoint(0f, 0.9f, 0f) });
             }
 
+            // #76. The people, face to face: the barman, the castaway and the native nearest the village.
+            Subject(spots, "the barman", Array.Find(FindObjectsByType<Economy.ShopCounter>(FindObjectsSortMode.None),
+                                                    c => c.name.StartsWith("Barman"))?.transform);
+            Subject(spots, "the castaway", FindAnyObjectByType<AI.Castaway>()?.transform);
+            Landmark village = Find("village");
+            if (village != null)
+                Subject(spots, "a native", FindObjectsByType<AI.Native>(FindObjectsSortMode.None)
+                    .OrderBy(n => Vector3.Distance(n.transform.position, village.transform.position))
+                    .FirstOrDefault()?.transform);
+
             Overlook(spots);
             Around(spots, "plane", "the plane", 18f, 5f);
 
             return spots;
+        }
+
+        static void Subject(List<Spot> spots, string name, Transform who)
+        {
+            if (who == null) { Debug.Log($"[LookRoute] nobody for '{name}'; skipped."); return; }
+            spots.Add(new Spot { Name = name, Subject = who });
         }
 
         static Landmark Find(string id) => Landmark.All.Find(l => l != null && l.Id == id);
@@ -249,7 +268,16 @@ namespace EscapeWithYourFriends.World
             foreach (Canvas canvas in FindObjectsByType<Canvas>(FindObjectsSortMode.None)) canvas.enabled = false;
         }
 
-        void Place(Spot spot) => _camera.transform.SetPositionAndRotation(spot.Eye, Quaternion.LookRotation(spot.Target - spot.Eye));
+        void Place(Spot spot)
+        {
+            if (spot.Subject != null)
+            {
+                spot.Eye = spot.Subject.TransformPoint(0.6f, 1.7f, 2.6f);
+                spot.Target = spot.Subject.position + Vector3.up * 1.2f;
+            }
+
+            _camera.transform.SetPositionAndRotation(spot.Eye, Quaternion.LookRotation(spot.Target - spot.Eye));
+        }
 
         // ---------------------------------------------------------------- perf
 

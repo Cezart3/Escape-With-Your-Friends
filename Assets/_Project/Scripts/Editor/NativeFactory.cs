@@ -536,7 +536,7 @@ namespace EscapeWithYourFriends.EditorTools
 
             // The people (T10). The boxes stay as transforms - a dart leaves from the head - and lose
             // their look only if there is a body to wear instead. Warpaint goes on at spawn, per role.
-            CharacterArt.Dress(root, Palette.Named("Accent"), socket.transform);
+            CharacterArt.Dress(root, Palette.Named("Accent"), CharacterArt.Natives, socket.transform);
 
             var native = root.AddComponent<Native>();
             SetFields(native, so =>

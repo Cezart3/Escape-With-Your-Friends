@@ -91,8 +91,8 @@ namespace EscapeWithYourFriends.EditorTools
             root.AddComponent<NetworkTransform>();
             root.AddComponent<Castaway>();
 
-            // The people (T10): one of the players' bodies, in a sun-bleached band, sitting when aboard.
-            CharacterArt.Dress(root, Palette.Named("Canvas"), only: 0);
+            // The people (T10, #76): his own body, no band (there is one of him), sitting when aboard.
+            CharacterArt.Dress(root, null, CharacterArt.Castaway);
 
             return root;
         }

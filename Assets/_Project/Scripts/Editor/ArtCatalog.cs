@@ -177,10 +177,9 @@ namespace EscapeWithYourFriends.EditorTools
             new("Quaternius", "FarmAnimals", "quaternius-farm", "https://poly.pizza/m/u35l6uP5vj", false,
                 textured: true),
 
-            // The people (T9). No entries in Models, so ArtExtract passes over them: their file names
-            // were never seen, and CharacterArt extracts them by kind instead.
-            new("Quaternius", "UniversalBaseCharacters", "basecharacter",
-                "https://quaternius.com/packs/universalbasecharacters.html", false),
+            // The people's moves (T9; the bodies are our own since #76). No entries in Models, so
+            // ArtExtract passes over it: its file names were never seen, and CharacterArt extracts it
+            // by kind instead.
             new("Quaternius", "UniversalAnimationLibrary", "animationlibrary",
                 "https://quaternius.com/packs/universalanimationlibrary.html", false),
         };

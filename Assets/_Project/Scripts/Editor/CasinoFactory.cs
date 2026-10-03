@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using EscapeWithYourFriends.AI;
 using EscapeWithYourFriends.Casino;
 using EscapeWithYourFriends.Core;
 using EscapeWithYourFriends.Data;
@@ -450,9 +451,15 @@ namespace EscapeWithYourFriends.EditorTools
                     PrefabUtility.SavePrefabAsset(existing);
                 }
 
-                // Built once and kept, so the body goes on in place (T10), GUID and all.
-                ArtDress.DressPrefab(BarmanPath, "Skin",
-                                     barman => CharacterArt.Dress(barman.gameObject, Palette.Named("Dark"), only: 1));
+                // Built once and kept, so the body goes on in place (T10), GUID and all. A barman still
+                // in an older body (#76 replaced them) has it taken off first.
+                ArtDress.DressPrefab(BarmanPath, "Skin/Body_Barman", barman =>
+                {
+                    Transform old = barman.Find("Skin");
+                    if (old != null) Object.DestroyImmediate(old.gameObject);
+                    if (barman.TryGetComponent(out NpcSkin worn)) Object.DestroyImmediate(worn);
+                    return CharacterArt.Dress(barman.gameObject, null, CharacterArt.Barman);
+                });
                 return false;
             }
 
@@ -482,9 +489,8 @@ namespace EscapeWithYourFriends.EditorTools
             root.AddComponent<NetworkObject>();
             root.AddComponent<ShopCounter>().Configure(shop);
 
-            // The people (T10): the players' other body from the castaway's, in a dark band where the
-            // hat was.
-            CharacterArt.Dress(root, Palette.Named("Dark"), only: 1);
+            // The people (T10, #76): his own body. One barman, so no band to tell him apart by.
+            CharacterArt.Dress(root, null, CharacterArt.Barman);
 
             GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, BarmanPath, out bool success);
             Object.DestroyImmediate(root);

@@ -438,7 +438,7 @@ namespace EscapeWithYourFriends.EditorTools
             // Server-side net for bodies that end up outside the world. See #110.
             root.AddComponent<FallGuard>();
 
-            // The Quaternius bodies over the ragdoll (T9), or null and the primitives stay.
+            // Our bodies over the ragdoll (T9, #76), or null and the primitives stay.
             Renderer[] bands = Skin(root, bones);
 
             // Second to last, so its Awake sweep for renderers finds every body part. With bodies, it
@@ -551,7 +551,7 @@ namespace EscapeWithYourFriends.EditorTools
         /// Every detail here is mesh only - its collider is destroyed on the spot - so none of it
         /// changes a mass, a joint limit or how far a body flies when a car hits it.
         ///
-        /// Since T9 this is the fallback: when <see cref="Skin"/> finds Quaternius bodies it hides all
+        /// Since T9 this is the fallback: when <see cref="Skin"/> finds bodies it hides all
         /// of this under one of them, and it is only what you see on a build without the characters.
         /// </summary>
         static void Dress(Transform bone, GameObject mesh, string name)
@@ -618,7 +618,7 @@ namespace EscapeWithYourFriends.EditorTools
 
             if (models.Length == 0 || controller == null)
             {
-                Debug.LogWarning("[PlayerPrefabBuilder] No Quaternius bodies or no animator controller, so the "
+                Debug.LogWarning("[PlayerPrefabBuilder] No bodies or no animator controller, so the "
                                  + "player stays primitives. Run CharacterArt.Build first (docs/ART-PLAN.md T9).");
                 return null;
             }
