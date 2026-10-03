@@ -74,6 +74,8 @@ namespace EscapeWithYourFriends.Net
             // Once, here, rather than per body: an unlock is addressed to a connection. #92.
             _manager.ClientManager.RegisterBroadcast<AchievementUnlock>(Achievements.OnUnlock);
             _manager.ClientManager.RegisterBroadcast<World.RunEnded>(World.RunSummary.OnEnded);
+            _manager.ClientManager.RegisterBroadcast<World.SkipTally>(World.SkipVote.OnTally);
+            _manager.ServerManager.RegisterBroadcast<World.SkipWish>(World.SkipVote.OnWish);
 
             if (!_logRoster) return;
             NetworkPlayerRegistry.PlayerAdded += OnPlayerAdded;
@@ -90,6 +92,8 @@ namespace EscapeWithYourFriends.Net
             _manager.ClientManager.OnClientConnectionState -= OnClientConnectionState;
             _manager.ClientManager.UnregisterBroadcast<AchievementUnlock>(Achievements.OnUnlock);
             _manager.ClientManager.UnregisterBroadcast<World.RunEnded>(World.RunSummary.OnEnded);
+            _manager.ClientManager.UnregisterBroadcast<World.SkipTally>(World.SkipVote.OnTally);
+            _manager.ServerManager.UnregisterBroadcast<World.SkipWish>(World.SkipVote.OnWish);
         }
 
         void OnPlayerAdded(NetworkPlayerRegistry.PlayerBody body)
