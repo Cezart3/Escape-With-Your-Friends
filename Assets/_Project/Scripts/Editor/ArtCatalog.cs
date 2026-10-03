@@ -18,6 +18,13 @@ namespace EscapeWithYourFriends.EditorTools
     {
         public const string Root = "Assets/_Project/Art/ThirdParty";
 
+        /// <summary>
+        /// The author of the models this project makes itself, from scripts under tools/art. They are
+        /// committed, not extracted from a zip, and live under <see cref="OwnRoot"/>.
+        /// </summary>
+        public const string Own = "EWYF";
+        public const string OwnRoot = "Assets/_Project/Art/Models";
+
         public readonly struct Pack
         {
             public readonly string Author;
@@ -65,7 +72,7 @@ namespace EscapeWithYourFriends.EditorTools
                 AtlasFile = atlasFile;
             }
 
-            public string Folder => $"{Root}/{Author}/{Name}";
+            public string Folder => Author == Own ? $"{OwnRoot}/{Name}" : $"{Root}/{Author}/{Name}";
         }
 
         /// <summary>How a model's target size is measured.</summary>
@@ -145,6 +152,11 @@ namespace EscapeWithYourFriends.EditorTools
             new("Quaternius", "PirateKit", "", "https://quaternius.com/packs/piratekit.html", true,
                 atlasFile: "Atlas_Pirate.png"),
 
+            // #282, the palms: modelled by tools/art/palms.py, which writes the FBX files and the two ramp
+            // textures they are painted from. Each file carries a near mesh and a "_Far" one for the
+            // far LOD (ArtLibrary.EnsureFloraPrefab).
+            new(Own, "Palms", "", "tools/art/palms.py", false, textured: true),
+
             // P4, the animals (T13). Quaternius's CC0 Deer and Pig from poly.pizza, converted from
             // glTF to FBX with Blender; each zip carries the CC0 text as License.txt. The deer is flat
             // colours, the pig one atlas. No CC0 propeller plane was found, so T14 keeps the greybox.
@@ -180,12 +192,15 @@ namespace EscapeWithYourFriends.EditorTools
         public static readonly Model[] Models =
         {
             // --- the island (IslandFlora.Variants) ---------------------------------------------
-            // Quaternius's pirate kit has three palms (2 924-3 208 triangles); two slots share one at
-            // different sizes rather than dropping a variant weight IslandFlora was tuned with.
-            new("PalmStraight", "PirateKit", "Environment_PalmTree_1", Tree, Height, 8.5f, true),
-            new("PalmBend", "PirateKit", "Environment_PalmTree_2", Tree, Height, 7.5f, true),
-            new("PalmTall", "PirateKit", "Environment_PalmTree_3", Tree, Height, 9.5f, true),
-            new("PalmLean", "PirateKit", "Environment_PalmTree_1", Tree, Height, 7f, true),
+            // Our own palms (#282, tools/art/palms.py), 3 400-6 300 triangles near and 270-760 far.
+            // Seven coconut palms for the beach, a fan palm and a clumping palm for the jungle.
+            new("PalmStraight", "Palms", "Palm_Straight", Tree, Height, 10f, true),
+            new("PalmBend", "Palms", "Palm_Bend", Tree, Height, 9f, true),
+            new("PalmTall", "Palms", "Palm_Tall", Tree, Height, 12f, true),
+            new("PalmLean", "Palms", "Palm_Lean", Tree, Height, 8f, true),
+            new("PalmTwin", "Palms", "Palm_Twin", Tree, Height, 9.5f, true),
+            new("PalmYoung", "Palms", "Palm_Young", Tree, Height, 4.5f, true),
+            new("PalmOld", "Palms", "Palm_Old", Tree, Height, 12.5f, true),
 
             // Placed nowhere. Kenney's pirate kit still supplies the rocks, the thatch and the crates,
             // which cannot tell which way is up; its palm, which can, stays here to teach them.
@@ -196,7 +211,8 @@ namespace EscapeWithYourFriends.EditorTools
             new("Broadleaf", "Nature", "CommonTree_1", Tree, Height, 9f, true),
             new("BroadleafTall", "Nature", "CommonTree_3", Tree, Height, 11f, true),
             new("BroadleafSmall", "Nature", "CommonTree_5", Tree, Height, 8f, true),
-            new("JunglePalm", "PirateKit", "Environment_PalmTree_2", Tree, Height, 8f, true),
+            new("JunglePalm", "Palms", "Palm_Fan", Tree, Height, 8.5f, true),
+            new("JungleClump", "Palms", "Palm_Clump", Tree, Height, 7.5f, true),
 
             new("Pine", "Nature", "Pine_1", Tree, Height, 9f, true),
             new("PineWide", "Nature", "Pine_2", Tree, Height, 8.5f, true),
@@ -281,7 +297,7 @@ namespace EscapeWithYourFriends.EditorTools
             new("Boar", "FarmAnimals", "Pig", ArtCategory.Animal),
 
             // --- items lying on the ground (ItemArtFactory, #206) --------------------------------
-            new("MeatRaw", "Food", "meat-raw", Small, upright: true),
+            new("MeatRaw", "Food", "meat-raw", Small),
             new("MeatCooked", "Food", "meat-cooked", Small),
             new("FishCooked", "Food", "fish", Small),
             new("Coconut", "Food", "coconut", Small),

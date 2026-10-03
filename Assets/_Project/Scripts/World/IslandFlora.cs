@@ -71,7 +71,7 @@ namespace EscapeWithYourFriends.World
         /// <summary>
         /// The models each species can be, in <see cref="SpeciesNames"/> order.
         ///
-        /// Placement stays five rules; rendering gets twenty-one prototypes. That split is the whole
+        /// Placement stays five rules; rendering gets twenty-five prototypes. That split is the whole
         /// trick: the rules are the expensive thing to tune - which ground a palm accepts, where the
         /// pines stop - and variety is free once they are right, because a variant is a second
         /// prefab in the same slot rather than a second rule.
@@ -81,15 +81,18 @@ namespace EscapeWithYourFriends.World
         /// </summary>
         public static readonly FloraModel[][] Variants =
         {
-            // Kenney's pirate kit (docs/ART-PLAN.md §4). Ids are ArtCatalog's; sizes live there too.
+            // Our own palms (#282, tools/art/palms.py). Ids are ArtCatalog's; sizes live there too.
             new[] { new FloraModel("PalmStraight", 0.30f), new FloraModel("PalmBend", 0.30f),
-                    new FloraModel("PalmTall", 0.30f), new FloraModel("PalmLean", 0.30f) },
+                    new FloraModel("PalmTall", 0.30f), new FloraModel("PalmLean", 0.30f),
+                    new FloraModel("PalmTwin", 0.30f), new FloraModel("PalmYoung", 0.30f),
+                    new FloraModel("PalmOld", 0.30f) },
 
-            // Quaternius's Nature MegaKit (P6 V1), one Kenney palm kept so the jungle stays tropical.
+            // Quaternius's Nature MegaKit (P6 V1), and two of our palms so the jungle stays tropical.
             // Radii measured on the kit at its placed height: the broadleaf trunks flare to 0.9-1.0m at
             // the root, and a thinner capsule lets the camera walk into the bark.
             new[] { new FloraModel("Broadleaf", 0.85f), new FloraModel("BroadleafTall", 0.8f),
-                    new FloraModel("BroadleafSmall", 0.75f), new FloraModel("JunglePalm", 0.30f) },
+                    new FloraModel("BroadleafSmall", 0.75f), new FloraModel("JunglePalm", 0.30f),
+                    new FloraModel("JungleClump", 0.30f) },
 
             new[] { new FloraModel("Pine", 0.36f), new FloraModel("PineWide", 0.36f),
                     new FloraModel("PineTall", 0.36f), new FloraModel("PineSparse", 0.34f) },

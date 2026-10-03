@@ -49,7 +49,7 @@ namespace EscapeWithYourFriends.EditorTools
                 string[] wanted = ArtCatalog.Models.Where(m => m.Pack == pack.Name)
                                             .Select(m => m.File.ToLowerInvariant() + ".fbx")
                                             .Distinct().ToArray();
-                if (wanted.Length == 0) continue;
+                if (wanted.Length == 0 || pack.Author == ArtCatalog.Own) continue;
 
                 string zipPath = BestZip(zips, pack, wanted);
                 if (zipPath == null)
