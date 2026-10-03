@@ -10372,6 +10372,57 @@ be tested headless (there is no camera), so it is judged from `-beautyShots ... 
 `-beautySpots <word>` is new. It keeps only the spots whose name contains that word, so a PR about
 one place shoots only that place.
 
+## The ground's detail layer (#246)
+
+The terrain's grass used to be one billboard texture (`FloraFactory.EnsureGrassTexture`) tinted by
+the terrain. Close up it was a flat green smear, and the sand and rock had nothing on them at all.
+
+**What draws it.** `TerrainGenerator.WriteDetail` now gives the terrain eight mesh prototypes, all
+modelled in `tools/art/plants.py` (the `Detail_*` variants, near mesh only, 10-90 triangles each):
+
+| Prototype | Where | Sways |
+|---|---|---|
+| `DetailGrass`, `DetailGrassTall` | grass splat over `GrassThreshold`; tall grass where the weight is high | yes |
+| `DetailFlowers` | a few cells in the thickest grass | yes |
+| `DetailShell`, `DetailStarfish` | sand | no |
+| `DetailDriftwood`, `DetailSeaweed` | sand on the tide line (under 0.8 m) | no |
+| `DetailPebbles` | rock | no |
+
+Each becomes a one-object prefab in `Assets/_Project/Prefabs/Details/` (the model's mesh and
+materials, no collider, shadows off), drawn with `usePrototypeMesh`, `VertexLit` and
+`useInstancing`, in `DetailScatterMode.InstanceCountMode`. The grass is on the plants' wind
+material (`ArtLibrary.Sway`, now internal), so it moves with the trees. The clutter is chosen per
+cell by a hash of the cell (`CellRandom`), so a rebake scatters the same shells in the same places.
+
+Grass gets twice the profile's `GrassPerCell`: a meshed tuft covers less ground than the billboard
+did. On island 1 that is 312k grass tufts and 98k tall ones, of which the terrain draws only the
+patches within the detail distance.
+
+**Refreshing it.** `TerrainGenerator.RefreshDetail` (menu *EWYF/Refresh Terrain Detail*, or
+batchmode `-executeMethod EscapeWithYourFriends.EditorTools.TerrainGenerator.RefreshDetail`)
+rewrites only the detail layers of both islands, one after the other, without touching a height,
+a splat or a tree. Run it after changing a `Detail_*` model or the scatter rules.
+
+**Per tier.** `VideoSettings.Terrain` scales the baked 85 m and density 0.8:
+
+| Grass tier | Distance | Density |
+|---|---|---|
+| Low | 40 m | 0.24 |
+| Medium | 70 m | 0.48 |
+| High | 120 m | 0.8 |
+| Ultra | 150 m | 0.8 |
+
+The clutter shares the grass's distance: Unity has one detail distance per terrain.
+
+**Cost.** Perf route on the Radeon 760M at Medium, before and after: +0.3 to +1.8 ms p50 per spot,
+the slowest p95 9.2 ms (was 8.1). On the RTX 4060 at High, the meadow shot went from 228 to 202 fps.
+
+**Test.** `-lookTest` checks every terrain's detail prototypes: instanced meshes, at most 100
+triangles each, no shadows, instancing materials on a valid shader, the grass on `_WIND`, and more
+than 1000 grass tufts painted. `LookRoute` has three new spots, `ground grass`, `ground beach` and
+`ground rock` (`-beautySpots ground`): the nearest grass, tide line and rock to the spawn, at a
+walker's height.
+
 ---
 
 ## Data-driven content

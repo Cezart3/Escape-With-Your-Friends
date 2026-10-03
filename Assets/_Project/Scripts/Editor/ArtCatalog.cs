@@ -250,6 +250,15 @@ namespace EscapeWithYourFriends.EditorTools
             new("FlowersLily", "Plants", "Flowers_Lily", Plant, Width, 1.1f),
             new("FlowersSpike", "Plants", "Flowers_Spike", Plant, Height, 0.9f, true),
             new("GrassTuft", "Plants", "Plant_Grass", Plant, Height, 0.9f, true),
+            // The terrain's detail layer (#246), drawn by TerrainGenerator.WriteDetail at their own size.
+            new("DetailGrass", "Plants", "Detail_Grass", Plant),
+            new("DetailGrassTall", "Plants", "Detail_GrassTall", Plant),
+            new("DetailFlowers", "Plants", "Detail_Flowers", Plant),
+            new("DetailShell", "Plants", "Detail_Shell", Plant),
+            new("DetailStarfish", "Plants", "Detail_Starfish", Plant),
+            new("DetailDriftwood", "Plants", "Detail_Driftwood", Plant),
+            new("DetailSeaweed", "Plants", "Detail_Seaweed", Plant),
+            new("DetailPebbles", "Plants", "Detail_Pebbles", Plant),
 
             // Our rocks and wood. The tall rock is the pack's one upright model and teaches the rest its
             // axis. "Rocks" is the greybox's lintel (GreyboxBuilder), "Log" and "Stump" its totem.

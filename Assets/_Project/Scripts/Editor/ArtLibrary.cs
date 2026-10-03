@@ -111,7 +111,7 @@ namespace EscapeWithYourFriends.EditorTools
         /// of the sway; bark and the palms' atlas only bend. A plant is short, so it bends harder per
         /// metre to move at all - the shader's bend grows with the square of the height.
         /// </summary>
-        static void Sway(Renderer renderer, ArtCategory category)
+        internal static void Sway(Renderer renderer, ArtCategory category)
         {
             if (category != ArtCategory.Tree && category != ArtCategory.Plant) return;
 

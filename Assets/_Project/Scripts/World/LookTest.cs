@@ -298,6 +298,52 @@ namespace EscapeWithYourFriends.World
             Check($"no tree is over its triangle cap ({string.Join(", ", heavy.Take(5))})", heavy.Count == 0);
             Check($"and every tree is standing up ({string.Join(", ", lying.Take(5))})", lying.Count == 0);
             Check($"and every tree and plant among them sways in the wind ({string.Join(", ", still.Take(5))})", still.Count == 0);
+
+            Details(terrains, materials, broken);
+        }
+
+        /// <summary>
+        /// The ground's detail layer (#246): Blender meshes drawn instanced, never a billboard, each a
+        /// few dozen triangles with no shadow, the grass swaying, and grass actually painted.
+        /// </summary>
+        void Details(Terrain[] terrains, HashSet<Material> materials, List<string> broken)
+        {
+            var wrong = new List<string>();
+            int grass = 0;
+            foreach (Terrain terrain in terrains)
+            {
+                TerrainData data = terrain.terrainData;
+                DetailPrototype[] prototypes = data.detailPrototypes;
+                if (prototypes.Length == 0) wrong.Add($"{terrain.name} has none");
+                for (int i = 0; i < prototypes.Length; i++)
+                {
+                    GameObject prefab = prototypes[i].prototype;
+                    var renderer = prefab != null ? prefab.GetComponent<MeshRenderer>() : null;
+                    var mesh = prefab != null ? prefab.GetComponent<MeshFilter>()?.sharedMesh : null;
+                    if (!prototypes[i].usePrototypeMesh || !prototypes[i].useInstancing || renderer == null || mesh == null)
+                    { wrong.Add($"{terrain.name}#{i} not an instanced mesh"); continue; }
+
+                    if (mesh.triangles.Length / 3 > 100) wrong.Add($"{prefab.name} {mesh.triangles.Length / 3} tris");
+                    if (renderer.shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.Off) wrong.Add($"{prefab.name} casts shadows");
+                    foreach (Material material in renderer.sharedMaterials)
+                    {
+                        if (material == null) { wrong.Add($"{prefab.name} has a blank slot"); continue; }
+                        materials.Add(material);
+                        if (material.shader == null || material.shader.name.Contains("InternalErrorShader"))
+                            broken.Add($"{prefab.name}:{material.name}");
+                        if (!material.enableInstancing) wrong.Add($"{prefab.name}:{material.name} not instanced");
+                        if (prefab.name.StartsWith("DetailGrass") && !material.IsKeywordEnabled("_WIND"))
+                            wrong.Add($"{prefab.name}:{material.name} still");
+                    }
+
+                    if (prefab.name == "DetailGrass")
+                        foreach (int n in data.GetDetailLayer(0, 0, data.detailWidth, data.detailHeight, i)) grass += n;
+                }
+            }
+
+            Debug.Log($"[LookTest] {grass} grass tufts painted.");
+            Check($"the ground's detail is instanced Blender meshes ({string.Join(", ", wrong.Take(5))})", wrong.Count == 0);
+            Check($"and there is grass on it ({grass} tufts)", grass > 1000);
         }
 
         /// <summary>
