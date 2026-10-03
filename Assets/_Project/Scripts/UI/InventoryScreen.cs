@@ -40,6 +40,9 @@ namespace EscapeWithYourFriends.UI
         const float HeaderHeight = 30f;
         const float PanelGap = 26f;
 
+        /// <summary>The space between the bag's rows and its hotbar row, with a rule drawn in it.</summary>
+        const float HotbarGap = 18f;
+
         readonly ItemTooltip _tooltip = new();
 
         SlotView[] _bagSlots;
@@ -58,6 +61,7 @@ namespace EscapeWithYourFriends.UI
         Text _message;
 
         RectTransform _dragGhost;
+        Image _dragIcon;
         Text _dragLabel;
         SlotView _dragFrom;
 
@@ -92,6 +96,9 @@ namespace EscapeWithYourFriends.UI
         const int ShopColumns = 2;
         const float ShopPitch = 40f;
         const float RowGap = 3f;
+
+        int _perColumn;
+        float _gridWidth;
 
         // ---------------------------------------------------------------- building
 
@@ -139,10 +146,13 @@ namespace EscapeWithYourFriends.UI
         {
             float gridWidth = Columns * SlotView.Size + (Columns - 1) * SlotView.Gap;
 
-            int bagRows = Mathf.CeilToInt(BagSlots / (float)Columns);
+            // The bag's own rows first and the hotbar as a row of its own under them, as in
+            // Minecraft: the five slots the number keys pick are the ones nearest the screen's bottom.
+            int packRows = Mathf.CeilToInt((BagSlots - Inventory.HotbarSlots) / (float)Columns);
+            int bagRows = packRows + 1;
             int chestRows = Mathf.CeilToInt(ChestSlots / (float)Columns);
 
-            float bagHeight = bagRows * SlotView.Size + (bagRows - 1) * SlotView.Gap;
+            float bagHeight = bagRows * SlotView.Size + (bagRows - 1) * SlotView.Gap + HotbarGap;
             float chestHeight = chestRows * SlotView.Size + (chestRows - 1) * SlotView.Gap;
 
             float panelWidth = gridWidth + PanelPad * 2f;
@@ -160,13 +170,30 @@ namespace EscapeWithYourFriends.UI
 
             // Twice the chest's width, growing rightwards so the bag still does not move.
             float shopWidth = ShopColumns * gridWidth + PanelGap + PanelPad * 2f;
-            int perColumn = (ShopRows + ModRows + ShopColumns - 1) / ShopColumns;
+            int perColumn = _perColumn = (ShopRows + ModRows + ShopColumns - 1) / ShopColumns;
+            _gridWidth = gridWidth;
             float shopHeight = perColumn * ShopPitch;
             _shopPanel = Panel("Shop", new Vector2((panelWidth + PanelGap) * 0.5f + (shopWidth - panelWidth) * 0.5f, 0f),
                                shopWidth, shopHeight + PanelPad * 2f + HeaderHeight,
                                out _shopHeader, out RectTransform shopGrid);
 
-            _bagSlots = Grid(bagGrid, SlotKind.Bag, BagSlots);
+            _bagSlots = new SlotView[BagSlots];
+            for (int i = 0; i < BagSlots; i++)
+            {
+                bool hot = i < Inventory.HotbarSlots;
+                int k = hot ? i : i - Inventory.HotbarSlots;
+                int row = hot ? packRows : k / Columns;
+
+                _bagSlots[i] = SlotView.Create(bagGrid, this, SlotKind.Bag, i,
+                                               new Vector2(k % Columns * (SlotView.Size + SlotView.Gap),
+                                                           -row * (SlotView.Size + SlotView.Gap) - (hot ? HotbarGap : 0f)));
+                if (hot) Hotbar.Label(_bagSlots[i], i + 1);
+            }
+
+            Image rule = HudFactory.Block(bagGrid, "HotbarRule", new Color(1f, 0.80f, 0.45f, 0.30f));
+            HudFactory.Anchor(rule.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 0.5f),
+                              new Vector2(0f, -packRows * (SlotView.Size + SlotView.Gap) - (HotbarGap - SlotView.Gap) * 0.5f),
+                              new Vector2(gridWidth, 2f));
             _chestSlots = Grid(chestGrid, SlotKind.Chest, ChestSlots);
 
             // The shelf shares the chest's rectangle, because only one of them is ever open: you are
@@ -183,7 +210,8 @@ namespace EscapeWithYourFriends.UI
                               new Vector2(0.5f, 1f),
                               new Vector2(0f, -(Mathf.Max(bagHeight, shopHeight) + PanelPad * 2f + HeaderHeight) * 0.5f - 14f),
                               new Vector2(900f, 20f));
-            _hint.text = "drag to move  -  shift-drag for half  -  right-click to store or sell  -  E or Tab to close";
+            _hint.text = "drag to move  \u00b7  shift-click: hotbar <-> bag, or into the chest  \u00b7  1-5 over a slot: onto that hotbar key"
+                         + "\nshift-drag for half  \u00b7  right-click to store or sell  \u00b7  E or Tab to close";
 
             // One line under the hint for whatever the server just said no to. Shown for a few
             // seconds and then gone: a refusal is news, not state.
@@ -191,7 +219,7 @@ namespace EscapeWithYourFriends.UI
             _message.color = new Color(1f, 0.55f, 0.45f);
             HudFactory.Anchor((RectTransform)_message.transform, new Vector2(0.5f, 0.5f),
                               new Vector2(0.5f, 1f),
-                              new Vector2(0f, -(bagHeight + PanelPad * 2f + HeaderHeight) * 0.5f - 36f),
+                              new Vector2(0f, -(Mathf.Max(bagHeight, shopHeight) + PanelPad * 2f + HeaderHeight) * 0.5f - 52f),
                               new Vector2(900f, 20f));
         }
 
@@ -202,20 +230,27 @@ namespace EscapeWithYourFriends.UI
             HudFactory.Anchor(panel, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), centre,
                               new Vector2(width, height));
 
-            Image back = HudFactory.Block(panel, "Back", new Color(0.07f, 0.07f, 0.09f, 0.93f));
-            back.rectTransform.anchorMin = Vector2.zero;
-            back.rectTransform.anchorMax = Vector2.one;
-            back.rectTransform.offsetMin = Vector2.zero;
-            back.rectTransform.offsetMax = Vector2.zero;
+            // A dark rounded plate, a faint warm edge, and a rule under the title. Nine-sliced from one
+            // 32px sprite, so the look costs nothing a flat block did not.
+            HudFactory.Rounded(panel, "Back", new Color(0.06f, 0.07f, 0.09f, 0.95f));
+            HudFactory.Rounded(panel, "Edge", new Color(1f, 0.80f, 0.45f, 0.22f), ring: true);
+
+            // Stretched across rather than sized, so it follows the shop panel when that shrinks.
+            Image rule = HudFactory.Block(panel, "Rule", new Color(1f, 0.80f, 0.45f, 0.45f));
+            rule.rectTransform.anchorMin = new Vector2(0f, 1f);
+            rule.rectTransform.anchorMax = new Vector2(1f, 1f);
+            rule.rectTransform.sizeDelta = new Vector2(-PanelPad * 2f, 1.5f);
+            rule.rectTransform.anchoredPosition = new Vector2(0f, -(PanelPad * 0.5f + HeaderHeight + 1f));
 
             header = HudFactory.Label(panel, "Header", 20, TextAnchor.MiddleLeft);
+            header.fontStyle = FontStyle.Bold;
             HudFactory.Anchor((RectTransform)header.transform, new Vector2(0f, 1f), new Vector2(0f, 1f),
                               new Vector2(PanelPad, -PanelPad * 0.5f),
                               new Vector2(width - PanelPad * 2f, HeaderHeight));
 
             grid = HudFactory.Rect(panel, "Grid");
             HudFactory.Anchor(grid, new Vector2(0f, 1f), new Vector2(0f, 1f),
-                              new Vector2(PanelPad, -(PanelPad * 0.5f + HeaderHeight)),
+                              new Vector2(PanelPad, -(PanelPad + HeaderHeight)),
                               new Vector2(width - PanelPad * 2f, height));
 
             return panel;
@@ -244,11 +279,12 @@ namespace EscapeWithYourFriends.UI
             HudFactory.Anchor(_dragGhost, new Vector2(0f, 0f), new Vector2(0.5f, 0.5f), Vector2.zero,
                               new Vector2(SlotView.Size, SlotView.Size));
 
-            Image back = HudFactory.Block(_dragGhost, "Back", new Color(0.30f, 0.34f, 0.42f, 0.85f));
-            back.rectTransform.anchorMin = Vector2.zero;
-            back.rectTransform.anchorMax = Vector2.one;
-            back.rectTransform.offsetMin = Vector2.zero;
-            back.rectTransform.offsetMax = Vector2.zero;
+            HudFactory.Rounded(_dragGhost, "Back", new Color(0.20f, 0.23f, 0.30f, 0.80f));
+            HudFactory.Rounded(_dragGhost, "Edge", new Color(1f, 0.80f, 0.45f, 0.8f), ring: true);
+
+            _dragIcon = HudFactory.Block(_dragGhost, "Icon", Color.white);
+            HudFactory.Stretch(_dragIcon.rectTransform, 8f);
+            _dragIcon.preserveAspect = true;
 
             _dragLabel = HudFactory.Label(_dragGhost, "Label", 12, TextAnchor.MiddleCenter);
             _dragLabel.horizontalOverflow = HorizontalWrapMode.Wrap;
@@ -303,6 +339,7 @@ namespace EscapeWithYourFriends.UI
             _counter = Economy.ShopCounter.NearestInReach(_bag.transform.position);
             _chest = _counter != null ? null : Storage.NearestInReach(_bag.transform.position);
 
+            HotbarKeys();
             DrawBag();
             DrawChest();
             DrawShop();
@@ -340,6 +377,27 @@ namespace EscapeWithYourFriends.UI
             {
                 _bagSlots[i].Draw(_bag[i]);
                 _bagSlots[i].SetSelected(_bag.SelectedSlot == i);
+            }
+        }
+
+        /// <summary>
+        /// Minecraft's number keys: 1 to 5 with the cursor over a bag slot puts that stack on that
+        /// hotbar key, swapping with whatever was there. Over a chest slot it takes the stack out.
+        /// </summary>
+        void HotbarKeys()
+        {
+            UnityEngine.InputSystem.Keyboard keyboard = UnityEngine.InputSystem.Keyboard.current;
+            if (keyboard == null || _hovered == null || _hovered.Stack.IsEmpty) return;
+
+            for (int k = 0; k < Inventory.HotbarSlots; k++)
+            {
+                if (!keyboard[UnityEngine.InputSystem.Key.Digit1 + k].wasPressedThisFrame) continue;
+
+                if (_hovered.Kind == SlotKind.Bag) _bag.MoveSlot(_hovered.Index, k);
+                else if (_hovered.Kind == SlotKind.Chest && _chest != null)
+                    _bag.RequestTake(_chest, _hovered.Index, _hovered.Stack.Count);
+
+                return;
             }
         }
 
@@ -395,6 +453,28 @@ namespace EscapeWithYourFriends.UI
                                 ? $"${offer.Price}"
                                 : left > 0 ? $"${offer.Price}   {left} left" : "sold out");
             }
+
+            FitShop();
+        }
+
+        /// <summary>
+        /// Shrinks the shop panel to the lines it is showing. The barman sells one thing, and a
+        /// panel built for the gunsmith's thirty-six left him a lone row in a wall of nothing.
+        /// </summary>
+        void FitShop()
+        {
+            int rows = 1, columns = 1;
+            for (int i = 0; i < _shopRows.Length; i++)
+                if (_shopRows[i].gameObject.activeSelf)
+                {
+                    rows = Mathf.Max(rows, i % _perColumn + 1);
+                    columns = Mathf.Max(columns, i / _perColumn + 1);
+                }
+
+            float width = columns * _gridWidth + (columns - 1) * PanelGap + PanelPad * 2f;
+            float bag = _bagPanel.sizeDelta.x;
+            _shopPanel.sizeDelta = new Vector2(width, rows * ShopPitch + PanelPad * 2f + HeaderHeight);
+            _shopPanel.anchoredPosition = new Vector2((bag + PanelGap) * 0.5f + (width - bag) * 0.5f, 0f);
         }
 
         /// <summary>
@@ -474,7 +554,10 @@ namespace EscapeWithYourFriends.UI
             _dragFrom = slot;
             _tooltip.Hide();
 
-            _dragLabel.text = slot.Stack.ToString();
+            Sprite icon = slot.Stack.Def != null ? slot.Stack.Def.Icon : null;
+            _dragIcon.sprite = icon;
+            _dragIcon.enabled = icon != null;
+            _dragLabel.text = icon == null ? slot.Stack.ToString() : slot.Stack.Count > 1 ? slot.Stack.Count.ToString() : "";
             _dragGhost.gameObject.SetActive(true);
             SlotDrag(pointer);
         }
@@ -546,6 +629,17 @@ namespace EscapeWithYourFriends.UI
             switch (slot.Kind)
             {
                 case SlotKind.Bag when !right:
+                    // Shift-click, as in Minecraft: into the open chest, or across the hotbar line.
+                    if (IsShiftHeld())
+                    {
+                        if (slot.Stack.IsEmpty) return;
+
+                        if (_chest != null) _bag.RequestStore(_chest, slot.Index, slot.Stack.Count);
+                        else _bag.QuickMoveSlot(slot.Index);
+
+                        return;
+                    }
+
                     if (slot.Index < Inventory.HotbarSlots) _bag.SelectSlot(slot.Index);
                     return;
 

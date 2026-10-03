@@ -167,6 +167,60 @@ namespace EscapeWithYourFriends.UI
             return slider;
         }
 
+        static Sprite _roundFill;
+        static Sprite _roundRing;
+
+        /// <summary>The rounded plate's sprite, for an image that already exists.</summary>
+        public static Sprite RoundFill => _roundFill ??= RoundedSprite(false);
+
+        /// <summary>
+        /// A rounded plate stretched over its parent: the inventory's panels and slots (#287). The
+        /// sprite is drawn into a 32px texture once, in code, and nine-sliced - so a slot and a
+        /// panel share one draw call's worth of texture, and nothing has to be imported first.
+        /// <paramref name="ring"/> draws only the 2px edge, for a frame laid over a plate.
+        /// </summary>
+        public static Image Rounded(Transform parent, string name, Color color, bool ring = false)
+        {
+            Image image = Block(parent, name, color);
+            image.sprite = ring ? _roundRing ??= RoundedSprite(true) : RoundFill;
+            image.type = Image.Type.Sliced;
+            Stretch(image.rectTransform);
+            return image;
+        }
+
+        static Sprite RoundedSprite(bool ring)
+        {
+            const int n = 32;
+            const float r = 8f, edge = 2f, c = n / 2f;
+
+            var texture = new Texture2D(n, n, TextureFormat.RGBA32, false)
+            {
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear,
+            };
+
+            var pixels = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    // Signed distance to a rounded square: negative inside, one pixel of falloff.
+                    float dx = Mathf.Max(Mathf.Abs(x + 0.5f - c) - (c - r), 0f);
+                    float dy = Mathf.Max(Mathf.Abs(y + 0.5f - c) - (c - r), 0f);
+                    float d = Mathf.Sqrt(dx * dx + dy * dy) - r;
+
+                    float alpha = Mathf.Clamp01(0.5f - d);
+                    if (ring) alpha = Mathf.Min(alpha, Mathf.Clamp01(d + edge + 0.5f));
+
+                    pixels[y * n + x] = new Color32(255, 255, 255, (byte)(alpha * 255f));
+                }
+
+            texture.SetPixels32(pixels);
+            texture.Apply(false, true);
+
+            return Sprite.Create(texture, new Rect(0f, 0f, n, n), new Vector2(0.5f, 0.5f), 100f, 0,
+                                 SpriteMeshType.FullRect, new Vector4(r + 1f, r + 1f, r + 1f, r + 1f));
+        }
+
         /// <summary>Anchors a rect to one corner with a pixel offset, sized in reference pixels.</summary>
         public static RectTransform Anchor(RectTransform rect, Vector2 anchor, Vector2 pivot,
                                            Vector2 offset, Vector2 size)

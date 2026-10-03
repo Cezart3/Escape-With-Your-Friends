@@ -63,7 +63,7 @@ namespace EscapeWithYourFriends.UI
         }
 
         /// <summary>The key that picks this slot, in its corner. Static, so it is drawn once.</summary>
-        static void Label(SlotView slot, int number)
+        internal static void Label(SlotView slot, int number)
         {
             Text key = HudFactory.Label(slot.transform, "Key", 11, TextAnchor.UpperLeft);
             key.color = new Color(0.75f, 0.75f, 0.80f, 0.85f);

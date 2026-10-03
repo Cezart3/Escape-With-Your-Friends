@@ -140,7 +140,8 @@ namespace EscapeWithYourFriends.UI
                 _fishing.Refresh(SquadModel.FindLocalFishing());
 
                 InventoryScreen.NetworkObjectHolder local = InventoryScreen.NetworkObjectHolder.FromLocal();
-                _hotbar.Refresh(local.Bag);
+                // The bag screen draws the hotbar as its own bottom row, so the HUD's copy steps aside.
+                _hotbar.Refresh(_inventory.IsOpen ? null : local.Bag);
                 _purse.Refresh(local.Purse);
                 _inventory.Refresh(local);
                 InventoryOpen = _inventory.IsOpen;

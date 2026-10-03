@@ -40,9 +40,8 @@ namespace EscapeWithYourFriends.UI
     /// <see cref="IBeginDragHandler"/> without being a component. It stays a dumb one: it knows what
     /// it looks like and where it is in a grid, and nothing at all about inventories.
     ///
-    /// **No icons.** There is no item art yet, so a slot draws the item's name and count. A grid of
-    /// identical grey squares would be prettier and completely unusable; when icons exist, the
-    /// <see cref="Icon"/> image is already here waiting for them.
+    /// Draws the item's icon when it has one and its name when it does not, a count, and a strip
+    /// in the item's category colour along the bottom.
     /// </summary>
     public class SlotView : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler,
                             IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler,
@@ -51,9 +50,14 @@ namespace EscapeWithYourFriends.UI
         public const float Size = 76f;
         public const float Gap = 6f;
 
-        static readonly Color Idle = new(0.13f, 0.13f, 0.16f, 0.92f);
-        static readonly Color Hover = new(0.24f, 0.26f, 0.32f, 0.96f);
-        static readonly Color Chosen = new(0.36f, 0.42f, 0.30f, 0.96f);
+        static readonly Color Idle = new(0.11f, 0.12f, 0.15f, 0.94f);
+        static readonly Color Hover = new(0.19f, 0.21f, 0.27f, 0.97f);
+        static readonly Color Chosen = new(0.24f, 0.22f, 0.13f, 0.97f);
+
+        // The frame does the talking: faint at rest, bright under the cursor, gold when chosen.
+        static readonly Color IdleEdge = new(1f, 1f, 1f, 0.10f);
+        static readonly Color HoverEdge = new(1f, 1f, 1f, 0.55f);
+        static readonly Color ChosenEdge = new(1f, 0.80f, 0.35f, 0.95f);
 
         public SlotKind Kind { get; private set; }
         public int Index { get; private set; }
@@ -63,6 +67,8 @@ namespace EscapeWithYourFriends.UI
         public Image Icon { get; private set; }
 
         Text _name;
+        Image _edge;
+        Image _kindBar;
         bool _wide;
         Text _count;
         Text _note;
@@ -91,6 +97,16 @@ namespace EscapeWithYourFriends.UI
             view.Background = rect.gameObject.AddComponent<Image>();
             view.Background.color = Idle;
             view.Background.raycastTarget = true;
+            view.Background.sprite = HudFactory.RoundFill;
+            view.Background.type = Image.Type.Sliced;
+
+            view._edge = HudFactory.Rounded(rect, "Edge", IdleEdge, ring: true);
+
+            // A thin line along the bottom in the item's category colour, so a bag can be read at a
+            // glance - red for weapons, green for food - without opening a single tooltip.
+            view._kindBar = HudFactory.Block(rect, "Kind", Color.clear);
+            HudFactory.Anchor(view._kindBar.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+                              new Vector2(0f, 3f), new Vector2(box.x - 20f, 3f));
 
             view.Icon = HudFactory.Block(rect, "Icon", new Color(1f, 1f, 1f, 0f));
             HudFactory.Anchor(view.Icon.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
@@ -101,7 +117,7 @@ namespace EscapeWithYourFriends.UI
 
             // A square reads name-over-count; a row reads name on the left and price on the right,
             // which is how every shelf anybody has ever looked at is laid out.
-            view._name = HudFactory.Label(rect, "Name", 12,
+            view._name = HudFactory.Label(rect, "Name", wide ? 15 : 12,
                                           wide ? TextAnchor.MiddleLeft : TextAnchor.UpperCenter);
             view._name.horizontalOverflow = HorizontalWrapMode.Wrap;
             HudFactory.Anchor((RectTransform)view._name.transform,
@@ -114,7 +130,7 @@ namespace EscapeWithYourFriends.UI
             HudFactory.Anchor((RectTransform)view._count.transform, new Vector2(1f, 0f),
                               new Vector2(1f, 0f), new Vector2(-5f, 4f), new Vector2(40f, 18f));
 
-            view._note = HudFactory.Label(rect, "Note", 13,
+            view._note = HudFactory.Label(rect, "Note", wide ? 15 : 13,
                                           wide ? TextAnchor.MiddleRight : TextAnchor.LowerLeft);
             view._note.color = new Color(0.88f, 0.84f, 0.60f);
             HudFactory.Anchor((RectTransform)view._note.transform,
@@ -150,6 +166,8 @@ namespace EscapeWithYourFriends.UI
             Icon.sprite = icon;
             Icon.color = icon != null ? Color.white : new Color(1f, 1f, 1f, 0f);
 
+            _kindBar.color = def == null || _wide ? Color.clear : KindColour(def.Category);
+
             Repaint();
         }
 
@@ -163,7 +181,22 @@ namespace EscapeWithYourFriends.UI
         }
 
         void Repaint()
-            => Background.color = _selected ? Chosen : _hovered ? Hover : Idle;
+        {
+            Background.color = _selected ? Chosen : _hovered ? Hover : Idle;
+            _edge.color = _selected ? ChosenEdge : _hovered ? HoverEdge : IdleEdge;
+        }
+
+        static Color KindColour(ItemCategory category) => category switch
+        {
+            ItemCategory.Weapon => new Color(0.95f, 0.36f, 0.30f, 0.9f),
+            ItemCategory.Food => new Color(0.48f, 0.82f, 0.38f, 0.9f),
+            ItemCategory.Drink => new Color(0.38f, 0.70f, 0.98f, 0.9f),
+            ItemCategory.Medical => new Color(0.98f, 0.50f, 0.66f, 0.9f),
+            ItemCategory.Tool => new Color(0.95f, 0.66f, 0.26f, 0.9f),
+            ItemCategory.Quest => new Color(1f, 0.86f, 0.32f, 0.9f),
+            ItemCategory.Material => new Color(0.72f, 0.62f, 0.48f, 0.9f),
+            _ => new Color(0.70f, 0.70f, 0.74f, 0.9f),
+        };
 
         // ---------------------------------------------------------------- pointer
 

@@ -39,7 +39,8 @@ namespace EscapeWithYourFriends.UI
             HudFactory.Anchor(_root, new Vector2(0f, 0f), new Vector2(0f, 0f), Vector2.zero,
                               new Vector2(Width, 120f));
 
-            _panel = HudFactory.Block(_root, "Back", new Color(0.05f, 0.05f, 0.07f, 0.94f));
+            _panel = HudFactory.Rounded(_root, "Back", new Color(0.05f, 0.06f, 0.08f, 0.96f));
+            HudFactory.Rounded(_panel.transform, "Edge", new Color(1f, 0.80f, 0.45f, 0.35f), ring: true);
             HudFactory.Anchor(_panel.rectTransform, new Vector2(0f, 0f), new Vector2(0f, 0f),
                               Vector2.zero, new Vector2(Width, 120f));
 
