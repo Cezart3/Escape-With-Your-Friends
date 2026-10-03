@@ -41,7 +41,7 @@ namespace EscapeWithYourFriends.World
         static readonly HashSet<string> Painted = new()
         {
             "Wood", "Stone", "Canvas", "Metal", "Accent", "Sand", "Leaf", "WoodDark", "LeafDark",
-            "Felt", "Skin", "Cloth", "Plastic", "Gold", "Dark", "RouletteWheel", "Flame", "SlotAtlas", "SlotBulbOn",
+            "Felt", "Skin", "Cloth", "Plastic", "Gold", "Dark", "Flame", "SlotAtlas", "SlotBulbOn",
         };
 
         /// <summary>Renderers wearing one material before the draw calls are worth instancing away.</summary>

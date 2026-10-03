@@ -9498,6 +9498,72 @@ Materials are swapped only when the pattern moves on.
 Rebuild the cabinets with `slots.py`, then `SlotFactory.Build`. The prefabs keep their GUIDs,
 so the POIs need no rebake.
 
+## Roulette and blackjack tables modelled in Blender (#252)
+
+The roulette table used to be a Kenney table under a greybox rim, with a painted cylinder for a
+wheel and a cube for a ball. Its ten bet squares ran a metre and a quarter off the table's end. The
+blackjack table was four palette boxes. Both now come from `tools/art/tables.py`.
+
+```
+blender -b --factory-startup -P tools/art/tables.py -- <absolute path>/Assets/_Project/Art/Casino/Models
+```
+
+That command writes `CasinoTables.fbx`, painted from the slots' ramp sheet, so the tables wear
+`SlotAtlas` too. That is one material fewer than before, because `RouletteWheel.mat` and its
+texture are deleted. The script draws in Unity's frame through `u(x, y, z)`, which keeps its
+numbers the same as the factories' numbers.
+
+| Mesh | What it is | Triangles |
+|---|---|---|
+| `Rou_Table` | Turned legs, an apron with a gold band, the felt, a padded rail, the layout lines, and the wheel's bowl with its ball track and gold deflectors | 3.7k |
+| `Rou_Rotor` | 37 pockets and the number ring in European order, brass frets, the cone, and the turret with its handles | 1.9k |
+| `Rou_Ball` | The ball | 100 |
+| `Rou_Spot_<Label>` | A felt square with a gold frame. Its mark is a gold seven, a red or black diamond, or lettering in Blender's own font that reads from the door side | 72 to 650 |
+| `Bj_Table` | A D-shaped table (a power-6 superellipse, full enough at the corners for the outer seats' buttons): the dealer on the flat side, a rail round the seats, betting circles, "BLACKJACK PAYS 3 TO 2", a chip tray of six colours, the shoe and the discard rack | 7.9k |
+| `Bj_Bet`, `Bj_Hit`, `Bj_Stand`, `Bj_Double`, `Bj_Split` | The seat buttons as chips, each with its word on top. Bet is a gold stack | 240 to 540 |
+
+### In place
+
+`CasinoFactory.Remodel` replaces `DressTable`. Like `DressTable`, it works on the saved prefab's
+contents, so the table and its ten networked squares keep their ids. It makes these changes:
+
+- The baize keeps its collider and stops drawing. The Kenney model and the rim are deleted, and the
+  model goes on a `Model` child.
+- `Wheel` and `Ball` keep their transforms, which `RouletteWheel` turns. They move to `WheelAt`
+  (-1, 0.94, 0) at scale 1 and wear the rotor and the ball. The old zero marker is deleted.
+- The squares sit five to a row on the felt, 0.4 m apart from x -0.2. Each wears its own mesh and
+  gets a 0.36 x 0.56 collider.
+
+`BlackjackFactory`, which rebuilds its prefab every run, now hides the `Base` collider's box and
+puts `Bj_Table` on a `Model` child. Each button keeps its own NetworkObject and box collider at its old
+size, and wears its chip at scale 1. The bet row moved in to z 0.26 and the small buttons to z 0.15,
+so both stay inside the rail. The cards are unchanged.
+
+### The ball
+
+The ball used to spin at twice the wheel's rate and stop wherever that left it. `RouletteWheel.Roll`
+now animates it in four steps:
+
+1. It lifts onto the track (`BallTrack`).
+2. It laps against the wheel in whole turns.
+3. Between 60% and 85% of the spin it drops toward the pocket radius (`BallRest`), with three
+   shrinking hops.
+4. It turns with the wheel, using `LerpAngle` from the free angle to the pocket's.
+
+Because the laps are whole turns, the ball ends at +z, which is where the winning pocket stops.
+
+### Checks
+
+- `-rouletteTest`, host side:
+  - the table, the wheel and the ball wear `Rou_Table`, `Rou_Rotor` and `Rou_Ball`;
+  - every square wears a `Rou_Spot_*` mesh;
+  - every square lies on the felt.
+- `-rouletteTest`, client side: after each spin, `BallMiss()` is under 3 cm. That is the distance
+  from the ball to the pocket the wheel shows. It measured 0.0 cm on all four spins.
+- `-blackjackTest`: the table wears `Bj_Table`.
+- `LookRoute` adds a "casino tables" spot, taken from a blackjack seat. It measured 173 fps on the
+  beauty route at Very High on the RTX 4060.
+
 ---
 
 ## Data-driven content

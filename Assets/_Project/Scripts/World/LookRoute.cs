@@ -132,6 +132,14 @@ namespace EscapeWithYourFriends.World
                 spots.Add(new Spot { Name = "casino floor", Eye = t.TransformPoint(0f, 2.2f, 8f), Target = t.TransformPoint(0f, 1.2f, -3f) });
             }
 
+            // The blackjack table from a player's seat, the roulette wheel beyond it (#252).
+            var blackjack = FindAnyObjectByType<Casino.BlackjackTable>();
+            if (blackjack != null)
+            {
+                Transform t = blackjack.transform;
+                spots.Add(new Spot { Name = "casino tables", Eye = t.TransformPoint(0f, 1.7f, 1.6f), Target = t.TransformPoint(0f, 0.9f, -0.2f) });
+            }
+
             // The cabinets are placed props, not landmarks, so the first one found stands for the row.
             var slots = FindAnyObjectByType<Casino.SlotMachine>();
             if (slots != null)

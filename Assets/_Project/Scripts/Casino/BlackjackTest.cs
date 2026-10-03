@@ -94,6 +94,10 @@ namespace EscapeWithYourFriends.Casino
 
             Wiring(table);
 
+            Transform model = table.transform.Find("Model");
+            Mesh body = model != null ? model.GetComponent<MeshFilter>()?.sharedMesh : null;
+            Check($"the table wears its Blender model ({(body != null ? body.name : "none")})", body != null && body.name == "Bj_Table");
+
             table.ServerSetTiming(0.3f, 2f, 0.05f, 0.4f);
             wallet.ServerSetBalance(500);
             wallet.ServerSetChips(5000);

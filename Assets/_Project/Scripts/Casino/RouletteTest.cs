@@ -215,6 +215,9 @@ namespace EscapeWithYourFriends.Casino
                 Check($"spin {seen + 1}: the host said {said} and this client's wheel shows {shown}",
                       shown == said && said >= 0);
 
+                float miss = table.BallMiss();
+                Check($"and the ball came to rest in that pocket ({miss * 100f:0.0}cm off)", miss < 0.03f);
+
                 seen++;
             }
 
@@ -232,6 +235,12 @@ namespace EscapeWithYourFriends.Casino
         {
             Check($"the casino has a table with bet spots ({spots.Length})", spots.Length >= 10);
 
+            string[] worn = new[] { "Model", "Wheel", "Ball/Marker" }
+                .Select(n => table.transform.Find(n)?.GetComponent<MeshFilter>()?.sharedMesh?.name ?? "none").ToArray();
+            Check($"the table, wheel and ball are the Blender ones ({string.Join(", ", worn)})",
+                  worn.SequenceEqual(new[] { "Rou_Table", "Rou_Rotor", "Rou_Ball" })
+                  && spots.All(s => s.GetComponent<MeshFilter>().sharedMesh.name.StartsWith("Rou_Spot_")));
+
             Check("every spot is its own NetworkObject, so aiming picks one",
                   spots.Select(s => s.NetworkObject).Distinct().Count() == spots.Length);
 
@@ -239,6 +248,12 @@ namespace EscapeWithYourFriends.Casino
                   spots.Select(s => (s.Kind, s.Number)).Distinct().Count() == spots.Length);
 
             Check("all of them belong to this table", spots.All(s => s.Table == table));
+
+            // The squares used to run a metre and a quarter off the table's end (#252).
+            string[] off = spots.Select(s => (s, at: table.transform.InverseTransformPoint(s.transform.position)))
+                                .Where(p => Mathf.Abs(p.at.x) > 1.4f || Mathf.Abs(p.at.z) > 0.7f)
+                                .Select(p => p.s.name).ToArray();
+            Check($"and every one lies on the felt ({string.Join(", ", off)})", off.Length == 0);
 
             Check("the table is taking bets before anybody has bet", table.TakingBets);
             Check("and nothing is staked yet", table.Staked == 0 && table.BetCount == 0);
