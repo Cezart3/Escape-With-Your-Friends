@@ -68,7 +68,9 @@ namespace EscapeWithYourFriends.World
             ArtCategory.Prop => 2000,
             ArtCategory.Structure => 1500,
             ArtCategory.Wreck => 30000,
-            ArtCategory.Vehicle => 4000,
+            // #249: ours (tools/art/vehicles.py) carry the inverted-hull outline, which doubles what is
+            // drawn; the plane is 7 500 with it. Three vehicles in a world, so the cap is the plane's.
+            ArtCategory.Vehicle => 8000,
             // 16000, not the plan's 15000: Quaternius's female base body measures 15060 (ART-PLAN §1).
             ArtCategory.Character => 16000,
             // Measured on Quaternius's Deer (2 176) and Pig (2 821), both skinned and animated.

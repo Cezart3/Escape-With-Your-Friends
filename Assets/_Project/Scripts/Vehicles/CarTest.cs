@@ -167,6 +167,13 @@ namespace EscapeWithYourFriends.Vehicles
             bool suspended = wheels.All(w => w != null && w.suspensionDistance > 0.05f && w.radius > 0.1f);
             Check("every wheel has radius and suspension travel", suspended);
 
+            // #249. Our own buggy, and a tyre on every wheel the controller rolls.
+            MeshFilter art = car.transform.Find("Art")?.GetComponent<MeshFilter>();
+            int tyres = car.GetComponentsInChildren<MeshFilter>().Count(f => f.sharedMesh != null
+                                                                           && f.sharedMesh.name == "Veh_Buggy_Wheel");
+            Check($"it wears its Blender model and four tyres ({(art != null && art.sharedMesh != null ? art.sharedMesh.name : "none")}, {tyres})",
+                  art != null && art.sharedMesh != null && art.sharedMesh.name == "Veh_Buggy" && tyres == 4);
+
             Debug.Log($"[CarTest] buggy at {body.position.ToString("F2")}, {wheels.Length} wheel(s), "
                       + $"{body.mass:0} kg, top speed {car.TopSpeed:0} m/s.");
         }

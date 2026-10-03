@@ -102,9 +102,12 @@ def lathe(s, profile, col, at, segs=8, smooth=True, outline=False):
     return T.ulathe(s, profile, col, at, segs=segs, smooth=smooth, outline=outline)
 
 
-def sign_text(s, body, size, at, facing, col, depth=0.03):
-    """Upright lettering read by someone standing on the `facing` side (a Unity (x, z) direction)."""
+def sign_text(s, body, size, at, facing, col, depth=0.03, res=None):
+    """Upright lettering read by someone standing on the `facing` side (a Unity (x, z) direction).
+    `res` lowers the curves' resolution where the letters are small and the triangles count."""
     cu = bpy.data.curves.new("txt", "FONT")
+    if res:
+        cu.resolution_u = res
     cu.body = body
     cu.size = size
     cu.align_x = "CENTER"

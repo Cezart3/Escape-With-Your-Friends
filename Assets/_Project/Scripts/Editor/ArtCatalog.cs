@@ -322,12 +322,7 @@ namespace EscapeWithYourFriends.EditorTools
             new("RowBoat", "PirateKit", "Ship_Small", ArtCategory.Wreck),
             new("Cliff", "PirateKit", "Environment_Cliff1", ArtCategory.Wreck),
 
-            // --- the vehicles (VehicleBuilder, BoatBuilder) -----------------------------------------
-            // An open race car, not the plan's SUV: see VehicleBuilder.Dress.
-            new("Buggy", "Car", "race", ArtCategory.Vehicle),
-            new("Boat", "Watercraft", "boat-speed-j", ArtCategory.Vehicle),
-
-            // --- the animals (AnimalArt) and the plane (PlaneBuilder.Dress) ------------------------
+            // --- the animals (AnimalArt) ----------------------------------------------------------
             // An animal's id is its species id with a capital; a species with no row keeps its boxes.
             // The gull has none: no Quaternius bird was found to name.
             new("Deer", "Animals", "Deer", ArtCategory.Animal),

@@ -128,6 +128,12 @@ namespace EscapeWithYourFriends.World
             Check($"each one is a different piece ({string.Join(", ", labels)})",
                   labels.Distinct().Count() == labels.Length);
 
+            // #249. Each one is the piece the plane wears in its hole, not a box.
+            var worn = PlanePart.All.Select(p => p.GetComponentInChildren<MeshFilter>())
+                                    .Select(f => f != null && f.sharedMesh != null ? f.sharedMesh.name : "none").ToArray();
+            Check($"each one wears its Blender model ({string.Join(", ", worn)})",
+                  worn.Length == 3 && worn.All(n => n.StartsWith("Veh_Part_")));
+
             Transform camp = Camp();
             Check("the island has a camp to haul them back to", camp != null);
 

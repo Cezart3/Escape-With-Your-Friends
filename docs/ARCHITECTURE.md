@@ -9695,6 +9695,98 @@ like any `_BaseColor`. `ItemArtFactory` rendered the weapon icons again.
 - `-skinTest` passed 59/0. It holds and tints weapons.
 - `-itemTest` passed 19/0. Its long-model check drops the sniper, which is 1.55 m long.
 
+## Vehicles modelled in Blender (#249)
+
+Before this change, the buggy wore Kenney's race car and the boat wore Kenney's speedboat. The plane
+was a composite of Unity primitives: a capsule fuselage, a sphere canopy and cube wings. The three
+plane parts lying on the island were plain boxes. All of them now come from
+`tools/art/vehicles.py`:
+
+```
+blender -b --factory-startup -P tools/art/vehicles.py -- <absolute path>/Assets/_Project/Art/Casino/Models
+```
+
+That command writes `Vehicles.fbx`. It is painted from the slots' ramp sheet with the usual
+outline. Each mesh is drawn in metres, in the space of the prefab that wears it, so no builder
+scales or places anything:
+
+| Mesh | What it is | Triangles |
+|---|---|---|
+| `Veh_Plane` | A yellow-and-red bush plane with a red cheat line and "SOS" down both sides. It has two open cockpits, each with a leather rim, two headrests and a windscreen. The firewall has engine mounts sticking out. The port wing has a red tip, a cream aileron and a navigation light. The starboard side has only the root the other wing bolts to. Fin and red rudder, tailplane and elevators, a splayed main gear and a tail wheel on a fin | 7.5k |
+| `Veh_Plane_Engine` | A red cowling around a seven-cylinder radial, with a crankcase, a shaft and exhausts | 1.8k |
+| `Veh_Plane_Wing` | The starboard wing, the port wing's mirror | 0.4k |
+| `Veh_Plane_Propeller` | A red spinner and two twisted blades with yellow tips | 0.3k |
+| `Veh_Part_*` | The same three pieces, lying on the ground | as above |
+| `Veh_Boat` | The "LUCKY 7": a flared hull with a red bottom, a navy sheer stripe and a wooden rail. It has a planked deck, a helm console with a dash, wheel and windscreen, and a grab rail. The cushioned transom bench is where the cargo lies. The outboard has its shaft and propeller in the water. A bow rail, navigation lights and fenders | 4.2k |
+| `Veh_Buggy` | An orange dune buggy with a chip on the bonnet, headlights and a bull bar. It has fenders over all four wheels with shocks, red bucket seats, and a roll bar with a light bar. A planked bed, two exhausts curling up out of the back | 4.4k |
+| `Veh_Buggy_Wheel` | One knobbly tyre on a yellow rim, with its axle along y | 0.7k |
+
+The riders have no sitting pose yet. They stand on their seat anchors, so every seat is open. A
+body shows from the knees up out of a cockpit, over a gunwale or inside the roll bar.
+
+`VehicleArt` (`Editor/VehicleArt.cs`) is the builders' one helper. It does three things:
+
+- `Art(root, id)` adds the `Art` child that BoatTest and FlightTest look for, with its `ArtVisual`
+  marker.
+- `Wear(parent, id)` adds a plain `Model` child.
+- `InRootSpace(box, id)` hangs a mesh under one of the plane's stretched `Fitted.*` boxes. A holder
+  undoes the box's scale and offset, so the piece is drawn in the plane's space. PlaneAssembly
+  hides and shows the piece with its box, and the propeller box turns its blades.
+
+Each builder changed as follows:
+
+- **`PlaneBuilder.Dress`** replaces the catalogue dressing and `Composite`. It strips every airframe
+  box and the wheel cylinders. The colliders stay exactly where they were.
+- **`BoatBuilder`** strips the hull box, which keeps its collider, and drops the bow and console
+  boxes.
+- **`VehicleBuilder.Dress`** strips the chassis and each wheel cylinder, and puts one tyre under each
+  visual that `CarController` rolls.
+- **`PlanePartBuilder`** gives each part its `Veh_Part_*` instead of the cube. It also gives each
+  part a collider that matches the model, as printed by the script:
+
+  | Part | Collider |
+  |---|---|
+  | Engine | 1.3 × 1.3 × 1.4 |
+  | Wing | 1.5 × 0.25 × 4.85 |
+  | Propeller | 2.4 × 0.4 × 0.42 |
+
+  The old wing box was 0.35 m wide, which no wing is.
+
+The vehicle triangle cap in `ArtVisual` is now 8 000, up from 4 000. That figure includes the
+inverted-hull outline, which doubles what is drawn. There are three vehicles in a world. The Kenney
+car and watercraft rows are gone from `ArtCatalog`. `buildings.py`'s `sign_text` takes a `res`,
+because "SOS" at the font's default resolution was 1 350 triangles.
+
+### Checks
+
+These harnesses passed:
+
+| Harness | Scene | Result |
+|---|---|---|
+| `-flightTest` | island2 | 36 / 0 |
+| `-planeTest` | island2 | 33 / 0 |
+| `-partTest` (pair) | island2 | 42 / 0 |
+| `-boatTest` | island | 29 / 0 |
+| `-carTest` | island | 25 / 0 |
+
+Each one gained a check that the Blender model is worn:
+
+- CarTest checks for the buggy and its four tyres.
+- PartTest checks the three parts.
+- FlightTest checks the piece in each `Fitted` hole.
+
+Island 2 had to be re-baked (`TerrainGenerator.GenerateIsland -island 2`). The #248 rocks bake had
+written island 1's places into `Island2.unity`, so there was no plane and there were no parts. That
+was the cause of the island2 failures, which happened on the old prefabs too. `POIFactory.Bake`
+now refuses a catalogue that is not its profile's own and loads the right one.
+
+The buggy's grand tour in CarTest reached 6 of its 26 stops and stalled against the #248 rock
+colliders. The harness does not count stops, so it still passes. That is a follow-up for the
+route, not the car.
+
+The beauty route now visits the buggy and the boat as well. It averaged 194 fps (5.2 ms) on the RTX
+4060 at Very High, 1080p.
+
 ---
 
 ## Data-driven content

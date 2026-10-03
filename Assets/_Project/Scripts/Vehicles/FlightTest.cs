@@ -170,6 +170,13 @@ namespace EscapeWithYourFriends.Vehicles
             }
 
             Check($"no greybox box is still drawn ({string.Join(", ", drawn)})", drawn.Count == 0);
+            int holes = 0;
+            foreach (string hole in new[] { "Fitted.engine", "Fitted.wing", "Fitted.propeller" })
+            {
+                MeshFilter piece = vehicle.transform.Find(hole + "/Model")?.GetComponent<MeshFilter>();
+                if (piece != null && piece.sharedMesh != null && piece.sharedMesh.name.StartsWith("Veh_Plane_")) holes++;
+            }
+            Check($"and each of the three holes wears its own piece ({holes}/3)", holes == 3);
             Check("and the fuselage still has its collider",
                   vehicle.transform.Find("Fuselage") != null
                   && vehicle.transform.Find("Fuselage").GetComponent<Collider>() != null);
