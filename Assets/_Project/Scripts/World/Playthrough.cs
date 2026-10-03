@@ -286,6 +286,44 @@ namespace EscapeWithYourFriends.World
             _scavenging = false;
         }
 
+        /// <summary>Walks to the nearest <paramref name="id"/> lying on the ground and takes it with E.</summary>
+        IEnumerator PickUp(string id, string where, float timeout = 40f)
+        {
+            WorldItem item = FindObjectsByType<WorldItem>(FindObjectsSortMode.None)
+                .Where(i => i.Stack.Def != null && i.Stack.Def.Id == id)
+                .OrderBy(i => Flat(i.transform.position, _motor.transform.position)).FirstOrDefault();
+            if (item == null) { Check($"a {id} lies at the {where}", false); yield break; }
+
+            yield return Walk(id, item.transform.position, 1.8f, timeout);
+            int before = Count(id);
+            for (int tries = 0; tries < 6 && item != null && Count(id) == before; tries++)
+            {
+                Look(item.transform.position);
+                yield return new WaitForSeconds(0.2f);
+                if (tries == 0) yield return Shot("aim_" + id);
+                _input.BotPress("interact");
+                yield return new WaitForSeconds(0.5f);
+            }
+            Check($"picked up the {id} at the {where} with E (had {before}, now {Count(id)})", Count(id) > before);
+        }
+
+        /// <summary>Fits every boat part in the bag, one press each, the part in hand.</summary>
+        IEnumerator FitParts(BoatVoyage boat, string shot)
+        {
+            yield return Walk("boat", boat.transform.position, 3.5f);
+            foreach (var part in BoatVoyage.Parts)
+            {
+                if (Count(part.Item) == 0 || !boat.Wants(part.Item)) continue;
+                yield return Hold(part.Item);
+                Look(boat.transform.position + Vector3.up * 0.5f);
+                yield return new WaitForSeconds(0.2f);
+                if (shot != null) { yield return Shot(shot); shot = null; }
+                _input.BotPress("interact");
+                yield return new WaitForSeconds(0.6f);
+                Check($"the {part.Item} is fitted ({boat.Report()})", !boat.Wants(part.Item));
+            }
+        }
+
         Health Me => _motor.GetComponent<Health>();
 
         /// <summary>Whatever animal or native has picked this player as its target, if it is close.</summary>
@@ -378,25 +416,9 @@ namespace EscapeWithYourFriends.World
                 Look(wreck.transform.position + Vector3.up);
                 yield return Shot("wreck");
 
-                foreach (string id in new[] { "pistol", "pistol_ammo" })
-                {
-                    WorldItem item = FindObjectsByType<WorldItem>(FindObjectsSortMode.None)
-                        .Where(i => i.Stack.Def != null && i.Stack.Def.Id == id)
-                        .OrderBy(i => Flat(i.transform.position, _motor.transform.position)).FirstOrDefault();
-                    if (item == null) { Check($"a {id} lies at the wreck", false); continue; }
-
-                    yield return Walk(id, item.transform.position, 1.8f, 40f);
-                    int before = Count(id);
-                    for (int tries = 0; tries < 6 && item != null && Count(id) == before; tries++)
-                    {
-                        Look(item.transform.position);
-                        yield return new WaitForSeconds(0.2f);
-                        if (tries == 0) yield return Shot("aim_" + id);
-                        _input.BotPress("interact");
-                        yield return new WaitForSeconds(0.5f);
-                    }
-                    Check($"picked up the {id} with E (had {before}, now {Count(id)})", Count(id) > before);
-                }
+                // The planks and rope are the hull's (#274), crafted at the bench further on.
+                foreach (string id in new[] { "pistol", "pistol_ammo", "plank", "rope" })
+                    yield return PickUp(id, "wreck");
             }
 
             // ------------------------------------------------ the gun in hand, loaded
@@ -434,9 +456,9 @@ namespace EscapeWithYourFriends.World
                 Check($"after the wreck it points at the boat (\"{Objective.Text}\")", Objective.Text != null && Objective.Text.Contains("boat"));
             }
 
-            // ------------------------------------------------ the trader and the boat, in trips
-            // Four parts weigh more than one back carries (by design: two a trip, or a friend), so a
-            // solo run walks between the counter and the mooring until the boat is whole.
+            // ------------------------------------------------ the boat's four parts (#274)
+            // Hull planks crafted at the bench, the outboard bought from the trader, the chart from
+            // the back of the cave and the cult's fuel from their village: four kinds of play.
             ShopCounter counter = FindObjectsByType<ShopCounter>(FindObjectsSortMode.None)
                 .FirstOrDefault(c => c.Shop != null && c.Shop.Offers.Any(o => o.IsValid && o.Item.Id == "rope"));
             BoatVoyage boat = FindAnyObjectByType<BoatVoyage>();
@@ -444,61 +466,74 @@ namespace EscapeWithYourFriends.World
             Check("there is a boat", boat != null);
             if (counter != null && boat != null)
             {
+                Check($"the objective names what is missing (\"{Objective.Text}\")",
+                      Objective.Text != null && Objective.Text.Contains("the chart"));
+
+                CraftingStation bench = CraftingStation.Nearest(CraftStation.Bench, _motor.transform.position);
+                RecipeDef hull = RecipeCatalog.Active != null ? RecipeCatalog.Active.Find("hull_planks") : null;
+                Check("there is a bench and a recipe for the hull", bench != null && hull != null);
+                if (bench != null && hull != null)
+                {
+                    yield return Walk("bench", bench.transform.position, 2f);
+                    Look(bench.transform.position + Vector3.up);
+                    _motor.GetComponent<Crafting>().RequestCraft(hull);
+                    yield return new WaitForSeconds(0.5f);
+                    yield return Shot("crafting_hull");
+                    for (float t = 0f; t < 20f && Count("hull_planks") == 0; t += 0.5f) yield return new WaitForSeconds(0.5f);
+                    Check($"the bench makes hull planks of the wreck's planks and rope ({Count("hull_planks")})",
+                          Count("hull_planks") == 1);
+                }
+
                 for (int i = 0; i < 6; i++) DevCheats.GiveMoney();
-                int offer = System.Array.FindIndex(counter.Shop.Offers, o => o.IsValid && o.Item.Id == BoatVoyage.PartItem);
-                Check($"the boat part is on a shelf row the screen draws (row {offer} of {UI.InventoryScreen.ShopRows})",
+                int offer = System.Array.FindIndex(counter.Shop.Offers, o => o.IsValid && o.Item.Id == "outboard");
+                Check($"the outboard is on a shelf row the screen draws (row {offer} of {UI.InventoryScreen.ShopRows})",
                       offer >= 0 && offer < UI.InventoryScreen.ShopRows);
                 Trading trading = _motor.GetComponent<Trading>();
 
-                for (int trip = 1; trip <= 3 && !boat.Seaworthy; trip++)
+                yield return Walk("trader", counter.transform.position, 3f);
+                Look(counter.transform.position + Vector3.up);
+                yield return new WaitForSeconds(0.3f);
+                UI.WorldMap.Open = true; yield return Shot("map"); UI.WorldMap.Open = false;
+                // E, as a player would: it opens the shop now (playtest), Tab still does too.
+                _input.BotPress("interact");
+                yield return new WaitForSeconds(0.8f);
+                Check("E at the counter opens the shop", UI.HudRoot.InventoryOpen);
+                yield return Shot("shop_open");
+
+                // The gunsmith rows for the gun in hand: buy one of each, for the screenshot.
+                if (_motor.TryGetComponent(out WeaponMods mods))
                 {
-                    yield return Walk("trader", counter.transform.position, 3f);
-                    Look(counter.transform.position + Vector3.up);
-                    yield return new WaitForSeconds(0.3f);
-                    if (trip == 1) { UI.WorldMap.Open = true; yield return Shot("map"); UI.WorldMap.Open = false; }
-                    // E, as a player would: it opens the shop now (playtest), Tab still does too.
-                    _input.BotPress("interact");
+                    DevCheats.GiveMoney();
+                    foreach (ModTrack track in System.Enum.GetValues(typeof(ModTrack))) mods.RequestBuy(track);
                     yield return new WaitForSeconds(0.8f);
-                    if (trip == 1) Check("E at the counter opens the shop", UI.HudRoot.InventoryOpen);
-                    if (trip == 1) yield return Shot("shop_open");
-
-                    // The gunsmith rows for the gun in hand: buy one of each, for the screenshot.
-                    if (trip == 1 && _motor.TryGetComponent(out WeaponMods mods))
-                    {
-                        DevCheats.GiveMoney();
-                        foreach (ModTrack track in System.Enum.GetValues(typeof(ModTrack))) mods.RequestBuy(track);
-                        yield return new WaitForSeconds(0.8f);
-                        yield return Shot("gunsmith");
-                    }
-
-                    int want = boat.Missing - Count(BoatVoyage.PartItem);
-                    for (int i = 0; i < want; i++)
-                    {
-                        trading.RequestBuy(counter, offer, 1);
-                        yield return new WaitForSeconds(0.4f);
-                    }
-                    // Thirty-six rounds do not last to the far island's boars and natives.
-                    int ammo = System.Array.FindIndex(counter.Shop.Offers, o => o.IsValid && o.Item.Id == "pistol_ammo");
-                    if (trip == 1 && ammo >= 0)
-                        { trading.RequestBuy(counter, ammo, 36); yield return new WaitForSeconds(0.4f); }
-                    Debug.Log($"[Playthrough] trip {trip}: carrying {Count(BoatVoyage.PartItem)} part(s), {_bag.Weight:0}kg.");
-                    Debug.Log($"[Playthrough] pistol rounds: {Count("pistol_ammo")}.");
-                    yield return Shot($"bought_trip{trip}");
-                    _input.BotPress("inventory");
-                    yield return new WaitForSeconds(0.5f);
-
-                    yield return Walk("boat", boat.transform.position, 3.5f);
-                    for (int i = 0; i < 8 && !boat.Seaworthy && Count(BoatVoyage.PartItem) > 0; i++)
-                    {
-                        yield return Hold(BoatVoyage.PartItem);
-                        Look(boat.transform.position + Vector3.up * 0.5f);
-                        yield return new WaitForSeconds(0.2f);
-                        if (i == 0 && trip == 1) yield return Shot("fitting");
-                        _input.BotPress("interact");
-                        yield return new WaitForSeconds(0.6f);
-                    }
-                    Debug.Log($"[Playthrough] trip {trip}: the boat has {boat.Fitted}/{boat.Needed}.");
+                    yield return Shot("gunsmith");
                 }
+
+                trading.RequestBuy(counter, offer, 1);
+                yield return new WaitForSeconds(0.4f);
+                // Thirty-six rounds do not last to the far island's boars and natives.
+                int ammo = System.Array.FindIndex(counter.Shop.Offers, o => o.IsValid && o.Item.Id == "pistol_ammo");
+                if (ammo >= 0) { trading.RequestBuy(counter, ammo, 36); yield return new WaitForSeconds(0.4f); }
+                Check($"bought the outboard ({Count("outboard")}, {_bag.Weight:0}kg carried)", Count("outboard") == 1);
+                Debug.Log($"[Playthrough] pistol rounds: {Count("pistol_ammo")}.");
+                yield return Shot("bought_outboard");
+                _input.BotPress("inventory");
+                yield return new WaitForSeconds(0.5f);
+
+                yield return FitParts(boat, "fitting");
+                yield return Hold("pistol");
+
+                Landmark cave = Landmark.All.Find(l => l.Id == "cave");
+                if (cave != null) yield return Walk("cave", cave.transform.position, 6f);
+                yield return PickUp("chart_page", "cave", 60f);
+                yield return Shot("chart_page");
+
+                Landmark village = Landmark.All.Find(l => l.Id == "village");
+                if (village != null) yield return Walk("village", village.transform.position, 10f);
+                yield return PickUp("fuel_drum", "village", 60f);
+                yield return Shot("fuel_drum");
+
+                yield return FitParts(boat, null);
                 Check($"the boat is whole ({boat.Fitted}/{boat.Needed})", boat.Seaworthy);
 
                 yield return Hold("pistol");

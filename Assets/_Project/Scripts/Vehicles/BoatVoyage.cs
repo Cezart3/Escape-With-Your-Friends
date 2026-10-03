@@ -1,3 +1,4 @@
+using System.Linq;
 using EscapeWithYourFriends.Net;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
@@ -9,7 +10,9 @@ namespace EscapeWithYourFriends.Vehicles
     /// The three things #69 asks of a boat: it does not work until it is paid for, it is how you
     /// leave, and losing it is survivable.
     ///
-    /// **The gate is four parts, and they belong to the group rather than to the hull.** A part in
+    /// **The gate is four parts, each from a different kind of play (#274), and they belong to the
+    /// group rather than to the hull.** Planks crafted at the bench, the outboard bought from the
+    /// Trader, fuel taken from the cult village and the chart from the end of the cave. A part in
     /// your hand is already a thing <see cref="Vehicle"/> knows how to spend - it is the same press
     /// that pours a can of fuel in - so fitting one needs no new key, no new screen and no second
     /// interactable competing for the same button. What is fitted is counted in a static, because
@@ -36,11 +39,16 @@ namespace EscapeWithYourFriends.Vehicles
     [RequireComponent(typeof(Vehicle))]
     public class BoatVoyage : NetworkBehaviour
     {
-        /// <summary>The shop item that is a piece of this. Matched by id, like fuel and scrap.</summary>
-        public const string PartItem = "boat_part";
+        /// <summary>The four parts, matched by item id like fuel and scrap, and where each is found.</summary>
+        public static readonly (string Item, string Name, string Where)[] Parts =
+        {
+            ("hull_planks", "hull planks", "craft them at the bench"),
+            ("outboard", "the outboard", "the Trader sells it"),
+            ("fuel_drum", "fuel", "the cult village"),
+            ("chart_page", "the chart", "the end of the cave"),
+        };
 
-        [Tooltip("Parts that have to be fitted before anybody can board. Four, matching the shop's stock.")]
-        [SerializeField] int _parts = 4;
+        const int All = (1 << 4) - 1;
 
         [Tooltip("Metres past the corner of the terrain where the open sea starts. Generous: the "
                  + "point is to leave deliberately, not to be swept off by a wave.")]
@@ -54,7 +62,7 @@ namespace EscapeWithYourFriends.Vehicles
         [SerializeField] float _recoverSeconds = 45f;
 
         /// <summary>
-        /// Parts this hull has, mirrored to clients for the crosshair. The count is the group's -
+        /// Parts this hull has, one bit per entry of <see cref="Parts"/>, mirrored to clients for the crosshair. The count is the group's -
         /// see <see cref="_owned"/> - and this is the copy of it that the boat in front of you shows.
         /// </summary>
         readonly SyncVar<int> _fitted = new();
@@ -84,10 +92,20 @@ namespace EscapeWithYourFriends.Vehicles
         float _adrift;
         bool _left;
 
-        public bool Seaworthy => _fitted.Value >= _parts;
-        public int Fitted => _fitted.Value;
-        public int Needed => _parts;
-        public int Missing => Mathf.Max(0, _parts - _fitted.Value);
+        public bool Seaworthy => _fitted.Value == All;
+        public int Fitted => Parts.Count(p => (_fitted.Value & Bit(p.Item)) != 0);
+        public int Needed => Parts.Length;
+        public int Missing => Needed - Fitted;
+
+        static int Bit(string item) => 1 << System.Array.FindIndex(Parts, p => p.Item == item);
+
+        /// <summary>Whether this item is a part the boat still lacks.</summary>
+        public bool Wants(string item)
+            => System.Array.FindIndex(Parts, p => p.Item == item) >= 0 && (_fitted.Value & Bit(item)) == 0;
+
+        /// <summary>What is still missing and where it is, for the objective line.</summary>
+        public string MissingLine()
+            => string.Join(", ", Parts.Where(p => (_fitted.Value & Bit(p.Item)) == 0).Select(p => $"{p.Name} ({p.Where})"));
 
         /// <summary>Where this hull ties up, which is wherever the POI placed it.</summary>
         public Vector3 Mooring => _mooring;
@@ -107,18 +125,18 @@ namespace EscapeWithYourFriends.Vehicles
 
             // A group that has bought a boat has bought every boat. This is what makes the far
             // island's hull drivable the moment they walk down onto its beach.
-            _fitted.Value = Mathf.Min(_owned, _parts);
+            _fitted.Value = _owned;
         }
 
-        /// <summary>Server only. Fits one part. Returns false if it was already finished.</summary>
-        public bool ServerFit()
+        /// <summary>Server only. Fits this part. Returns false if it is not one, or already fitted.</summary>
+        public bool ServerFit(string item)
         {
-            if (!IsServerStarted || Seaworthy) return false;
+            if (!IsServerStarted || !Wants(item)) return false;
 
-            _fitted.Value++;
-            if (_fitted.Value > _owned) _owned = _fitted.Value;
+            _fitted.Value |= Bit(item);
+            _owned |= _fitted.Value;
 
-            Debug.Log($"[BoatVoyage] part {_fitted.Value} of {_parts} fitted"
+            Debug.Log($"[BoatVoyage] {item}, part {Fitted} of {Needed}, fitted"
                       + (Seaworthy ? " - she floats, and she goes." : "."));
 
             return true;
@@ -128,8 +146,8 @@ namespace EscapeWithYourFriends.Vehicles
         public void ServerGrant()
         {
             if (!IsServerStarted) return;
-            _owned = _parts;
-            _fitted.Value = _parts;
+            _owned = All;
+            _fitted.Value = All;
         }
 
         /// <summary>Forgets what the group owns. The harness calls it to start from nothing.</summary>
@@ -254,6 +272,6 @@ namespace EscapeWithYourFriends.Vehicles
         }
 
         public string Report()
-            => Seaworthy ? "seaworthy" : $"{_fitted.Value}/{_parts} parts";
+            => Seaworthy ? "seaworthy" : $"{Fitted}/{Needed} parts, missing {MissingLine()}";
     }
 }

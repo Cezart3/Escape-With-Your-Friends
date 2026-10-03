@@ -361,8 +361,8 @@ namespace EscapeWithYourFriends.AI
             Check($"cooking meat is worth doing ({cookedPerKg:0.0} vs {rawPerKg:0.0} c/kg)",
                   cookedPerKg > rawPerKg);
 
-            // What it is all for. Four parts at whatever the trader charges, over four players.
-            ShopDef.Offer boat = shop.Offers.FirstOrDefault(o => o.Item != null && o.Item.Id == "boat_part");
+            // What it is all for: the outboard, the one part the trader sells (#274), over four players.
+            ShopDef.Offer boat = shop.Offers.FirstOrDefault(o => o.Item != null && o.Item.Id == "outboard");
             AnimalDef boar = animals.Find("boar");
 
             if (boat.Item != null && boar != null)

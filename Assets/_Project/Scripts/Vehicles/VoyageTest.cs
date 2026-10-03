@@ -146,7 +146,8 @@ namespace EscapeWithYourFriends.Vehicles
                 return;
             }
 
-            Check($"a boat is found unfinished ({voyage.Report()})", !voyage.Seaworthy);
+            Check($"a boat is found unfinished, and says what is missing where ({voyage.Report()})",
+                  !voyage.Seaworthy && voyage.MissingLine().Contains("the end of the cave"));
 
             bool boarded = hull.ServerCanBoard(who, out string why);
             Check("an unfinished boat refuses to be boarded", !boarded);
@@ -154,18 +155,30 @@ namespace EscapeWithYourFriends.Vehicles
                   why != null && why.Contains("part"));
             Check("the refusal is the seat, not the throttle", hull.ServerEnter(who) < 0);
 
-            ItemDef part = bag.Catalog != null ? bag.Catalog.Find(BoatVoyage.PartItem) : null;
-            if (part == null)
+            ItemDef[] parts = BoatVoyage.Parts.Select(p => bag.Catalog != null ? bag.Catalog.Find(p.Item) : null).ToArray();
+            if (parts.Any(p => p == null))
             {
-                Fail("the catalog has a boat part");
+                Fail("the catalog has all four boat parts");
                 return;
             }
 
-            // One at a time, because a part weighs twelve kilos and four of them is most of what a
-            // person can carry: this way the suite never assumes it can hold the whole boat at once.
+            // #274: a part the boat does not take is not a service, so the key boards instead.
+            ItemDef rope = bag.Catalog.Find("rope");
+            if (rope != null && bag.Add(rope, 1) == 0)
+            {
+                bag.ServerSelect(SlotWith(bag, rope));
+                int was = voyage.Fitted;
+                hull.ServerInteract(who);
+                Check("rope is not a boat part", voyage.Fitted == was && bag.CountOf(rope) == 1);
+                bag.Remove(rope, 1);
+            }
+
+            // One at a time, because the parts weigh up to eighteen kilos and four of them is most of
+            // what a person can carry: this way the suite never assumes it can hold the whole boat.
             int handed = 0;
             for (int guard = 0; guard < 12 && !voyage.Seaworthy; guard++)
             {
+                ItemDef part = parts[guard % parts.Length];
                 // Add hands back what would not fit, so a nought here is a part in the bag.
                 if (bag.Add(part, 1) > 0) break;
 
@@ -182,8 +195,8 @@ namespace EscapeWithYourFriends.Vehicles
             }
 
             Check($"{voyage.Needed} parts finish her ({handed} handed over)",
-                  voyage.Seaworthy && voyage.Fitted == voyage.Needed);
-            Check("and every one of them left the bag", bag.CountOf(part) == 0);
+                  voyage.Seaworthy && voyage.Fitted == voyage.Needed && handed == 4);
+            Check("and every one of them left the bag", parts.All(p => bag.CountOf(p) == 0));
             Check("finished, she takes a driver", hull.ServerCanBoard(who, out _));
 
             Debug.Log($"[VoyageTest] the boat went from \"{why}\" to {voyage.Report()} "

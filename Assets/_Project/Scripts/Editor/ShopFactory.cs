@@ -84,8 +84,9 @@ namespace EscapeWithYourFriends.EditorTools
             ("shotgun_shell", 8, -1),
             ("rifle_ammo", 14, -1),
 
-            // The reason anybody is saving. Worth nothing to the trader, so it cannot be flipped back.
-            ("boat_part", 1400, 4),
+            // The reason anybody is saving: the one boat part that is bought (#274). Worth nothing
+            // to the trader, so it cannot be flipped back.
+            ("outboard", 5600, 1),
         };
 
         /// <summary>The shelf: <see cref="Stock"/>, then a line per weapon skin (#209), unlimited.</summary>

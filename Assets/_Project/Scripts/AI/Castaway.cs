@@ -373,13 +373,13 @@ namespace EscapeWithYourFriends.AI
                 case Stage.Waiting when !PlaneAssembly.Owned:
                     // The second playtest started here, was told to find somebody it had never
                     // left, and found them with nothing to say. The run's first job is the boat:
-                    // four parts from the trader, then the other island and its plane parts.
+                    // four parts from four places (#274), then the other island and its plane parts.
                     BoatVoyage boat = FindAnyObjectByType<BoatVoyage>();
                     // The wreck first: IslandIntro's line stands until somebody here has been there.
                     if (!IslandIntro.Visited && boat != null && boat.Fitted == 0) break;
                     if (boat == null) Objective.Set("Find a way off this island", null);
                     else if (!boat.Seaworthy)
-                        Objective.Set($"Fix the boat: {boat.Fitted}/{boat.Needed} parts (the Trader sells them)",
+                        Objective.Set($"Fix the boat. Missing: {boat.MissingLine()}",
                                       boat.transform);
                     else Objective.Set("Sail the boat to the other island", boat.transform);
                     break;

@@ -236,11 +236,11 @@ namespace EscapeWithYourFriends.Vehicles
             // #69. A boat part is the fourth thing the key can mean, and deliberately the same press
             // as the other three: no new key, no new screen, no second interactable on the mooring.
             var voyage = GetComponent<BoatVoyage>();
-            bool fitting = voyage != null && !voyage.Seaworthy && held.Id == BoatVoyage.PartItem;
+            bool fitting = voyage != null && voyage.Wants(held.Id);
 
             if (bag.Remove(held, 1) <= 0) return false;
 
-            bool serviced = fitting ? voyage.ServerFit()
+            bool serviced = fitting ? voyage.ServerFit(held.Id)
                           : part != null ? GetComponent<VehicleUpgrades>().ServerFit(part)
                           : held.Id == FuelItem ? condition.ServerRefuel()
                           : condition.ServerRepair();
@@ -263,8 +263,8 @@ namespace EscapeWithYourFriends.Vehicles
             if (held == null) return null;
 
             var voyage = GetComponent<BoatVoyage>();
-            if (voyage != null && !voyage.Seaworthy && held.Id == BoatVoyage.PartItem)
-                return $"Fit a part to the {_label} ({voyage.Fitted}/{voyage.Needed})";
+            if (voyage != null && voyage.Wants(held.Id))
+                return $"Fit the {held.DisplayName} to the {_label} ({voyage.Fitted}/{voyage.Needed})";
 
             var condition = GetComponent<VehicleCondition>();
 

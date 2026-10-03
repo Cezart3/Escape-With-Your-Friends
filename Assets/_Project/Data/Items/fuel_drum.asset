@@ -10,16 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dec79073e0c5b3d4c932cfd2929ea34d, type: 3}
-  m_Name: boat_part
+  m_Name: fuel_drum
   m_EditorClassIdentifier: EWYF.Runtime::EscapeWithYourFriends.Data.ItemDef
-  _id: boat_part
-  _displayName: Boat Part
-  _description: One of the pieces that gets you off this island.
+  _id: fuel_drum
+  _displayName: Fuel Drum
+  _description: The cult's lamp oil. It burns in an outboard just as well.
   _category: 6
   _maxStack: 1
-  _weight: 12
-  _icon: {fileID: 5651803843088808861, guid: 0f26be0216af901469a079e3ab845300, type: 3}
-  _worldPrefab: {fileID: 3589397885601932948, guid: 4b67225cca2456340b380bc135d1a75a, type: 3}
+  _weight: 16
+  _icon: {fileID: -2628116949340946658, guid: 6b124150c6dba3348877207146261a5a, type: 3}
+  _worldPrefab: {fileID: 2879671362784545247, guid: 45aea403f82bfe04e81e65ac0e821475, type: 3}
   _effect: {fileID: 0}
   _useSeconds: 1.5
   _leavesBehind: {fileID: 0}

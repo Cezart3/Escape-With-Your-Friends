@@ -73,11 +73,11 @@ namespace EscapeWithYourFriends.Items
 
             ItemCatalog catalog = players[0].Catalog;
             ItemDef rope = catalog != null ? catalog.Find("rope") : null;
-            ItemDef part = catalog != null ? catalog.Find("boat_part") : null;
+            ItemDef part = catalog != null ? catalog.Find("hull_planks") : null;
 
             if (rope == null || part == null)
             {
-                Debug.LogError("[WorldItemTest] The catalog has no rope or boat_part; run ItemFactory.Build.");
+                Debug.LogError("[WorldItemTest] The catalog has no rope or hull_planks; run ItemFactory.Build.");
                 yield break;
             }
 

@@ -80,7 +80,7 @@ namespace EscapeWithYourFriends.Economy
             while (Time.time < deadline && counter == null)
             {
                 counter = FindObjectsByType<ShopCounter>(FindObjectsSortMode.None)
-                    .FirstOrDefault(c => c.Shop != null);
+                    .FirstOrDefault(c => c.Shop != null && c.Shop.Offers.Any(o => o.IsValid && o.Item.Id == "rope"));
                 yield return null;
             }
 
@@ -121,7 +121,7 @@ namespace EscapeWithYourFriends.Economy
 
             ItemDef boot = items != null ? items.Find("boot") : null;
             ItemDef pearl = items != null ? items.Find("pearl") : null;
-            ItemDef part = items != null ? items.Find("boat_part") : null;
+            ItemDef part = items != null ? items.Find("outboard") : null;
 
             // A boot has to be worth nothing rather than one coin. The trader floors what it pays at
             // a coin, so a value of one would still be a sale and the joke would be a consolation
@@ -139,7 +139,7 @@ namespace EscapeWithYourFriends.Economy
                       !shop.Offers.Any(o => o.IsValid && o.Item == pearl));
             }
 
-            // And the boat cannot be sold back, which is what stops four parts and a refund from
+            // And the outboard cannot be sold back, which is what stops a purchase and a refund from
             // being a money printer.
             if (part != null)
             {

@@ -248,8 +248,12 @@ namespace EscapeWithYourFriends.Items
         {
             while (Live.Count > Cap)
             {
-                WorldItem oldest = Live[0];
-                Live.RemoveAt(0);
+                // Never a quest item: the boat's parts (#274) are laid out first, so they are the oldest.
+                int i = Live.FindIndex(w => w == null || w._stack.Value.Def == null
+                                            || w._stack.Value.Def.Category != ItemCategory.Quest);
+                if (i < 0) break;
+                WorldItem oldest = Live[i];
+                Live.RemoveAt(i);
 
                 if (oldest == null) continue;
 

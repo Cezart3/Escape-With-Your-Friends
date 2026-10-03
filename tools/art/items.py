@@ -329,6 +329,53 @@ def boat_part(s):
         ball(s, (0.0, 0.03, z), 0.03, "METAL", segs=6, rings=4, outline=False)
 
 
+def outboard(s):
+    """A two-stroke outboard on its side: cowling, shaft, skeg and a three-blade prop; tiller to +x."""
+    T.ubox(s, (-0.2, 0.0, 0.18), (0.2, 0.36, 0.62), "TEAL", bevel=0.06)
+    box(s, (-0.205, 0.2, 0.18), (0.205, 0.24, 0.62), "CREAM")
+    B.sign_text(s, "PIKE", 0.09, (0, 0.1, 0.625), (0, 1), "CREAM", depth=0.01)
+    lathe(s, [(0.0, 0.0), (0.07, 0.0), (0.07, 0.04), (0.0, 0.05)], "METAL", c=(0, 0.36, 0.42), segs=8)
+    pipe(s, [(0, 0.12, 0.18), (0, 0.12, -0.4)], 0.06, "DARK", sides=8)
+    box(s, (-0.03, 0.0, -0.08), (0.03, 0.2, 0.06), "METAL", outline=True)
+    T.ubox(s, (-0.07, 0.04, -0.58), (0.07, 0.2, -0.36), "TEAL", bevel=0.03)
+    box(s, (-0.012, 0.0, -0.6), (0.012, 0.06, -0.4), "DARK")
+    for k in range(3):
+        shaped(s, lambda: box(s, (-0.012, 0.12, -0.66), (0.012, 0.26, -0.62), "METAL", outline=True),
+               B.turn_z(k * 120, at=(0, 0.12, -0.64)))
+    ball(s, (0, 0.12, -0.64), 0.03, "METAL", segs=6, rings=4, outline=False)
+    pipe(s, [(0.18, 0.2, 0.45), (0.42, 0.22, 0.48), (0.55, 0.24, 0.5)], 0.025, "DARK", sides=6)
+    lathe(s, [(0.0, 0.0), (0.035, 0.0), (0.035, 0.12), (0.0, 0.12)], "RED",
+          c=(0.6, 0.24, 0.5), segs=8)
+
+
+def fuel_drum(s):
+    """A ribbed steel drum the cult keeps its lamp oil in, their hand on it in white."""
+    body = [(0.0, 0.0), (0.4, 0.0), (0.42, 0.02), (0.42, 0.98), (0.4, 1.0), (0.0, 1.0)]
+    lathe(s, body, "RUBY", segs=18)
+    for y in (0.32, 0.66):
+        lathe(s, [(0.425, y - 0.025), (0.44, y), (0.425, y + 0.025)], "RED", segs=18, outline=False)
+    lathe(s, [(0.0, 1.0), (0.06, 1.0), (0.06, 1.04), (0.0, 1.04)], "METAL", c=(0.22, 0, 0.1), segs=8)
+    lathe(s, [(0.0, 1.0), (0.04, 1.0), (0.04, 1.03), (0.0, 1.03)], "METAL", c=(-0.22, 0, -0.1), segs=6)
+    for k, (dx, dy) in enumerate([(0, 0.5), (-0.07, 0.6), (-0.03, 0.62), (0.02, 0.62), (0.07, 0.58)]):
+        r = (0.07, 0.06, 0.02) if k == 0 else (0.018, 0.05, 0.02)
+        ball(s, (dx, dy, 0.425), r, "CREAM", segs=6, rings=4, outline=False)
+
+
+def chart_page(s):
+    """A torn page of chart: pencilled coast, a dotted course and a red cross."""
+    shaped(s, lambda: box(s, (-0.21, 0.0, -0.15), (0.21, 0.006, 0.15), "CREAM", outline=True),
+           rx(-3))
+    for z, x0, x1 in [(-0.1, -0.18, -0.02), (-0.07, -0.19, -0.05), (0.06, 0.04, 0.17), (0.1, 0.06, 0.18)]:
+        box(s, (x0, 0.007, z - 0.004), (x1, 0.009, z + 0.004), "DARK")
+    for k in range(7):
+        x = -0.12 + k * 0.035
+        box(s, (x - 0.007, 0.007, -0.04 + k * 0.016 - 0.004), (x + 0.007, 0.009, -0.04 + k * 0.016 + 0.004),
+            "STONE")
+    for a in (45, -45):
+        shaped(s, lambda: box(s, (-0.004, 0.007, -0.025), (0.004, 0.01, 0.025), "RED"), B.turn_y(a),
+               at(0.13, 0, 0.08))
+
+
 # --------------------------------------------------------------------------------------- kits
 
 def engine_kit(s):
@@ -456,7 +503,10 @@ ITEMS = {
     "boot": (boot, 0.3),
     "rope": (rope, 0.35),
     "plank": (plank, 0.9),
-    "boat_part": (boat_part, 1.2),
+    "hull_planks": (boat_part, 1.2),
+    "outboard": (outboard, 0.9),
+    "fuel_drum": (fuel_drum, 0.85),
+    "chart_page": (chart_page, 0.32),
     "engine_kit": (engine_kit, 0.6),
     "tank_kit": (tank_kit, 0.6),
     "fuel": (fuel, 0.4),
