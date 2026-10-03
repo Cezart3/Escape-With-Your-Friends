@@ -157,6 +157,10 @@ namespace EscapeWithYourFriends.EditorTools
             // far LOD (ArtLibrary.EnsureFloraPrefab).
             new(Own, "Palms", "", "tools/art/palms.py", false, textured: true),
 
+            // #248, the jungle's broadleaf trees, from tools/art/trees.py. As the palms, plus a "_Deco"
+            // mesh (roots, lianas) that the trunk collider is measured without.
+            new(Own, "Trees", "", "tools/art/trees.py", false, textured: true),
+
             // P4, the animals (T13). Quaternius's CC0 Deer and Pig from poly.pizza, converted from
             // glTF to FBX with Blender; each zip carries the CC0 text as License.txt. The deer is flat
             // colours, the pig one atlas. No CC0 propeller plane was found, so T14 keeps the greybox.
@@ -206,11 +210,17 @@ namespace EscapeWithYourFriends.EditorTools
             // which cannot tell which way is up; its palm, which can, stays here to teach them.
             new("KenneyPalm", "Pirate", "palm-straight", Tree, Height, 8.5f, true),
 
-            // Quaternius's broadleaf and pine. Only the ones under 6 500 triangles: the twisted and
-            // dead trees measure 5 600 to 10 100, and the jungle is the densest thing on the island.
-            new("Broadleaf", "Nature", "CommonTree_1", Tree, Height, 9f, true),
-            new("BroadleafTall", "Nature", "CommonTree_3", Tree, Height, 11f, true),
-            new("BroadleafSmall", "Nature", "CommonTree_5", Tree, Height, 8f, true),
+            // Our broadleaf trees. The rain tree and the flame tree are wider than they are tall, so
+            // they are not marked upright and take the pack's axis from the others.
+            new("TreeRain", "Trees", "Tree_Rain", Tree, Height, 10f),
+            new("TreeKapok", "Trees", "Tree_Kapok", Tree, Height, 16f, true),
+            new("TreeFig", "Trees", "Tree_Fig", Tree, Height, 12.5f, true),
+            new("TreeFlame", "Trees", "Tree_Flame", Tree, Height, 8.5f),
+            new("TreeYoung", "Trees", "Tree_Young", Tree, Height, 6f, true),
+            new("TreeOld", "Trees", "Tree_Old", Tree, Height, 13f, true),
+
+            // Quaternius's pines. Only the ones under 6 500 triangles: the jungle and the highland are
+            // the densest things on the island.
             new("JunglePalm", "Palms", "Palm_Fan", Tree, Height, 8.5f, true),
             new("JungleClump", "Palms", "Palm_Clump", Tree, Height, 7.5f, true),
 

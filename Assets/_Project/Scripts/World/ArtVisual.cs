@@ -38,6 +38,9 @@ namespace EscapeWithYourFriends.World
         /// <summary>A model's own far-LOD mesh is named after it plus this (tools/art/palms.py).</summary>
         public const string FarSuffix = "_Far";
 
+        /// <summary>A near-LOD mesh of roots and lianas, left out of the trunk measurement.</summary>
+        public const string DecoSuffix = "_Deco";
+
         /// <summary>Taller than it is wide when it is the right way up: a tree, a palm, a person.</summary>
         public bool Upright;
 
