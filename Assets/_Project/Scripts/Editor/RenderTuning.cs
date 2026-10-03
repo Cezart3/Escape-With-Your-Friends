@@ -74,6 +74,11 @@ namespace EscapeWithYourFriends.EditorTools
             // shadows, still no MSAA: at 1080p it costs more than it returns on a game with no thin
             // geometry.
             //
+            // High's SSAO, with the depth-normals prepass. The cheap one, rebuilding normals from depth,
+            // put a black grain round every edge and blocky dark pixels in the leaves (#287: the bar
+            // and the trees on Medium). The prepass costs the 760M one to two milliseconds at p95 on
+            // the perf route, and its worst spot still holds 9.3 ms against Medium's 16.7.
+            //
             // HDR on, and it is nearly free: URP 17 renders HDR into R11G11B10, the same 32 bits a
             // pixel as LDR. Off, the ACES curve in PostProcess had nothing above 1.0 to roll off and
             // the bloom's 1.05 threshold could never be crossed - the grade was half switched off
@@ -82,7 +87,7 @@ namespace EscapeWithYourFriends.EditorTools
             {
                 Path = MediumPath, Hdr = true, Msaa = 1, RenderScale = 1f,
                 ShadowResolution = 2048, ShadowDistance = 80f, Cascades = 2,
-                SoftShadows = true, ExtraLightShadows = false, LightsPerObject = 4, Occlusion = 1,
+                SoftShadows = true, ExtraLightShadows = false, LightsPerObject = 4, Occlusion = 2,
             },
 
             // Anything current. The shadow distance is 150 rather than more because the fog closes at
@@ -285,13 +290,15 @@ namespace EscapeWithYourFriends.EditorTools
 
             // Cheap: a multiply over the finished opaque image rather than an input to lighting, which
             // is what lets it skip a depth prepass - the pass an integrated GPU cannot afford. Depth
-            // alone, normals rebuilt from it; half resolution; four samples; the Kawase blur.
+            // alone, normals rebuilt from it, which is grainy at any sample count (#287), so only Low
+            // carries it, for a player who switches AO on. Half resolution with four samples and the
+            // Kawase blur made it worse still; the rest is High's.
             Set(settings, "m_Settings.AfterOpaque", cheap);
             Set(settings, "m_Settings.Source", cheap ? 0 : 1);          // Depth, DepthNormals
-            Set(settings, "m_Settings.NormalSamples", cheap ? 0 : 1);   // Low, Medium
-            Set(settings, "m_Settings.Downsample", cheap);
-            Set(settings, "m_Settings.Samples", cheap ? 2 : 1);         // Low (4), Medium (8)
-            Set(settings, "m_Settings.BlurQuality", cheap ? 2 : 1);     // Low (Kawase), Medium (Gaussian)
+            Set(settings, "m_Settings.NormalSamples", 1);               // Medium
+            Set(settings, "m_Settings.Downsample", false);
+            Set(settings, "m_Settings.Samples", 1);                     // Medium (8)
+            Set(settings, "m_Settings.BlurQuality", 1);                 // Medium (Gaussian)
             Set(settings, "m_Settings.Falloff", cheap ? 50f : 100f);
 
             // Intensity and radius stay at URP's defaults (3.0 and 0.035). How dark the corners
@@ -303,7 +310,7 @@ namespace EscapeWithYourFriends.EditorTools
             EditorUtility.SetDirty(renderer);
 
             Debug.Log(cheap
-                ? $"[RenderTuning] SSAO on {renderer.name} (after opaque, depth, half res, 4 samples, Kawase)."
+                ? $"[RenderTuning] SSAO on {renderer.name} (after opaque, depth, full res, 8 samples, Gaussian)."
                 : $"[RenderTuning] SSAO on {renderer.name} (in lighting, depth-normals, full res, 8 samples).");
         }
 
